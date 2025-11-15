@@ -60,10 +60,10 @@ From the `backend` directory:
 
 ```bash
 # Option 1: Using uv
-uv run uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uv run uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
 
 # Option 2: After activating virtual environment
-uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
 
 # Option 3: Using Python directly
 python main.py

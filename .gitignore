@@ -187,3 +187,5 @@ tmp/
 *.env
 .env.*
 !.env.example
+startup.bat
+event-link-database.txt
