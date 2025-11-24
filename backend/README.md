@@ -10,6 +10,7 @@ Environment variables (or `.topsecret` file) are loaded via `pydantic-settings`:
 - `AUTO_CREATE_TABLES` (bool; enable for local dev only)
 - `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30)
 - SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER`, `SMTP_USE_TLS`
+- Alembic uses `DATABASE_URL` from the same env for migrations.
 
 ## Running locally
 
@@ -22,6 +23,18 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
 Health endpoint: `GET /api/health`
+
+## Database migrations (Alembic)
+
+```bash
+cd backend
+# run migrations
+alembic upgrade head
+# create new migration (after model changes)
+alembic revision --autogenerate -m "your message"
+```
+
+`AUTO_CREATE_TABLES` should not be used in production; rely on Alembic migrations instead.
 
 ## Tests
 

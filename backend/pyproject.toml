@@ -15,4 +15,5 @@ dependencies = [
     "python-jose[cryptography]",
     "python-multipart",
     "pydantic[email]>=2.12.3",
+    "alembic>=1.14.0",
 ]

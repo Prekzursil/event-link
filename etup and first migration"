@@ -1,0 +1,10 @@
+*   [33m69b07de[m[33m ([m[1;36mHEAD[m[33m -> [m[1;32mfeat/alembic-migrations-batch-01[m[33m, [m[1;31morigin/main[m[33m, [m[1;31morigin/HEAD[m[33m, [m[1;32mmain[m[33m)[m Merge pull request #3 from Prekzursil/chore/baseline-sync
+[31m|[m[32m\[m  
+[31m|[m * [33m6cc66be[m[33m ([m[1;31morigin/chore/baseline-sync[m[33m)[m chore: snapshot existing changes
+[31m|[m[31m/[m  
+*   [33mf962717[m Merge branch 'main' of https://github.com/Prekzursil/event-link
+[33m|[m[34m\[m  
+[33m|[m *   [33m1614bb2[m Merge pull request #2 from Prekzursil/codex/add-configurable-allowed-origins-for-cors
+[33m|[m [35m|[m[36m\[m  
+[33m|[m [35m|[m * [33m29d2f8e[m[33m ([m[1;31morigin/codex/add-configurable-allowed-origins-for-cors[m[33m)[m Add configurable CORS origins and update docs
+[33m|[m [35m|[m[35m/[m  
