@@ -6,7 +6,7 @@ Environment variables (or `.topsecret` file) are loaded via `pydantic-settings`:
 
 - `DATABASE_URL` (required)
 - `SECRET_KEY` (required)
-- `ALLOWED_ORIGINS` (list, e.g. `["http://localhost:4200"]`)
+- `ALLOWED_ORIGINS` (comma-separated or JSON list; defaults to localhost/127.0.0.1 on ports 3000 and 4200)
 - `AUTO_CREATE_TABLES` (bool; enable for local dev only)
 - `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30)
 - SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER`, `SMTP_USE_TLS`
@@ -32,6 +32,6 @@ python -m unittest tests.test_api
 
 ## Notes
 
-- CORS origins are configurable; avoid `*` when using credentials.
+- CORS origins are configurable via `ALLOWED_ORIGINS`; defaults target localhost/127.0.0.1 for dev—set staging/prod hosts explicitly (avoid `*` when using credentials).
 - Email sending is optional and failures are logged without breaking the request.
 - In production, manage schema with migrations instead of `AUTO_CREATE_TABLES`.

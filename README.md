@@ -24,7 +24,8 @@ Create `backend/.topsecret` (env file) with at least:
 ```
 DATABASE_URL=postgresql://user:pass@host:5432/db
 SECRET_KEY=change-me
-ALLOWED_ORIGINS=["http://localhost:4200"]
+# Comma-separated or JSON list; defaults cover localhost/127.0.0.1 for ports 3000 and 4200
+ALLOWED_ORIGINS=http://localhost:4200,http://localhost:3000
 AUTO_CREATE_TABLES=true
 # Email (optional)
 SMTP_HOST=smtp.mailhost.com
@@ -36,7 +37,7 @@ SMTP_USE_TLS=true
 ```
 
 Key settings:
-- `ALLOWED_ORIGINS`: CORS origins list (comma/JSON list).
+- `ALLOWED_ORIGINS`: CORS origins list (comma/JSON list). Defaults suit local dev; set staging/prod origins as needed.
 - `AUTO_CREATE_TABLES`: Set `true` for local/dev convenience; use migrations in prod.
 - `SECRET_KEY`: JWT signing secret.
 - `DATABASE_URL`: Point to Postgres/SQLite/etc.
