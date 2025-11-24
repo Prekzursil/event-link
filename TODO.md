@@ -1,7 +1,7 @@
 # TODO (Event Link)
 
 ## High
-- [ ] Add Alembic migrations and replace `AUTO_CREATE_TABLES` in production; generate migration for cover_url/attended columns.
+- [x] Add Alembic migrations and replace `AUTO_CREATE_TABLES` in production; generate migration for cover_url/attended columns.
 - [ ] Harden auth: central organizer/student dependency helpers, consistent JWT expiry validation, and rate limit login/register.
 - [ ] Implement global exception/response wrapper for consistent error payloads (code/message) across APIs.
 - [ ] Add organizer invite approval audit trail (store who/when upgraded, not just code).
