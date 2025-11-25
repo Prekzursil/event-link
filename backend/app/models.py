@@ -77,6 +77,19 @@ class Registration(Base):
     event = relationship("Event", back_populates="registrations")
 
 
+class PasswordResetToken(Base):
+    __tablename__ = "password_reset_tokens"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    token = Column(String(255), unique=True, nullable=False)
+    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
+    used = Column(Boolean, server_default="false", nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+    user = relationship("User")
+
+
 event_tags = Table(
     "event_tags",
     Base.metadata,

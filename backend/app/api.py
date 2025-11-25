@@ -3,6 +3,7 @@ from typing import List, Optional
 import time
 import re
 import logging
+import secrets
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -13,7 +14,7 @@ from sqlalchemy.orm import Session
 from . import auth, models, schemas
 from .config import settings
 from .database import engine, get_db
-from .email_service import send_registration_email
+from .email_service import send_registration_email, send_registration_email as send_email
 from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
 
 configure_logging()
@@ -701,3 +702,57 @@ def user_calendar(db: Session = Depends(get_db), current_user: models.User = Dep
         "END:VCALENDAR",
     ])
     return Response(content=ics, media_type="text/calendar")
+
+
+@app.post("/password/forgot")
+def password_forgot(
+    payload: schemas.PasswordResetRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: Session = Depends(get_db),
+):
+    _enforce_rate_limit(request, "password_forgot", identifier=payload.email.lower(), limit=5, window_seconds=300)
+    user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
+    if user:
+        db.query(models.PasswordResetToken).filter(
+            models.PasswordResetToken.user_id == user.id, models.PasswordResetToken.used == False
+        ).update({"used": True})
+        token = secrets.token_urlsafe(32)
+        expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
+        reset = models.PasswordResetToken(user_id=user.id, token=token, expires_at=expires_at, used=False)
+        db.add(reset)
+        db.commit()
+        frontend_hint = settings.allowed_origins[0] if settings.allowed_origins else ""
+        link = f"{frontend_hint}/reset-password?token={token}" if frontend_hint else token
+        subject = "Resetare parola EventLink"
+        body = (
+            f"Ai cerut resetarea parolei pentru contul {user.email}.\n\n"
+            f"Foloseste link-ul (valabil 1 ora): {link}\n\n"
+            "Daca nu ai cerut tu aceasta resetare, poti ignora acest email."
+        )
+        send_email(background_tasks, user.email, subject, body, context={"user_id": user.id})
+    return {"status": "ok"}
+
+
+@app.post("/password/reset")
+def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: Session = Depends(get_db)):
+    _enforce_rate_limit(request, "password_reset", limit=10, window_seconds=300)
+    token_row = (
+        db.query(models.PasswordResetToken)
+        .filter(models.PasswordResetToken.token == payload.token, models.PasswordResetToken.used == False)
+        .first()
+    )
+    if not token_row or token_row.expires_at < datetime.now(timezone.utc):
+        raise HTTPException(status_code=400, detail="Token invalid sau expirat.")
+
+    user = db.query(models.User).filter(models.User.id == token_row.user_id).first()
+    if not user:
+        raise HTTPException(status_code=400, detail="Utilizator inexistent.")
+
+    user.password_hash = auth.get_password_hash(payload.new_password)
+    token_row.used = True
+    db.add(user)
+    db.add(token_row)
+    db.commit()
+    log_event("password_reset", user_id=user.id)
+    return {"status": "password_reset"}
