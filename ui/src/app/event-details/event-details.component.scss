@@ -92,3 +92,34 @@
     align-items: flex-start;
   }
 }
+
+@media (max-width: 720px) {
+  .details h1 {
+    font-size: 1.6rem;
+  }
+
+  .cover {
+    max-height: 220px;
+  }
+
+  .header {
+    gap: 0.75rem;
+  }
+
+  .actions {
+    width: 100%;
+    align-items: stretch;
+  }
+
+  .owner-actions {
+    flex-wrap: wrap;
+  }
+
+  .stat-box {
+    width: 100%;
+  }
+
+  .stats {
+    flex-direction: column;
+  }
+}
