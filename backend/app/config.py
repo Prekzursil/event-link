@@ -20,6 +20,7 @@ class Settings(BaseSettings):
     allowed_origins: list[str] = DEFAULT_ALLOWED_ORIGINS
     auto_create_tables: bool = False
     organizer_invite_code: str | None = None
+    email_enabled: bool = True
     smtp_host: str | None = None
     smtp_port: int | None = None
     smtp_username: str | None = None

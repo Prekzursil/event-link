@@ -9,7 +9,7 @@ Environment variables (or `.topsecret` file) are loaded via `pydantic-settings`:
 - `ALLOWED_ORIGINS` (comma-separated or JSON list; defaults to localhost/127.0.0.1 on ports 3000 and 4200)
 - `AUTO_CREATE_TABLES` (bool; enable for local dev only)
 - `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30)
-- SMTP: `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER`, `SMTP_USE_TLS`
+- Email: `EMAIL_ENABLED` (default true), `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER`, `SMTP_USE_TLS`
 - Alembic uses `DATABASE_URL` from the same env for migrations.
 
 ## Running locally
