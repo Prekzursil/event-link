@@ -37,3 +37,11 @@
 - [ ] Document Node/Angular version guidance (avoid odd Node versions).
 - [ ] Add staging/prod Angular environment files with feature flags (e.g., recommendations toggle).
 
+## Suggestions (to triage)
+- [ ] Add end-to-end tests (Cypress/Playwright) covering auth, event browse, register/unregister, and organizer edit flows.
+- [ ] Implement email templating (HTML + localization) and resend confirmation option for registrations.
+- [ ] Add background cleanup job for expired invites/tokens and past event registrations.
+- [ ] Add CI caching for npm/pip to speed up pipelines and document cache keys.
+- [ ] Provide DB backup/restore scripts and document disaster-recovery steps.
+- [ ] Add observability integration (e.g., Sentry/OpenTelemetry) for frontend and backend with env-based toggles.
+
