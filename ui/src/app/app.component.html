@@ -1,13 +1,18 @@
-<header class="top-bar">
-  <div class="brand" routerLink="/">EventLink</div>
-  <nav class="main-nav">
-    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }">Evenimente</a>
-    <a *ngIf="auth.isStudent()" routerLink="/my-events" routerLinkActive="active">Evenimentele mele</a>
-    <a *ngIf="auth.isStudent()" routerLink="/organizer/upgrade" routerLinkActive="active">Devino organizator</a>
-    <a *ngIf="auth.isOrganizer()" routerLink="/create-event" routerLinkActive="active">Creează eveniment</a>
-    <a *ngIf="auth.isOrganizer()" routerLink="/organizer/events" routerLinkActive="active">Evenimente create</a>
+<header class="top-bar" [class.menu-open]="showMobileMenu">
+  <div class="brand-row">
+    <div class="brand" routerLink="/" (click)="closeMenu()">EventLink</div>
+    <button class="mobile-toggle" type="button" (click)="toggleMenu()" [attr.aria-expanded]="showMobileMenu">
+      {{ showMobileMenu ? 'Închide' : 'Meniu' }}
+    </button>
+  </div>
+  <nav class="main-nav" [class.open]="showMobileMenu">
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Evenimente</a>
+    <a *ngIf="auth.isStudent()" routerLink="/my-events" routerLinkActive="active" (click)="closeMenu()">Evenimentele mele</a>
+    <a *ngIf="auth.isStudent()" routerLink="/organizer/upgrade" routerLinkActive="active" (click)="closeMenu()">Devino organizator</a>
+    <a *ngIf="auth.isOrganizer()" routerLink="/create-event" routerLinkActive="active" (click)="closeMenu()">Creează eveniment</a>
+    <a *ngIf="auth.isOrganizer()" routerLink="/organizer/events" routerLinkActive="active" (click)="closeMenu()">Evenimente create</a>
   </nav>
-  <div class="account">
+  <div class="account" [class.open]="showMobileMenu">
     <ng-container *ngIf="auth.isLoggedIn(); else guest">
       <div class="user-pill">
         <span class="label">{{ auth.role === 'organizator' ? 'Organizator' : 'Student' }}</span>
@@ -15,8 +20,8 @@
       <button class="ghost" (click)="logout()">Deconectare</button>
     </ng-container>
     <ng-template #guest>
-      <a class="ghost" routerLink="/login">Autentificare</a>
-      <a class="primary" routerLink="/register">Creează cont</a>
+      <a class="ghost" routerLink="/login" (click)="closeMenu()">Autentificare</a>
+      <a class="primary" routerLink="/register" (click)="closeMenu()">Creează cont</a>
     </ng-template>
   </div>
 </header>

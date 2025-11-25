@@ -52,6 +52,7 @@
 - [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
 - [x] ICS calendar export for events and calendar subscription per user.
 - [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
+- [x] Full mobile/phone compatibility across core pages (nav, event lists/details/forms).
 - [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [ ] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [ ] Pagination and sorting for all list endpoints (registrations, users).
@@ -74,7 +75,6 @@
 - [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
 - [ ] Public read-only events API with stricter rate limiting for third-party integrations.
 - [ ] Searchable filter bar on event list (tags, category, date range, location).
-- [ ] Mobile-first layouts and responsive breakpoints for main screens.
 - [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
 - [ ] Notifications center in UI (toasts/snackbars) for API success/error messages.
 - [ ] Organization profile pages with logo, description, and links to their events.

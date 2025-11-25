@@ -131,3 +131,31 @@ h1 {
     transform: rotate(360deg);
   }
 }
+
+@media (max-width: 720px) {
+  .hero {
+    grid-template-columns: 1fr;
+  }
+
+  h1 {
+    font-size: 2rem;
+  }
+
+  .filters-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .scroll-cards {
+    grid-auto-columns: minmax(200px, 75%);
+  }
+
+  .event-card {
+    padding: 0.85rem;
+  }
+
+  .page-size,
+  .pagination {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+}
