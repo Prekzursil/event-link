@@ -16,4 +16,5 @@ dependencies = [
     "python-multipart",
     "pydantic[email]>=2.12.3",
     "alembic>=1.14.0",
+    "httpx>=0.28.1",
 ]
