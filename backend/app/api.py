@@ -5,15 +5,20 @@ import time
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from sqlalchemy import func
+from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from . import auth, models, schemas
 from .config import settings
 from .database import engine, get_db
 from .email_service import send_registration_email
+from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
+
+configure_logging()
 
 app = FastAPI(title="Event Link API", version="1.0.0")
+
+app.add_middleware(RequestIdMiddleware)
 
 app.add_middleware(
     CORSMiddleware,
@@ -86,12 +91,12 @@ def _serialize_event(event: models.Event, seats_taken: int) -> schemas.EventResp
         end_time=event.end_time,
         location=event.location,
         max_seats=event.max_seats,
-    owner_id=event.owner_id,
-    owner_name=owner_name,
-    tags=event.tags,
-    seats_taken=int(seats_taken or 0),
-    cover_url=event.cover_url,
-)
+        owner_id=event.owner_id,
+        owner_name=owner_name,
+        tags=event.tags,
+        seats_taken=int(seats_taken or 0),
+        cover_url=event.cover_url,
+    )
 
 
 @app.post("/register", response_model=schemas.Token)
@@ -113,6 +118,7 @@ def register(user: schemas.StudentRegister, request: Request, db: Session = Depe
     db.add(new_user)
     db.commit()
     db.refresh(new_user)
+    log_event("user_registered", user_id=new_user.id, email=new_user.email)
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     access_token = auth.create_access_token(
@@ -127,6 +133,7 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: Session = D
     _enforce_rate_limit(request, "login")
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
     if not user or not auth.verify_password(user_credentials.password, user.password_hash):
+        log_warning("login_failed", email=user_credentials.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Email sau parolă incorectă",
@@ -137,6 +144,7 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: Session = D
     access_token = auth.create_access_token(
         data={"sub": str(user.id), "email": user.email, "role": user.role.value}, expires_delta=access_token_expires
     )
+    log_event("login_success", user_id=user.id, email=user.email, role=user.role.value)
     return {"access_token": access_token, "token_type": "bearer", "role": user.role, "user_id": user.id}
 
 
@@ -312,6 +320,7 @@ def create_event(
     db.add(new_event)
     db.commit()
     db.refresh(new_event)
+    log_event("event_created", event_id=new_event.id, owner_id=current_user.id)
     return _serialize_event(new_event, 0)
 
 
@@ -358,6 +367,7 @@ def update_event(
 
     db.commit()
     db.refresh(db_event)
+    log_event("event_updated", event_id=db_event.id, owner_id=current_user.id)
     seats_count = (
         db.query(func.count(models.Registration.id))
         .filter(models.Registration.event_id == db_event.id)
@@ -376,6 +386,7 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
 
     db.delete(db_event)
     db.commit()
+    log_event("event_deleted", event_id=db_event.id, owner_id=current_user.id)
     return
 
 
@@ -451,6 +462,7 @@ def update_participant_attendance(
     registration.attended = attended
     db.add(registration)
     db.commit()
+    log_event("attendance_updated", event_id=registration.event_id, user_id=user_id, owner_id=current_user.id, attended=attended)
     return
 
 
@@ -486,6 +498,7 @@ def register_for_event(
     registration = models.Registration(user_id=current_user.id, event_id=event_id)
     db.add(registration)
     db.commit()
+    log_event("event_registered", event_id=event.id, user_id=current_user.id)
 
     subject = f"Confirmare înscriere: {event.title}"
     body = (
@@ -529,6 +542,7 @@ def unregister_from_event(
 
     db.delete(registration)
     db.commit()
+    log_event("event_unregistered", event_id=event.id, user_id=current_user.id)
     return
 
 

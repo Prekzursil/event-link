@@ -20,7 +20,7 @@
 - [ ] Docker + docker-compose for backend/frontend/Postgres with env wiring and docs.
 - [ ] Security headers middleware (HSTS, X-Content-Type-Options, X-Frame-Options) and CORS audit.
 - [ ] Health/readiness endpoint to check DB connectivity for probes.
-- [ ] Logging: structured logs with request IDs; log key domain events (auth, event CRUD, registrations).
+- [x] Logging: structured logs with request IDs; log key domain events (auth, event CRUD, registrations).
 - [ ] Email metrics/counters and optional retry/backoff on SMTP failures.
 - [ ] Add organizer ability to export participants including attendance + cover URL in CSV.
 - [ ] Event cover images: add image upload option or validated URL regex; show placeholder on missing/failed load.

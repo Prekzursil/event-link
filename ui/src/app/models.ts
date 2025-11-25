@@ -14,6 +14,7 @@ export interface EventItem {
   max_seats?: number;
   owner_id: number;
   owner_name?: string;
+  cover_url?: string | null;
   tags: Tag[];
   seats_taken: number;
 }
@@ -43,6 +44,7 @@ export interface Participant {
   email: string;
   full_name?: string;
   registration_time: string;
+  attended?: boolean;
 }
 
 export interface ParticipantList {

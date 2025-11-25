@@ -13,6 +13,7 @@ export interface EventPayload {
   location: string;
   max_seats: number;
   tags: string[];
+  cover_url?: string | null;
 }
 
 @Injectable({
