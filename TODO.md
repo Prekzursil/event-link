@@ -13,6 +13,7 @@
 - [x] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.
 - [x] Add 403/404 routing guards coverage in Angular tests.
 - [ ] CI pipeline (GitHub Actions): install deps, run backend tests, run Angular tests.
+- [ ] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
 
 ## Medium
 - [ ] Docker + docker-compose for backend/frontend/Postgres with env wiring and docs.
@@ -34,3 +35,4 @@
 - [ ] Convert backend tests to pytest and expand fixtures for speed.
 - [ ] Document Node/Angular version guidance (avoid odd Node versions).
 - [ ] Add staging/prod Angular environment files with feature flags (e.g., recommendations toggle).
+
