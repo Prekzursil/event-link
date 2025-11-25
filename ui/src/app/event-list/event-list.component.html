@@ -36,7 +36,7 @@
     <p class="muted" *ngIf="!recommended.length">Îți vom propune evenimente după primele înscrieri.</p>
   </div>
   <div class="scroll-cards" *ngIf="recommended.length">
-    <div class="event-card" *ngFor="let event of recommended" (click)="openEvent(event)" tabindex="0" aria-label="Recomandare: {{ event.title }}">
+    <div class="event-card" *ngFor="let event of recommended" (click)="openEvent(event)" tabindex="0" [attr.aria-label]="'Recomandare: '+ event.title">
       <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
       <h4>{{ event.title }}</h4>
       <p class="muted">{{ event.location }}</p>
@@ -66,7 +66,7 @@
   <div *ngIf="!loading && errorMessage" class="empty-state" aria-live="assertive">{{ errorMessage }}</div>
   <div *ngIf="!loading && !events.length" class="empty-state" aria-live="polite">Momentan nu sunt evenimente viitoare.</div>
   <div class="list-layout" *ngIf="!loading && events.length">
-    <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)" tabindex="0" aria-label="{{ event.title }}">
+    <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)" tabindex="0" [attr.aria-label]="event.title">
       <img
         [src]="event.cover_url || placeholderCover"
         alt="cover image"
