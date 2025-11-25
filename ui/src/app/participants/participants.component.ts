@@ -66,8 +66,14 @@ export class ParticipantsComponent implements OnInit {
   exportCsv(): void {
     if (!this.data) return;
     const rows = [
-      ['Nume', 'Email', 'Ora înscrierii'],
-      ...this.data.participants.map((p) => [p.full_name || '-', p.email, p.registration_time]),
+      ['Nume', 'Email', 'Ora înscrierii', 'Prezență', 'Cover URL'],
+      ...this.data.participants.map((p) => [
+        p.full_name || '-',
+        p.email,
+        p.registration_time,
+        p.attended ? 'prezent' : 'absent',
+        this.data?.cover_url || '',
+      ]),
     ];
     const csv = rows.map((r) => r.join(',')).join('\n');
     const blob = new Blob([csv], { type: 'text/csv' });

@@ -50,6 +50,7 @@ export interface Participant {
 export interface ParticipantList {
   event_id: number;
   title: string;
+  cover_url?: string | null;
   seats_taken: number;
   max_seats?: number;
   participants: Participant[];

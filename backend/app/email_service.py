@@ -3,21 +3,23 @@ import smtplib
 from email.message import EmailMessage
 from typing import Any, Dict
 
+import time
 from fastapi import BackgroundTasks
 
 from .config import settings
+from .logging_utils import log_event, log_warning
+
+emails_sent_ok = 0
+emails_send_failed = 0
 
 
 def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] | None = None) -> None:
     context = context or {}
     if not settings.email_enabled:
-        logging.info("Email sending disabled; skipping email", extra={"to": to_email, "subject": subject, **context})
+        log_warning("email_disabled", to=to_email, subject=subject, **context)
         return
     if not settings.smtp_host or not settings.smtp_sender:
-        logging.warning(
-            "SMTP not configured; skipping email",
-            extra={"to": to_email, "subject": subject, **context},
-        )
+        log_warning("email_smtp_not_configured", to=to_email, subject=subject, **context)
         return
 
     message = EmailMessage()
@@ -26,19 +28,38 @@ def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] 
     message["Subject"] = subject
     message.set_content(body)
 
-    try:
-        with smtplib.SMTP(settings.smtp_host, settings.smtp_port or 25, timeout=10) as server:
-            if settings.smtp_use_tls:
-                server.starttls()
-            if settings.smtp_username:
-                server.login(settings.smtp_username, settings.smtp_password or "")
-            server.send_message(message)
-        logging.info("Email sent", extra={"to": to_email, "subject": subject, **context})
-    except Exception:  # noqa: BLE001
-        logging.exception(
-            "Failed to send email",
-            extra={"to": to_email, "subject": subject, "smtp_host": settings.smtp_host, "smtp_port": settings.smtp_port, **context},
-        )
+    global emails_sent_ok, emails_send_failed
+    last_error: Exception | None = None
+    for attempt in range(1, 4):
+        try:
+            with smtplib.SMTP(settings.smtp_host, settings.smtp_port or 25, timeout=10) as server:
+                if settings.smtp_use_tls:
+                    server.starttls()
+                if settings.smtp_username:
+                    server.login(settings.smtp_username, settings.smtp_password or "")
+                server.send_message(message)
+            emails_sent_ok += 1
+            log_event("email_sent", to=to_email, subject=subject, attempt=attempt, **context)
+            return
+        except Exception as exc:  # noqa: BLE001
+            last_error = exc
+            log_warning(
+                "email_send_failed_attempt",
+                to=to_email,
+                subject=subject,
+                attempt=attempt,
+                error=str(exc),
+                smtp_host=settings.smtp_host,
+                smtp_port=settings.smtp_port,
+                **context,
+            )
+            if attempt < 3:
+                time.sleep(0.5 * attempt)
+    emails_send_failed += 1
+    logging.exception(
+        "Failed to send email after retries",
+        extra={"to": to_email, "subject": subject, "smtp_host": settings.smtp_host, "smtp_port": settings.smtp_port, **context},
+    )
 
 
 def send_registration_email(

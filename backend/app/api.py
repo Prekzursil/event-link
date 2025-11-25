@@ -427,6 +427,7 @@ def event_participants(
     return schemas.ParticipantListResponse(
         event_id=event.id,
         title=event.title,
+        cover_url=event.cover_url,
         seats_taken=seats_taken,
         max_seats=event.max_seats,
         participants=participant_list,
