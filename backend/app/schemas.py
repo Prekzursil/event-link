@@ -138,6 +138,7 @@ class ParticipantResponse(BaseModel):
 class ParticipantListResponse(BaseModel):
     event_id: int
     title: str
+    cover_url: Optional[str]
     seats_taken: int
     max_seats: Optional[int]
     participants: list[ParticipantResponse]
