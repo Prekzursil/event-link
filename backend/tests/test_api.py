@@ -358,6 +358,48 @@ class APITestCase(unittest.TestCase):
         reg2 = self.client.post(f"/api/events/{event['id']}/register", headers=self.auth_header(other_token))
         self.assertEqual(reg2.status_code, 201)
 
+    def test_mark_attendance_requires_owner(self):
+        self.make_organizer("owner@test.ro", "ownerpass")
+        self.make_organizer("other@test.ro", "otherpass")
+        owner_token = self.login("owner@test.ro", "ownerpass")
+        other_token = self.login("other@test.ro", "otherpass")
+        event = self.client.post(
+            "/api/events",
+            json={
+                "title": "Attend",
+                "description": "Desc",
+                "category": "Cat",
+                "start_time": self.future_time(days=1),
+                "location": "Loc",
+                "max_seats": 3,
+                "tags": [],
+            },
+            headers=self.auth_header(owner_token),
+        ).json()
+        student_token = self.register_student("stud@test.ro")
+        self.client.post(f"/api/events/{event['id']}/register", headers=self.auth_header(student_token))
+
+        # non-owner forbidden
+        forbidden = self.client.put(
+            f"/api/organizer/events/{event['id']}/participants/1",
+            params={"attended": True},
+            headers=self.auth_header(other_token),
+        )
+        self.assertEqual(forbidden.status_code, 403)
+
+        # owner ok
+        db = SessionLocal()
+        student = db.query(models.User).filter(models.User.email == "stud@test.ro").first()
+        db.close()
+        self.assertIsNotNone(student)
+        student_id = student.id  # type: ignore
+        ok = self.client.put(
+            f"/api/organizer/events/{event['id']}/participants/{student_id}",
+            params={"attended": True},
+            headers=self.auth_header(owner_token),
+        )
+        self.assertEqual(ok.status_code, 204)
+
     def test_upgrade_to_organizer_requires_code(self):
         student_token = self.register_student("code@test.ro")
         # missing/invalid code

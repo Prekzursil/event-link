@@ -11,6 +11,7 @@
   </div>
 
   <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="saveMessage && !error" class="success">{{ saveMessage }}</div>
   <div *ngIf="data">
     <div class="participant" *ngFor="let p of data.participants">
       <div>
@@ -20,7 +21,7 @@
       <div class="muted">{{ p.registration_time | date: 'short' }}</div>
       <div>
         <label>
-          <input type="checkbox" [checked]="p.attended" (change)="toggleAttendance(p.id, !p.attended)" />
+          <input type="checkbox" [checked]="p.attended" [disabled]="saving" (change)="toggleAttendance(p.id, !p.attended)" />
           Prezent
         </label>
       </div>

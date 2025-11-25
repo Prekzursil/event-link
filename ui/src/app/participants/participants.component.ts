@@ -18,6 +18,7 @@ export class ParticipantsComponent implements OnInit {
   data?: ParticipantList;
   error = '';
   saving = false;
+  saveMessage = '';
 
   constructor(
     private route: ActivatedRoute,
@@ -43,6 +44,7 @@ export class ParticipantsComponent implements OnInit {
   toggleAttendance(userId: number, attended: boolean): void {
     if (!this.data) return;
     this.saving = true;
+    this.saveMessage = '';
     this.http
       .put(`${this.baseUrl}/api/organizer/events/${this.data.event_id}/participants/${userId}`, { attended })
       .subscribe({
@@ -52,6 +54,7 @@ export class ParticipantsComponent implements OnInit {
             p.id === userId ? { ...p, attended } : p
           );
           this.saving = false;
+          this.saveMessage = 'Salvat.';
         },
         error: () => {
           this.error = 'Nu am putut salva prezența.';

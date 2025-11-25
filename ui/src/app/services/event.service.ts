@@ -67,6 +67,10 @@ export class EventService {
     return this.http.post(`${this.baseUrl}/events/${id}/register`, {});
   }
 
+  unregisterFromEvent(id: number) {
+    return this.http.delete(`${this.baseUrl}/events/${id}/register`);
+  }
+
   organizerEvents(): Observable<EventItem[]> {
     return this.http.get<EventItem[]>(`${this.baseUrl}/organizer/events`);
   }

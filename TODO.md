@@ -5,9 +5,9 @@
 - [ ] Harden auth: central organizer/student dependency helpers, consistent JWT expiry validation, and rate limit login/register.
 - [ ] Implement global exception/response wrapper for consistent error payloads (code/message) across APIs.
 - [ ] Add organizer invite approval audit trail (store who/when upgraded, not just code).
-- [ ] Student unregister flow in UI (button state, messages) wired to new DELETE endpoint.
-- [ ] Organizer upgrade UI: handle invalid/missing invite code error states with UX copy.
-- [ ] Participant attendance toggle: add backend tests and UI loading/error states.
+- [x] Student unregister flow in UI (button state, messages) wired to new DELETE endpoint.
+- [x] Organizer upgrade UI: handle invalid/missing invite code error states with UX copy.
+- [x] Participant attendance toggle: add backend tests and UI loading/error states.
 - [ ] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
 - [ ] Recommendations: exclude past events and respect capacity/full state.
 - [ ] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.

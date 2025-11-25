@@ -72,6 +72,26 @@ export class EventDetailsComponent implements OnInit {
     });
   }
 
+  unregister(): void {
+    if (!this.event) return;
+    this.eventService.unregisterFromEvent(this.event.id).subscribe({
+      next: () => {
+        this.event!.is_registered = false;
+        if (this.event!.seats_taken > 0) {
+          this.event!.seats_taken -= 1;
+        }
+        if (this.event!.available_seats !== undefined && this.event!.available_seats !== null) {
+          this.event!.available_seats += 1;
+        }
+        this.successMessage = 'Te-ai dezabonat de la eveniment.';
+        this.error = '';
+      },
+      error: (err) => {
+        this.error = err.error?.detail || 'Nu am putut anula înscrierea.';
+      },
+    });
+  }
+
   deleteEvent(): void {
     if (!this.event) return;
     const confirmed = confirm('Ești sigur? Acțiunea este ireversibilă.');
