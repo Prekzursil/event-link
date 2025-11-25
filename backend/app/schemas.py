@@ -1,6 +1,6 @@
 from datetime import datetime
 from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field, field_validator
+from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
 from .models import UserRole
 
 
@@ -20,6 +20,8 @@ class UserCreate(BaseModel):
     def validate_password(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
+        if not any(ch.isalpha() for ch in v) or not any(ch.isdigit() for ch in v):
+            raise ValueError("Password must include letters and numbers")
         return v
 
 
@@ -73,14 +75,14 @@ class TagResponse(BaseModel):
 
 
 class EventBase(BaseModel):
-    title: str
+    title: str = Field(..., min_length=3, max_length=255)
     description: Optional[str] = None
-    category: str
+    category: str = Field(..., min_length=2, max_length=100)
     start_time: datetime
     end_time: Optional[datetime] = None
-    location: str
+    location: str = Field(..., min_length=2, max_length=255)
     max_seats: int
-    cover_url: Optional[str] = None
+    cover_url: Optional[HttpUrl] = None
     tags: List[str] = Field(default_factory=list)
 
 
