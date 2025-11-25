@@ -42,9 +42,9 @@
 - [x] Add route-level guard to redirect logged-in users away from login/register.
 - [x] Add frontend loading/error spinners for event details/register actions.
 - [x] Improve accessibility: form labels/aria, focus states, keyboard nav on filters and pagination.
-- [ ] Password reset flow (request + token + reset form) with backend email template.
+- [x] Password reset flow (request + token + reset form) with backend email template.
 - [ ] Refresh tokens with short-lived access tokens to reduce JWT leak impact.
-- [ ] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).
+- [x] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).
 - [ ] Email templating (HTML + localization) and resend confirmation option for registrations.
 - [ ] Background cleanup job for expired invites/tokens and past event registrations.
 - [ ] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.

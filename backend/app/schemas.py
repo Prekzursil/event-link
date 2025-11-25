@@ -149,3 +149,21 @@ class PaginatedEvents(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class PasswordResetRequest(BaseModel):
+    email: EmailStr
+
+
+class PasswordResetConfirm(BaseModel):
+    token: str
+    new_password: str = Field(..., min_length=8)
+    confirm_password: str
+
+    @field_validator("confirm_password")
+    @classmethod
+    def passwords_match(cls, v: str, info):
+        pwd = info.data.get("new_password") if hasattr(info, "data") else None
+        if pwd and v != pwd:
+            raise ValueError("Parolele nu se potrivesc")
+        return v
