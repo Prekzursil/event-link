@@ -1,6 +1,7 @@
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 from jose import JWTError, jwt
+from jose.exceptions import ExpiredSignatureError
 from passlib.context import CryptContext
 from fastapi import Depends, HTTPException, status
 from fastapi.security import OAuth2PasswordBearer
@@ -43,6 +44,12 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
         if user_id is None or role is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email, user_id=int(user_id), role=role)
+    except ExpiredSignatureError:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Token expirat. Autentificați-vă din nou.",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
     except JWTError:
         raise credentials_exception
     user = db.query(models.User).filter(models.User.id == token_data.user_id).first()
@@ -58,3 +65,15 @@ def get_optional_user(token: str = Depends(oauth2_scheme), db: Session = Depends
         return get_current_user(token, db)  # type: ignore
     except HTTPException:
         return None
+
+
+def require_student(user: models.User = Depends(get_current_user)):
+    if user.role != models.UserRole.student:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru studenți.")
+    return user
+
+
+def require_organizer(user: models.User = Depends(get_current_user)):
+    if user.role != models.UserRole.organizator:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru organizatori.")
+    return user

@@ -1,8 +1,10 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
+import time
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
@@ -26,11 +28,6 @@ app.add_middleware(
 def _on_startup():
     if settings.auto_create_tables:
         models.Base.metadata.create_all(bind=engine)
-
-
-def _ensure_role(user: models.User, roles: list[models.UserRole]) -> None:
-    if user.role not in roles:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces interzis.")
 
 
 def _ensure_future_date(start_time: datetime) -> None:
@@ -98,7 +95,8 @@ def _serialize_event(event: models.Event, seats_taken: int) -> schemas.EventResp
 
 
 @app.post("/register", response_model=schemas.Token)
-def register(user: schemas.StudentRegister, db: Session = Depends(get_db)):
+def register(user: schemas.StudentRegister, request: Request, db: Session = Depends(get_db)):
+    _enforce_rate_limit(request, "register")
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Acest email este deja folosit.")
@@ -125,7 +123,8 @@ def register(user: schemas.StudentRegister, db: Session = Depends(get_db)):
 
 
 @app.post("/login", response_model=schemas.Token)
-def login(user_credentials: schemas.UserLogin, db: Session = Depends(get_db)):
+def login(user_credentials: schemas.UserLogin, request: Request, db: Session = Depends(get_db)):
+    _enforce_rate_limit(request, "login")
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
     if not user or not auth.verify_password(user_credentials.password, user.password_hash):
         raise HTTPException(
@@ -170,6 +169,41 @@ def read_root():
 @app.get("/api/health")
 def health_check():
     return {"status": "healthy"}
+
+
+@app.exception_handler(HTTPException)
+async def http_exception_handler(request: Request, exc: HTTPException):
+    code = f"http_{exc.status_code}"
+    message = exc.detail if isinstance(exc.detail, str) else "Eroare"
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={"error": {"code": code, "message": message}, "detail": message},
+    )
+
+
+@app.exception_handler(Exception)
+async def unhandled_exception_handler(request: Request, exc: Exception):
+    return JSONResponse(
+        status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+        content={"error": {"code": "internal_error", "message": "A apărut o eroare neașteptată."}},
+    )
+
+
+_RATE_LIMIT_STORE: dict[str, list[float]] = {}
+
+
+def _enforce_rate_limit(request: Request, action: str, limit: int = 20, window_seconds: int = 60) -> None:
+    now = time.time()
+    key = f"{action}:{request.client.host if request.client else 'unknown'}"
+    entries = _RATE_LIMIT_STORE.get(key, [])
+    entries = [ts for ts in entries if now - ts < window_seconds]
+    if len(entries) >= limit:
+        raise HTTPException(
+            status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+            detail="Prea multe cereri. Încearcă din nou în câteva momente.",
+        )
+    entries.append(now)
+    _RATE_LIMIT_STORE[key] = entries
 
 
 @app.get("/api/events", response_model=schemas.PaginatedEvents)
@@ -250,9 +284,8 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
 
 @app.post("/api/events", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED)
 def create_event(
-    event: schemas.EventCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
+    event: schemas.EventCreate, db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
 ):
-    _ensure_role(current_user, [models.UserRole.organizator])
     start_time = _normalize_dt(event.start_time)
     end_time = _normalize_dt(event.end_time)
     if start_time:
@@ -285,7 +318,7 @@ def update_event(
     event_id: int,
     update: schemas.EventUpdate,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.require_organizer),
 ):
     db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not db_event:
@@ -330,7 +363,7 @@ def update_event(
 
 
 @app.delete("/api/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
-def delete_event(event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+def delete_event(event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)):
     db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not db_event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -344,9 +377,8 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
 
 @app.get("/api/organizer/events", response_model=List[schemas.EventResponse])
 def organizer_events(
-    db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
+    db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
 ):
-    _ensure_role(current_user, [models.UserRole.organizator])
     base_query = db.query(models.Event).filter(models.Event.owner_id == current_user.id).order_by(models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, base_query)
     events = query.all()
@@ -355,9 +387,8 @@ def organizer_events(
 
 @app.get("/api/organizer/events/{event_id}/participants", response_model=schemas.ParticipantListResponse)
 def event_participants(
-    event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)
+    event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
 ):
-    _ensure_role(current_user, [models.UserRole.organizator])
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -397,9 +428,8 @@ def update_participant_attendance(
     user_id: int,
     attended: bool,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.require_organizer),
 ):
-    _ensure_role(current_user, [models.UserRole.organizator])
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -425,9 +455,8 @@ def register_for_event(
     event_id: int,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.require_student),
 ):
-    _ensure_role(current_user, [models.UserRole.student])
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -476,9 +505,8 @@ def register_for_event(
 def unregister_from_event(
     event_id: int,
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.require_student),
 ):
-    _ensure_role(current_user, [models.UserRole.student])
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -502,7 +530,7 @@ def unregister_from_event(
 
 @app.get("/api/me/events", response_model=List[schemas.EventResponse])
 def my_events(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    _ensure_role(current_user, [models.UserRole.student])
+    current_user = auth.require_student(current_user)
     base_query = (
         db.query(models.Event)
         .join(models.Registration, models.Event.id == models.Registration.event_id)
@@ -517,9 +545,8 @@ def my_events(db: Session = Depends(get_db), current_user: models.User = Depends
 @app.get("/api/recommendations", response_model=List[schemas.EventResponse])
 def recommended_events(
     db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    current_user: models.User = Depends(auth.require_student),
 ):
-    _ensure_role(current_user, [models.UserRole.student])
     now = datetime.now(timezone.utc)
     registered_event_ids = [
         e.event_id
