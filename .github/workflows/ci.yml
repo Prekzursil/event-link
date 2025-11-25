@@ -38,4 +38,4 @@ jobs:
       - name: Run frontend tests
         run: |
           cd ui
-          npm test -- --watch=false
+          npm test -- --watch=false --browsers=ChromeHeadless 
