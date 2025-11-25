@@ -8,8 +8,8 @@
 - [x] Student unregister flow in UI (button state, messages) wired to new DELETE endpoint.
 - [x] Organizer upgrade UI: handle invalid/missing invite code error states with UX copy.
 - [x] Participant attendance toggle: add backend tests and UI loading/error states.
-- [ ] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
-- [ ] Recommendations: exclude past events and respect capacity/full state.
+- [x] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
+- [x] Recommendations: exclude past events and respect capacity/full state.
 - [ ] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.
 - [ ] Add 403/404 routing guards coverage in Angular tests.
 - [ ] CI pipeline (GitHub Actions): install deps, run backend tests, run Angular tests.

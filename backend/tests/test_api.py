@@ -236,6 +236,52 @@ class APITestCase(unittest.TestCase):
         ).json()
         self.assertEqual(end_filter["total"], 0)
 
+    def test_event_validation_rules(self):
+        self.make_organizer()
+        organizer_token = self.login("org@test.ro", "organizer123")
+        bad_payload = {
+            "title": "aa",
+            "description": "Desc",
+            "category": "C",
+            "start_time": self.future_time(days=1),
+            "location": "L",
+            "max_seats": -1,
+            "tags": [],
+            "cover_url": "http://example.com/" + "a" * 600,
+        }
+        resp = self.client.post("/api/events", json=bad_payload, headers=self.auth_header(organizer_token))
+        self.assertEqual(resp.status_code, 422)
+
+    def test_recommendations_skip_full_and_past(self):
+        self.make_organizer()
+        organizer_token = self.login("org@test.ro", "organizer123")
+        tag_payload = {
+            "description": "Desc",
+            "category": "Tech",
+            "location": "Loc",
+            "max_seats": 1,
+            "tags": ["python"],
+        }
+        full_event = self.client.post(
+            "/api/events",
+            json={**tag_payload, "title": "Full Event", "start_time": self.future_time(days=1)},
+            headers=self.auth_header(organizer_token),
+        ).json()
+        past_event = self.client.post(
+            "/api/events",
+            json={**tag_payload, "title": "Past Event", "start_time": self.future_time(days=-1)},
+            headers=self.auth_header(organizer_token),
+        ).json()
+
+        student_token = self.register_student("stud@test.ro")
+        # fill the event
+        self.client.post(f"/api/events/{full_event['id']}/register", headers=self.auth_header(student_token))
+
+        rec = self.client.get("/api/recommendations", headers=self.auth_header(student_token)).json()
+        titles = [e["title"] for e in rec]
+        self.assertNotIn("Full Event", titles)
+        self.assertNotIn("Past Event", titles)
+
     def test_my_events_and_registration_state(self):
         self.make_organizer()
         organizer_token = self.login("org@test.ro", "organizer123")

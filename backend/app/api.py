@@ -294,6 +294,8 @@ def create_event(
         raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
     if event.max_seats is None or event.max_seats <= 0:
         raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
+    if event.cover_url and len(event.cover_url) > 500:
+        raise HTTPException(status_code=400, detail="Cover URL prea lung.")
 
     new_event = models.Event(
         title=event.title,
@@ -348,6 +350,8 @@ def update_event(
             raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
         db_event.max_seats = update.max_seats
     if update.cover_url is not None:
+        if update.cover_url and len(update.cover_url) > 500:
+            raise HTTPException(status_code=400, detail="Cover URL prea lung.")
         db_event.cover_url = update.cover_url
     if update.tags is not None:
         _attach_tags(db, db_event, update.tags)
@@ -587,4 +591,9 @@ def recommended_events(
         query, seats_subquery = _events_with_counts_query(db, base_query)
         events = query.order_by(func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time).limit(10).all()
 
-    return [_serialize_event(event, seats) for event, seats in events]
+    filtered = []
+    for event, seats in events:
+        if event.max_seats is not None and seats >= event.max_seats:
+            continue
+        filtered.append(_serialize_event(event, seats))
+    return filtered[:10]
