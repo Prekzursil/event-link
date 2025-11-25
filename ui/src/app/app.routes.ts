@@ -12,11 +12,12 @@ import { ForbiddenComponent } from './pages/forbidden/forbidden.component';
 import { NotFoundComponent } from './pages/not-found/not-found.component';
 import { organizerGuard } from './guards/organizer.guard';
 import { OrganizerUpgradeComponent } from './organizer-upgrade/organizer-upgrade.component';
+import { publicOnlyGuard } from './guards/public-only.guard';
 
 export const routes: Routes = [
   { path: '', component: EventListComponent },
-  { path: 'login', component: LoginComponent },
-  { path: 'register', component: RegisterComponent },
+  { path: 'login', component: LoginComponent, canActivate: [publicOnlyGuard] },
+  { path: 'register', component: RegisterComponent, canActivate: [publicOnlyGuard] },
   { path: 'organizer/upgrade', component: OrganizerUpgradeComponent, canActivate: [authGuard] },
   { path: 'events/:id', component: EventDetailsComponent },
   { path: 'events/:id/edit', component: EventFormComponent, canActivate: [organizerGuard] },

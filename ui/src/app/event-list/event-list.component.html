@@ -11,18 +11,18 @@
     </div>
     <div class="field">
       <label>Categorie</label>
-      <select [(ngModel)]="categoryFilter" (change)="page = 1; fetchEvents()">
+      <select [(ngModel)]="categoryFilter" (change)="onFiltersChange()">
         <option value="">Toate</option>
         <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
       </select>
     </div>
     <div class="field">
       <label>Start date</label>
-      <input type="date" [(ngModel)]="startDate" (change)="page = 1; fetchEvents()" />
+      <input type="date" [(ngModel)]="startDate" (change)="onFiltersChange()" />
     </div>
     <div class="field">
       <label>End date</label>
-      <input type="date" [(ngModel)]="endDate" (change)="page = 1; fetchEvents()" />
+      <input type="date" [(ngModel)]="endDate" (change)="onFiltersChange()" />
     </div>
     <div class="field actions">
       <button class="btn ghost" type="button" (click)="resetFilters()">Resetează filtrele</button>
@@ -67,7 +67,12 @@
   <div *ngIf="!loading && !events.length" class="empty-state">Momentan nu sunt evenimente viitoare.</div>
   <div class="list-layout" *ngIf="!loading && events.length">
     <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)">
-      <img *ngIf="event.cover_url" [src]="event.cover_url" alt="cover image" class="card-cover" />
+      <img
+        [src]="event.cover_url || placeholderCover"
+        alt="cover image"
+        class="card-cover"
+        (error)="onCoverError(event); $event.stopPropagation()"
+      />
       <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
       <h3>{{ event.title }}</h3>
       <p class="muted">{{ event.start_time | date: 'medium' }}</p>

@@ -1,7 +1,7 @@
 import { CommonModule, DatePipe } from '@angular/common';
 import { Component, OnInit } from '@angular/core';
 import { FormsModule } from '@angular/forms';
-import { Router, RouterLink } from '@angular/router';
+import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { EventService } from '../services/event.service';
 import { EventItem } from '../models';
@@ -26,15 +26,25 @@ export class EventListComponent implements OnInit {
   total = 0;
   loading = false;
   errorMessage = '';
+  placeholderCover = '/assets/cover-placeholder.svg';
 
   constructor(
     private eventService: EventService,
     public auth: AuthService,
-    private router: Router
+    private router: Router,
+    private route: ActivatedRoute
   ) {}
 
   ngOnInit(): void {
-    this.fetchEvents();
+    this.route.queryParams.subscribe((params) => {
+      this.searchText = params['search'] || '';
+      this.categoryFilter = params['category'] || '';
+      this.startDate = params['start_date'] || null;
+      this.endDate = params['end_date'] || null;
+      this.page = params['page'] ? Number(params['page']) : 1;
+      this.pageSize = params['page_size'] ? Number(params['page_size']) : 10;
+      this.fetchEvents();
+    });
     if (this.auth.isStudent()) {
       this.loadRecommended();
     }
@@ -85,12 +95,12 @@ export class EventListComponent implements OnInit {
     this.startDate = null;
     this.endDate = null;
     this.page = 1;
-    this.fetchEvents();
+    this.navigateWithFilters();
   }
 
   onSearchChange(): void {
     this.page = 1;
-    this.fetchEvents();
+    this.navigateWithFilters();
   }
 
   get totalPages(): number {
@@ -100,7 +110,7 @@ export class EventListComponent implements OnInit {
   changePageSize(size: number): void {
     this.pageSize = size;
     this.page = 1;
-    this.fetchEvents();
+    this.navigateWithFilters();
   }
 
   changePage(delta: number): void {
@@ -109,7 +119,7 @@ export class EventListComponent implements OnInit {
       return;
     }
     this.page = newPage;
-    this.fetchEvents();
+    this.navigateWithFilters();
   }
 
   openEvent(event: EventItem): void {
@@ -119,5 +129,30 @@ export class EventListComponent implements OnInit {
   seatsLabel(event: EventItem): string {
     if (!event.max_seats) return `${event.seats_taken} locuri ocupate`;
     return `${event.seats_taken} / ${event.max_seats} locuri`;
+  }
+
+  onCoverError(eventItem: EventItem): void {
+    eventItem.cover_url = this.placeholderCover;
+  }
+
+  onFiltersChange(): void {
+    this.page = 1;
+    this.navigateWithFilters();
+  }
+
+  private navigateWithFilters(): void {
+    const queryParams: Record<string, any> = {
+      search: this.searchText || null,
+      category: this.categoryFilter || null,
+      start_date: this.startDate || null,
+      end_date: this.endDate || null,
+      page: this.page !== 1 ? this.page : null,
+      page_size: this.pageSize !== 10 ? this.pageSize : null,
+    };
+    this.router.navigate([], {
+      relativeTo: this.route,
+      queryParams,
+      replaceUrl: true,
+    });
   }
 }

@@ -1,6 +1,7 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 import time
+import re
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -27,6 +28,11 @@ app.add_middleware(
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+def _validate_cover_url(url: str) -> None:
+    pattern = re.compile(r"^https?://")
+    if url and not pattern.match(url):
+        raise HTTPException(status_code=400, detail="Cover URL trebuie să fie un link http/https valid.")
 
 
 @app.on_event("startup")
@@ -298,8 +304,10 @@ def create_event(
         raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
     if event.max_seats is None or event.max_seats <= 0:
         raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
-    if event.cover_url and len(event.cover_url) > 500:
-        raise HTTPException(status_code=400, detail="Cover URL prea lung.")
+    if event.cover_url:
+        if len(event.cover_url) > 500:
+            raise HTTPException(status_code=400, detail="Cover URL prea lung.")
+        _validate_cover_url(event.cover_url)
 
     new_event = models.Event(
         title=event.title,
@@ -355,8 +363,10 @@ def update_event(
             raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
         db_event.max_seats = update.max_seats
     if update.cover_url is not None:
-        if update.cover_url and len(update.cover_url) > 500:
-            raise HTTPException(status_code=400, detail="Cover URL prea lung.")
+        if update.cover_url:
+            if len(update.cover_url) > 500:
+                raise HTTPException(status_code=400, detail="Cover URL prea lung.")
+            _validate_cover_url(update.cover_url)
         db_event.cover_url = update.cover_url
     if update.tags is not None:
         _attach_tags(db, db_event, update.tags)

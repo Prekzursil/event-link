@@ -17,6 +17,7 @@ export class EventDetailsComponent implements OnInit {
   error = '';
   loading = true;
   successMessage = '';
+  placeholderCover = '/assets/cover-placeholder.svg';
 
   constructor(
     private route: ActivatedRoute,
@@ -109,5 +110,11 @@ export class EventDetailsComponent implements OnInit {
     if (this.event.available_seats !== undefined && this.event.available_seats !== null && this.event.available_seats <= 0)
       return false;
     return true;
+  }
+
+  onCoverError(): void {
+    if (this.event) {
+      this.event.cover_url = this.placeholderCover;
+    }
   }
 }
