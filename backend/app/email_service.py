@@ -10,8 +10,11 @@ from .config import settings
 
 def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] | None = None) -> None:
     context = context or {}
+    if not settings.email_enabled:
+        logging.info("Email sending disabled; skipping email", extra={"to": to_email, "subject": subject, **context})
+        return
     if not settings.smtp_host or not settings.smtp_sender:
-        logging.info(
+        logging.warning(
             "SMTP not configured; skipping email",
             extra={"to": to_email, "subject": subject, **context},
         )
@@ -31,8 +34,11 @@ def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] 
                 server.login(settings.smtp_username, settings.smtp_password or "")
             server.send_message(message)
         logging.info("Email sent", extra={"to": to_email, "subject": subject, **context})
-    except Exception as exc:  # noqa: BLE001
-        logging.exception("Failed to send email", extra={"to": to_email, "subject": subject, **context})
+    except Exception:  # noqa: BLE001
+        logging.exception(
+            "Failed to send email",
+            extra={"to": to_email, "subject": subject, "smtp_host": settings.smtp_host, "smtp_port": settings.smtp_port, **context},
+        )
 
 
 def send_registration_email(
