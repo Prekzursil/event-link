@@ -18,6 +18,7 @@ export class EventDetailsComponent implements OnInit {
   loading = true;
   successMessage = '';
   placeholderCover = '/assets/cover-placeholder.svg';
+  actionLoading = false;
 
   constructor(
     private route: ActivatedRoute,
@@ -53,6 +54,7 @@ export class EventDetailsComponent implements OnInit {
       this.router.navigate(['/login'], { queryParams: { redirect: this.router.url } });
       return;
     }
+    this.actionLoading = true;
     this.eventService.registerForEvent(this.event.id).subscribe({
       next: () => {
         this.event!.is_registered = true;
@@ -62,6 +64,7 @@ export class EventDetailsComponent implements OnInit {
         }
         this.successMessage = 'Înscriere confirmată!';
         this.error = '';
+        this.actionLoading = false;
       },
       error: (err) => {
         if (err.status === 409) {
@@ -69,12 +72,14 @@ export class EventDetailsComponent implements OnInit {
         } else {
           this.error = err.error?.detail || 'Nu am putut procesa înscrierea.';
         }
+        this.actionLoading = false;
       },
     });
   }
 
   unregister(): void {
     if (!this.event) return;
+    this.actionLoading = true;
     this.eventService.unregisterFromEvent(this.event.id).subscribe({
       next: () => {
         this.event!.is_registered = false;
@@ -86,9 +91,11 @@ export class EventDetailsComponent implements OnInit {
         }
         this.successMessage = 'Te-ai dezabonat de la eveniment.';
         this.error = '';
+        this.actionLoading = false;
       },
       error: (err) => {
         this.error = err.error?.detail || 'Nu am putut anula înscrierea.';
+        this.actionLoading = false;
       },
     });
   }

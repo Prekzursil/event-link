@@ -1,4 +1,4 @@
-<section class="hero card">
+<section class="hero card" aria-label="Filtre evenimente">
   <div>
     <p class="eyebrow">Tot ce contează pe campus</p>
     <h1>Evenimente viitoare</h1>
@@ -6,23 +6,23 @@
   </div>
   <div class="filters-grid">
     <div class="field">
-      <label>Caută după titlu</label>
-      <input type="text" placeholder="ex: workshop" [(ngModel)]="searchText" (input)="onSearchChange()" />
+      <label for="searchInput">Caută după titlu</label>
+      <input id="searchInput" type="text" placeholder="ex: workshop" [(ngModel)]="searchText" (input)="onSearchChange()" aria-label="Caută evenimente" />
     </div>
     <div class="field">
-      <label>Categorie</label>
-      <select [(ngModel)]="categoryFilter" (change)="onFiltersChange()">
+      <label for="categorySelect">Categorie</label>
+      <select id="categorySelect" [(ngModel)]="categoryFilter" (change)="onFiltersChange()" aria-label="Filtru categorie">
         <option value="">Toate</option>
         <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
       </select>
     </div>
     <div class="field">
-      <label>Start date</label>
-      <input type="date" [(ngModel)]="startDate" (change)="onFiltersChange()" />
+      <label for="startDate">Start date</label>
+      <input id="startDate" type="date" [(ngModel)]="startDate" (change)="onFiltersChange()" />
     </div>
     <div class="field">
-      <label>End date</label>
-      <input type="date" [(ngModel)]="endDate" (change)="onFiltersChange()" />
+      <label for="endDate">End date</label>
+      <input id="endDate" type="date" [(ngModel)]="endDate" (change)="onFiltersChange()" />
     </div>
     <div class="field actions">
       <button class="btn ghost" type="button" (click)="resetFilters()">Resetează filtrele</button>
@@ -30,13 +30,13 @@
   </div>
 </section>
 
-<section *ngIf="auth.isStudent()" class="card" [class.tight]="!recommended.length">
+<section *ngIf="auth.isStudent()" class="card" [class.tight]="!recommended.length" aria-label="Evenimente recomandate">
   <div class="section-title">
     <h3>Recomandate pentru tine</h3>
     <p class="muted" *ngIf="!recommended.length">Îți vom propune evenimente după primele înscrieri.</p>
   </div>
   <div class="scroll-cards" *ngIf="recommended.length">
-    <div class="event-card" *ngFor="let event of recommended" (click)="openEvent(event)">
+    <div class="event-card" *ngFor="let event of recommended" (click)="openEvent(event)" tabindex="0" aria-label="Recomandare: {{ event.title }}">
       <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
       <h4>{{ event.title }}</h4>
       <p class="muted">{{ event.location }}</p>
@@ -48,10 +48,10 @@
   </div>
 </section>
 
-<section class="card">
+<section class="card" aria-label="Lista evenimentelor">
   <div class="section-title">
     <h3>Toate evenimentele</h3>
-    <span class="muted" *ngIf="total">{{ total }} rezultate</span>
+    <span class="muted" *ngIf="total" aria-live="polite">{{ total }} rezultate</span>
   </div>
   <div class="page-size" *ngIf="total">
     <label for="pageSize">Rezultate pe pagină</label>
@@ -62,11 +62,11 @@
       <option [ngValue]="50">50</option>
     </select>
   </div>
-  <div *ngIf="loading" class="empty-state">Se încarcă...</div>
-  <div *ngIf="!loading && errorMessage" class="empty-state">{{ errorMessage }}</div>
-  <div *ngIf="!loading && !events.length" class="empty-state">Momentan nu sunt evenimente viitoare.</div>
+  <div *ngIf="loading" class="empty-state" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span> Se încarcă...</div>
+  <div *ngIf="!loading && errorMessage" class="empty-state" aria-live="assertive">{{ errorMessage }}</div>
+  <div *ngIf="!loading && !events.length" class="empty-state" aria-live="polite">Momentan nu sunt evenimente viitoare.</div>
   <div class="list-layout" *ngIf="!loading && events.length">
-    <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)">
+    <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)" tabindex="0" aria-label="{{ event.title }}">
       <img
         [src]="event.cover_url || placeholderCover"
         alt="cover image"

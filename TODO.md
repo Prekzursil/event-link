@@ -26,8 +26,8 @@
 - [x] Event cover images: add image upload option or validated URL regex; show placeholder on missing/failed load.
 - [x] Persist filter/query params in event list for shareable links.
 - [x] Add route-level guard to redirect logged-in users away from login/register.
-- [ ] Add frontend loading/error spinners for event details/register actions.
-- [ ] Improve accessibility: form labels/aria, focus states, keyboard nav on filters and pagination.
+- [x] Add frontend loading/error spinners for event details/register actions.
+- [x] Improve accessibility: form labels/aria, focus states, keyboard nav on filters and pagination.
 - [ ] Password reset flow (request + token + reset form) with backend email template.
 - [ ] Refresh tokens with short-lived access tokens to reduce JWT leak impact.
 - [ ] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).

@@ -1,4 +1,4 @@
-<section *ngIf="event" class="card details">
+<section *ngIf="event" class="card details" [attr.aria-busy]="loading">
   <img
     [src]="event.cover_url || placeholderCover"
     alt="cover image"
@@ -16,9 +16,9 @@
       </div>
     </div>
     <div class="actions">
-      <button *ngIf="!auth.isLoggedIn()" class="btn primary" (click)="register()">Autentifică-te pentru a te înscrie</button>
-      <button *ngIf="canRegister()" class="btn primary" (click)="register()">Înscrie-te</button>
-      <button *ngIf="auth.isStudent() && event.is_registered" class="btn ghost" type="button" (click)="unregister()">Anulează înscrierea</button>
+      <button *ngIf="!auth.isLoggedIn()" class="btn primary" (click)="register()" [disabled]="actionLoading">Autentifică-te pentru a te înscrie</button>
+      <button *ngIf="canRegister()" class="btn primary" (click)="register()" [disabled]="actionLoading">{{ actionLoading ? 'Se procesează...' : 'Înscrie-te' }}</button>
+      <button *ngIf="auth.isStudent() && event.is_registered" class="btn ghost" type="button" (click)="unregister()" [disabled]="actionLoading">{{ actionLoading ? 'Se procesează...' : 'Anulează înscrierea' }}</button>
       <button
         *ngIf="!canRegister() && !event.is_registered && (event.available_seats !== null && event.available_seats !== undefined && event.available_seats <= 0)"
         class="btn ghost"
@@ -55,6 +55,8 @@
   <p class="description">{{ event.description }}</p>
 </section>
 
-<div *ngIf="loading" class="empty-state">Se încarcă detaliile...</div>
-<div *ngIf="successMessage" class="success">{{ successMessage }}</div>
-<div *ngIf="error && !loading" class="error">{{ error }}</div>
+<div *ngIf="loading" class="empty-state" aria-live="polite">
+  <span class="spinner" aria-hidden="true"></span> Se încarcă detaliile...
+</div>
+<div *ngIf="successMessage" class="success" aria-live="polite">{{ successMessage }}</div>
+<div *ngIf="error && !loading" class="error" aria-live="assertive">{{ error }}</div>
