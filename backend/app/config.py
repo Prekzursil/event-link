@@ -19,6 +19,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     allowed_origins: list[str] = DEFAULT_ALLOWED_ORIGINS
     auto_create_tables: bool = False
+    auto_run_migrations: bool = False
     organizer_invite_code: str | None = None
     email_enabled: bool = True
     smtp_host: str | None = None

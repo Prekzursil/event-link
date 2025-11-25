@@ -3,6 +3,8 @@ from typing import List, Optional
 import time
 import re
 import logging
+import os
+from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -18,6 +20,26 @@ from .logging_utils import configure_logging, RequestIdMiddleware, log_event, lo
 
 configure_logging()
 
+
+
+
+
+def _run_migrations():
+    """Run Alembic migrations to latest head. Controlled via settings.auto_run_migrations."""
+    try:
+        from alembic import command
+        from alembic.config import Config
+        base_dir = Path(__file__).resolve().parent.parent
+        alembic_ini = base_dir / 'alembic.ini'
+        if not alembic_ini.exists():
+            logging.warning('alembic.ini not found; skipping migrations')
+            return
+        cfg = Config(str(alembic_ini))
+        cfg.set_main_option('script_location', str(base_dir / 'alembic'))
+        command.upgrade(cfg, 'head')
+        logging.info('Migrations applied to head')
+    except Exception:
+        logging.exception('Failed to run migrations on startup')
 
 def _check_configuration():
     if not settings.database_url:
@@ -50,7 +72,9 @@ def _validate_cover_url(url: str) -> None:
 @app.on_event("startup")
 def _on_startup():
     _check_configuration()
-    if settings.auto_create_tables:
+    if getattr(settings, "auto_run_migrations", False):
+        _run_migrations()
+    elif settings.auto_create_tables:
         models.Base.metadata.create_all(bind=engine)
 
 
@@ -148,7 +172,7 @@ def _serialize_event(event: models.Event, seats_taken: int) -> schemas.EventResp
 
 @app.post("/register", response_model=schemas.Token)
 def register(user: schemas.StudentRegister, request: Request, db: Session = Depends(get_db)):
-    _enforce_rate_limit(request, "register")
+    _enforce_rate_limit(request, "register", identifier=user.email.lower())
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(status_code=400, detail="Acest email este deja folosit.")
@@ -177,7 +201,7 @@ def register(user: schemas.StudentRegister, request: Request, db: Session = Depe
 
 @app.post("/login", response_model=schemas.Token)
 def login(user_credentials: schemas.UserLogin, request: Request, db: Session = Depends(get_db)):
-    _enforce_rate_limit(request, "login")
+    _enforce_rate_limit(request, "login", identifier=user_credentials.email.lower())
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
     if not user or not auth.verify_password(user_credentials.password, user.password_hash):
         log_warning("login_failed", email=user_credentials.email)
@@ -243,9 +267,16 @@ async def unhandled_exception_handler(request: Request, exc: Exception):
 _RATE_LIMIT_STORE: dict[str, list[float]] = {}
 
 
-def _enforce_rate_limit(request: Request, action: str, limit: int = 20, window_seconds: int = 60) -> None:
+def _enforce_rate_limit(
+    request: Request,
+    action: str,
+    limit: int = 20,
+    window_seconds: int = 60,
+    identifier: str | None = None,
+) -> None:
     now = time.time()
-    key = f"{action}:{request.client.host if request.client else 'unknown'}"
+    identity = identifier or (request.client.host if request.client else "unknown")
+    key = f"{action}:{identity}"
     entries = _RATE_LIMIT_STORE.get(key, [])
     entries = [ts for ts in entries if now - ts < window_seconds]
     if len(entries) >= limit:
