@@ -458,6 +458,40 @@ class APITestCase(unittest.TestCase):
         self.assertEqual(body.get("status"), "ok")
         self.assertEqual(body.get("database"), "ok")
 
+    def test_event_ics_and_calendar_feed(self):
+        self.make_organizer()
+        token = self.login("org@test.ro", "organizer123")
+        start_time = self.future_time()
+        payload = {
+            "title": "ICS Event",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": start_time,
+            "end_time": None,
+            "location": "Loc",
+            "max_seats": 5,
+            "tags": [],
+        }
+        create_resp = self.client.post(
+            "/api/events",
+            json=payload,
+            headers=self.auth_header(token),
+        )
+        self.assertEqual(create_resp.status_code, 201)
+        event_id = create_resp.json()["id"]
+
+        # ICS for event
+        ics_resp = self.client.get(f"/api/events/{event_id}/ics")
+        self.assertEqual(ics_resp.status_code, 200)
+        self.assertIn("BEGIN:VCALENDAR", ics_resp.text)
+
+        # calendar feed
+        student_token = self.register_student("ics@test.ro")
+        self.client.post(f"/api/events/{event_id}/register", headers=self.auth_header(student_token))
+        feed_resp = self.client.get("/api/me/calendar", headers=self.auth_header(student_token))
+        self.assertEqual(feed_resp.status_code, 200)
+        self.assertIn("ICS Event", feed_resp.text)
+
     def test_upgrade_to_organizer_requires_code(self):
         student_token = self.register_student("code@test.ro")
         # missing/invalid code

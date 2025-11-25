@@ -6,7 +6,7 @@ import logging
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import JSONResponse
+from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
@@ -61,9 +61,37 @@ def _ensure_future_date(start_time: datetime) -> None:
 
 
 def _normalize_dt(value: Optional[datetime]) -> Optional[datetime]:
-    if value and value.tzinfo is None:
-        return value.replace(tzinfo=timezone.utc)
-    return value
+    """Normalize datetimes to timezone-aware UTC instances."""
+    if not value:
+        return value
+    if value.tzinfo is None:
+        value = value.replace(tzinfo=timezone.utc)
+    return value.astimezone(timezone.utc)
+
+
+def _format_ics_dt(value: Optional[datetime]) -> str:
+    value = _normalize_dt(value)
+    if not value:
+        return ""
+    return value.strftime("%Y%m%dT%H%M%SZ")
+
+
+def _event_to_ics(event: models.Event, uid_suffix: str = "") -> str:
+    start = _format_ics_dt(event.start_time)
+    end = _format_ics_dt(event.end_time) if event.end_time else ""
+    lines = [
+        "BEGIN:VEVENT",
+        f"UID:event-{event.id}{uid_suffix}@eventlink",
+        f"DTSTAMP:{_format_ics_dt(datetime.now(timezone.utc))}",
+        f"DTSTART:{start}",
+        f"SUMMARY:{event.title}",
+        f"DESCRIPTION:{event.description or ''}",
+        f"LOCATION:{event.location or ''}",
+    ]
+    if end:
+        lines.append(f"DTEND:{end}")
+    lines.append("END:VEVENT")
+    return "\n".join(lines)
 
 
 def _attach_tags(db: Session, event: models.Event, tag_names: list[str]) -> None:
@@ -639,3 +667,37 @@ def health_check(db: Session = Depends(get_db)):
         return {"status": "ok", "database": "ok"}
     except Exception:
         raise HTTPException(status_code=503, detail="Database unavailable")
+
+
+@app.get("/api/events/{event_id}/ics")
+def event_ics(event_id: int, db: Session = Depends(get_db)):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    ics = "\n".join([
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//EventLink//EN",
+        _event_to_ics(event),
+        "END:VCALENDAR",
+    ])
+    return Response(content=ics, media_type="text/calendar")
+
+
+@app.get("/api/me/calendar")
+def user_calendar(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
+    regs = (
+        db.query(models.Event)
+        .join(models.Registration, models.Registration.event_id == models.Event.id)
+        .filter(models.Registration.user_id == current_user.id)
+        .all()
+    )
+    vevents = [ _event_to_ics(e, uid_suffix=f"-u{current_user.id}") for e in regs ]
+    ics = "\n".join([
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//EventLink//EN",
+        *vevents,
+        "END:VCALENDAR",
+    ])
+    return Response(content=ics, media_type="text/calendar")

@@ -33,6 +33,7 @@
         <a class="btn ghost" [routerLink]="['/events', event.id, 'edit']">Editează</a>
         <a class="btn ghost" [routerLink]="['/organizer/events', event.id, 'participants']">Participanți</a>
         <button class="btn danger" (click)="deleteEvent()">Șterge</button>
+        <a class="btn ghost" [href]="icsLink(event.id)">ICS</a>
       </div>
     </div>
   </div>

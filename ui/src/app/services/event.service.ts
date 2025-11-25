@@ -20,9 +20,11 @@ export interface EventPayload {
   providedIn: 'root',
 })
 export class EventService {
+  readonly baseApiUrl: string;
   private readonly baseUrl: string;
 
   constructor(private http: HttpClient, @Inject(API_BASE_URL) apiBaseUrl: string) {
+    this.baseApiUrl = apiBaseUrl;
     this.baseUrl = `${apiBaseUrl}/api`;
   }
 
