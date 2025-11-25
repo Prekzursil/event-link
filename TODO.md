@@ -49,8 +49,8 @@
 - [ ] Background cleanup job for expired invites/tokens and past event registrations.
 - [ ] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
 - [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
-- [ ] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
-- [ ] ICS calendar export for events and calendar subscription per user.
+- [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
+- [x] ICS calendar export for events and calendar subscription per user.
 - [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
 - [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [ ] Stress/load tests for critical endpoints (event list, registration, recommendations).
@@ -90,4 +90,3 @@
 - [ ] Draft vs published events with scheduled publishing.
 - [ ] DB backup/restore scripts and disaster-recovery documentation.
 - [ ] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
-

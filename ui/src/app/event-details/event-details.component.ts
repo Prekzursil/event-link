@@ -27,6 +27,10 @@ export class EventDetailsComponent implements OnInit {
     public auth: AuthService
   ) {}
 
+  icsLink(eventId: number): string {
+    return `${this.eventService.baseApiUrl}/api/events/${eventId}/ics`;
+  }
+
   ngOnInit(): void {
     const id = Number(this.route.snapshot.paramMap.get('id'));
     if (id) {
