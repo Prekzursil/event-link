@@ -17,9 +17,9 @@
 - [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
 
 ## Medium
-- [ ] Docker + docker-compose for backend/frontend/Postgres with env wiring and docs.
-- [ ] Security headers middleware (HSTS, X-Content-Type-Options, X-Frame-Options) and CORS audit.
-- [ ] Health/readiness endpoint to check DB connectivity for probes.
+- [x] Docker + docker-compose for backend/frontend/Postgres with env wiring and docs.
+- [x] Security headers middleware (HSTS, X-Content-Type-Options, X-Frame-Options) and CORS audit.
+- [x] Health/readiness endpoint to check DB connectivity for probes.
 - [x] Logging: structured logs with request IDs; log key domain events (auth, event CRUD, registrations).
 - [ ] Email metrics/counters and optional retry/backoff on SMTP failures.
 - [ ] Add organizer ability to export participants including attendance + cover URL in CSV.

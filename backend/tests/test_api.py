@@ -451,6 +451,13 @@ class APITestCase(unittest.TestCase):
         )
         self.assertEqual(ok.status_code, 204)
 
+    def test_health_endpoint(self):
+        resp = self.client.get("/api/health")
+        self.assertEqual(resp.status_code, 200)
+        body = resp.json()
+        self.assertEqual(body.get("status"), "ok")
+        self.assertEqual(body.get("database"), "ok")
+
     def test_upgrade_to_organizer_requires_code(self):
         student_token = self.register_student("code@test.ro")
         # missing/invalid code

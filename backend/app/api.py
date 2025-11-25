@@ -174,10 +174,6 @@ def read_root():
     return {"message": "Hello from Event Link API!"}
 
 
-@app.get("/api/health")
-def health_check():
-    return {"status": "healthy"}
-
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
@@ -611,3 +607,11 @@ def recommended_events(
             continue
         filtered.append(_serialize_event(event, seats))
     return filtered[:10]
+
+@app.get("/api/health")
+def health_check(db: Session = Depends(get_db)):
+    try:
+        db.execute(text("SELECT 1"))
+        return {"status": "ok", "database": "ok"}
+    except Exception:
+        raise HTTPException(status_code=503, detail="Database unavailable")

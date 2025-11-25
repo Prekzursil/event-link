@@ -119,3 +119,19 @@ The frontend will be available at: http://localhost:4200. Configure the API base
 - `POST /api/events/{id}/register` – student register for event
 - `GET /api/recommendations` – student recommendations
 - Plus organizer tools, participant views, and health at `/api/health`.
+
+## Docker Compose
+
+Quick start with containers (requires Docker):
+
+```bash
+cp .env.example .env  # adjust secrets if needed
+docker compose up --build
+```
+
+Services:
+- Frontend: http://localhost:4200 (served by nginx)
+- Backend API: http://localhost:8000 (FastAPI)
+- Postgres: exposed on ${POSTGRES_PORT:-5432}
+
+Environment overrides come from `.env` (see `.env.example`). The backend runs Alembic migrations on startup before launching Uvicorn.
