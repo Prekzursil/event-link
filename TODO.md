@@ -48,16 +48,16 @@
 - [ ] Email templating (HTML + localization) and resend confirmation option for registrations.
 - [ ] Background cleanup job for expired invites/tokens and past event registrations.
 - [ ] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
-- [ ] Database indexes for common query fields (event start_time, category, owner_id, tags).
+- [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
 - [ ] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
 - [ ] ICS calendar export for events and calendar subscription per user.
-- [ ] Configuration sanity checks at startup (fail fast if essential env vars are missing).
+- [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
 - [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [ ] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [ ] Pagination and sorting for all list endpoints (registrations, users).
 - [ ] Task queue for background jobs (emails/heavy processing).
 - [ ] Account deletion / data export flows for privacy regulations.
-- [ ] CI caching for npm/pip to speed up pipelines and document cache keys.
+- [x] CI caching for npm/pip to speed up pipelines and document cache keys.
 
 ## Low
 - [x] [EL-17] Search events by name: let students search events by title to quickly find something specific.

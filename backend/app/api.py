@@ -2,6 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
 import time
 import re
+import logging
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
 from fastapi.middleware.cors import CORSMiddleware
@@ -16,6 +17,17 @@ from .email_service import send_registration_email
 from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
 
 configure_logging()
+
+
+def _check_configuration():
+    if not settings.database_url:
+        raise RuntimeError('DATABASE_URL is required')
+    if not settings.secret_key:
+        raise RuntimeError('SECRET_KEY is required')
+    if settings.email_enabled and (not settings.smtp_host or not settings.smtp_sender):
+        logging.warning('Email enabled but SMTP host/sender missing; disabling email sending')
+        settings.email_enabled = False
+
 
 app = FastAPI(title="Event Link API", version="1.0.0")
 
@@ -37,6 +49,7 @@ def _validate_cover_url(url: str) -> None:
 
 @app.on_event("startup")
 def _on_startup():
+    _check_configuration()
     if settings.auto_create_tables:
         models.Base.metadata.create_all(bind=engine)
 
