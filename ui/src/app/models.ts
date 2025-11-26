@@ -54,6 +54,9 @@ export interface ParticipantList {
   seats_taken: number;
   max_seats?: number;
   participants: Participant[];
+  total?: number;
+  page?: number;
+  page_size?: number;
 }
 
 export interface User {

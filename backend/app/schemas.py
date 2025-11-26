@@ -143,6 +143,9 @@ class ParticipantListResponse(BaseModel):
     seats_taken: int
     max_seats: Optional[int]
     participants: list[ParticipantResponse]
+    total: int
+    page: int
+    page_size: int
 
 
 class PaginatedEvents(BaseModel):

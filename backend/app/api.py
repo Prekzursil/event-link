@@ -568,7 +568,13 @@ def organizer_events(
 
 @app.get("/api/organizer/events/{event_id}/participants", response_model=schemas.ParticipantListResponse)
 def event_participants(
-    event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
+    event_id: int,
+    page: int = 1,
+    page_size: int = 20,
+    sort_by: str = "registration_time",
+    sort_dir: str = "asc",
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
@@ -576,13 +582,22 @@ def event_participants(
     if event.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să accesați acest eveniment.")
 
-    participants = (
+    sort_column = models.Registration.registration_time
+    if sort_by == "email":
+        sort_column = models.User.email
+    elif sort_by == "name":
+        sort_column = models.User.full_name
+    order_clause = sort_column.asc() if sort_dir.lower() != "desc" else sort_column.desc()
+
+    base_query = (
         db.query(models.User, models.Registration.registration_time, models.Registration.attended)
         .join(models.Registration, models.User.id == models.Registration.user_id)
         .filter(models.Registration.event_id == event_id)
-        .order_by(models.Registration.registration_time)
-        .all()
     )
+    total = base_query.count()
+    page = max(page, 1)
+    page_size = max(1, min(page_size, 200))
+    participants = base_query.order_by(order_clause).offset((page - 1) * page_size).limit(page_size).all()
     participant_list = [
         schemas.ParticipantResponse(
             id=user.id,
@@ -593,7 +608,7 @@ def event_participants(
         )
         for user, reg_time, attended in participants
     ]
-    seats_taken = len(participants)
+    seats_taken = total
     return schemas.ParticipantListResponse(
         event_id=event.id,
         title=event.title,
@@ -601,6 +616,9 @@ def event_participants(
         seats_taken=seats_taken,
         max_seats=event.max_seats,
         participants=participant_list,
+        total=total,
+        page=page,
+        page_size=page_size,
     )
 
 

@@ -586,3 +586,39 @@ def test_password_reset_flow(helpers):
 
     login_ok = client.post("/login", json={"email": "reset@test.ro", "password": "newpass123"})
     assert login_ok.status_code == 200
+
+
+def test_participants_pagination(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    org_token = helpers["login"]("org@test.ro", "organizer123")
+    event = client.post(
+        "/api/events",
+        json={
+            "title": "Paginated",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](),
+            "location": "Loc",
+            "max_seats": 50,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](org_token),
+    ).json()
+    for idx in range(5):
+        token = helpers["register_student"](f"p{idx}@test.ro")
+        client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](token))
+
+    resp = client.get(
+        f"/api/organizer/events/{event['id']}/participants",
+        params={"page": 2, "page_size": 2, "sort_by": "email", "sort_dir": "desc"},
+        headers=helpers["auth_header"](org_token),
+    )
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 5
+    assert body["page"] == 2
+    assert body["page_size"] == 2
+    assert len(body["participants"]) == 2
+    emails = [p["email"] for p in body["participants"]]
+    assert emails == sorted(emails, reverse=True)

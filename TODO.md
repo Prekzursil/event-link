@@ -58,7 +58,7 @@
 - [x] Frontend Angular unit test fixes (ActivatedRoute providers) + coverage thresholds; stabilize CI headless runs.
 - [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [ ] Stress/load tests for critical endpoints (event list, registration, recommendations).
-- [ ] Pagination and sorting for all list endpoints (registrations, users).
+- [x] Pagination and sorting for all list endpoints (registrations, users).
 - [ ] Task queue for background jobs (emails/heavy processing).
 - [ ] Account deletion / data export flows for privacy regulations.
 - [x] CI caching for npm/pip to speed up pipelines and document cache keys.
