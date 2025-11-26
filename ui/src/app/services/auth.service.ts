@@ -37,6 +37,11 @@ export class AuthService {
     return !!this.token;
   }
 
+  userId(): number | null {
+    const local = localStorage.getItem('user_id');
+    return local ? Number(local) : this.currentUserSubject.value?.id ?? null;
+  }
+
   login(email: string, password: string): Observable<User> {
     return this.http.post<AuthToken>(`${this.baseUrl}/login`, { email, password }).pipe(
       tap((token) => this.persistToken(token)),

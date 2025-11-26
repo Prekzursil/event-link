@@ -1,0 +1,27 @@
+<section class="card" *ngIf="!loading; else loadingTpl">
+  <h1>Profil organizator</h1>
+  <div class="field">
+    <label>Nume organizație</label>
+    <input [(ngModel)]="profile.org_name" placeholder="Club Tech" />
+  </div>
+  <div class="field">
+    <label>Descriere</label>
+    <textarea [(ngModel)]="profile.org_description" rows="4"></textarea>
+  </div>
+  <div class="field">
+    <label>Logo URL</label>
+    <input [(ngModel)]="profile.org_logo_url" placeholder="https://..." />
+  </div>
+  <div class="field">
+    <label>Website</label>
+    <input [(ngModel)]="profile.org_website" placeholder="https://example.com" />
+  </div>
+  <div class="actions">
+    <button class="btn primary" type="button" (click)="save()" [disabled]="saving">{{ saving ? 'Se salvează...' : 'Salvează' }}</button>
+    <span class="error" *ngIf="error">{{ error }}</span>
+  </div>
+</section>
+
+<ng-template #loadingTpl>
+  <div class="empty-state">Se încarcă...</div>
+</ng-template>

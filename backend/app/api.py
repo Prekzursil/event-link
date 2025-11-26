@@ -208,6 +208,8 @@ def _serialize_event(event: models.Event, seats_taken: int, recommendation_reaso
         tags=event.tags,
         seats_taken=int(seats_taken or 0),
         cover_url=event.cover_url,
+        status=event.status,
+        publish_at=event.publish_at,
         recommendation_reason=recommendation_reason,
     )
 
@@ -400,6 +402,10 @@ def get_events(
     query = db.query(models.Event)
     if not include_past:
         query = query.filter(models.Event.start_time >= now)
+    # only published and already live
+    query = query.filter(models.Event.status == "published").filter(
+        (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+    )
     if search:
         query = query.filter(func.lower(models.Event.title).like(f"%{search.lower()}%"))
     if category:
@@ -437,11 +443,23 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
     if not result:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     event, seats_taken = result
+    now = datetime.now(timezone.utc)
+    if (event.status != "published" or (event.publish_at and event.publish_at > now)) and not (
+        current_user and current_user.id == event.owner_id
+    ):
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
     is_registered = False
+    is_favorite = False
     if current_user:
         is_registered = (
             db.query(models.Registration)
             .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+            .first()
+            is not None
+        )
+        is_favorite = (
+            db.query(models.FavoriteEvent)
+            .filter(models.FavoriteEvent.event_id == event_id, models.FavoriteEvent.user_id == current_user.id)
             .first()
             is not None
         )
@@ -464,6 +482,7 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
         is_registered=is_registered,
         is_owner=current_user.id == event.owner_id if current_user else False,
         available_seats=available_seats,
+        is_favorite=is_favorite,
     )
 
 
@@ -494,6 +513,8 @@ def create_event(
         max_seats=event.max_seats,
         cover_url=event.cover_url,
         owner_id=current_user.id,
+        status=event.status or "published",
+        publish_at=_normalize_dt(event.publish_at) if event.publish_at else None,
     )
     _attach_tags(db, new_event, event.tags or [])
     db.add(new_event)
@@ -545,6 +566,12 @@ def update_event(
         db_event.cover_url = update.cover_url
     if update.tags is not None:
         _attach_tags(db, db_event, update.tags)
+    if update.status is not None:
+        if update.status not in ("draft", "published"):
+            raise HTTPException(status_code=400, detail="Status invalid")
+        db_event.status = update.status
+    if update.publish_at is not None:
+        db_event.publish_at = _normalize_dt(update.publish_at)
 
     db.commit()
     db.refresh(db_event)
@@ -571,6 +598,48 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
     return
 
 
+@app.post("/api/events/{event_id}/clone", response_model=schemas.EventResponse)
+def clone_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
+):
+    orig = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not orig:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    if orig.owner_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Nu aveți dreptul să clonați acest eveniment.")
+
+    start_time = _normalize_dt(orig.start_time)
+    if start_time and start_time < datetime.now(timezone.utc):
+        start_time = datetime.now(timezone.utc) + timedelta(days=7)
+
+    new_event = models.Event(
+        title=f"Copie - {orig.title}",
+        description=orig.description,
+        category=orig.category,
+        start_time=start_time,
+        end_time=_normalize_dt(orig.end_time) if orig.end_time else None,
+        location=orig.location,
+        max_seats=orig.max_seats,
+        cover_url=orig.cover_url,
+        owner_id=current_user.id,
+        status="draft",
+        publish_at=None,
+    )
+    _attach_tags(db, new_event, [t.name for t in orig.tags])
+    db.add(new_event)
+    db.commit()
+    db.refresh(new_event)
+    log_event("event_cloned", source_event_id=orig.id, new_event_id=new_event.id, owner_id=current_user.id)
+    seats = (
+        db.query(func.count(models.Registration.id))
+        .filter(models.Registration.event_id == new_event.id)
+        .scalar()
+    ) or 0
+    return _serialize_event(new_event, seats)
+
+
 @app.get("/api/organizer/events", response_model=List[schemas.EventResponse])
 def organizer_events(
     db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
@@ -579,6 +648,53 @@ def organizer_events(
     query, seats_subquery = _events_with_counts_query(db, base_query)
     events = query.all()
     return [_serialize_event(event, seats) for event, seats in events]
+
+
+def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfileResponse:
+    base_query = db.query(models.Event).filter(models.Event.owner_id == user.id)
+    now = datetime.now(timezone.utc)
+    base_query = base_query.filter(
+        models.Event.status == "published",
+        (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
+    ).order_by(models.Event.start_time)
+    query, seats_subquery = _events_with_counts_query(db, base_query)
+    events = [_serialize_event(ev, seats) for ev, seats in query.all()]
+    return schemas.OrganizerProfileResponse(
+        user_id=user.id,
+        email=user.email,
+        full_name=user.full_name,
+        org_name=user.org_name,
+        org_description=user.org_description,
+        org_logo_url=user.org_logo_url,
+        org_website=user.org_website,
+        events=events,
+    )
+
+
+@app.get("/api/organizers/{organizer_id}", response_model=schemas.OrganizerProfileResponse)
+def get_organizer_profile(organizer_id: int, db: Session = Depends(get_db)):
+    user = db.query(models.User).filter(models.User.id == organizer_id, models.User.role == models.UserRole.organizator).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Organizatorul nu există")
+    return _serialize_profile(user, db)
+
+
+@app.put("/api/organizers/me/profile", response_model=schemas.OrganizerProfileResponse)
+def update_organizer_profile(
+    payload: schemas.OrganizerProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
+):
+    if payload.org_logo_url and len(payload.org_logo_url) > 500:
+        raise HTTPException(status_code=400, detail="URL logo prea lung")
+    current_user.org_name = payload.org_name or current_user.org_name
+    current_user.org_description = payload.org_description
+    current_user.org_logo_url = payload.org_logo_url
+    current_user.org_website = payload.org_website
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    return _serialize_profile(current_user, db)
 
 
 @app.get("/api/organizer/events/{event_id}/participants", response_model=schemas.ParticipantListResponse)
@@ -678,6 +794,8 @@ def register_for_event(
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     now = datetime.now(timezone.utc)
+    if event.status != "published" or (event.publish_at and event.publish_at > now):
+        raise HTTPException(status_code=400, detail="Evenimentul nu este publicat.")
     start_time = _normalize_dt(event.start_time)
     if start_time and start_time < now:
         raise HTTPException(status_code=400, detail="Evenimentul a început deja.")
@@ -775,6 +893,63 @@ def unregister_from_event(
     return
 
 
+@app.post("/api/events/{event_id}/favorite", status_code=status.HTTP_201_CREATED)
+def favorite_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    existing = (
+        db.query(models.FavoriteEvent)
+        .filter(models.FavoriteEvent.event_id == event_id, models.FavoriteEvent.user_id == current_user.id)
+        .first()
+    )
+    if existing:
+        return {"status": "exists"}
+    fav = models.FavoriteEvent(user_id=current_user.id, event_id=event_id)
+    db.add(fav)
+    db.commit()
+    return {"status": "added"}
+
+
+@app.delete("/api/events/{event_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
+def unfavorite_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    fav = (
+        db.query(models.FavoriteEvent)
+        .filter(models.FavoriteEvent.event_id == event_id, models.FavoriteEvent.user_id == current_user.id)
+        .first()
+    )
+    if not fav:
+        raise HTTPException(status_code=404, detail="Favoritul nu există")
+    db.delete(fav)
+    db.commit()
+    return
+
+
+@app.get("/api/me/favorites", response_model=schemas.FavoriteListResponse)
+def list_favorites(db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_student)):
+    base_query = (
+        db.query(models.Event)
+        .join(models.FavoriteEvent, models.Event.id == models.FavoriteEvent.event_id)
+        .filter(models.FavoriteEvent.user_id == current_user.id)
+    )
+    now = datetime.now(timezone.utc)
+    base_query = base_query.filter(
+        models.Event.status == "published",
+        (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
+    )
+    query, seats_subquery = _events_with_counts_query(db, base_query)
+    items = [_serialize_event(ev, seats) for ev, seats in query.order_by(models.Event.start_time).all()]
+    return {"items": items}
+
+
 @app.get("/api/me/events", response_model=List[schemas.EventResponse])
 def my_events(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
     current_user = auth.require_student(current_user)
@@ -820,6 +995,8 @@ def recommended_events(
             .join(models.Event.tags)
             .filter(func.lower(models.Tag.name).in_([name.lower() for name in tag_names]))
             .filter(models.Event.start_time >= now)
+            .filter(models.Event.status == "published")
+            .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
         )
         if registered_event_ids:
             base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
@@ -832,6 +1009,9 @@ def recommended_events(
         base_query = db.query(models.Event).filter(models.Event.start_time >= now)
         if registered_event_ids:
             base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+        base_query = base_query.filter(models.Event.status == "published").filter(
+            (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+        )
         query, seats_subquery = _events_with_counts_query(db, base_query)
         events = [
             (ev, seats, "Popular / upcoming events")

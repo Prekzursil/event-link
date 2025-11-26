@@ -137,4 +137,28 @@ export class EventDetailsComponent implements OnInit {
       this.event.cover_url = this.placeholderCover;
     }
   }
+
+  toggleFavorite(): void {
+    if (!this.event || !this.auth.isStudent()) return;
+    const target = this.event.is_favorite;
+    this.actionLoading = true;
+    const req = target
+      ? this.eventService.removeFavorite(this.event.id)
+      : this.eventService.addFavorite(this.event.id);
+    req.subscribe({
+      next: () => {
+        this.event!.is_favorite = !target;
+        this.notifications.success(
+          this.event!.is_favorite
+            ? this.i18n.translate('favorites.added')
+            : this.i18n.translate('favorites.removed'),
+        );
+        this.actionLoading = false;
+      },
+      error: () => {
+        this.notifications.error(this.i18n.translate('errors.generic'));
+        this.actionLoading = false;
+      },
+    });
+  }
 }

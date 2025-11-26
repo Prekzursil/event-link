@@ -18,12 +18,15 @@ export interface EventItem {
   tags: Tag[];
   seats_taken: number;
   recommendation_reason?: string;
+  status?: 'draft' | 'published';
+  publish_at?: string | null;
 }
 
 export interface EventDetail extends EventItem {
   is_registered: boolean;
   is_owner: boolean;
   available_seats?: number;
+  is_favorite?: boolean;
 }
 
 export interface PaginatedEvents {
@@ -65,4 +68,15 @@ export interface User {
   email: string;
   role: 'student' | 'organizator';
   full_name?: string;
+}
+
+export interface OrganizerProfile {
+  user_id: number;
+  email: string;
+  full_name?: string;
+  org_name?: string;
+  org_description?: string;
+  org_logo_url?: string;
+  org_website?: string;
+  events: EventItem[];
 }

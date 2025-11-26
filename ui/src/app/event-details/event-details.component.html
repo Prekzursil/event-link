@@ -12,7 +12,7 @@
       <div class="meta">
         <span>{{ event.start_time | date: 'fullDate' }} · {{ event.start_time | date: 'shortTime' }}<span *ngIf="event.end_time"> - {{ event.end_time | date: 'shortTime' }}</span></span>
         <span>{{ event.location }}</span>
-        <span>Organizator: {{ event.owner_name }}</span>
+        <span>Organizator: <a [routerLink]="['/organizers', event.owner_id]">{{ event.owner_name || 'Organizator' }}</a></span>
       </div>
     </div>
     <div class="actions">
@@ -28,6 +28,9 @@
       </button>
       <button *ngIf="auth.isLoggedIn() && !auth.isStudent() && !event.is_owner" class="btn ghost" disabled>
         {{ 'details.studentsOnly' | translate }}
+      </button>
+      <button *ngIf="auth.isStudent()" class="btn ghost" type="button" (click)="toggleFavorite()" [disabled]="actionLoading">
+        {{ event.is_favorite ? ('favorites.remove' | translate) : ('favorites.add' | translate) }}
       </button>
       <div class="owner-actions" *ngIf="auth.isOrganizer() && event.is_owner">
         <a class="btn ghost" [routerLink]="['/events', event.id, 'edit']">{{ 'details.edit' | translate }}</a>

@@ -88,8 +88,10 @@
 - [ ] Integration tests hitting a real test database (not just unit tests).
 - [ ] Contract tests around API schema to keep UI and backend in sync.
 - [ ] Bulk operations for organizers (bulk email registrants, bulk close events, bulk tag edits).
-- [ ] "Favorite events" / "watchlist" feature for students.
+- [x] "Favorite events" / "watchlist" feature for students.
 - [ ] Maintenance mode flag to temporarily disable registrations during deployments.
-- [ ] Draft vs published events with scheduled publishing.
+- [x] Draft vs published events with scheduled publishing.
 - [ ] DB backup/restore scripts and disaster-recovery documentation.
 - [ ] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
+- [x] Organization profile pages with logo, description, and links to their events.
+- [x] Duplicate/clone event action for organizers.

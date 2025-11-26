@@ -8,9 +8,11 @@
   <nav class="main-nav" [class.open]="showMobileMenu">
     <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">{{ 'nav.events' | translate }}</a>
     <a *ngIf="auth.isStudent()" routerLink="/my-events" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.myEvents' | translate }}</a>
+    <a *ngIf="auth.isStudent()" routerLink="/favorites" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.favorites' | translate }}</a>
     <a *ngIf="auth.isStudent()" routerLink="/organizer/upgrade" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.upgrade' | translate }}</a>
     <a *ngIf="auth.isOrganizer()" routerLink="/create-event" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.create' | translate }}</a>
     <a *ngIf="auth.isOrganizer()" routerLink="/organizer/events" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.createdEvents' | translate }}</a>
+    <a *ngIf="auth.isOrganizer()" routerLink="/organizer/profile" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.profile' | translate }}</a>
   </nav>
   <div class="account" [class.open]="showMobileMenu">
     <button class="ghost" type="button" (click)="toggleLang()">{{ 'lang.toggle' | translate }}</button>

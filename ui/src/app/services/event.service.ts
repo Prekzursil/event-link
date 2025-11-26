@@ -1,7 +1,7 @@
 import { Inject, Injectable } from '@angular/core';
 import { HttpClient, HttpParams } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { EventDetail, EventItem, ParticipantList, PaginatedEvents } from '../models';
+import { EventDetail, EventItem, ParticipantList, PaginatedEvents, OrganizerProfile } from '../models';
 import { API_BASE_URL } from '../api-tokens';
 
 export interface EventPayload {
@@ -14,6 +14,8 @@ export interface EventPayload {
   max_seats: number;
   tags: string[];
   cover_url?: string | null;
+  status?: 'draft' | 'published';
+  publish_at?: string | null;
 }
 
 @Injectable({
@@ -82,11 +84,35 @@ export class EventService {
     return this.http.get<EventItem[]>(`${this.baseUrl}/organizer/events`);
   }
 
+  cloneEvent(id: number): Observable<EventItem> {
+    return this.http.post<EventItem>(`${this.baseUrl}/events/${id}/clone`, {});
+  }
+
   participants(eventId: number): Observable<ParticipantList> {
     return this.http.get<ParticipantList>(`${this.baseUrl}/organizer/events/${eventId}/participants`);
   }
 
   myEvents(): Observable<EventItem[]> {
     return this.http.get<EventItem[]>(`${this.baseUrl}/me/events`);
+  }
+
+  favorites(): Observable<{ items: EventItem[] }> {
+    return this.http.get<{ items: EventItem[] }>(`${this.baseUrl}/me/favorites`);
+  }
+
+  addFavorite(id: number) {
+    return this.http.post(`${this.baseUrl}/events/${id}/favorite`, {});
+  }
+
+  removeFavorite(id: number) {
+    return this.http.delete(`${this.baseUrl}/events/${id}/favorite`);
+  }
+
+  organizerProfile(id: number): Observable<OrganizerProfile> {
+    return this.http.get<OrganizerProfile>(`${this.baseUrl}/organizers/${id}`);
+  }
+
+  updateOrganizerProfile(payload: Partial<OrganizerProfile>): Observable<OrganizerProfile> {
+    return this.http.put<OrganizerProfile>(`${this.baseUrl}/organizers/me/profile`, payload);
   }
 }

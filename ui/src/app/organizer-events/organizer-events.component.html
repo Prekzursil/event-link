@@ -15,6 +15,7 @@
       <div class="actions">
         <a class="btn ghost" [routerLink]="['/events', event.id, 'edit']">Editează</a>
         <a class="btn ghost" [routerLink]="['/organizer/events', event.id, 'participants']">Participanți</a>
+        <button class="btn ghost" type="button" (click)="clone(event, $event)">Clonează</button>
         <button class="btn danger" type="button" (click)="delete(event, $event)">Șterge</button>
       </div>
     </div>

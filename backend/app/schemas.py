@@ -85,6 +85,8 @@ class EventBase(BaseModel):
     max_seats: int
     cover_url: Optional[HttpUrl] = None
     tags: List[str] = Field(default_factory=list)
+    status: Optional[str] = Field(default="published", pattern="^(published|draft)$")
+    publish_at: Optional[datetime] = None
 
 
 class EventCreate(EventBase):
@@ -101,6 +103,8 @@ class EventUpdate(BaseModel):
     max_seats: Optional[int] = None
     cover_url: Optional[str] = None
     tags: Optional[List[str]] = None
+    status: Optional[str] = Field(default=None, pattern="^(published|draft)$")
+    publish_at: Optional[datetime] = None
 
 
 class EventResponse(BaseModel):
@@ -118,6 +122,8 @@ class EventResponse(BaseModel):
     tags: List[TagResponse]
     seats_taken: int
     recommendation_reason: Optional[str] = None
+    status: Optional[str] = None
+    publish_at: Optional[datetime] = None
 
     class Config:
         from_attributes = True
@@ -127,6 +133,7 @@ class EventDetailResponse(EventResponse):
     is_registered: bool = False
     is_owner: bool = False
     available_seats: Optional[int] = None
+    is_favorite: bool = False
 
 
 class ParticipantResponse(BaseModel):
@@ -147,6 +154,28 @@ class ParticipantListResponse(BaseModel):
     total: int
     page: int
     page_size: int
+
+
+class OrganizerProfileBase(BaseModel):
+    org_name: Optional[str] = Field(None, max_length=255)
+    org_description: Optional[str] = None
+    org_logo_url: Optional[HttpUrl] = None
+    org_website: Optional[str] = Field(None, max_length=255)
+
+
+class OrganizerProfileResponse(OrganizerProfileBase):
+    user_id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    events: List[EventResponse] = []
+
+
+class OrganizerProfileUpdate(OrganizerProfileBase):
+    pass
+
+
+class FavoriteListResponse(BaseModel):
+    items: List[EventResponse]
 
 
 class PaginatedEvents(BaseModel):

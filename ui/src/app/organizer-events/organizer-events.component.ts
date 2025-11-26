@@ -38,6 +38,14 @@ export class OrganizerEventsComponent implements OnInit {
     });
   }
 
+  clone(event: EventItem, event_: Event): void {
+    event_.stopPropagation();
+    this.eventService.cloneEvent(event.id).subscribe({
+      next: () => this.load(),
+      error: () => (this.error = 'Nu am putut clona evenimentul.'),
+    });
+  }
+
   seatsLabel(event: EventItem): string {
     if (!event.max_seats) return `${event.seats_taken} locuri ocupate`;
     return `${event.seats_taken} / ${event.max_seats}`;
