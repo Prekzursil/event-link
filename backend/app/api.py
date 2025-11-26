@@ -637,9 +637,9 @@ def update_participant_attendance(
 def register_for_event(
     event_id: int,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
-    request: Request | None = None,
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
@@ -685,9 +685,9 @@ def register_for_event(
 def resend_registration_email(
     event_id: int,
     background_tasks: BackgroundTasks,
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
-    request: Request | None = None,
 ):
     _enforce_rate_limit("resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600)
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
@@ -855,7 +855,7 @@ def user_calendar(db: Session = Depends(get_db), current_user: models.User = Dep
 def password_forgot(
     payload: schemas.PasswordResetRequest,
     background_tasks: BackgroundTasks,
-    request: Request | None = None,
+    request: Request,
     db: Session = Depends(get_db),
 ):
     _enforce_rate_limit("password_forgot", request=request, identifier=payload.email.lower(), limit=5, window_seconds=300)
