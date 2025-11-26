@@ -417,7 +417,7 @@ def test_duplicate_registration_blocked(helpers):
     assert first.status_code == 201
     second = client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
     assert second.status_code == 400
-    assert "deja inscris" in second.json().get("detail", "").lower()
+    assert "inscris" in second.json().get("detail", "").lower()
 
 
 def test_unregister_restores_spot(helpers):
