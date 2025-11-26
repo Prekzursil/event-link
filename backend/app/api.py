@@ -640,6 +640,7 @@ def register_for_event(
     request: Request | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
+    request: Request | None = None,
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
@@ -684,10 +685,10 @@ def register_for_event(
 @app.post("/api/events/{event_id}/register/resend", status_code=status.HTTP_200_OK)
 def resend_registration_email(
     event_id: int,
-    request: Request | None = None,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
+    request: Request | None = None,
 ):
     _enforce_rate_limit("resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600)
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
