@@ -1,25 +1,25 @@
 <section class="card auth-card">
-  <h1>Creează cont de student</h1>
-  <p class="muted">Înscrie-te cu emailul universității și o parolă sigură.</p>
+  <h1>{{ 'auth.register.title' | translate }}</h1>
+  <p class="muted">{{ 'auth.register.subtitle' | translate }}</p>
   <form [formGroup]="form" (ngSubmit)="submit()">
     <div class="field">
-      <label>Nume (opțional)</label>
+      <label>{{ 'auth.register.name' | translate }}</label>
       <input formControlName="fullName" type="text" />
     </div>
     <div class="field">
-      <label>Email</label>
+      <label>{{ 'auth.register.email' | translate }}</label>
       <input formControlName="email" type="email" placeholder="tu@student.ro" />
     </div>
     <div class="field">
-      <label>Parolă (min 8 caractere)</label>
+      <label>{{ 'auth.register.password' | translate }}</label>
       <input formControlName="password" type="password" />
     </div>
     <div class="field">
-      <label>Confirmă parola</label>
+      <label>{{ 'auth.register.confirm' | translate }}</label>
       <input formControlName="confirm" type="password" />
     </div>
-    <button class="btn primary" type="submit" [disabled]="loading">Creează cont</button>
+    <button class="btn primary" type="submit" [disabled]="loading">{{ 'auth.register.submit' | translate }}</button>
     <div class="error" *ngIf="error">{{ error }}</div>
-    <p class="muted">Ai deja cont? <a routerLink="/login">Autentifică-te</a>.</p>
+    <p class="muted">{{ 'auth.register.loginCta' | translate }} <a routerLink="/login">{{ 'auth.register.loginLink' | translate }}</a>.</p>
   </form>
 </section>

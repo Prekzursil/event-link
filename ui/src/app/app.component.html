@@ -2,26 +2,27 @@
   <div class="brand-row">
     <div class="brand" routerLink="/" (click)="closeMenu()">EventLink</div>
     <button class="mobile-toggle" type="button" (click)="toggleMenu()" [attr.aria-expanded]="showMobileMenu">
-      {{ showMobileMenu ? 'Închide' : 'Meniu' }}
+      {{ showMobileMenu ? ('nav.close' | translate) : ('nav.menu' | translate) }}
     </button>
   </div>
   <nav class="main-nav" [class.open]="showMobileMenu">
-    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">Evenimente</a>
-    <a *ngIf="auth.isStudent()" routerLink="/my-events" routerLinkActive="active" (click)="closeMenu()">Evenimentele mele</a>
-    <a *ngIf="auth.isStudent()" routerLink="/organizer/upgrade" routerLinkActive="active" (click)="closeMenu()">Devino organizator</a>
-    <a *ngIf="auth.isOrganizer()" routerLink="/create-event" routerLinkActive="active" (click)="closeMenu()">Creează eveniment</a>
-    <a *ngIf="auth.isOrganizer()" routerLink="/organizer/events" routerLinkActive="active" (click)="closeMenu()">Evenimente create</a>
+    <a routerLink="/" routerLinkActive="active" [routerLinkActiveOptions]="{ exact: true }" (click)="closeMenu()">{{ 'nav.events' | translate }}</a>
+    <a *ngIf="auth.isStudent()" routerLink="/my-events" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.myEvents' | translate }}</a>
+    <a *ngIf="auth.isStudent()" routerLink="/organizer/upgrade" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.upgrade' | translate }}</a>
+    <a *ngIf="auth.isOrganizer()" routerLink="/create-event" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.create' | translate }}</a>
+    <a *ngIf="auth.isOrganizer()" routerLink="/organizer/events" routerLinkActive="active" (click)="closeMenu()">{{ 'nav.createdEvents' | translate }}</a>
   </nav>
   <div class="account" [class.open]="showMobileMenu">
+    <button class="ghost" type="button" (click)="toggleLang()">{{ 'lang.toggle' | translate }}</button>
     <ng-container *ngIf="auth.isLoggedIn(); else guest">
       <div class="user-pill">
-        <span class="label">{{ auth.role === 'organizator' ? 'Organizator' : 'Student' }}</span>
+        <span class="label">{{ auth.role === 'organizator' ? ('nav.role.organizer' | translate) : ('nav.role.student' | translate) }}</span>
       </div>
-      <button class="ghost" (click)="logout()">Deconectare</button>
+      <button class="ghost" (click)="logout()">{{ 'nav.logout' | translate }}</button>
     </ng-container>
     <ng-template #guest>
-      <a class="ghost" routerLink="/login" (click)="closeMenu()">Autentificare</a>
-      <a class="primary" routerLink="/register" (click)="closeMenu()">Creează cont</a>
+      <a class="ghost" routerLink="/login" (click)="closeMenu()">{{ 'nav.login' | translate }}</a>
+      <a class="primary" routerLink="/register" (click)="closeMenu()">{{ 'nav.register' | translate }}</a>
     </ng-template>
   </div>
 </header>
@@ -31,5 +32,5 @@
 </main>
 
 <footer class="site-footer">
-  <div>Platformă de evenimente universitare — gândită pentru studenți și organizatori.</div>
+  <div>{{ 'footer.tagline' | translate }}</div>
 </footer>

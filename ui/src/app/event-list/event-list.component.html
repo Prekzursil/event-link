@@ -1,8 +1,8 @@
 <section class="hero card" aria-label="Filtre evenimente">
   <div>
-    <p class="eyebrow">Tot ce contează pe campus</p>
-    <h1>Evenimente viitoare</h1>
-    <p class="muted">Caută, filtrează și descoperă activități potrivite pentru tine.</p>
+    <p class="eyebrow">{{ 'hero.eyebrow' | translate }}</p>
+    <h1>{{ 'hero.title' | translate }}</h1>
+    <p class="muted">{{ 'hero.subtitle' | translate }}</p>
   </div>
   <div class="filters-grid">
     <div class="field">
@@ -17,23 +17,23 @@
       </select>
     </div>
     <div class="field">
-      <label for="startDate">Start date</label>
+      <label for="startDate">{{ 'filters.start' | translate }}</label>
       <input id="startDate" type="date" [(ngModel)]="startDate" (change)="onFiltersChange()" />
     </div>
     <div class="field">
-      <label for="endDate">End date</label>
+      <label for="endDate">{{ 'filters.end' | translate }}</label>
       <input id="endDate" type="date" [(ngModel)]="endDate" (change)="onFiltersChange()" />
     </div>
     <div class="field actions">
-      <button class="btn ghost" type="button" (click)="resetFilters()">Resetează filtrele</button>
+      <button class="btn ghost" type="button" (click)="resetFilters()">{{ 'filters.reset' | translate }}</button>
     </div>
   </div>
 </section>
 
 <section *ngIf="auth.isStudent()" class="card" [class.tight]="!recommended.length" aria-label="Evenimente recomandate">
   <div class="section-title">
-    <h3>Recomandate pentru tine</h3>
-    <p class="muted" *ngIf="!recommended.length">Îți vom propune evenimente după primele înscrieri.</p>
+    <h3>{{ 'recommended.title' | translate }}</h3>
+    <p class="muted" *ngIf="!recommended.length">{{ 'recommended.empty' | translate }}</p>
   </div>
   <div class="scroll-cards" *ngIf="recommended.length">
     <div class="event-card" *ngFor="let event of recommended" (click)="openEvent(event)" tabindex="0" [attr.aria-label]="'Recomandare: '+ event.title">
@@ -50,11 +50,11 @@
 
 <section class="card" aria-label="Lista evenimentelor">
   <div class="section-title">
-    <h3>Toate evenimentele</h3>
-    <span class="muted" *ngIf="total" aria-live="polite">{{ total }} rezultate</span>
+    <h3>{{ 'list.title' | translate }}</h3>
+    <span class="muted" *ngIf="total" aria-live="polite">{{ 'list.results' | translate: { count: total } }}</span>
   </div>
   <div class="page-size" *ngIf="total">
-    <label for="pageSize">Rezultate pe pagină</label>
+    <label for="pageSize">{{ 'list.pageSize' | translate }}</label>
     <select id="pageSize" [(ngModel)]="pageSize" (change)="changePageSize(pageSize)">
       <option [ngValue]="5">5</option>
       <option [ngValue]="10">10</option>
@@ -62,9 +62,9 @@
       <option [ngValue]="50">50</option>
     </select>
   </div>
-  <div *ngIf="loading" class="empty-state" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span> Se încarcă...</div>
+  <div *ngIf="loading" class="empty-state" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span> {{ 'list.loading' | translate }}</div>
   <div *ngIf="!loading && errorMessage" class="empty-state" aria-live="assertive">{{ errorMessage }}</div>
-  <div *ngIf="!loading && !events.length" class="empty-state" aria-live="polite">Momentan nu sunt evenimente viitoare.</div>
+  <div *ngIf="!loading && !events.length" class="empty-state" aria-live="polite">{{ 'list.empty' | translate }}</div>
   <div class="list-layout" *ngIf="!loading && events.length">
     <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)" tabindex="0" [attr.aria-label]="event.title">
       <img
@@ -85,8 +85,8 @@
     </div>
   </div>
   <div class="pagination" *ngIf="total > pageSize">
-    <button class="btn ghost" type="button" (click)="changePage(-1)" [disabled]="page === 1">&larr; Anterioare</button>
-    <span class="muted">Pagina {{ page }} / {{ totalPages }}</span>
-    <button class="btn ghost" type="button" (click)="changePage(1)" [disabled]="page >= totalPages">Următoare &rarr;</button>
+    <button class="btn ghost" type="button" (click)="changePage(-1)" [disabled]="page === 1">&larr; {{ 'list.prev' | translate }}</button>
+    <span class="muted">{{ 'list.page' | translate: { page: page, total: totalPages } }}</span>
+    <button class="btn ghost" type="button" (click)="changePage(1)" [disabled]="page >= totalPages">{{ 'list.next' | translate }} &rarr;</button>
   </div>
 </section>
