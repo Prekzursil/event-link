@@ -4,11 +4,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { EventDetail } from '../models';
 import { EventService } from '../services/event.service';
 import { AuthService } from '../services/auth.service';
+import { TranslatePipe } from '../pipes/translate.pipe';
+import { TranslationService } from '../services/translation.service';
 
 @Component({
   selector: 'app-event-details',
   standalone: true,
-  imports: [CommonModule, RouterLink, DatePipe],
+  imports: [CommonModule, RouterLink, DatePipe, TranslatePipe],
   templateUrl: './event-details.component.html',
   styleUrl: './event-details.component.scss',
 })
@@ -24,7 +26,8 @@ export class EventDetailsComponent implements OnInit {
     private route: ActivatedRoute,
     private router: Router,
     private eventService: EventService,
-    public auth: AuthService
+    public auth: AuthService,
+    private i18n: TranslationService,
   ) {}
 
   icsLink(eventId: number): string {
@@ -46,7 +49,7 @@ export class EventDetailsComponent implements OnInit {
         this.loading = false;
       },
       error: () => {
-        this.error = 'Evenimentul nu există sau nu mai este disponibil.';
+        this.error = this.i18n.translate('errors.generic');
         this.loading = false;
       },
     });
@@ -66,15 +69,15 @@ export class EventDetailsComponent implements OnInit {
         if (this.event!.available_seats !== undefined && this.event!.available_seats !== null) {
           this.event!.available_seats -= 1;
         }
-        this.successMessage = 'Înscriere confirmată!';
+        this.successMessage = this.i18n.translate('details.register');
         this.error = '';
         this.actionLoading = false;
       },
       error: (err) => {
         if (err.status === 409) {
-          this.error = 'Ne pare rău, toate locurile au fost ocupate.';
+          this.error = this.i18n.translate('details.full');
         } else {
-          this.error = err.error?.detail || 'Nu am putut procesa înscrierea.';
+          this.error = err.error?.detail || this.i18n.translate('errors.generic');
         }
         this.actionLoading = false;
       },
@@ -93,12 +96,12 @@ export class EventDetailsComponent implements OnInit {
         if (this.event!.available_seats !== undefined && this.event!.available_seats !== null) {
           this.event!.available_seats += 1;
         }
-        this.successMessage = 'Te-ai dezabonat de la eveniment.';
+        this.successMessage = this.i18n.translate('details.unregister');
         this.error = '';
         this.actionLoading = false;
       },
       error: (err) => {
-        this.error = err.error?.detail || 'Nu am putut anula înscrierea.';
+        this.error = err.error?.detail || this.i18n.translate('errors.generic');
         this.actionLoading = false;
       },
     });
@@ -110,7 +113,7 @@ export class EventDetailsComponent implements OnInit {
     if (!confirmed) return;
     this.eventService.deleteEvent(this.event.id).subscribe({
       next: () => this.router.navigate(['/organizer/events']),
-      error: () => (this.error = 'Nu am putut șterge evenimentul.'),
+      error: () => (this.error = this.i18n.translate('errors.generic')),
     });
   }
 

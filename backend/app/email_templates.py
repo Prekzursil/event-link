@@ -53,3 +53,32 @@ def render_registration_email(event: Event, user: User, lang: str = "ro") -> tup
             "<p>Ne vedem acolo!</p>"
         )
     return subject, body, html
+
+
+def render_password_reset_email(user: User, reset_link: str, lang: str = "ro") -> tuple[str, str, str]:
+    lang = (lang or "ro").split(",")[0][:2].lower()
+    if lang == "en":
+        subject = "Reset your EventLink password"
+        body = (
+            f"You requested a password reset for {user.email}.\n\n"
+            f"Use this link (valid for 1 hour): {reset_link}\n\n"
+            "If you did not request this, please ignore this email."
+        )
+        html = (
+            f"<p>You requested a password reset for <strong>{user.email}</strong>.</p>"
+            f"<p><a href=\"{reset_link}\">Reset password</a> (valid for 1 hour)</p>"
+            "<p>If you did not request this, you can ignore this email.</p>"
+        )
+    else:
+        subject = "Resetare parolă EventLink"
+        body = (
+            f"Ai cerut resetarea parolei pentru contul {user.email}.\n\n"
+            f"Folosește link-ul (valabil 1 oră): {reset_link}\n\n"
+            "Dacă nu ai cerut tu această resetare, poți ignora acest email."
+        )
+        html = (
+            f"<p>Ai cerut resetarea parolei pentru <strong>{user.email}</strong>.</p>"
+            f"<p><a href=\"{reset_link}\">Resetează parola</a> (valabil 1 oră)</p>"
+            "<p>Dacă nu ai cerut tu această resetare, poți ignora acest email.</p>"
+        )
+    return subject, body, html

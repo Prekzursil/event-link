@@ -18,7 +18,7 @@ from . import auth, models, schemas
 from .config import settings
 from .database import engine, get_db, SessionLocal
 from .email_service import send_registration_email, send_registration_email as send_email
-from .email_templates import render_registration_email
+from .email_templates import render_registration_email, render_password_reset_email
 from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
 
 configure_logging()
@@ -637,6 +637,7 @@ def update_participant_attendance(
 def register_for_event(
     event_id: int,
     background_tasks: BackgroundTasks,
+    request: Request | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
@@ -667,7 +668,7 @@ def register_for_event(
     db.commit()
     log_event("event_registered", event_id=event.id, user_id=current_user.id)
 
-    lang = "ro"
+    lang = (request.headers.get("accept-language") if request else None) or "ro"
     subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
     send_registration_email(
         background_tasks,
@@ -870,13 +871,9 @@ def password_forgot(
         db.commit()
         frontend_hint = settings.allowed_origins[0] if settings.allowed_origins else ""
         link = f"{frontend_hint}/reset-password?token={token}" if frontend_hint else token
-        subject = "Resetare parola EventLink"
-        body = (
-            f"Ai cerut resetarea parolei pentru contul {user.email}.\n\n"
-            f"Foloseste link-ul (valabil 1 ora): {link}\n\n"
-            "Daca nu ai cerut tu aceasta resetare, poti ignora acest email."
-        )
-        send_email(background_tasks, user.email, subject, body, context={"user_id": user.id})
+        lang = (request.headers.get("accept-language") if request else None) or "ro"
+        subject, body, body_html = render_password_reset_email(user, link, lang=lang)
+        send_email(background_tasks, user.email, subject, body, body_html, context={"user_id": user.id, "lang": lang})
     return {"status": "ok"}
 
 
