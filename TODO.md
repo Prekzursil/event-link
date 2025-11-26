@@ -53,8 +53,8 @@
 - [x] ICS calendar export for events and calendar subscription per user.
 - [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
 - [x] Full mobile/phone compatibility across core pages (nav, event lists/details/forms).
-- [ ] Backend pytest migration + coverage thresholds for core flows (auth, events, register, recommendations, reset).
-- [ ] Frontend Angular unit test fixes (ActivatedRoute providers) + coverage thresholds; stabilize CI headless runs.
+- [x] Backend pytest migration + coverage thresholds for core flows (auth, events, register, recommendations, reset).
+- [x] Frontend Angular unit test fixes (ActivatedRoute providers) + coverage thresholds; stabilize CI headless runs.
 - [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [ ] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [ ] Pagination and sorting for all list endpoints (registrations, users).

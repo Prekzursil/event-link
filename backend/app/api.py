@@ -4,6 +4,7 @@ import time
 import re
 import logging
 import os
+import secrets
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
@@ -772,7 +773,8 @@ def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: 
         .filter(models.PasswordResetToken.token == payload.token, models.PasswordResetToken.used == False)
         .first()
     )
-    if not token_row or token_row.expires_at < datetime.now(timezone.utc):
+    expires_at = _normalize_dt(token_row.expires_at) if token_row else None
+    if not token_row or (expires_at and expires_at < datetime.now(timezone.utc)):
         raise HTTPException(status_code=400, detail="Token invalid sau expirat.")
 
     user = db.query(models.User).filter(models.User.id == token_row.user_id).first()
