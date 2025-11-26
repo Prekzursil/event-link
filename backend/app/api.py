@@ -193,11 +193,17 @@ def register(user: schemas.StudentRegister, request: Request, db: Session = Depe
     log_event("user_registered", user_id=new_user.id, email=new_user.email)
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = auth.create_access_token(
-        data={"sub": str(new_user.id), "email": new_user.email, "role": new_user.role.value},
-        expires_delta=access_token_expires,
-    )
-    return {"access_token": access_token, "token_type": "bearer", "role": new_user.role, "user_id": new_user.id}
+    refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
+    token_payload = {"sub": str(new_user.id), "email": new_user.email, "role": new_user.role.value}
+    access_token = auth.create_access_token(data=token_payload, expires_delta=access_token_expires)
+    refresh_token = auth.create_refresh_token(data=token_payload, expires_delta=refresh_expires)
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "role": new_user.role,
+        "user_id": new_user.id,
+    }
 
 
 @app.post("/login", response_model=schemas.Token)
@@ -213,11 +219,52 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: Session = D
         )
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
-    access_token = auth.create_access_token(
-        data={"sub": str(user.id), "email": user.email, "role": user.role.value}, expires_delta=access_token_expires
-    )
+    refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
+    token_payload = {"sub": str(user.id), "email": user.email, "role": user.role.value}
+    access_token = auth.create_access_token(data=token_payload, expires_delta=access_token_expires)
+    refresh_token = auth.create_refresh_token(data=token_payload, expires_delta=refresh_expires)
     log_event("login_success", user_id=user.id, email=user.email, role=user.role.value)
-    return {"access_token": access_token, "token_type": "bearer", "role": user.role, "user_id": user.id}
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "role": user.role,
+        "user_id": user.id,
+    }
+
+
+@app.post("/refresh", response_model=schemas.Token)
+def refresh_token(payload: schemas.RefreshRequest):
+    try:
+        decoded = auth.jwt.decode(payload.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
+    except auth.ExpiredSignatureError:
+        raise HTTPException(status_code=401, detail="Refresh token expirat.")
+    except auth.JWTError:
+        raise HTTPException(status_code=401, detail="Refresh token invalid.")
+
+    if decoded.get("type") != "refresh":
+        raise HTTPException(status_code=401, detail="Refresh token invalid.")
+
+    user_id = decoded.get("sub")
+    email = decoded.get("email")
+    role = decoded.get("role")
+    if not user_id or not role:
+        raise HTTPException(status_code=401, detail="Refresh token invalid.")
+
+    token_payload = {"sub": str(user_id), "email": email, "role": role}
+    access_token = auth.create_access_token(
+        data=token_payload, expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
+    )
+    refresh_token = auth.create_refresh_token(
+        data=token_payload, expires_delta=timedelta(minutes=settings.refresh_token_expire_minutes)
+    )
+    return {
+        "access_token": access_token,
+        "refresh_token": refresh_token,
+        "token_type": "bearer",
+        "role": role,
+        "user_id": int(user_id),
+    }
 
 
 @app.get("/me", response_model=schemas.UserResponse)

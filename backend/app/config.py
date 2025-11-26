@@ -17,6 +17,7 @@ class Settings(BaseSettings):
     secret_key: str
     algorithm: str = "HS256"
     access_token_expire_minutes: int = 30
+    refresh_token_expire_minutes: int = 60 * 24 * 30
     allowed_origins: list[str] = DEFAULT_ALLOWED_ORIGINS
     auto_create_tables: bool = False
     auto_run_migrations: bool = False

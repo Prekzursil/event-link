@@ -43,7 +43,7 @@
 - [x] Add frontend loading/error spinners for event details/register actions.
 - [x] Improve accessibility: form labels/aria, focus states, keyboard nav on filters and pagination.
 - [x] Password reset flow (request + token + reset form) with backend email template.
-- [ ] Refresh tokens with short-lived access tokens to reduce JWT leak impact.
+- [x] Refresh tokens with short-lived access tokens to reduce JWT leak impact.
 - [x] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).
 - [ ] Email templating (HTML + localization) and resend confirmation option for registrations.
 - [ ] Background cleanup job for expired invites/tokens and past event registrations.
