@@ -420,6 +420,34 @@ def test_duplicate_registration_blocked(helpers):
     assert "înscris" in second.json().get("detail", "").lower()
 
 
+def test_resend_registration_email_requires_registration(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    event = client.post(
+        "/api/events",
+        json={
+            "title": "Resend",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=1),
+            "location": "Loc",
+            "max_seats": 3,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    student_token = helpers["register_student"]("stud@test.ro")
+    not_registered = client.post(
+        f"/api/events/{event['id']}/register/resend", headers=helpers["auth_header"](student_token)
+    )
+    assert not_registered.status_code == 400
+
+    client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
+    ok = client.post(f"/api/events/{event['id']}/register/resend", headers=helpers["auth_header"](student_token))
+    assert ok.status_code == 200
+
+
 def test_unregister_restores_spot(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()

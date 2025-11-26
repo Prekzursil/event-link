@@ -1,9 +1,9 @@
 import logging
 import smtplib
-from email.message import EmailMessage
-from typing import Any, Dict
-
 import time
+from email.message import EmailMessage
+from typing import Any, Dict, Optional
+
 from fastapi import BackgroundTasks
 
 from .config import settings
@@ -13,7 +13,13 @@ emails_sent_ok = 0
 emails_send_failed = 0
 
 
-def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] | None = None) -> None:
+def _send_email(
+    to_email: str,
+    subject: str,
+    body_text: str,
+    body_html: Optional[str] = None,
+    context: Dict[str, Any] | None = None,
+) -> None:
     context = context or {}
     if not settings.email_enabled:
         log_warning("email_disabled", to=to_email, subject=subject, **context)
@@ -26,10 +32,11 @@ def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] 
     message["From"] = settings.smtp_sender
     message["To"] = to_email
     message["Subject"] = subject
-    message.set_content(body)
+    message.set_content(body_text)
+    if body_html:
+        message.add_alternative(body_html, subtype="html")
 
     global emails_sent_ok, emails_send_failed
-    last_error: Exception | None = None
     for attempt in range(1, 4):
         try:
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port or 25, timeout=10) as server:
@@ -42,7 +49,6 @@ def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] 
             log_event("email_sent", to=to_email, subject=subject, attempt=attempt, **context)
             return
         except Exception as exc:  # noqa: BLE001
-            last_error = exc
             log_warning(
                 "email_send_failed_attempt",
                 to=to_email,
@@ -58,7 +64,13 @@ def _send_email(to_email: str, subject: str, body: str, context: Dict[str, Any] 
     emails_send_failed += 1
     logging.exception(
         "Failed to send email after retries",
-        extra={"to": to_email, "subject": subject, "smtp_host": settings.smtp_host, "smtp_port": settings.smtp_port, **context},
+        extra={
+            "to": to_email,
+            "subject": subject,
+            "smtp_host": settings.smtp_host,
+            "smtp_port": settings.smtp_port,
+            **context,
+        },
     )
 
 
@@ -66,8 +78,9 @@ def send_registration_email(
     background_tasks: BackgroundTasks,
     to_email: str,
     subject: str,
-    body: str,
+    body_text: str,
+    body_html: Optional[str] = None,
     context: Dict[str, Any] | None = None,
 ) -> None:
     # Run email sending outside the request/response flow
-    background_tasks.add_task(_send_email, to_email, subject, body, context or {})
+    background_tasks.add_task(_send_email, to_email, subject, body_text, body_html, context or {})

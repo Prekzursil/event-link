@@ -45,8 +45,8 @@
 - [x] Password reset flow (request + token + reset form) with backend email template.
 - [x] Refresh tokens with short-lived access tokens to reduce JWT leak impact.
 - [x] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).
-- [ ] Email templating (HTML + localization) and resend confirmation option for registrations.
-- [ ] Background cleanup job for expired invites/tokens and past event registrations.
+- [x] Email templating (HTML + localization) and resend confirmation option for registrations.
+- [x] Background cleanup job for expired invites/tokens and past event registrations.
 - [ ] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
 - [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
 - [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).

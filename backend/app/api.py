@@ -3,6 +3,7 @@ from typing import List, Optional
 import time
 import re
 import logging
+import asyncio
 import os
 import secrets
 from pathlib import Path
@@ -15,8 +16,9 @@ from sqlalchemy.orm import Session
 
 from . import auth, models, schemas
 from .config import settings
-from .database import engine, get_db
+from .database import engine, get_db, SessionLocal
 from .email_service import send_registration_email, send_registration_email as send_email
+from .email_templates import render_registration_email
 from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
 
 configure_logging()
@@ -77,6 +79,12 @@ def _on_startup():
         _run_migrations()
     elif settings.auto_create_tables:
         models.Base.metadata.create_all(bind=engine)
+    try:
+        asyncio.get_event_loop().create_task(_cleanup_loop())
+    except RuntimeError:
+        # Fallback for sync contexts
+        import threading
+        threading.Thread(target=lambda: asyncio.run(_cleanup_loop()), daemon=True).start()
 
 
 def _ensure_future_date(start_time: datetime) -> None:
@@ -99,6 +107,38 @@ def _format_ics_dt(value: Optional[datetime]) -> str:
     if not value:
         return ""
     return value.strftime("%Y%m%dT%H%M%SZ")
+
+
+def _run_cleanup_once(retention_days: int = 90) -> None:
+    """Cleanup expired password reset tokens and very old registrations."""
+    now = datetime.now(timezone.utc)
+    cutoff = now - timedelta(days=retention_days)
+    db = SessionLocal()
+    try:
+        expired_tokens = (
+            db.query(models.PasswordResetToken)
+            .filter((models.PasswordResetToken.used == True) | (models.PasswordResetToken.expires_at < now))
+            .delete(synchronize_session=False)
+        )
+        old_regs = (
+            db.query(models.Registration)
+            .join(models.Event, models.Event.id == models.Registration.event_id)
+            .filter(models.Event.start_time < cutoff)
+            .delete(synchronize_session=False)
+        )
+        db.commit()
+        log_event("cleanup_completed", expired_tokens=expired_tokens, old_registrations=old_regs)
+    except Exception as exc:  # noqa: BLE001
+        db.rollback()
+        log_warning("cleanup_failed", error=str(exc))
+    finally:
+        db.close()
+
+
+async def _cleanup_loop() -> None:
+    while True:
+        _run_cleanup_once()
+        await asyncio.sleep(3600)
 
 
 def _event_to_ics(event: models.Event, uid_suffix: str = "") -> str:
@@ -627,22 +667,50 @@ def register_for_event(
     db.commit()
     log_event("event_registered", event_id=event.id, user_id=current_user.id)
 
-    subject = f"Confirmare înscriere: {event.title}"
-    body = (
-        f"Bună {current_user.full_name or current_user.email},\n\n"
-        f"Te-ai înscris la evenimentul '{event.title}'.\n"
-        f"Data și ora de start: {event.start_time}.\n"
-        f"Locația: {event.location}.\n\n"
-        "Ne vedem acolo!"
-    )
+    lang = (request.headers.get('accept-language') or 'ro')
+    subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
     send_registration_email(
         background_tasks,
         current_user.email,
         subject,
-        body,
-        context={"user_id": current_user.id, "event_id": event.id},
+        body_text,
+        body_html,
+        context={"user_id": current_user.id, "event_id": event.id, "lang": lang},
     )
     return {"status": "registered"}
+
+
+@app.post("/api/events/{event_id}/register/resend", status_code=status.HTTP_200_OK)
+def resend_registration_email(
+    event_id: int,
+    request: Request,
+    background_tasks: BackgroundTasks,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    _enforce_rate_limit(request, "resend_registration", identifier=current_user.email.lower(), limit=3, window_seconds=600)
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    registration = (
+        db.query(models.Registration)
+        .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+        .first()
+    )
+    if not registration:
+        raise HTTPException(status_code=400, detail="Nu ești înscris la acest eveniment.")
+
+    lang = (request.headers.get("accept-language") or "ro")
+    subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
+    send_registration_email(
+        background_tasks,
+        current_user.email,
+        subject,
+        body_text,
+        body_html,
+        context={"user_id": current_user.id, "event_id": event.id, "lang": lang, "resend": True},
+    )
+    return {"status": "resent"}
 
 
 @app.delete("/api/events/{event_id}/register", status_code=status.HTTP_204_NO_CONTENT)
