@@ -1,4 +1,5 @@
 import { ComponentFixture, TestBed } from '@angular/core/testing';
+import { NO_ERRORS_SCHEMA } from '@angular/core';
 import { EventListComponent } from './event-list.component';
 import { EventService } from '../services/event.service';
 import { AuthService } from '../services/auth.service';
@@ -41,6 +42,7 @@ describe('EventListComponent', () => {
         { provide: AuthService, useValue: { isStudent: () => false, currentUser$: of(null) } },
         { provide: ActivatedRoute, useValue: { queryParams: of({}) } },
       ],
+      schemas: [NO_ERRORS_SCHEMA],
     }).compileComponents();
 
     fixture = TestBed.createComponent(EventListComponent);
