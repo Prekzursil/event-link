@@ -356,7 +356,7 @@ _RATE_LIMIT_STORE: dict[str, list[float]] = {}
 
 
 def _enforce_rate_limit(
-    request: Request,
+    request: Request | None = None,
     action: str,
     limit: int = 20,
     window_seconds: int = 60,
@@ -637,7 +637,7 @@ def update_participant_attendance(
 def register_for_event(
     event_id: int,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request | None = None,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
@@ -668,7 +668,7 @@ def register_for_event(
     db.commit()
     log_event("event_registered", event_id=event.id, user_id=current_user.id)
 
-    lang = (request.headers.get('accept-language') or 'ro')
+    lang = ((request.headers.get("accept-language") if request else None) or "ro")
     subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
     send_registration_email(
         background_tasks,
@@ -684,7 +684,7 @@ def register_for_event(
 @app.post("/api/events/{event_id}/register/resend", status_code=status.HTTP_200_OK)
 def resend_registration_email(
     event_id: int,
-    request: Request,
+    request: Request | None = None,
     background_tasks: BackgroundTasks,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
@@ -855,7 +855,7 @@ def user_calendar(db: Session = Depends(get_db), current_user: models.User = Dep
 def password_forgot(
     payload: schemas.PasswordResetRequest,
     background_tasks: BackgroundTasks,
-    request: Request,
+    request: Request | None = None,
     db: Session = Depends(get_db),
 ):
     _enforce_rate_limit(request, "password_forgot", identifier=payload.email.lower(), limit=5, window_seconds=300)
