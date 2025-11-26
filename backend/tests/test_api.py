@@ -30,25 +30,22 @@ def client():
             db.close()
 
     app.dependency_overrides[get_db] = _override_get_db
-    return TestClient(app)
+    client = TestClient(app)
+    yield client
 
 
 @pytest.fixture()
-def helpers():
+def helpers(client):
     def register_student(email: str) -> str:
-        response = app.dependency_overrides[get_db]()  # type: ignore
-        response  # no-op to ensure override set
-        resp = test_client.post(
+        resp = client.post(
             "/register",
             json={"email": email, "password": "password123", "confirm_password": "password123"},
         )
         assert resp.status_code == 200
         return resp.json()["access_token"]
 
-    test_client = TestClient(app)
-
     def login(email: str, password: str) -> str:
-        resp = test_client.post("/login", json={"email": email, "password": password})
+        resp = client.post("/login", json={"email": email, "password": password})
         assert resp.status_code == 200
         return resp.json()["access_token"]
 
@@ -70,7 +67,7 @@ def helpers():
         return {"Authorization": f"Bearer {token}"}
 
     return {
-        "client": test_client,
+        "client": client,
         "register_student": register_student,
         "login": login,
         "make_organizer": make_organizer,
