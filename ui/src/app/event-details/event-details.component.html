@@ -16,35 +16,35 @@
       </div>
     </div>
     <div class="actions">
-      <button *ngIf="!auth.isLoggedIn()" class="btn primary" (click)="register()" [disabled]="actionLoading">Autentifică-te pentru a te înscrie</button>
-      <button *ngIf="canRegister()" class="btn primary" (click)="register()" [disabled]="actionLoading">{{ actionLoading ? 'Se procesează...' : 'Înscrie-te' }}</button>
-      <button *ngIf="auth.isStudent() && event.is_registered" class="btn ghost" type="button" (click)="unregister()" [disabled]="actionLoading">{{ actionLoading ? 'Se procesează...' : 'Anulează înscrierea' }}</button>
+      <button *ngIf="!auth.isLoggedIn()" class="btn primary" (click)="register()" [disabled]="actionLoading">{{ 'details.loginToRegister' | translate }}</button>
+      <button *ngIf="canRegister()" class="btn primary" (click)="register()" [disabled]="actionLoading">{{ actionLoading ? ('details.processing' | translate) : ('details.register' | translate) }}</button>
+      <button *ngIf="auth.isStudent() && event.is_registered" class="btn ghost" type="button" (click)="unregister()" [disabled]="actionLoading">{{ actionLoading ? ('details.processing' | translate) : ('details.unregister' | translate) }}</button>
       <button
         *ngIf="!canRegister() && !event.is_registered && (event.available_seats !== null && event.available_seats !== undefined && event.available_seats <= 0)"
         class="btn ghost"
         disabled
       >
-        Locuri epuizate
+        {{ 'details.full' | translate }}
       </button>
       <button *ngIf="auth.isLoggedIn() && !auth.isStudent() && !event.is_owner" class="btn ghost" disabled>
-        Numai studenții se pot înscrie
+        {{ 'details.studentsOnly' | translate }}
       </button>
       <div class="owner-actions" *ngIf="auth.isOrganizer() && event.is_owner">
-        <a class="btn ghost" [routerLink]="['/events', event.id, 'edit']">Editează</a>
-        <a class="btn ghost" [routerLink]="['/organizer/events', event.id, 'participants']">Participanți</a>
-        <button class="btn danger" (click)="deleteEvent()">Șterge</button>
-        <a class="btn ghost" [href]="icsLink(event.id)">ICS</a>
+        <a class="btn ghost" [routerLink]="['/events', event.id, 'edit']">{{ 'details.edit' | translate }}</a>
+        <a class="btn ghost" [routerLink]="['/organizer/events', event.id, 'participants']">{{ 'details.participants' | translate }}</a>
+        <button class="btn danger" (click)="deleteEvent()">{{ 'details.delete' | translate }}</button>
+        <a class="btn ghost" [href]="icsLink(event.id)">{{ 'details.ics' | translate }}</a>
       </div>
     </div>
   </div>
 
   <div class="stats">
     <div class="stat-box">
-      <div class="label">Locuri ocupate</div>
+      <div class="label">{{ 'details.seatsTaken' | translate }}</div>
       <div class="value">{{ event.seats_taken }} / {{ event.max_seats }}</div>
     </div>
     <div class="stat-box" *ngIf="event.available_seats !== null && event.available_seats !== undefined">
-      <div class="label">Locuri rămase</div>
+      <div class="label">{{ 'details.seatsLeft' | translate }}</div>
       <div class="value">{{ event.available_seats }}</div>
     </div>
   </div>
@@ -57,7 +57,7 @@
 </section>
 
 <div *ngIf="loading" class="empty-state" aria-live="polite">
-  <span class="spinner" aria-hidden="true"></span> Se încarcă detaliile...
+  <span class="spinner" aria-hidden="true"></span> {{ 'details.loading' | translate }}
 </div>
 <div *ngIf="successMessage" class="success" aria-live="polite">{{ successMessage }}</div>
 <div *ngIf="error && !loading" class="error" aria-live="assertive">{{ error }}</div>

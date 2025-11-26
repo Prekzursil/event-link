@@ -5,11 +5,13 @@ import { ActivatedRoute, Router, RouterLink } from '@angular/router';
 import { AuthService } from '../services/auth.service';
 import { EventService } from '../services/event.service';
 import { EventItem } from '../models';
+import { TranslatePipe } from '../pipes/translate.pipe';
+import { TranslationService } from '../services/translation.service';
 
 @Component({
   selector: 'app-event-list',
   standalone: true,
-  imports: [CommonModule, FormsModule, RouterLink, DatePipe],
+  imports: [CommonModule, FormsModule, RouterLink, DatePipe, TranslatePipe],
   templateUrl: './event-list.component.html',
   styleUrl: './event-list.component.scss',
 })
@@ -32,7 +34,8 @@ export class EventListComponent implements OnInit {
     private eventService: EventService,
     public auth: AuthService,
     private router: Router,
-    private route: ActivatedRoute
+    private route: ActivatedRoute,
+    private i18n: TranslationService,
   ) {}
 
   ngOnInit(): void {
@@ -76,7 +79,7 @@ export class EventListComponent implements OnInit {
           this.loading = false;
         },
         error: () => {
-          this.errorMessage = 'Nu am putut încărca evenimentele.';
+          this.errorMessage = this.i18n.translate('errors.generic');
           this.loading = false;
         },
       });
@@ -127,8 +130,8 @@ export class EventListComponent implements OnInit {
   }
 
   seatsLabel(event: EventItem): string {
-    if (!event.max_seats) return `${event.seats_taken} locuri ocupate`;
-    return `${event.seats_taken} / ${event.max_seats} locuri`;
+    if (!event.max_seats) return `${event.seats_taken} ${this.i18n.translate('details.seatsTaken').toLowerCase()}`;
+    return `${event.seats_taken} / ${event.max_seats}`;
   }
 
   onCoverError(eventItem: EventItem): void {

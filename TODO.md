@@ -1,6 +1,7 @@
 # TODO (Event Link)
 
 ## High
+- [x] Localization (RO/EN) for UI labels and outbound emails with Accept-Language support.
 - [x] [EL-3] Student signup: allow students to create an account with email + password so they can register for events.
 - [x] [EL-4] User login: allow both students and organizers to log into their account securely to use the platform.
 - [x] [EL-6] Organizer create event form: provide a form for organizers to create and publish new events.
@@ -47,7 +48,7 @@
 - [x] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).
 - [x] Email templating (HTML + localization) and resend confirmation option for registrations.
 - [x] Background cleanup job for expired invites/tokens and past event registrations.
-- [ ] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
+- [x] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
 - [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
 - [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
 - [x] ICS calendar export for events and calendar subscription per user.
