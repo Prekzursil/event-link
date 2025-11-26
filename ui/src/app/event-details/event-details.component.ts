@@ -6,6 +6,7 @@ import { EventService } from '../services/event.service';
 import { AuthService } from '../services/auth.service';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { TranslationService } from '../services/translation.service';
+import { NotificationService } from '../services/notification.service';
 
 @Component({
   selector: 'app-event-details',
@@ -28,6 +29,7 @@ export class EventDetailsComponent implements OnInit {
     private eventService: EventService,
     public auth: AuthService,
     private i18n: TranslationService,
+    private notifications: NotificationService,
   ) {}
 
   icsLink(eventId: number): string {
@@ -70,6 +72,7 @@ export class EventDetailsComponent implements OnInit {
           this.event!.available_seats -= 1;
         }
         this.successMessage = this.i18n.translate('details.register');
+        this.notifications.success(this.i18n.translate('toasts.registered'));
         this.error = '';
         this.actionLoading = false;
       },
@@ -79,6 +82,7 @@ export class EventDetailsComponent implements OnInit {
         } else {
           this.error = err.error?.detail || this.i18n.translate('errors.generic');
         }
+        this.notifications.error(this.error);
         this.actionLoading = false;
       },
     });
@@ -97,11 +101,13 @@ export class EventDetailsComponent implements OnInit {
           this.event!.available_seats += 1;
         }
         this.successMessage = this.i18n.translate('details.unregister');
+        this.notifications.success(this.i18n.translate('toasts.unregistered'));
         this.error = '';
         this.actionLoading = false;
       },
       error: (err) => {
         this.error = err.error?.detail || this.i18n.translate('errors.generic');
+        this.notifications.error(this.error);
         this.actionLoading = false;
       },
     });

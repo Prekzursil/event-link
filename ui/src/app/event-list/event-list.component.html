@@ -6,15 +6,40 @@
   </div>
   <div class="filters-grid">
     <div class="field">
-      <label for="searchInput">Caută după titlu</label>
-      <input id="searchInput" type="text" placeholder="ex: workshop" [(ngModel)]="searchText" (input)="onSearchChange()" [attr.aria-label]="'Caută evenimente'" />
+      <label for="searchInput">{{ 'filters.search' | translate }}</label>
+      <input id="searchInput" type="text" [placeholder]="'filters.search.placeholder' | translate" [(ngModel)]="searchText" (input)="onSearchChange()" [attr.aria-label]="'filters.search' | translate" />
     </div>
     <div class="field">
-      <label for="categorySelect">Categorie</label>
-      <select id="categorySelect" [(ngModel)]="categoryFilter" (change)="onFiltersChange()" [attr.aria-label]="'Filtru categorie'">
-        <option value="">Toate</option>
+      <label for="categorySelect">{{ 'filters.category' | translate }}</label>
+      <select id="categorySelect" [(ngModel)]="categoryFilter" (change)="onFiltersChange()" [attr.aria-label]="'filters.category' | translate">
+        <option value="">{{ 'filters.category.all' | translate }}</option>
         <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
       </select>
+    </div>
+    <div class="field">
+      <label for="tagInput">{{ 'filters.tags' | translate }}</label>
+      <input
+        id="tagInput"
+        type="text"
+        list="tagOptions"
+        [(ngModel)]="tagInput"
+        (keyup.enter)="addTag()"
+        placeholder="ex: python"
+        [attr.aria-label]="'filters.tags' | translate"
+      />
+      <datalist id="tagOptions">
+        <option *ngFor="let tag of availableTags" [value]="tag"></option>
+      </datalist>
+      <div class="chips inline">
+        <span class="tag-chip" *ngFor="let tag of tagsFilter">
+          {{ tag }}
+          <button type="button" (click)="removeTag(tag)" aria-label="Remove tag">×</button>
+        </span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="locationInput">{{ 'filters.location' | translate }}</label>
+      <input id="locationInput" type="text" [(ngModel)]="locationFilter" (change)="onFiltersChange()" placeholder="Online / campus" />
     </div>
     <div class="field">
       <label for="startDate">{{ 'filters.start' | translate }}</label>
@@ -40,6 +65,7 @@
       <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
       <h4>{{ event.title }}</h4>
       <p class="muted">{{ event.location }}</p>
+      <p class="muted" *ngIf="event.recommendation_reason">{{ event.recommendation_reason }}</p>
       <div class="chips">
         <span class="badge">{{ event.category }}</span>
         <span class="tag-chip" *ngFor="let tag of event.tags">{{ tag.name }}</span>

@@ -1,0 +1,6 @@
+<div class="toast-stack" aria-live="polite">
+  <div class="toast" *ngFor="let toast of messages" [class.success]="toast.type === 'success'" [class.error]="toast.type === 'error'">
+    <span>{{ toast.text }}</span>
+    <button type="button" (click)="dismiss(toast.id)" aria-label="Close">×</button>
+  </div>
+</div>

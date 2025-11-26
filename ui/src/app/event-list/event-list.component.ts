@@ -7,6 +7,7 @@ import { EventService } from '../services/event.service';
 import { EventItem } from '../models';
 import { TranslatePipe } from '../pipes/translate.pipe';
 import { TranslationService } from '../services/translation.service';
+import { NotificationService } from '../services/notification.service';
 
 @Component({
   selector: 'app-event-list',
@@ -23,6 +24,10 @@ export class EventListComponent implements OnInit {
   categoryFilter = '';
   startDate: string | null = null;
   endDate: string | null = null;
+  locationFilter = '';
+  tagsFilter: string[] = [];
+  tagInput = '';
+  availableTags: string[] = [];
   page = 1;
   pageSize = 10;
   total = 0;
@@ -36,6 +41,7 @@ export class EventListComponent implements OnInit {
     private router: Router,
     private route: ActivatedRoute,
     private i18n: TranslationService,
+    private notifications: NotificationService,
   ) {}
 
   ngOnInit(): void {
@@ -44,6 +50,9 @@ export class EventListComponent implements OnInit {
       this.categoryFilter = params['category'] || '';
       this.startDate = params['start_date'] || null;
       this.endDate = params['end_date'] || null;
+      this.locationFilter = params['location'] || '';
+      const tagsParam = params['tags'];
+      this.tagsFilter = tagsParam ? String(tagsParam).split(',').filter((t) => !!t) : [];
       this.page = params['page'] ? Number(params['page']) : 1;
       this.pageSize = params['page_size'] ? Number(params['page_size']) : 10;
       this.fetchEvents();
@@ -66,6 +75,8 @@ export class EventListComponent implements OnInit {
         category: this.categoryFilter || undefined,
         start_date: this.startDate,
         end_date: this.endDate,
+        location: this.locationFilter || undefined,
+        tags: this.tagsFilter,
         page: this.page,
         page_size: this.pageSize,
       })
@@ -76,10 +87,13 @@ export class EventListComponent implements OnInit {
           this.page = result.page;
           this.pageSize = result.page_size;
           this.categories = Array.from(new Set(result.items.map((e) => e.category).filter((c): c is string => !!c)));
+          const tagNames = result.items.flatMap((e) => e.tags?.map((t) => t.name) ?? []);
+          this.availableTags = Array.from(new Set(tagNames));
           this.loading = false;
         },
         error: () => {
           this.errorMessage = this.i18n.translate('errors.generic');
+          this.notifications.error(this.errorMessage);
           this.loading = false;
         },
       });
@@ -97,11 +111,30 @@ export class EventListComponent implements OnInit {
     this.categoryFilter = '';
     this.startDate = null;
     this.endDate = null;
+    this.locationFilter = '';
+    this.tagsFilter = [];
+    this.tagInput = '';
     this.page = 1;
     this.navigateWithFilters();
   }
 
   onSearchChange(): void {
+    this.page = 1;
+    this.navigateWithFilters();
+  }
+
+  addTag(): void {
+    const next = this.tagInput.trim();
+    if (next && !this.tagsFilter.includes(next)) {
+      this.tagsFilter = [...this.tagsFilter, next];
+    }
+    this.tagInput = '';
+    this.page = 1;
+    this.navigateWithFilters();
+  }
+
+  removeTag(tag: string): void {
+    this.tagsFilter = this.tagsFilter.filter((t) => t !== tag);
     this.page = 1;
     this.navigateWithFilters();
   }
@@ -149,6 +182,8 @@ export class EventListComponent implements OnInit {
       category: this.categoryFilter || null,
       start_date: this.startDate || null,
       end_date: this.endDate || null,
+      location: this.locationFilter || null,
+      tags: this.tagsFilter.length ? this.tagsFilter.join(',') : null,
       page: this.page !== 1 ? this.page : null,
       page_size: this.pageSize !== 10 ? this.pageSize : null,
     };

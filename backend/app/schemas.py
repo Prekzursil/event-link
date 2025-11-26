@@ -117,6 +117,7 @@ class EventResponse(BaseModel):
     owner_name: Optional[str]
     tags: List[TagResponse]
     seats_taken: int
+    recommendation_reason: Optional[str] = None
 
     class Config:
         from_attributes = True

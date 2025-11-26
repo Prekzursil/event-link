@@ -77,12 +77,12 @@
 - [ ] Soft-delete support for events and registrations with an audit history.
 - [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
 - [ ] Public read-only events API with stricter rate limiting for third-party integrations.
-- [ ] Searchable filter bar on event list (tags, category, date range, location).
+- [x] Searchable filter bar on event list (tags, category, date range, location).
 - [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
-- [ ] Notifications center in UI (toasts/snackbars) for API success/error messages.
+- [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
 - [ ] Organization profile pages with logo, description, and links to their events.
 - [ ] Duplicate/clone event action for organizers.
-- [ ] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
+- [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
 - [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for Angular).
 - [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
 - [ ] Integration tests hitting a real test database (not just unit tests).

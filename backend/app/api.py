@@ -8,7 +8,7 @@ import os
 import secrets
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request
+from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
 from sqlalchemy import func, text
@@ -190,7 +190,7 @@ def _events_with_counts_query(db: Session, base_query=None):
     return query, seats_subquery
 
 
-def _serialize_event(event: models.Event, seats_taken: int) -> schemas.EventResponse:
+def _serialize_event(event: models.Event, seats_taken: int, recommendation_reason: str | None = None) -> schemas.EventResponse:
     owner_name = None
     if event.owner:
         owner_name = event.owner.full_name or event.owner.email
@@ -208,6 +208,7 @@ def _serialize_event(event: models.Event, seats_taken: int) -> schemas.EventResp
         tags=event.tags,
         seats_taken=int(seats_taken or 0),
         cover_url=event.cover_url,
+        recommendation_reason=recommendation_reason,
     )
 
 
@@ -382,6 +383,9 @@ def get_events(
     category: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+    tags: Optional[list[str]] = Query(None),
+    tags_csv: Optional[str] = None,
+    location: Optional[str] = None,
     include_past: bool = False,
     page: int = 1,
     page_size: int = 10,
@@ -400,12 +404,23 @@ def get_events(
         query = query.filter(func.lower(models.Event.title).like(f"%{search.lower()}%"))
     if category:
         query = query.filter(func.lower(models.Event.category) == category.lower())
+    tag_filters: list[str] = []
+    if tags:
+        tag_filters.extend(tags)
+    if tags_csv:
+        tag_filters.extend([t.strip() for t in tags_csv.split(",") if t.strip()])
+    if tag_filters:
+        lowered = [t.lower() for t in tag_filters]
+        query = query.join(models.Event.tags).filter(func.lower(models.Tag.name).in_(lowered))
+    if location:
+        query = query.filter(func.lower(models.Event.location).like(f"%{location.lower()}%"))
     if start_date:
         start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time >= start_dt)
     if end_date:
         end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time <= end_dt)
+    query = query.distinct(models.Event.id)
     total = query.count()
     query = query.order_by(models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, query)
@@ -798,7 +813,7 @@ def recommended_events(
         )
     ]
 
-    events: List[tuple[models.Event, int]] = []
+    events: List[tuple[models.Event, int, Optional[str]]] = []
     if tag_names:
         base_query = (
             db.query(models.Event)
@@ -810,20 +825,26 @@ def recommended_events(
             base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
         base_query = base_query.distinct().order_by(models.Event.start_time)
         query, seats_subquery = _events_with_counts_query(db, base_query)
-        events = query.limit(10).all()
+        reason = f"Similar tags: {', '.join(sorted(set(tag_names))[:3])}"
+        events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
 
     if not events:
         base_query = db.query(models.Event).filter(models.Event.start_time >= now)
         if registered_event_ids:
             base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
         query, seats_subquery = _events_with_counts_query(db, base_query)
-        events = query.order_by(func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time).limit(10).all()
+        events = [
+            (ev, seats, "Popular / upcoming events")
+            for ev, seats in query.order_by(
+                func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time
+            ).limit(10).all()
+        ]
 
     filtered = []
-    for event, seats in events:
+    for event, seats, reason in events:
         if event.max_seats is not None and seats >= event.max_seats:
             continue
-        filtered.append(_serialize_event(event, seats))
+        filtered.append(_serialize_event(event, seats, recommendation_reason=reason))
     return filtered[:10]
 
 @app.get("/api/health")

@@ -33,6 +33,8 @@ export class EventService {
     category?: string;
     start_date?: string | null;
     end_date?: string | null;
+    location?: string | null;
+    tags?: string[];
     page?: number;
     page_size?: number;
   }): Observable<PaginatedEvents> {
@@ -41,6 +43,8 @@ export class EventService {
     if (filters?.category) params = params.set('category', filters.category);
     if (filters?.start_date) params = params.set('start_date', filters.start_date);
     if (filters?.end_date) params = params.set('end_date', filters.end_date);
+    if (filters?.location) params = params.set('location', filters.location);
+    if (filters?.tags?.length) params = params.set('tags_csv', filters.tags.join(','));
     if (filters?.page) params = params.set('page', filters.page);
     if (filters?.page_size) params = params.set('page_size', filters.page_size);
     return this.http.get<PaginatedEvents>(`${this.baseUrl}/events`, { params });

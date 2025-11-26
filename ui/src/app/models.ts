@@ -17,6 +17,7 @@ export interface EventItem {
   cover_url?: string | null;
   tags: Tag[];
   seats_taken: number;
+  recommendation_reason?: string;
 }
 
 export interface EventDetail extends EventItem {
