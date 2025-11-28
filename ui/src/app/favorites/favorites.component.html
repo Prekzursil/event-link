@@ -1,0 +1,13 @@
+<section class="card">
+  <h1>{{ 'favorites.title' | translate }}</h1>
+  <div *ngIf="loading" class="empty-state">{{ 'list.loading' | translate }}</div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="!loading && !error && !items.length" class="empty-state">{{ 'favorites.empty' | translate }}</div>
+  <div class="list-layout" *ngIf="items.length">
+    <div class="event-card" *ngFor="let event of items" [routerLink]="['/events', event.id]">
+      <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
+      <h3>{{ event.title }}</h3>
+      <p class="muted">{{ event.location }}</p>
+    </div>
+  </div>
+</section>

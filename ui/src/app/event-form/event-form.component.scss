@@ -1,0 +1,35 @@
+.form-card h1 {
+  margin: 0;
+}
+
+.title-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 1rem;
+}
+
+.tag-input {
+  display: flex;
+  gap: 0.5rem;
+  align-items: center;
+}
+
+.tag-chip button {
+  background: transparent;
+  border: none;
+  color: #b7f3ff;
+  cursor: pointer;
+}
+
+.actions {
+  display: flex;
+  gap: 0.5rem;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+
+.error {
+  margin-top: 0.5rem;
+  color: #ff7a7a;
+}

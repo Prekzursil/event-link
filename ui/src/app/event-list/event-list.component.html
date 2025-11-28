@@ -1,0 +1,118 @@
+<section class="hero card" aria-label="Filtre evenimente">
+  <div>
+    <p class="eyebrow">{{ 'hero.eyebrow' | translate }}</p>
+    <h1>{{ 'hero.title' | translate }}</h1>
+    <p class="muted">{{ 'hero.subtitle' | translate }}</p>
+  </div>
+  <div class="filters-grid">
+    <div class="field">
+      <label for="searchInput">{{ 'filters.search' | translate }}</label>
+      <input id="searchInput" type="text" [placeholder]="'filters.search.placeholder' | translate" [(ngModel)]="searchText" (input)="onSearchChange()" [attr.aria-label]="'filters.search' | translate" />
+    </div>
+    <div class="field">
+      <label for="categorySelect">{{ 'filters.category' | translate }}</label>
+      <select id="categorySelect" [(ngModel)]="categoryFilter" (change)="onFiltersChange()" [attr.aria-label]="'filters.category' | translate">
+        <option value="">{{ 'filters.category.all' | translate }}</option>
+        <option *ngFor="let cat of categories" [value]="cat">{{ cat }}</option>
+      </select>
+    </div>
+    <div class="field">
+      <label for="tagInput">{{ 'filters.tags' | translate }}</label>
+      <input
+        id="tagInput"
+        type="text"
+        list="tagOptions"
+        [(ngModel)]="tagInput"
+        (keyup.enter)="addTag()"
+        placeholder="ex: python"
+        [attr.aria-label]="'filters.tags' | translate"
+      />
+      <datalist id="tagOptions">
+        <option *ngFor="let tag of availableTags" [value]="tag"></option>
+      </datalist>
+      <div class="chips inline">
+        <span class="tag-chip" *ngFor="let tag of tagsFilter">
+          {{ tag }}
+          <button type="button" (click)="removeTag(tag)" aria-label="Remove tag">×</button>
+        </span>
+      </div>
+    </div>
+    <div class="field">
+      <label for="locationInput">{{ 'filters.location' | translate }}</label>
+      <input id="locationInput" type="text" [(ngModel)]="locationFilter" (change)="onFiltersChange()" placeholder="Online / campus" />
+    </div>
+    <div class="field">
+      <label for="startDate">{{ 'filters.start' | translate }}</label>
+      <input id="startDate" type="date" [(ngModel)]="startDate" (change)="onFiltersChange()" />
+    </div>
+    <div class="field">
+      <label for="endDate">{{ 'filters.end' | translate }}</label>
+      <input id="endDate" type="date" [(ngModel)]="endDate" (change)="onFiltersChange()" />
+    </div>
+    <div class="field actions">
+      <button class="btn ghost" type="button" (click)="resetFilters()">{{ 'filters.reset' | translate }}</button>
+    </div>
+  </div>
+</section>
+
+<section *ngIf="auth.isStudent()" class="card" [class.tight]="!recommended.length" aria-label="Evenimente recomandate">
+  <div class="section-title">
+    <h3>{{ 'recommended.title' | translate }}</h3>
+    <p class="muted" *ngIf="!recommended.length">{{ 'recommended.empty' | translate }}</p>
+  </div>
+  <div class="scroll-cards" *ngIf="recommended.length">
+    <div class="event-card" *ngFor="let event of recommended" (click)="openEvent(event)" tabindex="0" [attr.aria-label]="'Recomandare: '+ event.title">
+      <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
+      <h4>{{ event.title }}</h4>
+      <p class="muted">{{ event.location }}</p>
+      <p class="muted" *ngIf="event.recommendation_reason">{{ event.recommendation_reason }}</p>
+      <div class="chips">
+        <span class="badge">{{ event.category }}</span>
+        <span class="tag-chip" *ngFor="let tag of event.tags">{{ tag.name }}</span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="card" aria-label="Lista evenimentelor">
+  <div class="section-title">
+    <h3>{{ 'list.title' | translate }}</h3>
+    <span class="muted" *ngIf="total" aria-live="polite">{{ 'list.results' | translate: { count: total } }}</span>
+  </div>
+  <div class="page-size" *ngIf="total">
+    <label for="pageSize">{{ 'list.pageSize' | translate }}</label>
+    <select id="pageSize" [(ngModel)]="pageSize" (change)="changePageSize(pageSize)">
+      <option [ngValue]="5">5</option>
+      <option [ngValue]="10">10</option>
+      <option [ngValue]="20">20</option>
+      <option [ngValue]="50">50</option>
+    </select>
+  </div>
+  <div *ngIf="loading" class="empty-state" role="status" aria-live="polite"><span class="spinner" aria-hidden="true"></span> {{ 'list.loading' | translate }}</div>
+  <div *ngIf="!loading && errorMessage" class="empty-state" aria-live="assertive">{{ errorMessage }}</div>
+  <div *ngIf="!loading && !events.length" class="empty-state" aria-live="polite">{{ 'list.empty' | translate }}</div>
+  <div class="list-layout" *ngIf="!loading && events.length">
+    <div class="event-card" *ngFor="let event of events" (click)="openEvent(event)" tabindex="0" [attr.aria-label]="event.title">
+      <img
+        [src]="event.cover_url || placeholderCover"
+        alt="cover image"
+        class="card-cover"
+        (error)="onCoverError(event); $event.stopPropagation()"
+      />
+      <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
+      <h3>{{ event.title }}</h3>
+      <p class="muted">{{ event.start_time | date: 'medium' }}</p>
+      <p class="muted">{{ event.location }}</p>
+      <div class="chips">
+        <span class="badge">{{ event.category }}</span>
+        <span class="tag-chip" *ngFor="let tag of event.tags">{{ tag.name }}</span>
+      </div>
+      <div class="seats">{{ seatsLabel(event) }}</div>
+    </div>
+  </div>
+  <div class="pagination" *ngIf="total > pageSize">
+    <button class="btn ghost" type="button" (click)="changePage(-1)" [disabled]="page === 1">&larr; {{ 'list.prev' | translate }}</button>
+    <span class="muted">{{ 'list.page' | translate: { page: page, total: totalPages } }}</span>
+    <button class="btn ghost" type="button" (click)="changePage(1)" [disabled]="page >= totalPages">{{ 'list.next' | translate }} &rarr;</button>
+  </div>
+</section>

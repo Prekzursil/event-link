@@ -1,0 +1,69 @@
+<section class="card form-card">
+  <div class="title-row">
+    <div>
+      <p class="muted">Formular organizator</p>
+      <h1>{{ title }}</h1>
+    </div>
+    <span class="muted" *ngIf="editMode">Poți actualiza detaliile oricând.</span>
+  </div>
+
+  <form [formGroup]="form" (ngSubmit)="submit()">
+    <div class="form-grid">
+      <div class="field">
+        <label>Titlu*</label>
+        <input formControlName="title" type="text" placeholder="ex: Hackathon" />
+      </div>
+      <div class="field">
+        <label>Categorie*</label>
+        <input formControlName="category" type="text" placeholder="Social / Academic / Sport" />
+      </div>
+      <div class="field">
+        <label>Data*</label>
+        <input formControlName="date" type="date" />
+      </div>
+      <div class="field">
+        <label>Ora start*</label>
+        <input formControlName="startTime" type="time" />
+      </div>
+      <div class="field">
+        <label>Ora sfârșit</label>
+        <input formControlName="endTime" type="time" />
+      </div>
+      <div class="field">
+        <label>Locație*</label>
+        <input formControlName="location" type="text" />
+      </div>
+      <div class="field">
+        <label>Locuri maxime*</label>
+        <input formControlName="maxSeats" type="number" min="1" />
+      </div>
+      <div class="field">
+        <label>Cover URL</label>
+        <input formControlName="coverUrl" type="url" placeholder="https://imagini.exemplu/cover.jpg" />
+      </div>
+    </div>
+
+    <div class="field">
+      <label>Descriere*</label>
+      <textarea formControlName="description" placeholder="Detalii despre conținut, invitați, logistică..."></textarea>
+    </div>
+
+    <div class="field">
+      <label>Tag-uri</label>
+      <div class="tag-input">
+        <input formControlName="tagInput" type="text" placeholder="ex: Python, networking" (keydown.enter)="$event.preventDefault(); addTag();" />
+        <button class="btn ghost" type="button" (click)="addTag()">Adaugă</button>
+      </div>
+      <div class="chips">
+        <span class="tag-chip" *ngFor="let tag of tags">{{ tag }} <button type="button" (click)="removeTag(tag)">✕</button></span>
+      </div>
+    </div>
+
+    <div class="actions">
+      <button class="btn ghost" type="button" routerLink="/organizer/events">Renunță</button>
+      <button class="btn primary" type="submit">Salvează</button>
+    </div>
+
+    <div class="error" *ngIf="error">{{ error }}</div>
+  </form>
+</section>

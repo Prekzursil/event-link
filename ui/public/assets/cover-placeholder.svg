@@ -1,0 +1,14 @@
+<svg width="600" height="360" viewBox="0 0 600 360" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Placeholder image">
+  <defs>
+    <linearGradient id="grad" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0%" stop-color="#e0e7ff" />
+      <stop offset="100%" stop-color="#c7d2fe" />
+    </linearGradient>
+  </defs>
+  <rect width="600" height="360" fill="url(#grad)" rx="16" />
+  <g fill="none" stroke="#94a3b8" stroke-width="6" stroke-linecap="round" stroke-linejoin="round">
+    <circle cx="180" cy="140" r="48" />
+    <path d="M100 270l90-100 70 60 80-110 90 150H100z" />
+  </g>
+  <text x="50%" y="330" text-anchor="middle" fill="#475569" font-family="Arial, sans-serif" font-size="20">Cover image not available</text>
+</svg>

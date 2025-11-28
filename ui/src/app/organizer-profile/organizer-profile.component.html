@@ -1,0 +1,27 @@
+<section class="card" *ngIf="!loading && profile; else loadingTpl">
+  <div class="header">
+    <img [src]="profile.org_logo_url || placeholderLogo" alt="Logo" class="logo" />
+    <div>
+      <p class="muted">{{ profile.email }}</p>
+      <h1>{{ profile.org_name || profile.full_name || 'Organizator' }}</h1>
+      <p class="muted" *ngIf="profile.org_website">
+        <a [href]="profile.org_website" target="_blank" rel="noreferrer">{{ profile.org_website }}</a>
+      </p>
+    </div>
+  </div>
+  <p *ngIf="profile.org_description">{{ profile.org_description }}</p>
+  <div class="section-title">
+    <h3>{{ 'list.title' | translate }}</h3>
+  </div>
+  <div class="list-layout">
+    <div class="event-card" *ngFor="let event of profile.events" [routerLink]="['/events', event.id]">
+      <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
+      <h3>{{ event.title }}</h3>
+      <p class="muted">{{ event.location }}</p>
+    </div>
+  </div>
+</section>
+
+<ng-template #loadingTpl>
+  <div class="empty-state">{{ loading ? ('list.loading' | translate) : error }}</div>
+</ng-template>

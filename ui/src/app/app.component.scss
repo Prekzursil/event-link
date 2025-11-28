@@ -1,0 +1,164 @@
+:host {
+  display: block;
+}
+
+.top-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 1rem 2rem;
+  background: var(--panel);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+  backdrop-filter: blur(6px);
+}
+
+.brand-row {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.brand {
+  font-family: 'Space Grotesk', sans-serif;
+  font-weight: 700;
+  letter-spacing: -0.5px;
+  color: #f0f6ff;
+  cursor: pointer;
+}
+
+.main-nav {
+  display: flex;
+  gap: 1rem;
+  align-items: center;
+}
+
+.main-nav a {
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  color: var(--muted);
+  text-decoration: none;
+  transition: color 0.2s ease, background 0.2s ease;
+}
+
+.main-nav a:hover,
+.main-nav a.active {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fefefe;
+}
+
+.account {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.user-pill {
+  padding: 0.4rem 0.75rem;
+  border-radius: 999px;
+  background: rgba(108, 221, 255, 0.12);
+  color: #b7f3ff;
+  font-size: 0.875rem;
+}
+
+button,
+.account a {
+  text-decoration: none;
+}
+
+button.ghost,
+.account .ghost {
+  background: transparent;
+  color: #e2e8f0;
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  padding: 0.45rem 0.9rem;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: border-color 0.2s ease, transform 0.15s ease;
+}
+
+.account .primary {
+  background: linear-gradient(135deg, #8de8ff, #5dd39e);
+  color: #0c192c;
+  padding: 0.5rem 1rem;
+  border-radius: 12px;
+  font-weight: 700;
+  text-decoration: none;
+  box-shadow: 0 8px 20px rgba(93, 211, 158, 0.25);
+}
+
+button.ghost:hover,
+.account .ghost:hover {
+  border-color: rgba(255, 255, 255, 0.32);
+  transform: translateY(-1px);
+}
+
+.page {
+  min-height: calc(100vh - 150px);
+}
+
+.site-footer {
+  padding: 1.5rem 2rem 2rem;
+  color: var(--muted);
+  font-size: 0.95rem;
+  text-align: center;
+}
+
+.mobile-toggle {
+  display: none;
+  background: rgba(255, 255, 255, 0.1);
+  color: #fefefe;
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  padding: 0.45rem 0.85rem;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 700;
+}
+
+@media (max-width: 900px) {
+  .top-bar {
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+  }
+
+  .brand-row {
+    justify-content: space-between;
+    align-items: center;
+  }
+
+  .mobile-toggle {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  .main-nav,
+  .account {
+    width: 100%;
+    display: none;
+    flex-direction: column;
+    gap: 0.5rem;
+  }
+
+  .main-nav.open,
+  .account.open {
+    display: flex;
+  }
+
+  .main-nav a,
+  .account a,
+  .account button {
+    width: 100%;
+    text-align: left;
+    padding: 0.65rem 0.75rem;
+  }
+
+  .account {
+    align-items: flex-start;
+  }
+}

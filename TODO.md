@@ -1,0 +1,97 @@
+# TODO (Event Link)
+
+## High
+- [x] Localization (RO/EN) for UI labels and outbound emails with Accept-Language support.
+- [x] [EL-3] Student signup: allow students to create an account with email + password so they can register for events.
+- [x] [EL-4] User login: allow both students and organizers to log into their account securely to use the platform.
+- [x] [EL-6] Organizer create event form: provide a form for organizers to create and publish new events.
+- [x] [EL-12] Enforce capacity limits: automatically stop new registrations when an event reaches its maximum number of seats.
+- [x] [EL-13] Student event list: show a list of all upcoming events on the main page so students stay informed about what’s happening.
+- [x] [EL-14] Event details page: when a student clicks an event in the list, show a full details page (description, time, organizer, location, etc.).
+- [x] [EL-15] Event registration button: on the event details page, show an “Enroll / Register” button for logged‑in students to reserve a spot.
+- [x] [EL-21] Event tags for recommendations: allow organizers to add relevant tags to events so the recommendation engine can match events to interested students.
+- [x] [EL-22] “Recommended for you” section: show students a personalized list of recommended events based on their registration history.
+- [x] Add Alembic migrations and replace `AUTO_CREATE_TABLES` in production; generate migration for cover_url/attended columns.
+- [x] Harden auth: central organizer/student dependency helpers, consistent JWT expiry validation, and rate limit login/register.
+- [x] Implement global exception/response wrapper for consistent error payloads (code/message) across APIs.
+- [x] Add organizer invite approval audit trail (store who/when upgraded, not just code).
+- [x] Student unregister flow in UI (button state, messages) wired to new DELETE endpoint.
+- [x] Organizer upgrade UI: handle invalid/missing invite code error states with UX copy.
+- [x] Participant attendance toggle: add backend tests and UI loading/error states.
+- [x] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
+- [x] Recommendations: exclude past events and respect capacity/full state.
+- [x] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.
+- [x] Add 403/404 routing guards coverage in Angular tests.
+- [x] CI pipeline (GitHub Actions): install deps, run backend tests, run Angular tests.
+- [x] CI: run Angular tests headless (ChromeHeadless) to avoid display errors in Actions.
+- [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
+
+## Medium
+- [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).
+- [x] [EL-8] Organizer delete event: allow organizers to delete/cancel an event they created when it will no longer take place.
+- [x] [EL-9] Organizer event dashboard: provide a page where organizers can see a list of all events they have created for centralized management.
+- [x] [EL-10] Participant list for organizers: show organizers the list of students registered for one of their events so they can manage attendance.
+- [x] [EL-16] “My Events” page for students: provide a page where a logged‑in student can see the list of events they are registered for.
+- [x] Docker + docker-compose for backend/frontend/Postgres with env wiring and docs.
+- [x] Security headers middleware (HSTS, X-Content-Type-Options, X-Frame-Options) and CORS audit.
+- [x] Health/readiness endpoint to check DB connectivity for probes.
+- [x] Logging: structured logs with request IDs; log key domain events (auth, event CRUD, registrations).
+- [x] Email metrics/counters and optional retry/backoff on SMTP failures.
+- [x] Add organizer ability to export participants including attendance + cover URL in CSV.
+- [x] Event cover images: add image upload option or validated URL regex; show placeholder on missing/failed load.
+- [x] Persist filter/query params in event list for shareable links.
+- [x] Add route-level guard to redirect logged-in users away from login/register.
+- [x] Add frontend loading/error spinners for event details/register actions.
+- [x] Improve accessibility: form labels/aria, focus states, keyboard nav on filters and pagination.
+- [x] Password reset flow (request + token + reset form) with backend email template.
+- [x] Refresh tokens with short-lived access tokens to reduce JWT leak impact.
+- [x] Per-IP and per-account rate limiting on sensitive endpoints (login, register, password reset).
+- [x] Email templating (HTML + localization) and resend confirmation option for registrations.
+- [x] Background cleanup job for expired invites/tokens and past event registrations.
+- [x] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
+- [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
+- [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
+- [x] ICS calendar export for events and calendar subscription per user.
+- [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
+- [x] Full mobile/phone compatibility across core pages (nav, event lists/details/forms).
+- [x] Backend pytest migration + coverage thresholds for core flows (auth, events, register, recommendations, reset).
+- [x] Frontend Angular unit test fixes (ActivatedRoute providers) + coverage thresholds; stabilize CI headless runs.
+- [x] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
+- [x] Stress/load tests for critical endpoints (event list, registration, recommendations).
+- [x] Pagination and sorting for all list endpoints (registrations, users).
+- [ ] Task queue for background jobs (emails/heavy processing).
+- [ ] Account deletion / data export flows for privacy regulations.
+- [x] CI caching for npm/pip to speed up pipelines and document cache keys.
+
+## Low
+- [x] [EL-17] Search events by name: let students search events by title to quickly find something specific.
+- [x] [EL-18] Filter events by category: allow students to filter events by category (e.g., technical, cultural, sports) to see only relevant events.
+- [x] [EL-19] Registration confirmation email: send an email notification to students when they successfully register for an event.
+- [x] [EL-20] Filter events by date/interval: allow students to filter events by a date range to find events that fit their schedule.
+- [ ] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
+- [ ] Seed data/scripts for local dev (sample users/events with tags/covers).
+- [ ] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
+- [ ] Convert backend tests to pytest and expand fixtures for speed.
+- [ ] Document Node/Angular version guidance (avoid odd Node versions).
+- [ ] Add staging/prod Angular environment files with feature flags (e.g., recommendations toggle).
+- [ ] Soft-delete support for events and registrations with an audit history.
+- [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
+- [ ] Public read-only events API with stricter rate limiting for third-party integrations.
+- [x] Searchable filter bar on event list (tags, category, date range, location).
+- [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
+- [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
+- [ ] Organization profile pages with logo, description, and links to their events.
+- [ ] Duplicate/clone event action for organizers.
+- [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
+- [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for Angular).
+- [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
+- [ ] Integration tests hitting a real test database (not just unit tests).
+- [ ] Contract tests around API schema to keep UI and backend in sync.
+- [ ] Bulk operations for organizers (bulk email registrants, bulk close events, bulk tag edits).
+- [x] "Favorite events" / "watchlist" feature for students.
+- [ ] Maintenance mode flag to temporarily disable registrations during deployments.
+- [x] Draft vs published events with scheduled publishing.
+- [ ] DB backup/restore scripts and disaster-recovery documentation.
+- [ ] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
+- [x] Organization profile pages with logo, description, and links to their events.
+- [x] Duplicate/clone event action for organizers.

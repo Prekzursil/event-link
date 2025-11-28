@@ -1,0 +1,15 @@
+<section class="card">
+  <div class="section-title">
+    <h1>Evenimentele mele</h1>
+  </div>
+  <div *ngIf="error" class="error">{{ error }}</div>
+  <div *ngIf="!events.length" class="empty-state">Încă nu ești înscris la niciun eveniment.</div>
+  <div class="list-layout" *ngIf="events.length">
+    <a class="event-card" *ngFor="let event of events" [routerLink]="['/events', event.id]">
+      <div class="date">{{ event.start_time | date: 'dd MMM' }}</div>
+      <h3>{{ event.title }}</h3>
+      <p class="muted">{{ event.location }}</p>
+      <p class="muted">{{ event.start_time | date: 'medium' }}</p>
+    </a>
+  </div>
+</section>
