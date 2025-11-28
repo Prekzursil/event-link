@@ -1,33 +1,41 @@
 # Event Link
 
-A full-stack application with Angular frontend and FastAPI backend.
+Full-stack event management app with an Angular frontend and a FastAPI + SQLAlchemy backend.
 
-## Project Structure
+## Project structure
 
 ```
 event-link/
-├── ui/                 # Angular frontend application
-├── backend/           # FastAPI backend application
-├── .gitignore        # Git ignore file
-└── README.md         # This file
+├── backend/      # FastAPI app, Alembic migrations, and tests
+├── ui/           # Angular 18 frontend
+├── docs/         # Additional documentation (e.g., permissions)
+├── loadtests/    # k6 load-testing scripts
+├── start.bat     # Windows helper to launch backend + frontend
+└── docker-compose.yml
 ```
 
 ## Prerequisites
 
-- **Node.js**: Version 20+ (LTS recommended)
+- **Node.js**: 20+ (for the Angular CLI)
 - **npm**
-- **Python**: Version 3.11+
+- **Python**: 3.11+
+- **Docker**: optional, for containerized runs
 
-## Configuration (backend)
+## Backend configuration
 
-Create `backend/.topsecret` (env file) with at least:
+Environment is read from `.topsecret` in `backend/` (or standard env vars). Minimum settings:
+
 ```
-DATABASE_URL=postgresql://user:pass@host:5432/db
+DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/db
 SECRET_KEY=change-me
-# Comma-separated or JSON list; defaults cover localhost/127.0.0.1 for ports 3000 and 4200
+# Comma-separated or JSON list; defaults cover localhost/127.0.0.1 for ports 3000/4200
 ALLOWED_ORIGINS=http://localhost:4200,http://localhost:3000
+# Use migrations in prod; enable for quick local setup
 AUTO_CREATE_TABLES=true
+# Run Alembic automatically on startup (recommended for dev/CI)
+AUTO_RUN_MIGRATIONS=true
 # Email (optional)
+EMAIL_ENABLED=true
 SMTP_HOST=smtp.mailhost.com
 SMTP_PORT=587
 SMTP_USERNAME=user
@@ -36,110 +44,71 @@ SMTP_SENDER=notifications@eventlink.test
 SMTP_USE_TLS=true
 ```
 
-Key settings:
-- `ALLOWED_ORIGINS`: CORS origins list (comma/JSON list). Defaults suit local dev; set staging/prod origins as needed.
-- `AUTO_CREATE_TABLES`: Set `true` for local/dev convenience; use migrations in prod.
-- `SECRET_KEY`: JWT signing secret.
-- `DATABASE_URL`: Point to Postgres/SQLite/etc.
+`ALLOWED_ORIGINS` accepts comma- or JSON-separated lists. If email is enabled but SMTP settings
+are missing, sending is skipped with a warning.
 
-## Installation
+## Local setup
 
-### Backend Setup (FastAPI)
-
-1. Navigate to the backend directory:
-   ```bash
-   cd backend
-   ```
-
-2. Install dependencies using uv:
-   ```bash
-   uv sync
-   ```
-
-3. Activate the virtual environment:
-   ```bash
-   source .venv/bin/activate  # On macOS/Linux
-   # or
-   .venv\Scripts\activate     # On Windows
-   ```
-
-### Frontend Setup (Angular)
-
-1. Navigate to the UI directory:
-   ```bash
-   cd ui
-   ```
-
-2. Install dependencies:
-   ```bash
-   npm install
-   ```
-
-## Running the Application
-From the repo root you can also double-click `start.bat` on Windows to launch both servers (installs backend deps if missing).
-
-### Start the Backend (FastAPI)
-
-From the `backend` directory:
+### Backend (FastAPI)
 
 ```bash
-# Option 1: Using uv
-uv run uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
-
-# Option 2: After activating virtual environment
-uvicorn app.api:app --reload --host 0.0.0.0 --port 8000
-
-# Option 3: Using Python directly
-python main.py
+cd backend
+python -m venv .venv
+source .venv/bin/activate  # Windows: .venv\\Scripts\\activate
+pip install -r requirements.txt
+# optional: apply migrations before first run
+alembic upgrade head
+# start the API
+python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-The backend will be available at: http://localhost:8000
+Health check: http://localhost:8000/api/health
 
-- API Documentation (Swagger): http://localhost:8000/docs
-- Alternative API Documentation (ReDoc): http://localhost:8000/redoc
-
-### Start the Frontend (Angular)
-
-From the `ui` directory:
+### Frontend (Angular)
 
 ```bash
-npm start
-# or
-ng serve
+cd ui
+npm install
+npm start  # serves on http://localhost:4200
 ```
 
-The frontend will be available at: http://localhost:4200. Configure the API base URL in `ui/src/environments/environment.ts` (replaced with `environment.prod.ts` for production builds).
+Configure the API base URL in `ui/src/environments/environment.ts` (and `environment.prod.ts` for
+production builds). Default points to `http://localhost:8000`.
 
-## API Endpoints (high level)
+### Windows helper
 
-- `POST /register` – student registration + JWT
-- `POST /login` – login
-- `GET /api/events` – paginated events with filters
-- `POST /api/events` – organizer create (auth)
-- `POST /api/events/{id}/register` – student register for event
-- `GET /api/recommendations` – student recommendations
-- Plus organizer tools, participant views, and health at `/api/health`.
+From the repo root, `start.bat` will install backend requirements (if missing) and open two
+terminal windows for the API and UI using `python -m uvicorn main:app` and `npm start`.
 
-## Docker Compose
-
-Quick start with containers (requires Docker):
+## Running with Docker Compose
 
 ```bash
-cp .env.example .env  # adjust secrets if needed
+cp .env.example .env  # optional; set secrets/ports
 docker compose up --build
 ```
 
 Services:
-- Frontend: http://localhost:4200 (served by nginx)
+- Frontend: http://localhost:4200 (nginx)
 - Backend API: http://localhost:8000 (FastAPI)
-- Postgres: exposed on ${POSTGRES_PORT:-5432}
+- Postgres: exposed on `${POSTGRES_PORT:-5432}`
 
-Environment overrides come from `.env` (see `.env.example`). The backend runs Alembic migrations on startup before launching Uvicorn.
+`docker-compose.yml` wires the backend to Postgres and forwards environment values from `.env`.
+The backend applies Alembic migrations on startup when `AUTO_RUN_MIGRATIONS=true`.
+
+## API overview
+
+- Auth: `POST /register`, `POST /login`, `POST /refresh`, `GET /me`, `POST /organizer/upgrade`
+- Events: `GET /api/events` (filters + pagination), `POST /api/events` (organizer),
+  `PUT /api/events/{id}`, `DELETE /api/events/{id}`, `GET /api/events/{id}/ics`
+- Registration: `POST /api/events/{id}/register`, `DELETE /api/events/{id}/register`,
+  `GET /api/events/{id}/registrations`
+- Recommendations and search utilities are available under `/api/events` filters, plus calendar
+  exports at `/api/events/registrations/ics` for the current user.
+- Docs: Swagger at `/docs`, ReDoc at `/redoc`
 
 ## Testing
 
-- **Backend unit/integration**: `cd backend && uv run pytest`
-- **Frontend unit**: `cd ui && npm test -- --watch=false --browsers=ChromeHeadless`
-- **Playwright E2E (optional)**: `cd ui && npx playwright install && npm run e2e`
-  - Configure `E2E_BASE_URL` (UI) and optionally `E2E_API_URL` + test credentials to exercise register/unregister flows.
+- **Backend unit tests**: `cd backend && python -m unittest tests.test_api`
+- **Frontend unit tests**: `cd ui && npm test`
+- **Playwright E2E**: `cd ui && npm run e2e` (install Playwright browsers first)
 - **Load tests (k6)**: `K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js`
