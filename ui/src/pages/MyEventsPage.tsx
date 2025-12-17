@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
-import { Calendar, Clock, History, Search, Plus, Megaphone } from 'lucide-react';
+import { Calendar, CalendarPlus, Clock, History, Search, Plus, Megaphone } from 'lucide-react';
 
 export function MyEventsPage() {
   const { isOrganizer } = useAuth();
@@ -17,6 +17,7 @@ export function MyEventsPage() {
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
+  const [isDownloadingCalendar, setIsDownloadingCalendar] = useState(false);
   const { toast } = useToast();
 
   const loadEvents = useCallback(async () => {
@@ -104,6 +105,35 @@ export function MyEventsPage() {
     }
   };
 
+  const handleDownloadCalendar = async () => {
+    setIsDownloadingCalendar(true);
+    try {
+      const ics = await eventService.getMyCalendar();
+      const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'eventlink-calendar.ics';
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      URL.revokeObjectURL(url);
+
+      toast({
+        title: 'Calendar descărcat',
+        description: 'Fișierul .ics a fost generat cu succes.',
+      });
+    } catch {
+      toast({
+        title: 'Eroare',
+        description: 'Nu am putut descărca calendarul',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDownloadingCalendar(false);
+    }
+  };
+
   if (isLoading) {
     return <LoadingPage message="Se încarcă evenimentele tale..." />;
   }
@@ -119,14 +149,24 @@ export function MyEventsPage() {
               : 'Evenimentele la care te-ai înscris'}
           </p>
         </div>
-        {isOrganizer && (
-          <Button asChild>
-            <Link to="/organizer/events/new">
-              <Plus className="mr-2 h-4 w-4" />
-              Eveniment Nou
-            </Link>
+        <div className="flex items-center gap-2">
+          <Button
+            variant="outline"
+            onClick={handleDownloadCalendar}
+            disabled={isDownloadingCalendar}
+          >
+            <CalendarPlus className="mr-2 h-4 w-4" />
+            {isDownloadingCalendar ? 'Se descarcă...' : 'Calendar (.ics)'}
           </Button>
-        )}
+          {isOrganizer && (
+            <Button asChild>
+              <Link to="/organizer/events/new">
+                <Plus className="mr-2 h-4 w-4" />
+                Eveniment Nou
+              </Link>
+            </Button>
+          )}
+        </div>
       </div>
 
       {upcomingEvents.length === 0 && pastEvents.length === 0 && organizerEvents.length === 0 ? (

@@ -158,10 +158,20 @@ export function StudentProfilePage() {
                         : 'border-border hover:border-primary/50'
                     }`}
                     onClick={() => handleTagToggle(tag.id)}
+                    role="button"
+                    tabIndex={0}
+                    onKeyDown={(e) => {
+                      if (e.key === 'Enter' || e.key === ' ') {
+                        e.preventDefault();
+                        handleTagToggle(tag.id);
+                      }
+                    }}
                   >
                     <Checkbox
                       id={`tag-${tag.id}`}
                       checked={isSelected}
+                      onClick={(e) => e.stopPropagation()}
+                      onKeyDown={(e) => e.stopPropagation()}
                       onCheckedChange={() => handleTagToggle(tag.id)}
                     />
                     <Label
