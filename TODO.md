@@ -25,6 +25,7 @@
 - [x] CI pipeline (GitHub Actions): install deps, run backend tests, run Angular tests.
 - [x] CI: run Angular tests headless (ChromeHeadless) to avoid display errors in Actions.
 - [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
+- [x] Fix frontend CI for the Vite/React UI (`npm test` script + Actions workflow step).
 
 ## Medium
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).
@@ -69,6 +70,7 @@
 - [x] [EL-19] Registration confirmation email: send an email notification to students when they successfully register for an event.
 - [x] [EL-20] Filter events by date/interval: allow students to filter events by a date range to find events that fit their schedule.
 - [ ] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
+- [x] Ignore Windows `:Zone.Identifier` artifacts in git (prevent dirty working tree on Linux/macOS).
 - [ ] Seed data/scripts for local dev (sample users/events with tags/covers).
 - [ ] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
 - [ ] Convert backend tests to pytest and expand fixtures for speed.
