@@ -32,7 +32,15 @@ class Settings(BaseSettings):
     smtp_sender: str | None = None
     smtp_use_tls: bool = True
     
-    model_config = SettingsConfigDict(env_file=".topsecret", extra="ignore", case_sensitive=False)
+    # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
+    # so our validator can handle both formats.
+    model_config = SettingsConfigDict(
+        env_file=".topsecret",
+        extra="ignore",
+        case_sensitive=False,
+        enable_decoding=False,
+        env_ignore_empty=True,
+    )
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

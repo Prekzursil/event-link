@@ -19,7 +19,7 @@ depends_on = None
 def upgrade() -> None:
     bind = op.get_bind()
 
-    user_role_enum = sa.Enum("student", "organizator", name="userrole")
+    user_role_enum = sa.Enum("student", "organizator", name="userrole", create_type=False)
     if bind.dialect.name == "postgresql":
         user_role_enum.create(bind, checkfirst=True)
 
