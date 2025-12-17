@@ -74,18 +74,18 @@
 - [x] [EL-18] Filter events by category: allow students to filter events by category (e.g., technical, cultural, sports) to see only relevant events.
 - [x] [EL-19] Registration confirmation email: send an email notification to students when they successfully register for an event.
 - [x] [EL-20] Filter events by date/interval: allow students to filter events by a date range to find events that fit their schedule.
-- [ ] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
+- [x] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
 - [x] Ignore Windows `:Zone.Identifier` artifacts in git (prevent dirty working tree on Linux/macOS).
 - [x] Document GitHub auth for Codex/MCP + git (`GITHUB_MCP_PAT` / `GH_TOKEN`) and add a local env template.
 - [x] Add a repo script to delete `*:Zone.Identifier` artifacts from a checkout.
 - [x] Seed data/scripts for local dev (sample users/events with tags/covers).
 - [x] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
 - [x] Convert backend tests to pytest.
-- [ ] Backend tests: expand fixtures for speed.
+- [x] Backend tests: expand fixtures for speed.
 - [x] Document Node version guidance (avoid odd Node versions).
 - [x] UI: add `ui/.env.example` for `VITE_API_URL` and document usage.
 - [x] UI: tune Vite chunk warning threshold (keep build output clean).
-- [ ] Add staging/prod Vite env files with feature flags (e.g., recommendations toggle).
+- [x] Add staging/prod Vite env files with feature flags (e.g., recommendations toggle).
 - [ ] Soft-delete support for events and registrations with an audit history.
 - [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
 - [ ] Public read-only events API with stricter rate limiting for third-party integrations.

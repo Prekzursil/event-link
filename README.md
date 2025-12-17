@@ -84,6 +84,8 @@ Configure the API base URL via `VITE_API_URL` (default is `http://localhost:8000
 VITE_API_URL=http://localhost:8000
 ```
 
+Optional feature flags are also read from Vite env (e.g. `VITE_FEATURE_RECOMMENDATIONS=false`).
+
 ### Windows helper
 
 From the repo root, `start.bat` will install backend requirements (if missing) and open two

@@ -1,79 +1,6 @@
-import os
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
-import pytest
-from fastapi.testclient import TestClient
-
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
-os.environ.setdefault("SECRET_KEY", "test-secret")
-
-from app import models, auth
-from app.api import app
-from app.database import Base, engine, SessionLocal, get_db
-
-
-@pytest.fixture(autouse=True)
-def reset_db():
-    Base.metadata.drop_all(bind=engine)
-    Base.metadata.create_all(bind=engine)
-    yield
-    Base.metadata.drop_all(bind=engine)
-
-
-@pytest.fixture()
-def client():
-    def _override_get_db():
-        db = SessionLocal()
-        try:
-            yield db
-        finally:
-            db.close()
-
-    app.dependency_overrides[get_db] = _override_get_db
-    client = TestClient(app)
-    yield client
-
-
-@pytest.fixture()
-def helpers(client):
-    def register_student(email: str) -> str:
-        resp = client.post(
-            "/register",
-            json={"email": email, "password": "password123", "confirm_password": "password123"},
-        )
-        assert resp.status_code == 200
-        return resp.json()["access_token"]
-
-    def login(email: str, password: str) -> str:
-        resp = client.post("/login", json={"email": email, "password": password})
-        assert resp.status_code == 200
-        return resp.json()["access_token"]
-
-    def make_organizer(email="org@test.ro", password="organizer123") -> None:
-        db = SessionLocal()
-        organizer = models.User(
-            email=email,
-            password_hash=auth.get_password_hash(password),
-            role=models.UserRole.organizator,
-        )
-        db.add(organizer)
-        db.commit()
-        db.close()
-
-    def future_time(days=1) -> str:
-        return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
-
-    def auth_header(token: str) -> dict:
-        return {"Authorization": f"Bearer {token}"}
-
-    return {
-        "client": client,
-        "register_student": register_student,
-        "login": login,
-        "make_organizer": make_organizer,
-        "future_time": future_time,
-        "auth_header": auth_header,
-    }
+from app import models
 
 
 def test_student_registration_and_duplicate_email(helpers):
@@ -210,9 +137,7 @@ def test_delete_cascades_registrations(helpers):
     delete_resp = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token))
     assert delete_resp.status_code == 204
 
-    db = SessionLocal()
-    remaining_regs = db.query(models.Registration).count()
-    db.close()
+    remaining_regs = helpers["db"].query(models.Registration).count()
     assert remaining_regs == 0
 
 
@@ -506,9 +431,7 @@ def test_mark_attendance_requires_owner(helpers):
     )
     assert forbidden.status_code == 403
 
-    db = SessionLocal()
-    student = db.query(models.User).filter(models.User.email == "stud@test.ro").first()
-    db.close()
+    student = helpers["db"].query(models.User).filter(models.User.email == "stud@test.ro").first()
     student_id = student.id  # type: ignore
     ok = client.put(
         f"/api/organizer/events/{event['id']}/participants/{student_id}",
@@ -573,10 +496,8 @@ def test_password_reset_flow(helpers):
     helpers["register_student"]("reset@test.ro")
     req = client.post("/password/forgot", json={"email": "reset@test.ro"})
     assert req.status_code == 200
-    db = SessionLocal()
-    token_row = db.query(models.PasswordResetToken).filter(models.PasswordResetToken.used == False).first()
+    token_row = helpers["db"].query(models.PasswordResetToken).filter(models.PasswordResetToken.used.is_(False)).first()
     token = token_row.token  # type: ignore
-    db.close()
 
     reset = client.post(
         "/password/reset",
@@ -703,10 +624,8 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     )
     assert delete_resp.status_code == 200
 
-    db = SessionLocal()
-    placeholder = db.query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
+    placeholder = helpers["db"].query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
     assert placeholder is not None
-    event_row = db.query(models.Event).filter(models.Event.id == event["id"]).first()
+    event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
     assert event_row is not None
     assert event_row.owner_id == placeholder.id
-    db.close()

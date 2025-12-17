@@ -12,8 +12,8 @@ import random
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from sqlalchemy import text
-from app.database import SessionLocal, engine
-from app.models import Base, User, UserRole, Event, Tag, Registration, FavoriteEvent
+from app.database import SessionLocal
+from app.models import User, UserRole, Event, Tag, Registration, FavoriteEvent
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 

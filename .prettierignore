@@ -1,0 +1,9 @@
+ui/node_modules
+ui/dist
+ui/dist-ssr
+ui/npm-debug.log*
+backend/.venv
+backend/.pytest_cache
+backend/__pycache__
+backend/htmlcov
+backend/.coverage
