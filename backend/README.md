@@ -41,7 +41,7 @@ alembic revision --autogenerate -m "your message"
 
 ```bash
 cd backend
-python -m unittest tests.test_api
+pytest
 ```
 
 ## Notes

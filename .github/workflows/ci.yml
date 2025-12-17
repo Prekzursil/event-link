@@ -53,3 +53,45 @@ jobs:
         run: |
           cd ui
           npm test
+
+  docker-compose:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Prepare env
+        run: |
+          # docker-compose.yml loads .env into the backend container
+          cp .env.example .env
+      - name: Build docker images
+        run: |
+          docker compose build
+      - name: Compose up + smoke test
+        run: |
+          docker compose up -d --build
+
+          echo "Waiting for backend health..."
+          for i in {1..90}; do
+            if curl -fsS "http://localhost:8000/api/health" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS "http://localhost:8000/api/health"
+
+          echo "Waiting for frontend..."
+          for i in {1..90}; do
+            if curl -fsS "http://localhost:4200/" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS "http://localhost:4200/" >/dev/null
+      - name: Dump docker logs
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color
+      - name: Compose down
+        if: always()
+        run: |
+          docker compose down -v

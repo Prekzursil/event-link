@@ -1,7 +1,7 @@
 """Add user interest tags
 
 Revision ID: 0005_user_interest_tags
-Revises: 0004_org_profile_publish_favorites
+Revises: 0004_org_profile_publish_favs
 Create Date: 2025-12-15
 
 """
@@ -11,7 +11,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '0005_user_interest_tags'
-down_revision = '0004_org_profile_publish_favorites'
+down_revision = '0004_org_profile_publish_favs'
 branch_labels = None
 depends_on = None
 

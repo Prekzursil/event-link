@@ -1,6 +1,8 @@
 # TODO (Event Link)
 
 ## High
+- [x] DX: align docs/scripts with React+Vite UI (remove stale Angular/Karma/Playwright references; fix `start.bat`).
+- [x] Docker: add `ui/Dockerfile` + `ui/.dockerignore` + SPA nginx config so `docker compose up --build` works again.
 - [x] React UI: add organizer upgrade flow (invite code) wired to `POST /organizer/upgrade`.
 - [x] React UI: add “Resend registration email” action wired to `POST /api/events/{id}/register/resend`.
 - [x] React UI: add “My calendar (.ics)” download wired to `GET /api/me/calendar` (auth required).
