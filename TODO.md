@@ -27,7 +27,7 @@
 - [x] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
 - [x] Recommendations: exclude past events and respect capacity/full state.
 - [x] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.
-- [ ] UI: add unit tests for 403/404 routing + auth guards.
+- [x] UI: add unit tests for 403/404 routing + auth guards.
 - [x] CI pipeline (GitHub Actions): install deps, run backend tests, run UI checks.
 - [x] CI: run Docker Compose build + smoke test (backend health + frontend).
 - [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.

@@ -15,6 +15,8 @@ import { EventsPage, EventDetailPage } from '@/pages/events';
 import { MyEventsPage } from '@/pages/MyEventsPage';
 import { FavoritesPage } from '@/pages/FavoritesPage';
 import { StudentProfilePage } from '@/pages/profile';
+import { ForbiddenPage } from '@/pages/ForbiddenPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
 
 // Organizer pages
 import {
@@ -52,7 +54,7 @@ function OrganizerRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isOrganizer) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/forbidden" replace />;
   }
 
   return <>{children}</>;
@@ -81,6 +83,7 @@ function AppRoutes() {
         <Route path="/" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/organizers/:id" element={<OrganizerProfilePage />} />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
         
         {/* Protected routes */}
         <Route
@@ -141,6 +144,9 @@ function AppRoutes() {
             </OrganizerRoute>
           }
         />
+
+        {/* Catch all - 404 */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
       {/* Auth routes (without main layout) */}
@@ -162,9 +168,6 @@ function AppRoutes() {
       />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-
-      {/* Catch all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
