@@ -70,7 +70,7 @@ jobs:
           docker compose up -d --build
 
           echo "Waiting for backend health..."
-          for i in {1..45}; do
+          for i in {1..90}; do
             if curl -fsS "http://localhost:8000/api/health" >/dev/null; then
               break
             fi
@@ -79,7 +79,7 @@ jobs:
           curl -fsS "http://localhost:8000/api/health"
 
           echo "Waiting for frontend..."
-          for i in {1..45}; do
+          for i in {1..90}; do
             if curl -fsS "http://localhost:4200/" >/dev/null; then
               break
             fi
