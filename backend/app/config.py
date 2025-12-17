@@ -31,6 +31,11 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_sender: str | None = None
     smtp_use_tls: bool = True
+
+    task_queue_enabled: bool = False
+    task_queue_poll_interval_seconds: float = 1.0
+    task_queue_max_attempts: int = 3
+    task_queue_stale_after_seconds: int = 300
     
     # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
     # so our validator can handle both formats.

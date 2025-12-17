@@ -229,3 +229,7 @@ class PasswordResetConfirm(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=255)

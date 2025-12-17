@@ -81,6 +81,16 @@ export const eventService = {
     return response.data as string;
   },
 
+  // Account privacy
+  async exportMyData(): Promise<Blob> {
+    const response = await api.get('/api/me/export', { responseType: 'blob' });
+    return response.data as Blob;
+  },
+
+  async deleteMyAccount(password: string): Promise<void> {
+    await api.delete('/api/me', { data: { password } });
+  },
+
   // Recommendations
   async getRecommendations(): Promise<Event[]> {
     const response = await api.get<Event[]>('/api/recommendations');

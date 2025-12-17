@@ -622,3 +622,91 @@ def test_participants_pagination(helpers):
     assert len(body["participants"]) == 2
     emails = [p["email"] for p in body["participants"]]
     assert emails == sorted(emails, reverse=True)
+
+
+def test_account_export_and_deletion_student(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    org_token = helpers["login"]("org@test.ro", "organizer123")
+    event = client.post(
+        "/api/events",
+        json={
+            "title": "Export Event",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](),
+            "location": "Loc",
+            "max_seats": 10,
+            "tags": ["export"],
+        },
+        headers=helpers["auth_header"](org_token),
+    ).json()
+
+    student_token = helpers["register_student"]("export@test.ro")
+    reg = client.post(
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
+    )
+    assert reg.status_code == 201
+
+    export_resp = client.get("/api/me/export", headers=helpers["auth_header"](student_token))
+    assert export_resp.status_code == 200
+    payload = export_resp.json()
+    assert payload["user"]["email"] == "export@test.ro"
+    assert payload["user"]["role"] == "student"
+    assert len(payload["registrations"]) == 1
+    assert payload["registrations"][0]["event"]["id"] == event["id"]
+
+    bad_delete = client.request(
+        "DELETE",
+        "/api/me",
+        json={"password": "wrong"},
+        headers=helpers["auth_header"](student_token),
+    )
+    assert bad_delete.status_code == 400
+
+    ok_delete = client.request(
+        "DELETE",
+        "/api/me",
+        json={"password": "password123"},
+        headers=helpers["auth_header"](student_token),
+    )
+    assert ok_delete.status_code == 200
+
+    me_after = client.get("/me", headers=helpers["auth_header"](student_token))
+    assert me_after.status_code == 401
+
+
+def test_organizer_account_deletion_reassigns_events(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    org_token = helpers["login"]("org@test.ro", "organizer123")
+    event = client.post(
+        "/api/events",
+        json={
+            "title": "Orphaned",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](),
+            "location": "Loc",
+            "max_seats": 10,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](org_token),
+    ).json()
+
+    delete_resp = client.request(
+        "DELETE",
+        "/api/me",
+        json={"password": "organizer123"},
+        headers=helpers["auth_header"](org_token),
+    )
+    assert delete_resp.status_code == 200
+
+    db = SessionLocal()
+    placeholder = db.query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
+    assert placeholder is not None
+    event_row = db.query(models.Event).filter(models.Event.id == event["id"]).first()
+    assert event_row is not None
+    assert event_row.owner_id == placeholder.id
+    db.close()

@@ -66,8 +66,8 @@
 - [x] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [x] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [x] Pagination and sorting for all list endpoints (registrations, users).
-- [ ] Task queue for background jobs (emails/heavy processing).
-- [ ] Account deletion / data export flows for privacy regulations.
+- [x] Task queue for background jobs (emails/heavy processing).
+- [x] Account deletion / data export flows for privacy regulations.
 - [x] CI caching for npm/pip to speed up pipelines and document cache keys.
 
 ## Low
