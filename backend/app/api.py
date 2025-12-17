@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
+from contextlib import asynccontextmanager, suppress
 import time
 import re
 import logging
@@ -54,7 +55,24 @@ def _check_configuration():
         settings.email_enabled = False
 
 
-app = FastAPI(title="Event Link API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _check_configuration()
+    if getattr(settings, "auto_run_migrations", False):
+        _run_migrations()
+    elif settings.auto_create_tables:
+        models.Base.metadata.create_all(bind=engine)
+
+    cleanup_task = asyncio.create_task(_cleanup_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+
+
+app = FastAPI(title="Event Link API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(RequestIdMiddleware)
 
@@ -70,21 +88,6 @@ def _validate_cover_url(url: str | None) -> None:
     pattern = re.compile(r"^https?://")
     if url and not pattern.match(str(url)):
         raise HTTPException(status_code=400, detail="Cover URL trebuie să fie un link http/https valid.")
-
-
-@app.on_event("startup")
-def _on_startup():
-    _check_configuration()
-    if getattr(settings, "auto_run_migrations", False):
-        _run_migrations()
-    elif settings.auto_create_tables:
-        models.Base.metadata.create_all(bind=engine)
-    try:
-        asyncio.get_event_loop().create_task(_cleanup_loop())
-    except RuntimeError:
-        # Fallback for sync contexts
-        import threading
-        threading.Thread(target=lambda: asyncio.run(_cleanup_loop()), daemon=True).start()
 
 
 def _ensure_future_date(start_time: datetime) -> None:
@@ -426,7 +429,7 @@ def get_events(
     if end_date:
         end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time <= end_dt)
-    query = query.distinct(models.Event.id)
+    query = query.distinct()
     total = query.count()
     query = query.order_by(models.Event.id, models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, query)
