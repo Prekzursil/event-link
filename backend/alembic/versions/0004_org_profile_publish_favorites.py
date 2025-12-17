@@ -1,6 +1,6 @@
 """add organizer profile fields, event status/publish_at, favorites
 
-Revision ID: 0004_org_profile_publish_favorites
+Revision ID: 0004_org_profile_publish_favs
 Revises: 0003_add_password_reset_tokens
 Create Date: 2025-02-10
 """
@@ -9,7 +9,7 @@ from alembic import op
 import sqlalchemy as sa
 
 
-revision = "0004_org_profile_publish_favorites"
+revision = "0004_org_profile_publish_favs"
 down_revision = "0003_add_password_reset_tokens"
 branch_labels = None
 depends_on = None
