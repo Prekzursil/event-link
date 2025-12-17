@@ -21,9 +21,9 @@ if errorlevel 1 (
 REM Start FastAPI backend
 start "EventLink API" cmd /k "cd /d %BACKEND% && %PYTHON% -m uvicorn main:app --reload --port 8000"
 
-REM Start Angular frontend
-start "EventLink UI" cmd /k "cd /d %FRONTEND% && %NPM% install && %NPM% start"
+REM Start React (Vite) frontend
+start "EventLink UI" cmd /k "cd /d %FRONTEND% && %NPM% install && %NPM% run dev"
 
-echo Launching EventLink backend (http://localhost:8000) and frontend (http://localhost:4200)...
+echo Launching EventLink backend (http://localhost:8000) and frontend (http://localhost:5173)...
 echo If a window closes immediately, check that Python and npm are on PATH.
 pause

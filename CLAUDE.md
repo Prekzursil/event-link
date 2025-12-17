@@ -10,7 +10,7 @@ Event Link is a full-stack event management platform that allows:
 - **Features**: Email notifications, calendar exports, recommendations, password reset
 
 **Tech Stack**:
-- Frontend: Angular 18 (standalone components) + Angular Material
+- Frontend: React + Vite + TypeScript + Tailwind (Radix UI components)
 - Backend: FastAPI + SQLAlchemy + PostgreSQL
 - Auth: JWT with access/refresh tokens
 - Email: SMTP with HTML templates
@@ -57,12 +57,13 @@ event-link/
 - **Migrations**: `/backend/alembic/versions/` (4 migration files)
 
 ### Frontend Critical Files
-- **Root Component**: `/ui/src/app/app.component.ts:1-100`
-- **Routes**: `/ui/src/app/app.routes.ts:1-50`
-- **Type Definitions**: `/ui/src/app/models.ts:1-150`
-- **Auth Service**: `/ui/src/app/services/auth.service.ts:1-200`
-- **Event Service**: `/ui/src/app/services/event.service.ts:1-300`
-- **Environment**: `/ui/src/environments/environment.ts` (apiBaseUrl: http://localhost:8000)
+- **Entry**: `/ui/src/main.tsx`
+- **Routes**: `/ui/src/App.tsx` (react-router)
+- **Auth Context**: `/ui/src/contexts/AuthContext.tsx`
+- **API Client**: `/ui/src/services/api.ts`
+- **Auth Service**: `/ui/src/services/auth.service.ts`
+- **Event Service**: `/ui/src/services/event.service.ts`
+- **Pages**: `/ui/src/pages/` (auth, events, organizer, profile)
 
 ## Configuration
 
@@ -76,7 +77,7 @@ SECRET_KEY=<use: python -c "import secrets; print(secrets.token_urlsafe(32))">
 
 **Optional**:
 ```bash
-ALLOWED_ORIGINS=http://localhost:4200,http://127.0.0.1:4200
+ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:4200,http://127.0.0.1:4200
 AUTO_CREATE_TABLES=true           # Dev only
 AUTO_RUN_MIGRATIONS=true          # Auto-apply Alembic
 ACCESS_TOKEN_EXPIRE_MINUTES=30
@@ -92,13 +93,12 @@ SMTP_SENDER=notifications@eventlink.test
 SMTP_USE_TLS=true
 ```
 
-### Frontend (environment.ts)
+### Frontend (Vite env)
 
-```typescript
-export const environment = {
-  production: false,
-  apiBaseUrl: 'http://localhost:8000',
-};
+Set the API base URL via `VITE_API_URL`. Example `ui/.env.local`:
+
+```bash
+VITE_API_URL=http://localhost:8000
 ```
 
 ## Running the Application
@@ -122,7 +122,7 @@ python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```bash
 cd ui
 npm install
-npm start  # Runs on http://localhost:4200
+npm run dev  # Runs on http://localhost:5173
 ```
 
 ### Docker Compose (Recommended)
@@ -233,21 +233,13 @@ alembic upgrade head
 ### Backend Unit Tests
 ```bash
 cd backend
-python -m unittest tests.test_api
-# or
-pytest --cov=app tests/
+pytest
 ```
 
 ### Frontend Unit Tests
 ```bash
 cd ui
-npm test  # Karma + Jasmine
-```
-
-### E2E Tests (Playwright)
-```bash
-cd ui
-npm run e2e
+npm test  # eslint + typecheck + build
 ```
 
 ### Load Tests (k6)
@@ -272,16 +264,11 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 4. Apply: `alembic upgrade head`
 5. Update Pydantic schemas in `/backend/app/schemas.py`
 
-### Add a new Angular component
+### Add a new UI page or component
 
-```bash
-cd ui
-ng generate component components/my-feature
-```
-
-1. Update routes in `/ui/src/app/app.routes.ts`
-2. Add guard if auth required: `canActivate: [authGuard]`
-3. Update service in `/ui/src/app/services/event.service.ts` if needed
+1. Pages live under `/ui/src/pages/*` and are wired in `/ui/src/App.tsx`
+2. Reusable components live under `/ui/src/components/*`
+3. API calls go through `/ui/src/services/*` (axios client in `/ui/src/services/api.ts`)
 
 ### Debugging Tips
 
@@ -293,7 +280,7 @@ ng generate component components/my-feature
 **Frontend**:
 - Open browser DevTools Network tab
 - Check console for HTTP errors
-- Use Angular DevTools extension
+- Use React DevTools extension
 
 **Database**:
 - Connect: `psql $DATABASE_URL`
@@ -311,12 +298,11 @@ ng generate component components/my-feature
 - **ORM**: SQLAlchemy 2.0 with relationship loading strategies
 
 ### Frontend
-- **Standalone Components**: No NgModules (Angular 18+)
-- **Route Guards**: authGuard, organizerGuard, publicOnlyGuard
-- **Services**: Singleton services via `providedIn: 'root'`
-- **RxJS**: Observables for async data streams
-- **Material Design**: Angular Material components
-- **i18n**: Custom translation service (EN/RO)
+- **Routing**: react-router routes in `ui/src/App.tsx` (guarded routes via wrappers)
+- **State**: Auth state via `AuthContext` (`ui/src/contexts/AuthContext.tsx`)
+- **HTTP**: axios client in `ui/src/services/api.ts` with feature services per domain
+- **UI**: Tailwind + Radix UI primitives + small local components
+- **i18n**: lightweight EN/RO translation helpers used by UI and emails
 
 ## Security Notes
 
@@ -325,7 +311,7 @@ ng generate component components/my-feature
 - CORS configured via ALLOWED_ORIGINS
 - Rate limiting on registration endpoint
 - SQL injection prevention via SQLAlchemy ORM
-- XSS prevention via Angular sanitization
+- XSS prevention via React escaping (avoid `dangerouslySetInnerHTML`)
 
 ## Common Issues & Solutions
 
@@ -337,7 +323,7 @@ ng generate component components/my-feature
 **Frontend can't connect**:
 - Verify backend is running on port 8000
 - Check CORS settings in backend config.py
-- Confirm apiBaseUrl in environment.ts
+- Confirm `VITE_API_URL` (or fallback) points at the API base URL
 
 **Database migrations fail**:
 - Check for conflicting migrations: `alembic current`
@@ -348,15 +334,6 @@ ng generate component components/my-feature
 - Check EMAIL_ENABLED=true
 - Verify SMTP credentials are correct
 - View logs for SMTP errors
-
-## Git Workflow
-
-Current branch: `feature/event-link-ui`
-Main branch: (not set in gitStatus)
-
-**Modified files**:
-- `backend/app/config.py` (settings changes)
-- `package-lock.json` (new)
 
 ## Useful Commands Cheat Sheet
 
@@ -370,10 +347,10 @@ pytest --cov=app
 
 # Frontend
 cd ui
-npm start
+npm run dev
 npm test
 npm run build
-npm run e2e
+npm run preview
 
 # Docker
 docker compose up --build
