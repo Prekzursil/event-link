@@ -37,6 +37,7 @@ class User(Base):
     events = relationship("Event", back_populates="owner")
     registrations = relationship("Registration", back_populates="user", cascade="all, delete-orphan")
     favorites = relationship("FavoriteEvent", back_populates="user", cascade="all, delete-orphan")
+    interest_tags = relationship("Tag", secondary="user_interest_tags")
 
 
 class Tag(Base):
@@ -115,5 +116,14 @@ event_tags = Table(
     "event_tags",
     Base.metadata,
     Column("event_id", Integer, ForeignKey("events.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
+
+
+# User interest tags - tags that students are interested in for recommendations
+user_interest_tags = Table(
+    "user_interest_tags",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
     Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
 )

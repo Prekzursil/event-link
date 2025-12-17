@@ -66,9 +66,9 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-def _validate_cover_url(url: str) -> None:
+def _validate_cover_url(url: str | None) -> None:
     pattern = re.compile(r"^https?://")
-    if url and not pattern.match(url):
+    if url and not pattern.match(str(url)):
         raise HTTPException(status_code=400, detail="Cover URL trebuie să fie un link http/https valid.")
 
 
@@ -428,7 +428,7 @@ def get_events(
         query = query.filter(models.Event.start_time <= end_dt)
     query = query.distinct(models.Event.id)
     total = query.count()
-    query = query.order_by(models.Event.start_time)
+    query = query.order_by(models.Event.id, models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, query)
     query = query.offset((page - 1) * page_size).limit(page_size)
     events = query.all()
@@ -697,6 +697,58 @@ def update_organizer_profile(
     return _serialize_profile(current_user, db)
 
 
+# ===================== TAGS =====================
+
+@app.get("/api/tags", response_model=schemas.TagListResponse)
+def get_all_tags(db: Session = Depends(get_db)):
+    """Get all available tags for filtering and student interests."""
+    tags = db.query(models.Tag).order_by(models.Tag.name).all()
+    return {"items": [{"id": t.id, "name": t.name} for t in tags]}
+
+
+# ===================== STUDENT PROFILE =====================
+
+@app.get("/api/me/profile", response_model=schemas.StudentProfileResponse)
+def get_student_profile(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Get current user's profile with interest tags."""
+    return {
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "interest_tags": [{"id": t.id, "name": t.name} for t in current_user.interest_tags],
+    }
+
+
+@app.put("/api/me/profile", response_model=schemas.StudentProfileResponse)
+def update_student_profile(
+    payload: schemas.StudentProfileUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    """Update current user's profile and interest tags."""
+    if payload.full_name is not None:
+        current_user.full_name = payload.full_name
+    
+    if payload.interest_tag_ids is not None:
+        # Get tags by IDs
+        tags = db.query(models.Tag).filter(models.Tag.id.in_(payload.interest_tag_ids)).all()
+        current_user.interest_tags = tags
+    
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    
+    return {
+        "user_id": current_user.id,
+        "email": current_user.email,
+        "full_name": current_user.full_name,
+        "interest_tags": [{"id": t.id, "name": t.name} for t in current_user.interest_tags],
+    }
+
+
 @app.get("/api/organizer/events/{event_id}/participants", response_model=schemas.ParticipantListResponse)
 def event_participants(
     event_id: int,
@@ -952,7 +1004,7 @@ def list_favorites(db: Session = Depends(get_db), current_user: models.User = De
 
 @app.get("/api/me/events", response_model=List[schemas.EventResponse])
 def my_events(db: Session = Depends(get_db), current_user: models.User = Depends(auth.get_current_user)):
-    current_user = auth.require_student(current_user)
+    # Allow both students and organizers to see events they registered for
     base_query = (
         db.query(models.Event)
         .join(models.Registration, models.Event.id == models.Registration.event_id)
