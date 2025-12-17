@@ -1,6 +1,8 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -10,6 +12,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { LoadingSpinner } from '@/components/ui/loading';
 import {
   Calendar,
   Heart,
@@ -23,11 +34,17 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { cn } from '@/lib/utils';
+import authService from '@/services/auth.service';
+import { useToast } from '@/hooks/use-toast';
 
 export function Navbar() {
-  const { user, isAuthenticated, isOrganizer, logout } = useAuth();
+  const { user, isAuthenticated, isOrganizer, logout, refreshUser } = useAuth();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const { toast } = useToast();
+  const [organizerUpgradeOpen, setOrganizerUpgradeOpen] = useState(false);
+  const [organizerInviteCode, setOrganizerInviteCode] = useState('');
+  const [isUpgradingOrganizer, setIsUpgradingOrganizer] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -58,6 +75,54 @@ export function Navbar() {
       ? [{ href: '/organizer', label: 'Dashboard', icon: Settings }]
       : []),
   ];
+
+  const handleOrganizerUpgrade = async () => {
+    const inviteCode = organizerInviteCode.trim();
+    if (!inviteCode) {
+      toast({
+        title: 'Cod lipsă',
+        description: 'Introdu codul de invitație pentru a deveni organizator.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsUpgradingOrganizer(true);
+    try {
+      const response = await authService.upgradeToOrganizer(inviteCode);
+      await refreshUser();
+
+      if (response.status === 'already_organizer') {
+        toast({
+          title: 'Ești deja organizator',
+          description: 'Contul tău are deja rol de organizator.',
+        });
+      } else {
+        toast({
+          title: 'Upgrade reușit',
+          description: 'Contul tău a fost actualizat la organizator.',
+          variant: 'success' as const,
+        });
+      }
+
+      setOrganizerUpgradeOpen(false);
+      setOrganizerInviteCode('');
+      setMobileMenuOpen(false);
+      navigate('/organizer');
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string; error?: { message?: string } } } };
+      toast({
+        title: 'Eroare',
+        description:
+          axiosError.response?.data?.detail ||
+          axiosError.response?.data?.error?.message ||
+          'Nu am putut face upgrade la organizator.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsUpgradingOrganizer(false);
+    }
+  };
 
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -134,6 +199,17 @@ export function Navbar() {
                       Profil
                     </Link>
                   </DropdownMenuItem>
+                  {!isOrganizer && (
+                    <DropdownMenuItem
+                      onSelect={(e) => {
+                        e.preventDefault();
+                        setOrganizerUpgradeOpen(true);
+                      }}
+                    >
+                      <Settings className="mr-2 h-4 w-4" />
+                      Devino organizator
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuSeparator />
                   <DropdownMenuItem onClick={handleLogout}>
                     <LogOut className="mr-2 h-4 w-4" />
@@ -197,6 +273,18 @@ export function Navbar() {
                     Eveniment Nou
                   </Link>
                 )}
+                {!isOrganizer && (
+                  <button
+                    onClick={() => {
+                      setOrganizerUpgradeOpen(true);
+                      setMobileMenuOpen(false);
+                    }}
+                    className="flex w-full items-center gap-2 rounded-md px-3 py-2 text-sm font-medium hover:bg-accent"
+                  >
+                    <Settings className="h-4 w-4" />
+                    Devino organizator
+                  </button>
+                )}
                 <button
                   onClick={() => {
                     handleLogout();
@@ -225,6 +313,46 @@ export function Navbar() {
           </div>
         </div>
       </div>
+
+      <Dialog open={organizerUpgradeOpen} onOpenChange={setOrganizerUpgradeOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Devino organizator</DialogTitle>
+            <DialogDescription>
+              Introdu codul de invitație primit pentru a activa funcțiile de organizator.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2">
+            <Label htmlFor="organizerInviteCode">Cod invitație</Label>
+            <Input
+              id="organizerInviteCode"
+              value={organizerInviteCode}
+              onChange={(e) => setOrganizerInviteCode(e.target.value)}
+              placeholder="ex: ABCD-1234"
+              disabled={isUpgradingOrganizer}
+            />
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setOrganizerUpgradeOpen(false)}
+              disabled={isUpgradingOrganizer}
+            >
+              Anulează
+            </Button>
+            <Button onClick={handleOrganizerUpgrade} disabled={isUpgradingOrganizer}>
+              {isUpgradingOrganizer ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Se procesează...
+                </>
+              ) : (
+                'Activează'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </nav>
   );
 }

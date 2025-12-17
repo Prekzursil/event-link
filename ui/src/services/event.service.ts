@@ -39,8 +39,8 @@ export const eventService = {
   },
 
   async getEventIcs(id: number): Promise<string> {
-    const response = await api.get<string>(`/api/events/${id}/ics`);
-    return response.data;
+    const response = await api.get(`/api/events/${id}/ics`, { responseType: 'text' });
+    return response.data as string;
   },
 
   // Registration endpoints
@@ -77,8 +77,8 @@ export const eventService = {
   },
 
   async getMyCalendar(): Promise<string> {
-    const response = await api.get<string>('/api/me/calendar');
-    return response.data;
+    const response = await api.get('/api/me/calendar', { responseType: 'text' });
+    return response.data as string;
   },
 
   // Recommendations

@@ -29,6 +29,7 @@ export function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
   const { toast } = useToast();
@@ -121,6 +122,29 @@ export function EventDetailPage() {
       });
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleResendRegistrationEmail = async () => {
+    if (!event) return;
+
+    setIsResendingEmail(true);
+    try {
+      await eventService.resendRegistrationEmail(event.id);
+      toast({
+        title: 'Email trimis',
+        description: 'Am retrimis emailul de confirmare pentru acest eveniment.',
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: 'Eroare',
+        description: axiosError.response?.data?.detail || 'Nu am putut retrimite emailul',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResendingEmail(false);
     }
   };
 
@@ -378,6 +402,14 @@ export function EventDetailPage() {
                           ✓ Ești înscris la acest eveniment
                         </p>
                       </div>
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleResendRegistrationEmail}
+                        disabled={isResendingEmail}
+                      >
+                        {isResendingEmail ? 'Se trimite...' : 'Retrimite email de confirmare'}
+                      </Button>
                       {!isPast && (
                         <Button
                           variant="outline"
