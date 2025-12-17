@@ -21,6 +21,11 @@ event-link/
 - **Python**: 3.11+
 - **Docker**: optional, for containerized runs
 
+## GitHub credentials (Codex/MCP + git)
+
+If you use Codex GitHub MCP tooling or want `git push` to work without interactive prompts, see
+`docs/github-auth.md`.
+
 ## Backend configuration
 
 Environment is read from `.topsecret` in `backend/` (or standard env vars). Minimum settings:

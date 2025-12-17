@@ -71,6 +71,8 @@
 - [x] [EL-20] Filter events by date/interval: allow students to filter events by a date range to find events that fit their schedule.
 - [ ] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
 - [x] Ignore Windows `:Zone.Identifier` artifacts in git (prevent dirty working tree on Linux/macOS).
+- [x] Document GitHub auth for Codex/MCP + git (`GITHUB_MCP_PAT` / `GH_TOKEN`) and add a local env template.
+- [x] Add a repo script to delete `*:Zone.Identifier` artifacts from a checkout.
 - [ ] Seed data/scripts for local dev (sample users/events with tags/covers).
 - [ ] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
 - [ ] Convert backend tests to pytest and expand fixtures for speed.
