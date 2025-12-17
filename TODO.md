@@ -27,9 +27,9 @@
 - [x] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
 - [x] Recommendations: exclude past events and respect capacity/full state.
 - [x] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.
-- [x] Add 403/404 routing guards coverage in Angular tests.
-- [x] CI pipeline (GitHub Actions): install deps, run backend tests, run Angular tests.
-- [x] CI: run Angular tests headless (ChromeHeadless) to avoid display errors in Actions.
+- [ ] UI: add unit tests for 403/404 routing + auth guards.
+- [x] CI pipeline (GitHub Actions): install deps, run backend tests, run UI checks.
+- [x] CI: run Docker Compose build + smoke test (backend health + frontend).
 - [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
 - [x] Fix frontend CI for the Vite/React UI (`npm test` script + Actions workflow step).
 
@@ -57,13 +57,12 @@
 - [x] Background cleanup job for expired invites/tokens and past event registrations.
 - [x] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
 - [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
-- [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
+- [x] Timezone-aware date handling end-to-end (backend, UI, database).
 - [x] ICS calendar export for events and calendar subscription per user.
 - [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
 - [x] Full mobile/phone compatibility across core pages (nav, event lists/details/forms).
-- [x] Backend pytest migration + coverage thresholds for core flows (auth, events, register, recommendations, reset).
-- [x] Frontend Angular unit test fixes (ActivatedRoute providers) + coverage thresholds; stabilize CI headless runs.
-- [x] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
+- [x] Backend pytest migration + coverage reporting for core flows (auth, events, register, recommendations, reset).
+- [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
 - [x] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [x] Pagination and sorting for all list endpoints (registrations, users).
 - [x] Task queue for background jobs (emails/heavy processing).
@@ -79,21 +78,23 @@
 - [x] Ignore Windows `:Zone.Identifier` artifacts in git (prevent dirty working tree on Linux/macOS).
 - [x] Document GitHub auth for Codex/MCP + git (`GITHUB_MCP_PAT` / `GH_TOKEN`) and add a local env template.
 - [x] Add a repo script to delete `*:Zone.Identifier` artifacts from a checkout.
-- [ ] Seed data/scripts for local dev (sample users/events with tags/covers).
-- [ ] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
-- [ ] Convert backend tests to pytest and expand fixtures for speed.
-- [ ] Document Node/Angular version guidance (avoid odd Node versions).
-- [ ] Add staging/prod Angular environment files with feature flags (e.g., recommendations toggle).
+- [x] Seed data/scripts for local dev (sample users/events with tags/covers).
+- [x] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
+- [x] Convert backend tests to pytest.
+- [ ] Backend tests: expand fixtures for speed.
+- [x] Document Node version guidance (avoid odd Node versions).
+- [x] UI: add `ui/.env.example` for `VITE_API_URL` and document usage.
+- [x] UI: tune Vite chunk warning threshold (keep build output clean).
+- [ ] Add staging/prod Vite env files with feature flags (e.g., recommendations toggle).
 - [ ] Soft-delete support for events and registrations with an audit history.
 - [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
 - [ ] Public read-only events API with stricter rate limiting for third-party integrations.
 - [x] Searchable filter bar on event list (tags, category, date range, location).
 - [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
 - [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
-- [ ] Organization profile pages with logo, description, and links to their events.
-- [ ] Duplicate/clone event action for organizers.
+- [x] Seed script: document usage in root README and add docker-compose helper (optional).
 - [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
-- [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for Angular).
+- [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
 - [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
 - [ ] Integration tests hitting a real test database (not just unit tests).
 - [ ] Contract tests around API schema to keep UI and backend in sync.
