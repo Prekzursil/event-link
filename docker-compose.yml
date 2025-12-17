@@ -26,12 +26,34 @@ services:
       ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-http://localhost:5173,http://127.0.0.1:5173,http://localhost:4200,http://127.0.0.1:4200}
       ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-30}
       EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      TASK_QUEUE_ENABLED: ${TASK_QUEUE_ENABLED:-true}
     depends_on:
       db:
         condition: service_healthy
     restart: on-failure
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/api/health').read()\""]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+      start_period: 10s
     ports:
       - "${BACKEND_PORT:-8000}:8000"
+
+  worker:
+    build: ./backend
+    env_file:
+      - .env
+    environment:
+      DATABASE_URL: ${DATABASE_URL:-postgresql+psycopg2://eventlink:eventlink@db:5432/eventlink}
+      SECRET_KEY: ${SECRET_KEY:-change-me}
+      EMAIL_ENABLED: ${EMAIL_ENABLED:-false}
+      TASK_QUEUE_ENABLED: ${TASK_QUEUE_ENABLED:-true}
+    depends_on:
+      backend:
+        condition: service_healthy
+    restart: on-failure
+    command: ["python", "-m", "app.worker"]
 
   frontend:
     build: ./ui

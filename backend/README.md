@@ -11,6 +11,7 @@ Environment variables (or `.topsecret` file) are loaded via `pydantic-settings`:
 - `AUTO_RUN_MIGRATIONS` (bool; run Alembic upgrade head on startup – recommended for dev/CI)
 - `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30)
 - Email: `EMAIL_ENABLED` (default true), `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER`, `SMTP_USE_TLS`
+- Background jobs: `TASK_QUEUE_ENABLED` (default false), `TASK_QUEUE_POLL_INTERVAL_SECONDS`, `TASK_QUEUE_MAX_ATTEMPTS`, `TASK_QUEUE_STALE_AFTER_SECONDS`
 - Alembic uses `DATABASE_URL` from the same env for migrations.
 
 ## Running locally
@@ -21,6 +22,13 @@ cd backend
 pip install -r requirements.txt
 # (optional) create tables automatically if AUTO_CREATE_TABLES=true
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
+```
+
+If `TASK_QUEUE_ENABLED=true`, run a worker in another terminal:
+
+```bash
+cd backend
+python -m app.worker
 ```
 
 Health endpoint: `GET /api/health`
@@ -47,5 +55,5 @@ pytest
 ## Notes
 
 - CORS origins are configurable via `ALLOWED_ORIGINS`; defaults target localhost/127.0.0.1 for dev—set staging/prod hosts explicitly (avoid `*` when using credentials).
-- Email sending is optional and failures are logged without breaking the request.
+- Email sending is optional and failures are logged without breaking the request; when `TASK_QUEUE_ENABLED=true`, emails are queued and sent by the worker.
 - In production, manage schema with migrations instead of `AUTO_CREATE_TABLES`.

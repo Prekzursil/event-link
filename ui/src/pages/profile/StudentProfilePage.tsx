@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import type { Tag, StudentProfile } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,12 +10,27 @@ import { Badge } from '@/components/ui/badge';
 import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingPage, LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
-import { User, Tag as TagIcon, Save, Sparkles } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles } from 'lucide-react';
 
 export function StudentProfilePage() {
   const { toast } = useToast();
+  const { logout } = useAuth();
+  const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [isDeleting, setIsDeleting] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [fullName, setFullName] = useState('');
@@ -76,6 +92,70 @@ export function StudentProfilePage() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleExport = async () => {
+    setIsExporting(true);
+    try {
+      const blob = await eventService.exportMyData();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      const date = new Date().toISOString().slice(0, 10);
+      a.download = `eventlink-export-${date}.json`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast({
+        title: 'Export generat',
+        description: 'Datele au fost descărcate.',
+      });
+    } catch (error) {
+      console.error('Failed to export data:', error);
+      toast({
+        title: 'Eroare',
+        description: 'Nu am putut genera exportul.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsExporting(false);
+    }
+  };
+
+  const handleDeleteAccount = async () => {
+    const password = deletePassword.trim();
+    if (!password) {
+      toast({
+        title: 'Parolă lipsă',
+        description: 'Introdu parola pentru a confirma ștergerea contului.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsDeleting(true);
+    try {
+      await eventService.deleteMyAccount(password);
+      toast({
+        title: 'Cont șters',
+        description: 'Contul tău a fost șters.',
+      });
+      setDeleteDialogOpen(false);
+      setDeletePassword('');
+      logout();
+      navigate('/');
+    } catch (error: unknown) {
+      console.error('Failed to delete account:', error);
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: 'Eroare',
+        description: axiosError.response?.data?.detail || 'Nu am putut șterge contul.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsDeleting(false);
     }
   };
 
@@ -207,7 +287,20 @@ export function StudentProfilePage() {
       </Card>
 
       {/* Save Button */}
-      <div className="flex justify-end">
+      <div className="flex flex-wrap justify-end gap-3">
+        <Button onClick={handleExport} disabled={isExporting} variant="outline" size="lg">
+          {isExporting ? (
+            <>
+              <LoadingSpinner size="sm" className="mr-2" />
+              Se generează...
+            </>
+          ) : (
+            <>
+              <Download className="mr-2 h-4 w-4" />
+              Export date
+            </>
+          )}
+        </Button>
         <Button onClick={handleSave} disabled={isSaving} size="lg">
           {isSaving ? (
             <>
@@ -222,6 +315,79 @@ export function StudentProfilePage() {
           )}
         </Button>
       </div>
+
+      {/* Privacy */}
+      <Card className="mt-6 border-destructive/40">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2 text-destructive">
+            <Trash2 className="h-5 w-5" />
+            Ștergere cont
+          </CardTitle>
+          <CardDescription>
+            Ștergerea contului este permanentă. Evenimentele organizate pot rămâne publice, dar nu vor mai fi asociate cu contul tău.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button
+            variant="destructive"
+            onClick={() => setDeleteDialogOpen(true)}
+          >
+            Șterge contul
+          </Button>
+        </CardContent>
+      </Card>
+
+      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
+        setDeleteDialogOpen(open);
+        if (!open) {
+          setDeletePassword('');
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirmă ștergerea contului</DialogTitle>
+            <DialogDescription>
+              Introdu parola pentru a confirma. Această acțiune nu poate fi anulată.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="deletePassword">Parolă</Label>
+            <Input
+              id="deletePassword"
+              type="password"
+              value={deletePassword}
+              onChange={(e) => setDeletePassword(e.target.value)}
+              placeholder="Parola contului"
+              disabled={isDeleting}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setDeleteDialogOpen(false)}
+              disabled={isDeleting}
+            >
+              Anulează
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={handleDeleteAccount}
+              disabled={isDeleting}
+            >
+              {isDeleting ? (
+                <>
+                  <LoadingSpinner size="sm" className="mr-2" />
+                  Se șterge...
+                </>
+              ) : (
+                'Șterge contul'
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

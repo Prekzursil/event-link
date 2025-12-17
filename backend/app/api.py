@@ -1,5 +1,6 @@
 from datetime import date, datetime, timedelta, timezone
 from typing import List, Optional
+from contextlib import asynccontextmanager, suppress
 import time
 import re
 import logging
@@ -17,7 +18,7 @@ from sqlalchemy.orm import Session
 from . import auth, models, schemas
 from .config import settings
 from .database import engine, get_db, SessionLocal
-from .email_service import send_registration_email, send_registration_email as send_email
+from .email_service import send_email_async
 from .email_templates import render_registration_email, render_password_reset_email
 from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
 
@@ -54,7 +55,24 @@ def _check_configuration():
         settings.email_enabled = False
 
 
-app = FastAPI(title="Event Link API", version="1.0.0")
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    _check_configuration()
+    if getattr(settings, "auto_run_migrations", False):
+        _run_migrations()
+    elif settings.auto_create_tables:
+        models.Base.metadata.create_all(bind=engine)
+
+    cleanup_task = asyncio.create_task(_cleanup_loop())
+    try:
+        yield
+    finally:
+        cleanup_task.cancel()
+        with suppress(asyncio.CancelledError):
+            await cleanup_task
+
+
+app = FastAPI(title="Event Link API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(RequestIdMiddleware)
 
@@ -70,21 +88,6 @@ def _validate_cover_url(url: str | None) -> None:
     pattern = re.compile(r"^https?://")
     if url and not pattern.match(str(url)):
         raise HTTPException(status_code=400, detail="Cover URL trebuie să fie un link http/https valid.")
-
-
-@app.on_event("startup")
-def _on_startup():
-    _check_configuration()
-    if getattr(settings, "auto_run_migrations", False):
-        _run_migrations()
-    elif settings.auto_create_tables:
-        models.Base.metadata.create_all(bind=engine)
-    try:
-        asyncio.get_event_loop().create_task(_cleanup_loop())
-    except RuntimeError:
-        # Fallback for sync contexts
-        import threading
-        threading.Thread(target=lambda: asyncio.run(_cleanup_loop()), daemon=True).start()
 
 
 def _ensure_future_date(start_time: datetime) -> None:
@@ -426,7 +429,7 @@ def get_events(
     if end_date:
         end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time <= end_dt)
-    query = query.distinct(models.Event.id)
+    query = query.distinct()
     total = query.count()
     query = query.order_by(models.Event.id, models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, query)
@@ -749,6 +752,183 @@ def update_student_profile(
     }
 
 
+def _serialize_event_for_export(event: models.Event) -> dict:
+    start_time = _normalize_dt(event.start_time)
+    end_time = _normalize_dt(event.end_time)
+    publish_at = _normalize_dt(event.publish_at)
+    return {
+        "id": event.id,
+        "title": event.title,
+        "description": event.description,
+        "category": event.category,
+        "start_time": start_time.isoformat() if start_time else None,
+        "end_time": end_time.isoformat() if end_time else None,
+        "location": event.location,
+        "max_seats": event.max_seats,
+        "cover_url": event.cover_url,
+        "status": event.status,
+        "publish_at": publish_at.isoformat() if publish_at else None,
+        "owner_id": event.owner_id,
+        "tags": [t.name for t in (event.tags or [])],
+        "created_at": _normalize_dt(event.created_at).isoformat() if event.created_at else None,
+    }
+
+
+@app.get("/api/me/export")
+def export_my_data(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    exported_at = datetime.now(timezone.utc)
+
+    registrations = (
+        db.query(models.Registration, models.Event)
+        .join(models.Event, models.Event.id == models.Registration.event_id)
+        .filter(models.Registration.user_id == current_user.id)
+        .order_by(models.Registration.registration_time.desc())
+        .all()
+    )
+    favorites = (
+        db.query(models.FavoriteEvent, models.Event)
+        .join(models.Event, models.Event.id == models.FavoriteEvent.event_id)
+        .filter(models.FavoriteEvent.user_id == current_user.id)
+        .order_by(models.FavoriteEvent.created_at.desc())
+        .all()
+    )
+
+    export_payload: dict = {
+        "exported_at": exported_at.isoformat(),
+        "user": {
+            "id": current_user.id,
+            "email": current_user.email,
+            "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
+            "full_name": current_user.full_name,
+            "org_name": current_user.org_name,
+            "org_description": current_user.org_description,
+            "org_logo_url": current_user.org_logo_url,
+            "org_website": current_user.org_website,
+            "interest_tags": [{"id": t.id, "name": t.name} for t in current_user.interest_tags],
+        },
+        "registrations": [
+            {
+                "registration_time": _normalize_dt(reg.registration_time).isoformat() if reg.registration_time else None,
+                "attended": bool(reg.attended),
+                "event": _serialize_event_for_export(ev),
+            }
+            for reg, ev in registrations
+        ],
+        "favorites": [
+            {
+                "favorited_at": _normalize_dt(fav.created_at).isoformat() if fav.created_at else None,
+                "event": _serialize_event_for_export(ev),
+            }
+            for fav, ev in favorites
+        ],
+    }
+
+    if current_user.role == models.UserRole.organizator:
+        events = (
+            db.query(models.Event)
+            .filter(models.Event.owner_id == current_user.id)
+            .order_by(models.Event.start_time.desc())
+            .all()
+        )
+        event_ids = [e.id for e in events]
+        reg_counts = {
+            event_id: count
+            for event_id, count in (
+                db.query(models.Registration.event_id, func.count(models.Registration.id))
+                .filter(models.Registration.event_id.in_(event_ids))
+                .group_by(models.Registration.event_id)
+                .all()
+                if event_ids
+                else []
+            )
+        }
+        fav_counts = {
+            event_id: count
+            for event_id, count in (
+                db.query(models.FavoriteEvent.event_id, func.count(models.FavoriteEvent.id))
+                .filter(models.FavoriteEvent.event_id.in_(event_ids))
+                .group_by(models.FavoriteEvent.event_id)
+                .all()
+                if event_ids
+                else []
+            )
+        }
+        export_payload["organized_events"] = [
+            {
+                **_serialize_event_for_export(ev),
+                "registrations_count": int(reg_counts.get(ev.id, 0)),
+                "favorites_count": int(fav_counts.get(ev.id, 0)),
+            }
+            for ev in events
+        ]
+
+    filename_date = exported_at.strftime("%Y%m%d")
+    headers = {"Content-Disposition": f'attachment; filename="eventlink-export-{filename_date}.json"'}
+    return JSONResponse(content=export_payload, headers=headers)
+
+
+@app.delete("/api/me")
+def delete_my_account(
+    payload: schemas.AccountDeleteRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    if not auth.verify_password(payload.password, current_user.password_hash):
+        raise HTTPException(status_code=400, detail="Parolă incorectă.")
+
+    deleted_user_id = current_user.id
+    deleted_role = current_user.role
+
+    deleted_organizer_email = "deleted-organizer@eventlink.invalid"
+    if current_user.email.lower() == deleted_organizer_email:
+        raise HTTPException(status_code=400, detail="Acest cont nu poate fi șters.")
+
+    if deleted_role == models.UserRole.organizator:
+        placeholder = (
+            db.query(models.User)
+            .filter(func.lower(models.User.email) == deleted_organizer_email)
+            .first()
+        )
+        if not placeholder:
+            placeholder = models.User(
+                email=deleted_organizer_email,
+                password_hash=auth.get_password_hash(secrets.token_urlsafe(32)),
+                role=models.UserRole.organizator,
+                full_name="Organizator șters",
+                org_name="Organizator șters",
+                org_description=None,
+                org_logo_url=None,
+                org_website=None,
+            )
+            db.add(placeholder)
+            db.commit()
+            db.refresh(placeholder)
+
+        db.query(models.Event).filter(models.Event.owner_id == current_user.id).update(
+            {"owner_id": placeholder.id},
+            synchronize_session=False,
+        )
+
+    db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == current_user.id).delete(
+        synchronize_session=False
+    )
+    db.query(models.Registration).filter(models.Registration.user_id == current_user.id).delete(
+        synchronize_session=False
+    )
+    db.query(models.FavoriteEvent).filter(models.FavoriteEvent.user_id == current_user.id).delete(
+        synchronize_session=False
+    )
+    db.execute(models.user_interest_tags.delete().where(models.user_interest_tags.c.user_id == current_user.id))
+
+    db.delete(current_user)
+    db.commit()
+    log_event("account_deleted", user_id=deleted_user_id, role=str(deleted_role))
+    return {"status": "deleted"}
+
+
 @app.get("/api/organizer/events/{event_id}/participants", response_model=schemas.ParticipantListResponse)
 def event_participants(
     event_id: int,
@@ -873,8 +1053,9 @@ def register_for_event(
 
     lang = (request.headers.get("accept-language") if request else None) or "ro"
     subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
-    send_registration_email(
+    send_email_async(
         background_tasks,
+        db,
         current_user.email,
         subject,
         body_text,
@@ -906,8 +1087,9 @@ def resend_registration_email(
 
     lang = (request.headers.get("accept-language") or "ro")
     subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
-    send_registration_email(
+    send_email_async(
         background_tasks,
+        db,
         current_user.email,
         subject,
         body_text,
@@ -1144,7 +1326,7 @@ def password_forgot(
         link = f"{frontend_hint}/reset-password?token={token}" if frontend_hint else token
         lang = (request.headers.get("accept-language") if request else None) or "ro"
         subject, body, body_html = render_password_reset_email(user, link, lang=lang)
-        send_email(background_tasks, user.email, subject, body, body_html, context={"user_id": user.id, "lang": lang})
+        send_email_async(background_tasks, db, user.email, subject, body, body_html, context={"user_id": user.id, "lang": lang})
     return {"status": "ok"}
 
 

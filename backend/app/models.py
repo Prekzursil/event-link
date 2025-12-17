@@ -11,6 +11,7 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     Boolean,
+    JSON,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -110,6 +111,23 @@ class PasswordResetToken(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User")
+
+
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_type = Column(String(50), nullable=False, index=True)
+    payload = Column(JSON, nullable=False)
+    status = Column(String(20), nullable=False, index=True, server_default="queued")
+    attempts = Column(Integer, nullable=False, server_default="0")
+    max_attempts = Column(Integer, nullable=False, server_default="3")
+    run_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+    locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    locked_by = Column(String(100), nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    finished_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
 
 event_tags = Table(
