@@ -78,7 +78,7 @@ npm run dev  # serves on http://localhost:5173
 ```
 
 Configure the API base URL via `VITE_API_URL` (default is `http://localhost:8000`), for example in
-`ui/.env.local`:
+`ui/.env.local` (you can start from `ui/.env.example`):
 
 ```bash
 VITE_API_URL=http://localhost:8000
@@ -103,6 +103,17 @@ Services:
 
 `docker-compose.yml` wires the backend to Postgres and forwards environment values from `.env`.
 The backend applies Alembic migrations on startup when `AUTO_RUN_MIGRATIONS=true`.
+
+## Seeding sample data (dev only)
+
+The seed script clears existing tables and inserts sample users/events/tags/registrations for local development.
+
+- Local (venv): `cd backend && python seed_data.py`
+- Docker Compose: `docker compose exec backend python seed_data.py`
+
+Sample credentials:
+- Student: `student@test.com` / `test123`
+- Organizer: `organizer@test.com` / `test123`
 
 ## API overview
 
