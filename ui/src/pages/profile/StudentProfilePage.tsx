@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import eventService from '@/services/event.service';
 import type { Tag, StudentProfile } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -20,11 +20,7 @@ export function StudentProfilePage() {
   const [fullName, setFullName] = useState('');
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
-  useEffect(() => {
-    loadData();
-  }, []);
-
-  const loadData = async () => {
+  const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
       const [profileData, tagsData] = await Promise.all([
@@ -45,7 +41,11 @@ export function StudentProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
+
+  useEffect(() => {
+    loadData();
+  }, [loadData]);
 
   const handleTagToggle = (tagId: number) => {
     setSelectedTagIds(prev =>
