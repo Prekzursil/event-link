@@ -9,6 +9,8 @@ DEFAULT_ALLOWED_ORIGINS = [
     "http://127.0.0.1:4200",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
+    "http://localhost:5173",
+    "http://127.0.0.1:5173"
 ]
 
 
@@ -30,7 +32,7 @@ class Settings(BaseSettings):
     smtp_sender: str | None = None
     smtp_use_tls: bool = True
     
-    model_config = SettingsConfigDict(env_file=".topsecret", extra="ignore")
+    model_config = SettingsConfigDict(env_file=".topsecret", extra="ignore", case_sensitive=False)
 
     @field_validator("allowed_origins", mode="before")
     @classmethod

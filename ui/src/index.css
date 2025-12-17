@@ -1,0 +1,168 @@
+@import "tailwindcss";
+
+@theme {
+  --color-background: hsl(0 0% 100%);
+  --color-foreground: hsl(222.2 84% 4.9%);
+  --color-card: hsl(0 0% 100%);
+  --color-card-foreground: hsl(222.2 84% 4.9%);
+  --color-popover: hsl(0 0% 100%);
+  --color-popover-foreground: hsl(222.2 84% 4.9%);
+  --color-primary: hsl(221.2 83.2% 53.3%);
+  --color-primary-foreground: hsl(210 40% 98%);
+  --color-secondary: hsl(210 40% 96.1%);
+  --color-secondary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-muted: hsl(210 40% 96.1%);
+  --color-muted-foreground: hsl(215.4 16.3% 46.9%);
+  --color-accent: hsl(210 40% 96.1%);
+  --color-accent-foreground: hsl(222.2 47.4% 11.2%);
+  --color-destructive: hsl(0 84.2% 60.2%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(214.3 31.8% 91.4%);
+  --color-input: hsl(214.3 31.8% 91.4%);
+  --color-ring: hsl(221.2 83.2% 53.3%);
+  --radius-sm: 0.25rem;
+  --radius-md: 0.375rem;
+  --radius-lg: 0.5rem;
+  --radius-xl: 0.75rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+  body {
+    @apply bg-background text-foreground;
+    font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
+    font-feature-settings: "rlig" 1, "calt" 1;
+  }
+}
+
+.dark {
+  --color-background: hsl(222.2 84% 4.9%);
+  --color-foreground: hsl(210 40% 98%);
+  --color-card: hsl(222.2 84% 4.9%);
+  --color-card-foreground: hsl(210 40% 98%);
+  --color-popover: hsl(222.2 84% 4.9%);
+  --color-popover-foreground: hsl(210 40% 98%);
+  --color-primary: hsl(217.2 91.2% 59.8%);
+  --color-primary-foreground: hsl(222.2 47.4% 11.2%);
+  --color-secondary: hsl(217.2 32.6% 17.5%);
+  --color-secondary-foreground: hsl(210 40% 98%);
+  --color-muted: hsl(217.2 32.6% 17.5%);
+  --color-muted-foreground: hsl(215 20.2% 65.1%);
+  --color-accent: hsl(217.2 32.6% 17.5%);
+  --color-accent-foreground: hsl(210 40% 98%);
+  --color-destructive: hsl(0 62.8% 30.6%);
+  --color-destructive-foreground: hsl(210 40% 98%);
+  --color-border: hsl(217.2 32.6% 17.5%);
+  --color-input: hsl(217.2 32.6% 17.5%);
+  --color-ring: hsl(224.3 76.3% 48%);
+}
+
+/* ===== React Day Picker v9 Custom Styles ===== */
+/* Override default styles to match app theme */
+
+.rdp-root {
+  --rdp-accent-color: hsl(221.2 83.2% 53.3%);
+  --rdp-accent-background-color: hsl(221.2 83.2% 53.3%);
+  --rdp-range_start-color: #fff;
+  --rdp-range_start-background: hsl(221.2 83.2% 53.3%);
+  --rdp-range_end-color: #fff;
+  --rdp-range_end-background: hsl(221.2 83.2% 53.3%);
+  --rdp-range_middle-color: hsl(221.2 83.2% 25%);
+  --rdp-range_middle-background: hsl(221.2 83.2% 92%);
+  --rdp-selected-color: #fff;
+  --rdp-selected-background: hsl(221.2 83.2% 53.3%);
+  --rdp-day-height: 2.25rem;
+  --rdp-day-width: 2.25rem;
+  --rdp-today-color: hsl(221.2 83.2% 53.3%);
+}
+
+/* Day cell base */
+.rdp-day {
+  border-radius: 0.375rem;
+}
+
+/* Day button base */
+.rdp-day button {
+  border-radius: 0.375rem;
+  transition: all 0.15s ease;
+}
+
+/* Hover state */
+.rdp-day:not(.rdp-selected):not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle):not(.rdp-disabled) button:hover {
+  background-color: hsl(210 40% 96.1%);
+}
+
+/* Selected single day */
+.rdp-selected:not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button,
+.rdp-selected:not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button:hover {
+  background-color: hsl(221.2 83.2% 53.3%) !important;
+  color: white !important;
+  font-weight: 500;
+  border-radius: 0.375rem;
+}
+
+/* Range start */
+.rdp-range_start button,
+.rdp-range_start button:hover {
+  background-color: hsl(221.2 83.2% 53.3%) !important;
+  color: white !important;
+  font-weight: 500;
+  border-radius: 0.375rem 0 0 0.375rem !important;
+}
+
+/* Range end */
+.rdp-range_end button,
+.rdp-range_end button:hover {
+  background-color: hsl(221.2 83.2% 53.3%) !important;
+  color: white !important;
+  font-weight: 500;
+  border-radius: 0 0.375rem 0.375rem 0 !important;
+}
+
+/* Range start and end are the same day */
+.rdp-range_start.rdp-range_end button {
+  border-radius: 0.375rem !important;
+}
+
+/* Range middle */
+.rdp-range_middle button,
+.rdp-range_middle button:hover {
+  background-color: hsl(221.2 83.2% 92%) !important;
+  color: hsl(221.2 83.2% 25%) !important;
+  border-radius: 0 !important;
+}
+
+/* Today */
+.rdp-today:not(.rdp-selected):not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button {
+  background-color: hsl(210 40% 96.1%);
+  color: hsl(221.2 83.2% 53.3%);
+  font-weight: 600;
+}
+
+/* Outside days */
+.rdp-outside button {
+  color: hsl(215.4 16.3% 46.9%);
+  opacity: 0.5;
+}
+
+/* Disabled days */
+.rdp-disabled button {
+  color: hsl(215.4 16.3% 46.9%);
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+/* Weekday headers */
+.rdp-weekday {
+  color: hsl(215.4 16.3% 46.9%);
+  font-size: 0.8rem;
+  font-weight: 500;
+}
+
+/* Month caption */
+.rdp-month_caption {
+  font-weight: 600;
+  color: hsl(222.2 84% 4.9%);
+}

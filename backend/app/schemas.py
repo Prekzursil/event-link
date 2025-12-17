@@ -185,6 +185,30 @@ class PaginatedEvents(BaseModel):
     page_size: int
 
 
+class TagResponse(BaseModel):
+    id: int
+    name: str
+
+    class Config:
+        from_attributes = True
+
+
+class TagListResponse(BaseModel):
+    items: List[TagResponse]
+
+
+class StudentProfileResponse(BaseModel):
+    user_id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    interest_tags: List[TagResponse] = []
+
+
+class StudentProfileUpdate(BaseModel):
+    full_name: Optional[str] = Field(None, max_length=255)
+    interest_tag_ids: Optional[List[int]] = None
+
+
 class PasswordResetRequest(BaseModel):
     email: EmailStr
 
