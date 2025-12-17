@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import type { EventFormData } from '@/types';
@@ -29,6 +29,13 @@ const CATEGORIES = [
   'Conference',
 ];
 
+const formatDateTimeLocal = (dateString: string) => {
+  const date = new Date(dateString);
+  return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
+    .toISOString()
+    .slice(0, 16);
+};
+
 export function EventFormPage() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -51,46 +58,42 @@ export function EventFormPage() {
     status: 'published',
   });
 
+  const loadEvent = useCallback(
+    async (eventId: number) => {
+      setIsLoading(true);
+      try {
+        const event = await eventService.getEvent(eventId);
+        setFormData({
+          title: event.title,
+          description: event.description || '',
+          category: event.category || '',
+          start_time: formatDateTimeLocal(event.start_time),
+          end_time: event.end_time ? formatDateTimeLocal(event.end_time) : '',
+          location: event.location || '',
+          max_seats: event.max_seats || undefined,
+          cover_url: event.cover_url || '',
+          tags: event.tags.map((t) => t.name),
+          status: (event.status as 'draft' | 'published') || 'published',
+        });
+      } catch {
+        toast({
+          title: 'Eroare',
+          description: 'Nu am putut încărca evenimentul',
+          variant: 'destructive',
+        });
+        navigate('/organizer');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [navigate, toast],
+  );
+
   useEffect(() => {
     if (isEditing && id) {
       loadEvent(parseInt(id));
     }
-  }, [id, isEditing]);
-
-  const loadEvent = async (eventId: number) => {
-    setIsLoading(true);
-    try {
-      const event = await eventService.getEvent(eventId);
-      setFormData({
-        title: event.title,
-        description: event.description || '',
-        category: event.category || '',
-        start_time: formatDateTimeLocal(event.start_time),
-        end_time: event.end_time ? formatDateTimeLocal(event.end_time) : '',
-        location: event.location || '',
-        max_seats: event.max_seats || undefined,
-        cover_url: event.cover_url || '',
-        tags: event.tags.map((t) => t.name),
-        status: (event.status as 'draft' | 'published') || 'published',
-      });
-    } catch {
-      toast({
-        title: 'Eroare',
-        description: 'Nu am putut încărca evenimentul',
-        variant: 'destructive',
-      });
-      navigate('/organizer');
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  const formatDateTimeLocal = (dateString: string) => {
-    const date = new Date(dateString);
-    return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
-      .toISOString()
-      .slice(0, 16);
-  };
+  }, [id, isEditing, loadEvent]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
