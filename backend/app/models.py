@@ -12,6 +12,7 @@ from sqlalchemy import (
     func,
     Boolean,
     JSON,
+    Float,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -165,6 +166,23 @@ class AuditLog(Base):
     meta = Column(JSON, nullable=True)
 
     actor = relationship("User", foreign_keys=[actor_user_id])
+
+
+class UserRecommendation(Base):
+    __tablename__ = "user_recommendations"
+    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False, index=True)
+    score = Column(Float, nullable=False)
+    rank = Column(Integer, nullable=False)
+    model_version = Column(String(50), nullable=True)
+    generated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    reason = Column(Text, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    event = relationship("Event", foreign_keys=[event_id])
 
 
 event_tags = Table(

@@ -41,6 +41,9 @@ class Settings(BaseSettings):
     public_api_rate_window_seconds: int = 60
 
     maintenance_mode_registrations_disabled: bool = False
+
+    recommendations_use_ml_cache: bool = True
+    recommendations_cache_max_age_seconds: int = 60 * 60 * 24
     
     # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
     # so our validator can handle both formats.

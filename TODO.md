@@ -54,6 +54,9 @@
 - [x] Events: expand category options in UI (align with seeded categories; add Music and more).
 - [x] Music: add genre tags (rock/pop/etc) to seed data and surface them in profile interests.
 - [x] Recommendations: include profile interest tags (cold-start) when building suggestions.
+- [x] Recommendations ML v1: add `user_recommendations` cache table + use it in `GET /api/recommendations` when fresh.
+- [x] Recommendations ML v1: add offline trainer script + docs for batch recompute.
+- [ ] Recommendations ML: schedule periodic retraining (cron/CronJob) and monitor quality metrics (CTR, register conversion).
 
 ## Medium
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).

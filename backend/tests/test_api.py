@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 
 from app import models
 
@@ -943,6 +943,111 @@ def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
     ).json()
     assert any(e["id"] == rock_event["id"] for e in rec)
     assert "Interesele tale" in (rec[0].get("recommendation_reason") or "")
+
+
+def test_recommendations_use_ml_cache_when_present(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    payload = {
+        "description": "Desc",
+        "category": "Cat",
+        "city": "București",
+        "location": "Loc",
+        "max_seats": 10,
+        "tags": [],
+    }
+    first_by_time = client.post(
+        "/api/events",
+        json={**payload, "title": "Earlier", "start_time": helpers["future_time"](days=2)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    second_by_time = client.post(
+        "/api/events",
+        json={**payload, "title": "Later", "start_time": helpers["future_time"](days=3)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    student_token = helpers["register_student"]("mlcache@test.ro")
+    student = db.query(models.User).filter(models.User.email == "mlcache@test.ro").first()
+    assert student
+
+    db.add_all(
+        [
+            models.UserRecommendation(
+                user_id=student.id,
+                event_id=second_by_time["id"],
+                score=0.9,
+                rank=1,
+                model_version="test",
+                reason="cache-1",
+            ),
+            models.UserRecommendation(
+                user_id=student.id,
+                event_id=first_by_time["id"],
+                score=0.8,
+                rank=2,
+                model_version="test",
+                reason="cache-2",
+            ),
+        ]
+    )
+    db.commit()
+
+    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    assert len(rec) >= 2
+    assert rec[0]["id"] == second_by_time["id"]
+    assert rec[0].get("recommendation_reason") == "cache-1"
+
+
+def test_recommendations_ignore_stale_ml_cache(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    payload = {
+        "description": "Desc",
+        "category": "Cat",
+        "city": "București",
+        "location": "Loc",
+        "max_seats": 10,
+        "tags": [],
+    }
+    first_by_time = client.post(
+        "/api/events",
+        json={**payload, "title": "Earlier", "start_time": helpers["future_time"](days=2)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    second_by_time = client.post(
+        "/api/events",
+        json={**payload, "title": "Later", "start_time": helpers["future_time"](days=3)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    student_token = helpers["register_student"]("mlstale@test.ro")
+    student = db.query(models.User).filter(models.User.email == "mlstale@test.ro").first()
+    assert student
+
+    old = datetime.now(timezone.utc) - timedelta(days=2)
+    db.add(
+        models.UserRecommendation(
+            user_id=student.id,
+            event_id=second_by_time["id"],
+            score=0.9,
+            rank=1,
+            model_version="test",
+            reason="cache-1",
+            generated_at=old,
+        )
+    )
+    db.commit()
+
+    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    assert len(rec) >= 1
+    assert rec[0]["id"] == first_by_time["id"]
 
 
 def test_duplicate_registration_blocked(helpers):
