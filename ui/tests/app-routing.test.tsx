@@ -1,5 +1,5 @@
 import { cleanup, render, screen } from '@testing-library/react';
-import { afterEach, describe, expect, it, vi } from 'vitest';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 let authState: { isAuthenticated: boolean; isOrganizer: boolean; isLoading: boolean } = {
   isAuthenticated: false,
@@ -64,6 +64,10 @@ vi.mock('@/pages/auth/ResetPasswordPage', () => ({
 }));
 
 import App from '@/App';
+
+beforeEach(() => {
+  window.localStorage.setItem('language_preference', 'ro');
+});
 
 afterEach(() => {
   cleanup();

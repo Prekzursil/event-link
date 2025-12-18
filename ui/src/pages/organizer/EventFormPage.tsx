@@ -17,8 +17,9 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/contexts/LanguageContext';
 import { ArrowLeft, Save, X } from 'lucide-react';
-import { EVENT_CATEGORIES } from '@/lib/eventCategories';
+import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const formatDateTimeLocal = (dateString: string) => {
   const date = new Date(dateString);
@@ -35,6 +36,7 @@ export function EventFormPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [tagInput, setTagInput] = useState('');
   const { toast } = useToast();
+  const { language, t } = useI18n();
 
   const [formData, setFormData] = useState<EventFormData>({
     title: '',
@@ -70,8 +72,8 @@ export function EventFormPage() {
         });
       } catch {
         toast({
-          title: 'Eroare',
-          description: 'Nu am putut încărca evenimentul',
+          title: t.common.error,
+          description: t.eventForm.loadErrorDescription,
           variant: 'destructive',
         });
         navigate('/organizer');
@@ -79,7 +81,7 @@ export function EventFormPage() {
         setIsLoading(false);
       }
     },
-    [navigate, toast],
+    [navigate, t, toast],
   );
 
   useEffect(() => {
@@ -93,8 +95,8 @@ export function EventFormPage() {
 
     if (!formData.title.trim()) {
       toast({
-        title: 'Eroare',
-        description: 'Titlul este obligatoriu',
+        title: t.common.error,
+        description: t.eventForm.validation.titleRequired,
         variant: 'destructive',
       });
       return;
@@ -102,8 +104,8 @@ export function EventFormPage() {
 
     if (!formData.category) {
       toast({
-        title: 'Eroare',
-        description: 'Categoria este obligatorie',
+        title: t.common.error,
+        description: t.eventForm.validation.categoryRequired,
         variant: 'destructive',
       });
       return;
@@ -111,8 +113,8 @@ export function EventFormPage() {
 
     if (!formData.location || formData.location.trim().length < 2) {
       toast({
-        title: 'Eroare',
-        description: 'Locația este obligatorie (minim 2 caractere)',
+        title: t.common.error,
+        description: t.eventForm.validation.locationRequired,
         variant: 'destructive',
       });
       return;
@@ -120,8 +122,8 @@ export function EventFormPage() {
 
     if (!formData.city || formData.city.trim().length < 2) {
       toast({
-        title: 'Eroare',
-        description: 'Orașul este obligatoriu (minim 2 caractere)',
+        title: t.common.error,
+        description: t.eventForm.validation.cityRequired,
         variant: 'destructive',
       });
       return;
@@ -129,8 +131,8 @@ export function EventFormPage() {
 
     if (!formData.start_time) {
       toast({
-        title: 'Eroare',
-        description: 'Data de început este obligatorie',
+        title: t.common.error,
+        description: t.eventForm.validation.startRequired,
         variant: 'destructive',
       });
       return;
@@ -138,8 +140,8 @@ export function EventFormPage() {
 
     if (!formData.max_seats || formData.max_seats < 1) {
       toast({
-        title: 'Eroare',
-        description: 'Numărul maxim de locuri este obligatoriu',
+        title: t.common.error,
+        description: t.eventForm.validation.maxSeatsRequired,
         variant: 'destructive',
       });
       return;
@@ -173,14 +175,14 @@ export function EventFormPage() {
       if (isEditing && id) {
         await eventService.updateEvent(parseInt(id), dataToSend);
         toast({
-          title: 'Succes',
-          description: 'Evenimentul a fost actualizat',
+          title: t.common.success,
+          description: t.eventForm.updatedDescription,
         });
       } else {
         const newEvent = await eventService.createEvent(dataToSend);
         toast({
-          title: 'Succes',
-          description: 'Evenimentul a fost creat',
+          title: t.common.success,
+          description: t.eventForm.createdDescription,
         });
         navigate(`/events/${newEvent.id}`);
         return;
@@ -190,8 +192,8 @@ export function EventFormPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'A apărut o eroare',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventForm.genericError,
         variant: 'destructive',
       });
     } finally {
@@ -218,48 +220,48 @@ export function EventFormPage() {
   };
 
   if (isLoading) {
-    return <LoadingPage message="Se încarcă evenimentul..." />;
+    return <LoadingPage message={t.eventForm.loading} />;
   }
 
   return (
     <div className="container mx-auto max-w-3xl px-4 py-8">
       <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Înapoi
+        {t.eventForm.back}
       </Button>
 
       <Card>
         <CardHeader>
           <CardTitle>
-            {isEditing ? 'Editează evenimentul' : 'Creează eveniment nou'}
+            {isEditing ? t.eventForm.editTitle : t.eventForm.createTitle}
           </CardTitle>
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div className="space-y-2">
-              <Label htmlFor="title">Titlu *</Label>
+              <Label htmlFor="title">{t.eventForm.fields.title} *</Label>
               <Input
                 id="title"
                 value={formData.title}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, title: e.target.value }))
                 }
-                placeholder="Numele evenimentului"
+                placeholder={t.eventForm.placeholders.title}
                 required
               />
             </div>
 
             {/* Description */}
             <div className="space-y-2">
-              <Label htmlFor="description">Descriere</Label>
+              <Label htmlFor="description">{t.eventForm.fields.description}</Label>
               <Textarea
                 id="description"
                 value={formData.description}
                 onChange={(e) =>
                   setFormData((prev) => ({ ...prev, description: e.target.value }))
                 }
-                placeholder="Descrierea evenimentului"
+                placeholder={t.eventForm.placeholders.description}
                 rows={5}
               />
             </div>
@@ -267,7 +269,7 @@ export function EventFormPage() {
             {/* Category & Status */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label>Categorie *</Label>
+                <Label>{t.eventForm.fields.category} *</Label>
                 <Select
                   value={formData.category}
                   onValueChange={(value) =>
@@ -275,12 +277,12 @@ export function EventFormPage() {
                   }
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Selectează categoria" />
+                    <SelectValue placeholder={t.eventForm.placeholders.category} />
                   </SelectTrigger>
                   <SelectContent>
                     {EVENT_CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat}>
-                        {cat}
+                        {getEventCategoryLabel(cat, language)}
                       </SelectItem>
                     ))}
                   </SelectContent>
@@ -288,7 +290,7 @@ export function EventFormPage() {
               </div>
 
               <div className="space-y-2">
-                <Label>Status</Label>
+                <Label>{t.eventForm.fields.status}</Label>
                 <Select
                   value={formData.status}
                   onValueChange={(value) =>
@@ -302,8 +304,8 @@ export function EventFormPage() {
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="published">Publicat</SelectItem>
-                    <SelectItem value="draft">Draft</SelectItem>
+                    <SelectItem value="published">{t.eventForm.status.published}</SelectItem>
+                    <SelectItem value="draft">{t.eventForm.status.draft}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
@@ -312,7 +314,7 @@ export function EventFormPage() {
             {/* Date & Time */}
             <div className="grid gap-4 sm:grid-cols-2">
               <div className="space-y-2">
-                <Label htmlFor="start_time">Data și ora începerii *</Label>
+                <Label htmlFor="start_time">{t.eventForm.fields.startTime} *</Label>
                 <Input
                   id="start_time"
                   type="datetime-local"
@@ -325,7 +327,7 @@ export function EventFormPage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="end_time">Data și ora terminării</Label>
+                <Label htmlFor="end_time">{t.eventForm.fields.endTime}</Label>
                 <Input
                   id="end_time"
                   type="datetime-local"
@@ -340,32 +342,32 @@ export function EventFormPage() {
             {/* City, Location & Max Seats */}
             <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
               <div className="space-y-2">
-                <Label htmlFor="city">Oraș *</Label>
+                <Label htmlFor="city">{t.eventForm.fields.city} *</Label>
                 <Input
                   id="city"
                   value={formData.city}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, city: e.target.value }))
                   }
-                  placeholder="ex: București"
+                  placeholder={t.eventForm.placeholders.cityExample}
                   required
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="location">Locație *</Label>
+                <Label htmlFor="location">{t.eventForm.fields.location} *</Label>
                 <Input
                   id="location"
                   value={formData.location}
                   onChange={(e) =>
                     setFormData((prev) => ({ ...prev, location: e.target.value }))
                   }
-                  placeholder="Locația evenimentului"
+                  placeholder={t.eventForm.placeholders.location}
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="max_seats">Număr maxim de locuri *</Label>
+                <Label htmlFor="max_seats">{t.eventForm.fields.maxSeats} *</Label>
                 <Input
                   id="max_seats"
                   type="number"
@@ -377,7 +379,7 @@ export function EventFormPage() {
                       max_seats: e.target.value ? parseInt(e.target.value) : undefined,
                     }))
                   }
-                  placeholder="ex: 100"
+                  placeholder={t.eventForm.placeholders.maxSeatsExample}
                   required
                 />
               </div>
@@ -385,7 +387,7 @@ export function EventFormPage() {
 
             {/* Cover URL */}
             <div className="space-y-2">
-              <Label htmlFor="cover_url">URL imagine de copertă</Label>
+              <Label htmlFor="cover_url">{t.eventForm.fields.coverUrl}</Label>
               <Input
                 id="cover_url"
                 type="url"
@@ -409,12 +411,12 @@ export function EventFormPage() {
 
             {/* Tags */}
             <div className="space-y-2">
-              <Label>Etichete</Label>
+              <Label>{t.eventForm.fields.tags}</Label>
               <div className="flex gap-2">
                 <Input
                   value={tagInput}
                   onChange={(e) => setTagInput(e.target.value)}
-                  placeholder="Adaugă o etichetă"
+                  placeholder={t.eventForm.placeholders.tag}
                   onKeyDown={(e) => {
                     if (e.key === 'Enter') {
                       e.preventDefault();
@@ -423,7 +425,7 @@ export function EventFormPage() {
                   }}
                 />
                 <Button type="button" variant="outline" onClick={addTag}>
-                  Adaugă
+                  {t.eventForm.addTag}
                 </Button>
               </div>
               {formData.tags && formData.tags.length > 0 && (
@@ -448,15 +450,15 @@ export function EventFormPage() {
                 variant="outline"
                 onClick={() => navigate('/organizer')}
               >
-                Anulează
+                {t.common.cancel}
               </Button>
               <Button type="submit" disabled={isSaving}>
                 <Save className="mr-2 h-4 w-4" />
                 {isSaving
-                  ? 'Se salvează...'
+                  ? t.eventForm.saving
                   : isEditing
-                    ? 'Salvează modificările'
-                    : 'Creează eveniment'}
+                    ? t.eventForm.saveChanges
+                    : t.eventForm.createButton}
               </Button>
             </div>
           </form>

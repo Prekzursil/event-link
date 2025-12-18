@@ -16,12 +16,14 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import type { AxiosError } from 'axios';
+import { useI18n } from '@/contexts/LanguageContext';
 
 interface ApiError {
   detail?: string;
 }
 
 export function ResetPasswordPage() {
+  const { t } = useI18n();
   const [searchParams] = useSearchParams();
   const token = searchParams.get('token') || '';
   const [password, setPassword] = useState('');
@@ -32,9 +34,9 @@ export function ResetPasswordPage() {
   const { toast } = useToast();
 
   const passwordRequirements = [
-    { label: 'Cel puțin 8 caractere', met: password.length >= 8 },
-    { label: 'Conține litere', met: /[a-zA-Z]/.test(password) },
-    { label: 'Conține cifre', met: /\d/.test(password) },
+    { label: t.auth.resetPassword.passwordRequirementMin, met: password.length >= 8 },
+    { label: t.auth.resetPassword.passwordRequirementLetters, met: /[a-zA-Z]/.test(password) },
+    { label: t.auth.resetPassword.passwordRequirementNumbers, met: /\d/.test(password) },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -42,8 +44,8 @@ export function ResetPasswordPage() {
 
     if (password !== confirmPassword) {
       toast({
-        title: 'Eroare',
-        description: 'Parolele nu se potrivesc',
+        title: t.auth.resetPassword.passwordMismatchTitle,
+        description: t.auth.resetPassword.passwordMismatchDescription,
         variant: 'destructive',
       });
       return;
@@ -51,8 +53,8 @@ export function ResetPasswordPage() {
 
     if (!passwordRequirements.every((req) => req.met)) {
       toast({
-        title: 'Eroare',
-        description: 'Parola nu îndeplinește cerințele',
+        title: t.auth.resetPassword.passwordInvalidTitle,
+        description: t.auth.resetPassword.passwordInvalidDescription,
         variant: 'destructive',
       });
       return;
@@ -63,16 +65,16 @@ export function ResetPasswordPage() {
     try {
       await authService.resetPassword(token, password, confirmPassword);
       toast({
-        title: 'Parolă resetată cu succes!',
-        description: 'Te poți autentifica acum cu noua parolă.',
+        title: t.auth.resetPassword.successTitle,
+        description: t.auth.resetPassword.successDescription,
         variant: 'success' as const,
       });
       navigate('/login');
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Token invalid sau expirat',
+        title: t.auth.resetPassword.errorTitle,
+        description: axiosError.response?.data?.detail || t.auth.resetPassword.errorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -85,14 +87,14 @@ export function ResetPasswordPage() {
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl">Link invalid</CardTitle>
+            <CardTitle className="text-2xl">{t.auth.resetPassword.invalidTitle}</CardTitle>
             <CardDescription>
-              Link-ul de resetare este invalid sau a expirat.
+              {t.auth.resetPassword.invalidDescription}
             </CardDescription>
           </CardHeader>
           <CardFooter>
             <Button asChild className="w-full">
-              <Link to="/forgot-password">Solicită un link nou</Link>
+              <Link to="/forgot-password">{t.auth.resetPassword.requestNewLink}</Link>
             </Button>
           </CardFooter>
         </Card>
@@ -107,15 +109,15 @@ export function ResetPasswordPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Setează parola nouă</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.resetPassword.title}</CardTitle>
           <CardDescription>
-            Introdu noua parolă pentru contul tău
+            {t.auth.resetPassword.description}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">Parolă nouă</Label>
+              <Label htmlFor="password">{t.auth.resetPassword.newPasswordLabel}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -157,7 +159,7 @@ export function ResetPasswordPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmă parola</Label>
+              <Label htmlFor="confirmPassword">{t.auth.resetPassword.confirmPasswordLabel}</Label>
               <Input
                 id="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
@@ -168,7 +170,7 @@ export function ResetPasswordPage() {
                 disabled={isLoading}
               />
               {confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-destructive">Parolele nu se potrivesc</p>
+                <p className="text-xs text-destructive">{t.auth.resetPassword.passwordMismatchInline}</p>
               )}
             </div>
           </CardContent>
@@ -177,10 +179,10 @@ export function ResetPasswordPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Se resetează...
+                  {t.auth.resetPassword.submitting}
                 </>
               ) : (
-                'Resetează parola'
+                t.auth.resetPassword.submit
               )}
             </Button>
           </CardFooter>

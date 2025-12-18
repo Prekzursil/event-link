@@ -2,6 +2,7 @@ import { createContext, useContext, useState, useEffect, useCallback, type React
 import type { User } from '@/types';
 import authService from '@/services/auth.service';
 import { useTheme } from '@/contexts/ThemeContext';
+import { useI18n } from '@/contexts/LanguageContext';
 
 interface AuthContextType {
   user: User | null;
@@ -21,6 +22,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { setPreference: setThemePreference } = useTheme();
+  const { setPreference: setLanguagePreference } = useI18n();
 
   const refreshUser = useCallback(async () => {
     try {
@@ -30,12 +32,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (userData.theme_preference) {
           setThemePreference(userData.theme_preference);
         }
+        if (userData.language_preference) {
+          setLanguagePreference(userData.language_preference);
+        }
       }
     } catch {
       authService.logout();
       setUser(null);
     }
-  }, [setThemePreference]);
+  }, [setLanguagePreference, setThemePreference]);
 
   useEffect(() => {
     const initAuth = async () => {

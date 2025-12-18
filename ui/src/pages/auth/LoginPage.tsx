@@ -16,6 +16,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Eye, EyeOff } from 'lucide-react';
 import type { AxiosError } from 'axios';
+import { useI18n } from '@/contexts/LanguageContext';
 
 interface ApiError {
   detail?: string;
@@ -25,6 +26,7 @@ interface ApiError {
 }
 
 export function LoginPage() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -43,19 +45,19 @@ export function LoginPage() {
     try {
       await login(email, password);
       toast({
-        title: 'Autentificare reușită',
-        description: 'Bine ai venit înapoi!',
+        title: t.auth.login.successTitle,
+        description: t.auth.login.successDescription,
         variant: 'success' as const,
       });
       navigate(from, { replace: true });
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
       toast({
-        title: 'Eroare la autentificare',
+        title: t.auth.login.errorTitle,
         description:
           axiosError.response?.data?.detail ||
           axiosError.response?.data?.error?.message ||
-          'Email sau parolă incorectă',
+          t.auth.login.errorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -70,19 +72,19 @@ export function LoginPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Bine ai venit!</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.login.title}</CardTitle>
           <CardDescription>
-            Intră în cont pentru a accesa platforma EventLink
+            {t.auth.login.description}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.auth.login.emailLabel}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="email@exemplu.com"
+                placeholder={t.auth.login.emailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -91,12 +93,12 @@ export function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">Parolă</Label>
+                <Label htmlFor="password">{t.auth.login.passwordLabel}</Label>
                 <Link
                   to="/forgot-password"
                   className="text-sm text-primary hover:underline"
                 >
-                  Ai uitat parola?
+                  {t.auth.login.forgotPassword}
                 </Link>
               </div>
               <div className="relative">
@@ -130,16 +132,16 @@ export function LoginPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Se autentifică...
+                  {t.auth.login.submitting}
                 </>
               ) : (
-                'Autentificare'
+                t.auth.login.submit
               )}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Nu ai cont?{' '}
+              {t.auth.login.noAccount}{' '}
               <Link to="/register" className="text-primary hover:underline">
-                Înregistrează-te
+                {t.auth.login.registerLink}
               </Link>
             </p>
           </CardFooter>

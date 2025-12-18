@@ -24,6 +24,7 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/contexts/LanguageContext';
 import {
   ArrowLeft,
   Users,
@@ -33,8 +34,7 @@ import {
   ChevronRight,
   ArrowUpDown,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ro } from 'date-fns/locale';
+import { formatDateTime } from '@/lib/utils';
 
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
@@ -47,6 +47,7 @@ export function ParticipantsPage() {
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [updatingAttendance, setUpdatingAttendance] = useState<Set<number>>(() => new Set());
   const { toast } = useToast();
+  const { language, t } = useI18n();
 
   const loadParticipants = useCallback(async () => {
     if (!id) return;
@@ -62,14 +63,14 @@ export function ParticipantsPage() {
       setData(response);
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut încărca participanții',
+        title: t.common.error,
+        description: t.participants.loadErrorDescription,
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id, page, pageSize, sortBy, sortDir, toast]);
+  }, [id, page, pageSize, sortBy, sortDir, t, toast]);
 
   useEffect(() => {
     loadParticipants();
@@ -96,8 +97,8 @@ export function ParticipantsPage() {
     try {
       await eventService.updateParticipantAttendance(parseInt(id), participant.id, attended);
       toast({
-        title: 'Succes',
-        description: attended ? 'Participare confirmată' : 'Participare anulată',
+        title: t.common.success,
+        description: attended ? t.participants.attendanceConfirmed : t.participants.attendanceCleared,
       });
     } catch {
       setData((prev) =>
@@ -111,8 +112,8 @@ export function ParticipantsPage() {
           : null
       );
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza prezența',
+        title: t.common.error,
+        description: t.participants.attendanceUpdateErrorDescription,
         variant: 'destructive',
       });
     } finally {
@@ -136,19 +137,28 @@ export function ParticipantsPage() {
   const exportToCSV = () => {
     if (!data) return;
 
-    const headers = ['Email', 'Nume', 'Data înregistrării', 'Prezent'];
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+    const headers = [
+      t.participants.csvHeaders.email,
+      t.participants.csvHeaders.name,
+      t.participants.csvHeaders.registrationDate,
+      t.participants.csvHeaders.attended,
+    ];
     const rows = data.participants.map((p) => [
       p.email,
       p.full_name || '',
-      format(new Date(p.registration_time), 'dd.MM.yyyy HH:mm'),
-      p.attended ? 'Da' : 'Nu',
+      formatDateTime(p.registration_time, language),
+      p.attended ? t.participants.csvYes : t.participants.csvNo,
     ]);
 
-    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(String(cell))).join(','))
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `participanti-${data.title.replace(/\s+/g, '-')}.csv`;
+    link.download = `${t.participants.csvFilePrefix}-${data.title.replace(/\s+/g, '-')}.csv`;
     link.click();
   };
 
@@ -196,7 +206,7 @@ export function ParticipantsPage() {
     <div className="container mx-auto px-4 py-8">
       <Button variant="ghost" className="mb-6" onClick={() => navigate('/organizer')}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Înapoi la dashboard
+        {t.participants.backToDashboard}
       </Button>
 
       <Card>
@@ -205,7 +215,7 @@ export function ParticipantsPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Participanți
+                {t.participants.title}
                 {isLoading && <LoadingSpinner size="sm" className="ml-2" />}
               </CardTitle>
               <CardDescription className="mt-1">{data.title}</CardDescription>
@@ -213,12 +223,14 @@ export function ParticipantsPage() {
             <div className="flex items-center gap-4">
               <Badge variant="outline">
                 {data.seats_taken}
-                {data.max_seats && ` / ${data.max_seats}`} înscriși
+                {data.max_seats && ` / ${data.max_seats}`} {t.participants.registeredSuffix}
               </Badge>
-              <Badge variant="secondary">{attendedCount} prezenți</Badge>
+              <Badge variant="secondary">
+                {attendedCount} {t.participants.attendedSuffix}
+              </Badge>
               <Button variant="outline" onClick={exportToCSV}>
                 <Download className="mr-2 h-4 w-4" />
-                Export CSV
+                {t.participants.exportCsv}
               </Button>
             </div>
           </div>
@@ -227,9 +239,9 @@ export function ParticipantsPage() {
           {data.participants.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Nu există participanți</h3>
+              <h3 className="text-lg font-semibold">{t.participants.emptyTitle}</h3>
               <p className="mt-2 text-muted-foreground">
-                Nimeni nu s-a înscris încă la acest eveniment
+                {t.participants.emptyDescription}
               </p>
             </div>
           ) : (
@@ -244,7 +256,7 @@ export function ParticipantsPage() {
                         className="p-0 font-medium"
                         onClick={() => toggleSort('email')}
                       >
-                        Email
+                        {t.participants.table.email}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -255,7 +267,7 @@ export function ParticipantsPage() {
                         className="p-0 font-medium"
                         onClick={() => toggleSort('full_name')}
                       >
-                        Nume
+                        {t.participants.table.name}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -266,11 +278,11 @@ export function ParticipantsPage() {
                         className="p-0 font-medium"
                         onClick={() => toggleSort('registration_time')}
                       >
-                        Data înregistrării
+                        {t.participants.table.registrationDate}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="w-[100px]">Prezent</TableHead>
+                    <TableHead className="w-[100px]">{t.participants.table.attended}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -305,11 +317,7 @@ export function ParticipantsPage() {
                             </div>
                           </TableCell>
                           <TableCell>{participant.full_name || '-'}</TableCell>
-                          <TableCell>
-                            {format(new Date(participant.registration_time), 'd MMM yyyy, HH:mm', {
-                              locale: ro,
-                            })}
-                          </TableCell>
+                          <TableCell>{formatDateTime(participant.registration_time, language)}</TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Checkbox
@@ -331,7 +339,7 @@ export function ParticipantsPage() {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Pe pagină:</span>
+                    <span className="text-sm text-muted-foreground">{t.participants.perPage}</span>
                     <Select
                       value={String(pageSize)}
                       onValueChange={(value) => {
@@ -361,7 +369,7 @@ export function ParticipantsPage() {
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <span className="text-sm">
-                      Pagina {page} din {totalPages}
+                      {t.participants.paginationPage} {page} {t.participants.paginationOf} {totalPages}
                     </span>
                     <Button
                       variant="outline"

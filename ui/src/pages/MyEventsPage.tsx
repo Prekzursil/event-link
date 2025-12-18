@@ -8,10 +8,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/LanguageContext';
 import { Calendar, CalendarPlus, Clock, History, Search, Plus, Megaphone } from 'lucide-react';
 
 export function MyEventsPage() {
   const { isOrganizer } = useAuth();
+  const { t } = useI18n();
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
@@ -60,14 +62,14 @@ export function MyEventsPage() {
       }
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut încărca evenimentele tale',
+        title: t.myEvents.loadErrorTitle,
+        description: t.myEvents.loadErrorDescription,
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [toast, isOrganizer]);
+  }, [toast, isOrganizer, t]);
 
   const loadFavorites = useCallback(async () => {
     try {
@@ -98,8 +100,8 @@ export function MyEventsPage() {
       }
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza favoritele',
+        title: t.myEvents.favoritesErrorTitle,
+        description: t.myEvents.favoritesErrorDescription,
         variant: 'destructive',
       });
     }
@@ -120,13 +122,13 @@ export function MyEventsPage() {
       URL.revokeObjectURL(url);
 
       toast({
-        title: 'Calendar descărcat',
-        description: 'Fișierul .ics a fost generat cu succes.',
+        title: t.myEvents.calendarDownloadedTitle,
+        description: t.myEvents.calendarDownloadedDescription,
       });
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut descărca calendarul',
+        title: t.myEvents.calendarDownloadErrorTitle,
+        description: t.myEvents.calendarDownloadErrorDescription,
         variant: 'destructive',
       });
     } finally {
@@ -135,18 +137,16 @@ export function MyEventsPage() {
   };
 
   if (isLoading) {
-    return <LoadingPage message="Se încarcă evenimentele tale..." />;
+    return <LoadingPage message={t.myEvents.loading} />;
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Evenimentele Mele</h1>
+          <h1 className="text-3xl font-bold">{t.myEvents.title}</h1>
           <p className="mt-2 text-muted-foreground">
-            {isOrganizer 
-              ? 'Evenimentele create și cele la care te-ai înscris'
-              : 'Evenimentele la care te-ai înscris'}
+            {isOrganizer ? t.myEvents.subtitleOrganizer : t.myEvents.subtitleStudent}
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -156,13 +156,13 @@ export function MyEventsPage() {
             disabled={isDownloadingCalendar}
           >
             <CalendarPlus className="mr-2 h-4 w-4" />
-            {isDownloadingCalendar ? 'Se descarcă...' : 'Calendar (.ics)'}
+            {isDownloadingCalendar ? t.myEvents.calendarDownloading : t.myEvents.calendarButton}
           </Button>
           {isOrganizer && (
             <Button asChild>
               <Link to="/organizer/events/new">
                 <Plus className="mr-2 h-4 w-4" />
-                Eveniment Nou
+                {t.nav.newEvent}
               </Link>
             </Button>
           )}
@@ -172,14 +172,14 @@ export function MyEventsPage() {
       {upcomingEvents.length === 0 && pastEvents.length === 0 && organizerEvents.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Nu ești înscris la niciun eveniment</h3>
+          <h3 className="text-lg font-semibold">{t.myEvents.emptyTitle}</h3>
           <p className="mt-2 text-muted-foreground">
-            Explorează evenimentele disponibile și înscrie-te la cele care te interesează
+            {t.myEvents.emptyDescription}
           </p>
           <Button asChild className="mt-4">
             <Link to="/">
               <Search className="mr-2 h-4 w-4" />
-              Explorează evenimente
+              {t.myEvents.exploreEvents}
             </Link>
           </Button>
         </div>
@@ -189,16 +189,16 @@ export function MyEventsPage() {
             {isOrganizer && (
               <TabsTrigger value="organized" className="gap-2">
                 <Megaphone className="h-4 w-4" />
-                Create de mine ({organizerEvents.length})
+                {t.myEvents.tabOrganized} ({organizerEvents.length})
               </TabsTrigger>
             )}
             <TabsTrigger value="upcoming" className="gap-2">
               <Clock className="h-4 w-4" />
-              Viitoare ({upcomingEvents.length})
+              {t.myEvents.tabUpcoming} ({upcomingEvents.length})
             </TabsTrigger>
             <TabsTrigger value="past" className="gap-2">
               <History className="h-4 w-4" />
-              Trecute ({pastEvents.length})
+              {t.myEvents.tabPast} ({pastEvents.length})
             </TabsTrigger>
           </TabsList>
 
@@ -207,14 +207,14 @@ export function MyEventsPage() {
               {organizerEvents.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-16 text-center">
                   <Megaphone className="mb-4 h-12 w-12 text-muted-foreground" />
-                  <h3 className="text-lg font-semibold">Nu ai creat niciun eveniment</h3>
+                  <h3 className="text-lg font-semibold">{t.myEvents.organizedEmptyTitle}</h3>
                   <p className="mt-2 text-muted-foreground">
-                    Creează primul tău eveniment pentru a începe
+                    {t.myEvents.organizedEmptyDescription}
                   </p>
                   <Button asChild className="mt-4">
                     <Link to="/organizer/events/new">
                       <Plus className="mr-2 h-4 w-4" />
-                      Creează Eveniment
+                      {t.myEvents.organizedCreateButton}
                     </Link>
                   </Button>
                 </div>
@@ -238,9 +238,9 @@ export function MyEventsPage() {
             {upcomingEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Clock className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Nu ai evenimente viitoare</h3>
+                <h3 className="text-lg font-semibold">{t.myEvents.upcomingEmptyTitle}</h3>
                 <p className="mt-2 text-muted-foreground">
-                  Înscrie-te la evenimente pentru a le vedea aici
+                  {t.myEvents.upcomingEmptyDescription}
                 </p>
               </div>
             ) : (
@@ -261,9 +261,9 @@ export function MyEventsPage() {
             {pastEvents.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <History className="mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="text-lg font-semibold">Nu ai evenimente trecute</h3>
+                <h3 className="text-lg font-semibold">{t.myEvents.pastEmptyTitle}</h3>
                 <p className="mt-2 text-muted-foreground">
-                  Evenimentele la care ai participat vor apărea aici
+                  {t.myEvents.pastEmptyDescription}
                 </p>
               </div>
             ) : (

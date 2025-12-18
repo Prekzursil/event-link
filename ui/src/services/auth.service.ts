@@ -1,5 +1,5 @@
 import api from './api';
-import type { AuthToken, User, ThemePreference } from '../types';
+import type { AuthToken, User, ThemePreference, LanguagePreference } from '../types';
 
 export interface RegisterData {
   email: string;
@@ -33,6 +33,11 @@ export const authService = {
 
   async updateThemePreference(themePreference: ThemePreference): Promise<User> {
     const response = await api.put<User>('/api/me/theme', { theme_preference: themePreference });
+    return response.data;
+  },
+
+  async updateLanguagePreference(languagePreference: LanguagePreference): Promise<User> {
+    const response = await api.put<User>('/api/me/language', { language_preference: languagePreference });
     return response.data;
   },
 

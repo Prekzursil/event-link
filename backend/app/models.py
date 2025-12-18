@@ -39,6 +39,7 @@ class User(Base):
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
     theme_preference = Column(String(10), nullable=False, server_default="system", default="system")
+    language_preference = Column(String(10), nullable=False, server_default="system", default="system")
     city = Column(String(100))
     university = Column(String(255))
     faculty = Column(String(255))

@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams, Link } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import type { OrganizerProfile } from '@/types';
@@ -9,6 +9,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingPage } from '@/components/ui/loading';
 import { EventCard } from '@/components/events/EventCard';
+import { useI18n } from '@/contexts/LanguageContext';
 import {
   Calendar,
   ExternalLink,
@@ -24,46 +25,50 @@ export function OrganizerProfilePage() {
   const { id } = useParams<{ id: string }>();
   const [profile, setProfile] = useState<OrganizerProfile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [hasError, setHasError] = useState(false);
+  const { t } = useI18n();
+
+  const loadProfile = useCallback(
+    async (organizerId: number) => {
+      setIsLoading(true);
+      setHasError(false);
+      try {
+        const data = await eventService.getOrganizerProfile(organizerId);
+        setProfile(data);
+      } catch (err) {
+        console.error('Failed to load organizer profile:', err);
+        setHasError(true);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [],
+  );
 
   useEffect(() => {
     if (id) {
       loadProfile(parseInt(id));
     }
-  }, [id]);
-
-  const loadProfile = async (organizerId: number) => {
-    setIsLoading(true);
-    setError(null);
-    try {
-      const data = await eventService.getOrganizerProfile(organizerId);
-      setProfile(data);
-    } catch (err) {
-      console.error('Failed to load organizer profile:', err);
-      setError('Nu am putut încărca profilul organizatorului');
-    } finally {
-      setIsLoading(false);
-    }
-  };
+  }, [id, loadProfile]);
 
   if (isLoading) {
-    return <LoadingPage message="Se încarcă profilul..." />;
+    return <LoadingPage message={t.organizerProfile.loading} />;
   }
 
-  if (error || !profile) {
+  if (hasError || !profile) {
     return (
       <div className="container mx-auto px-4 py-16">
         <Card className="mx-auto max-w-md">
           <CardContent className="pt-6 text-center">
             <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-            <h2 className="mb-2 text-xl font-semibold">Organizator negăsit</h2>
+            <h2 className="mb-2 text-xl font-semibold">{t.organizerProfile.notFoundTitle}</h2>
             <p className="mb-4 text-muted-foreground">
-              {error || 'Acest organizator nu există sau nu mai este disponibil.'}
+              {hasError ? t.organizerProfile.loadErrorDescription : t.organizerProfile.notFoundDescription}
             </p>
             <Button asChild>
               <Link to="/events">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Înapoi la evenimente
+                {t.organizerProfile.backToEvents}
               </Link>
             </Button>
           </CardContent>
@@ -81,7 +86,7 @@ export function OrganizerProfilePage() {
     (event) => new Date(event.start_time) < now
   );
 
-  const displayName = profile.org_name || profile.full_name || 'Organizator';
+  const displayName = profile.org_name || profile.full_name || t.organizerProfile.organizerFallback;
   const initials = displayName
     .split(' ')
     .map((n) => n[0])
@@ -95,7 +100,7 @@ export function OrganizerProfilePage() {
       <Button variant="ghost" className="mb-6" asChild>
         <Link to="/events">
           <ArrowLeft className="mr-2 h-4 w-4" />
-          Înapoi la evenimente
+          {t.organizerProfile.backToEvents}
         </Link>
       </Button>
 
@@ -136,7 +141,7 @@ export function OrganizerProfilePage() {
                       rel="noopener noreferrer"
                       className="hover:text-primary"
                     >
-                      Website
+                      {t.organizerProfile.website}
                     </a>
                   </div>
                 )}
@@ -146,15 +151,15 @@ export function OrganizerProfilePage() {
               <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
                 <Badge variant="secondary" className="text-sm">
                   <CalendarDays className="mr-1 h-4 w-4" />
-                  {profile.events.length} evenimente
+                  {profile.events.length} {t.organizerProfile.stats.events}
                 </Badge>
                 <Badge variant="secondary" className="text-sm">
                   <Calendar className="mr-1 h-4 w-4" />
-                  {upcomingEvents.length} viitoare
+                  {upcomingEvents.length} {t.organizerProfile.stats.upcoming}
                 </Badge>
                 <Badge variant="outline" className="text-sm">
                   <History className="mr-1 h-4 w-4" />
-                  {pastEvents.length} trecute
+                  {pastEvents.length} {t.organizerProfile.stats.past}
                 </Badge>
               </div>
             </div>
@@ -167,15 +172,15 @@ export function OrganizerProfilePage() {
         <TabsList className="mb-6">
           <TabsTrigger value="upcoming" className="gap-2">
             <Calendar className="h-4 w-4" />
-            Viitoare ({upcomingEvents.length})
+            {t.organizerProfile.tabs.upcoming} ({upcomingEvents.length})
           </TabsTrigger>
           <TabsTrigger value="past" className="gap-2">
             <History className="h-4 w-4" />
-            Trecute ({pastEvents.length})
+            {t.organizerProfile.tabs.past} ({pastEvents.length})
           </TabsTrigger>
           <TabsTrigger value="all" className="gap-2">
             <CalendarDays className="h-4 w-4" />
-            Toate ({profile.events.length})
+            {t.organizerProfile.tabs.all} ({profile.events.length})
           </TabsTrigger>
         </TabsList>
 
@@ -184,9 +189,9 @@ export function OrganizerProfilePage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <Calendar className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-lg font-medium">Niciun eveniment viitor</h3>
+                <h3 className="mb-2 text-lg font-medium">{t.organizerProfile.emptyUpcomingTitle}</h3>
                 <p className="text-muted-foreground">
-                  Acest organizator nu are evenimente programate în viitor.
+                  {t.organizerProfile.emptyUpcomingDescription}
                 </p>
               </CardContent>
             </Card>
@@ -204,9 +209,9 @@ export function OrganizerProfilePage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <History className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-lg font-medium">Niciun eveniment trecut</h3>
+                <h3 className="mb-2 text-lg font-medium">{t.organizerProfile.emptyPastTitle}</h3>
                 <p className="text-muted-foreground">
-                  Acest organizator nu are evenimente trecute.
+                  {t.organizerProfile.emptyPastDescription}
                 </p>
               </CardContent>
             </Card>
@@ -224,9 +229,9 @@ export function OrganizerProfilePage() {
             <Card>
               <CardContent className="py-12 text-center">
                 <CalendarDays className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-                <h3 className="mb-2 text-lg font-medium">Niciun eveniment</h3>
+                <h3 className="mb-2 text-lg font-medium">{t.organizerProfile.emptyAllTitle}</h3>
                 <p className="text-muted-foreground">
-                  Acest organizator nu are evenimente.
+                  {t.organizerProfile.emptyAllDescription}
                 </p>
               </CardContent>
             </Card>

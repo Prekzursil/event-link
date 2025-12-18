@@ -1,5 +1,6 @@
 export type UserRole = 'student' | 'organizator' | 'admin';
 export type ThemePreference = 'system' | 'light' | 'dark';
+export type LanguagePreference = 'system' | 'ro' | 'en';
 export type StudyLevel = 'bachelor' | 'master' | 'phd' | 'medicine';
 
 export interface User {
@@ -8,6 +9,7 @@ export interface User {
   role: UserRole;
   full_name?: string;
   theme_preference?: ThemePreference;
+  language_preference?: LanguagePreference;
 }
 
 export interface Tag {
