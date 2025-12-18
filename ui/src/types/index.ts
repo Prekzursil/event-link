@@ -34,7 +34,7 @@ export interface Event {
 export interface EventDetail extends Event {
   is_registered: boolean;
   is_owner: boolean;
-  available_seats?: number;
+  available_seats?: number | null;
   is_favorite: boolean;
 }
 

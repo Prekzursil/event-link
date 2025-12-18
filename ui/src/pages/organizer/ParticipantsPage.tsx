@@ -21,7 +21,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { LoadingPage } from '@/components/ui/loading';
+import { LoadingSpinner } from '@/components/ui/loading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import {
   ArrowLeft,
@@ -44,6 +45,7 @@ export function ParticipantsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('registration_time');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [updatingAttendance, setUpdatingAttendance] = useState<Set<number>>(() => new Set());
   const { toast } = useToast();
 
   const loadParticipants = useCallback(async () => {
@@ -75,27 +77,49 @@ export function ParticipantsPage() {
 
   const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
     if (!id) return;
+    if (updatingAttendance.has(participant.id)) return;
+    const previous = participant.attended;
+
+    setUpdatingAttendance((prev) => {
+      const next = new Set(prev);
+      next.add(participant.id);
+      return next;
+    });
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            participants: prev.participants.map((p) => (p.id === participant.id ? { ...p, attended } : p)),
+          }
+        : null
+    );
     try {
       await eventService.updateParticipantAttendance(parseInt(id), participant.id, attended);
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              participants: prev.participants.map((p) =>
-                p.id === participant.id ? { ...p, attended } : p
-              ),
-            }
-          : null
-      );
       toast({
         title: 'Succes',
         description: attended ? 'Participare confirmată' : 'Participare anulată',
       });
     } catch {
+      setData((prev) =>
+        prev
+          ? {
+              ...prev,
+              participants: prev.participants.map((p) =>
+                p.id === participant.id ? { ...p, attended: previous } : p
+              ),
+            }
+          : null
+      );
       toast({
         title: 'Eroare',
         description: 'Nu am putut actualiza prezența',
         variant: 'destructive',
+      });
+    } finally {
+      setUpdatingAttendance((prev) => {
+        const next = new Set(prev);
+        next.delete(participant.id);
+        return next;
       });
     }
   };
@@ -129,7 +153,36 @@ export function ParticipantsPage() {
   };
 
   if (isLoading && !data) {
-    return <LoadingPage message="Se încarcă participanții..." />;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="mb-6 h-10 w-48" />
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!data) {
@@ -153,6 +206,7 @@ export function ParticipantsPage() {
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
                 Participanți
+                {isLoading && <LoadingSpinner size="sm" className="ml-2" />}
               </CardTitle>
               <CardDescription className="mt-1">{data.title}</CardDescription>
             </div>
@@ -220,35 +274,56 @@ export function ParticipantsPage() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.participants.map((participant) => (
-                    <TableRow key={participant.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <a
-                            href={`mailto:${participant.email}`}
-                            className="hover:underline"
-                          >
-                            {participant.email}
-                          </a>
-                        </div>
-                      </TableCell>
-                      <TableCell>{participant.full_name || '-'}</TableCell>
-                      <TableCell>
-                        {format(new Date(participant.registration_time), 'd MMM yyyy, HH:mm', {
-                          locale: ro,
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <Checkbox
-                          checked={participant.attended}
-                          onCheckedChange={(checked) =>
-                            handleAttendanceChange(participant, checked === true)
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {isLoading
+                    ? Array.from({ length: Math.min(pageSize, 10) }).map((_, index) => (
+                        <TableRow key={`skeleton-${index}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-4 w-4 rounded" />
+                              <Skeleton className="h-4 w-48" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-32" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-40" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5 w-5 rounded" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : data.participants.map((participant) => (
+                        <TableRow key={participant.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <a href={`mailto:${participant.email}`} className="hover:underline">
+                                {participant.email}
+                              </a>
+                            </div>
+                          </TableCell>
+                          <TableCell>{participant.full_name || '-'}</TableCell>
+                          <TableCell>
+                            {format(new Date(participant.registration_time), 'd MMM yyyy, HH:mm', {
+                              locale: ro,
+                            })}
+                          </TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={participant.attended}
+                                disabled={updatingAttendance.has(participant.id)}
+                                onCheckedChange={(checked) =>
+                                  handleAttendanceChange(participant, checked === true)
+                                }
+                              />
+                              {updatingAttendance.has(participant.id) && <LoadingSpinner size="sm" />}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                 </TableBody>
               </Table>
 
