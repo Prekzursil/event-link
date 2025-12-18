@@ -40,6 +40,29 @@ Useful flags:
 
 The script prints a basic offline metric: `hitrate@10`.
 
+## Scheduled retraining (cron/K8s)
+
+This repo includes a DB-backed task queue + worker (`docker-compose.yml` service `worker`), and a job type that can
+run the ML trainer:
+
+- `recompute_recommendations_ml`
+
+To enqueue the retraining job (idempotent: won’t enqueue if one is queued/running):
+
+```bash
+export DATABASE_URL="postgresql://..."
+export SECRET_KEY="any-value"
+python backend/scripts/enqueue_scheduled_jobs.py --retrain-ml --top-n 50
+```
+
+Example cron (nightly):
+
+```cron
+0 3 * * * cd /path/to/event-link && DATABASE_URL=... SECRET_KEY=... python backend/scripts/enqueue_scheduled_jobs.py --retrain-ml
+```
+
+In Kubernetes, run the same command from a CronJob using the `backend` image.
+
 ## Runtime behavior
 
 `GET /api/recommendations`:
@@ -48,10 +71,8 @@ The script prints a basic offline metric: `hitrate@10`.
   `recommendations_cache_max_age_seconds`
 - falls back to the existing tag/popularity heuristic otherwise
 
-## Next steps (recommended)
+## Monitoring
 
-- Add scheduled retraining (cron/K8s CronJob) and/or a background job type.
-- Track more interactions (event views/clicks/search/filter usage) for richer supervision.
-- Add online A/B testing + monitoring (CTR, registration conversion).
-- Upgrade to embeddings / matrix factorization when dataset grows.
+Admin metrics endpoint:
 
+- `GET /api/admin/personalization/metrics?days=30` (CTR + registration conversion from tracked interactions)

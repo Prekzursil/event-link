@@ -9,6 +9,7 @@ os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("EMAIL_ENABLED", "false")
 
 from app import auth, models
+from app import api as api_module
 from app.api import app
 from app.database import Base, engine, get_db, SessionLocal
 
@@ -37,6 +38,7 @@ def client(db_session):
     def _override_get_db():
         yield db_session
 
+    api_module._RATE_LIMIT_STORE.clear()
     app.dependency_overrides[get_db] = _override_get_db
     with TestClient(app) as test_client:
         yield test_client
