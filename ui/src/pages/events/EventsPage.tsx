@@ -46,11 +46,27 @@ export function EventsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [totalEvents, setTotalEvents] = useState(0);
+  const [showTwoMonthsCalendar, setShowTwoMonthsCalendar] = useState(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return true;
+    return window.matchMedia('(min-width: 640px)').matches;
+  });
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
   const { language, t } = useI18n();
 
   const dateFnsLocale = useMemo(() => getDateFnsLocale(language), [language]);
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !window.matchMedia) return;
+    const media = window.matchMedia('(min-width: 640px)');
+    const handler = (e: MediaQueryListEvent) => setShowTwoMonthsCalendar(e.matches);
+    if (media.addEventListener) {
+      media.addEventListener('change', handler);
+      return () => media.removeEventListener('change', handler);
+    }
+    media.addListener(handler);
+    return () => media.removeListener(handler);
+  }, []);
 
   const categoryOptions = useMemo(
     () => [
@@ -265,7 +281,7 @@ export function EventsPage() {
               updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value })
             }
           >
-            <SelectTrigger className="w-[180px]">
+            <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder={t.events.categoryPlaceholder} />
             </SelectTrigger>
             <SelectContent>
@@ -280,7 +296,7 @@ export function EventsPage() {
           {/* Date Range */}
           <Popover>
             <PopoverTrigger asChild>
-              <Button variant="outline" className="w-[240px] justify-start">
+              <Button variant="outline" className="w-full justify-start sm:w-[240px]">
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {filters.start_date
                   ? filters.end_date
@@ -310,7 +326,7 @@ export function EventsPage() {
                     end_date: formatLocalDate(range?.to),
                   });
                 }}
-                numberOfMonths={2}
+                numberOfMonths={showTwoMonthsCalendar ? 2 : 1}
                 defaultMonth={filters.start_date ? new Date(filters.start_date + 'T00:00:00') : new Date()}
                 locale={dateFnsLocale}
               />
@@ -322,14 +338,14 @@ export function EventsPage() {
             placeholder={t.events.cityPlaceholder}
             value={filters.city || ''}
             onChange={(e) => updateFilters({ city: e.target.value })}
-            className="w-[180px]"
+            className="w-full sm:w-[180px]"
           />
 
           <Input
             placeholder={t.events.locationPlaceholder}
             value={filters.location || ''}
             onChange={(e) => updateFilters({ location: e.target.value })}
-            className="w-[180px]"
+            className="w-full sm:w-[180px]"
           />
         </div>
 

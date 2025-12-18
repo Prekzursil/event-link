@@ -169,7 +169,7 @@ export function OrganizerProfilePage() {
 
       {/* Events Tabs */}
       <Tabs defaultValue="upcoming" className="w-full">
-        <TabsList className="mb-6">
+        <TabsList className="mb-6 h-auto w-full flex flex-wrap justify-start">
           <TabsTrigger value="upcoming" className="gap-2">
             <Calendar className="h-4 w-4" />
             {t.organizerProfile.tabs.upcoming} ({upcomingEvents.length})

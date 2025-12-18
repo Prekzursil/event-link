@@ -185,7 +185,7 @@ export function MyEventsPage() {
         </div>
       ) : (
         <Tabs defaultValue={isOrganizer ? "organized" : "upcoming"} className="w-full">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 h-auto w-full flex flex-wrap justify-start">
             {isOrganizer && (
               <TabsTrigger value="organized" className="gap-2">
                 <Megaphone className="h-4 w-4" />

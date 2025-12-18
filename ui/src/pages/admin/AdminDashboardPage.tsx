@@ -216,7 +216,7 @@ export function AdminDashboardPage() {
       </div>
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as AdminTab)}>
-        <TabsList>
+        <TabsList className="h-auto w-full flex flex-wrap justify-start">
           <TabsTrigger value="overview">{t.adminDashboard.tabs.overview}</TabsTrigger>
           <TabsTrigger value="users">{t.adminDashboard.tabs.users}</TabsTrigger>
           <TabsTrigger value="events">{t.adminDashboard.tabs.events}</TabsTrigger>
