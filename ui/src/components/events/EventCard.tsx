@@ -15,6 +15,7 @@ export interface EventCardProps {
   showRecommendation?: boolean;
   isPast?: boolean;
   showEditButton?: boolean;
+  onEventClick?: (eventId: number) => void;
 }
 
 export function EventCard({
@@ -24,6 +25,7 @@ export function EventCard({
   showRecommendation = false,
   isPast = false,
   showEditButton = false,
+  onEventClick,
 }: EventCardProps) {
   const { language, t } = useI18n();
   const availableSeats = event.max_seats ? event.max_seats - event.seats_taken : null;
@@ -40,7 +42,7 @@ export function EventCard({
       "group overflow-hidden transition-all hover:shadow-lg",
       isPast && "opacity-75"
     )}>
-      <Link to={`/events/${event.id}`}>
+      <Link to={`/events/${event.id}`} onClick={() => onEventClick?.(event.id)}>
         {/* Cover Image */}
         <div className="relative aspect-video overflow-hidden bg-muted">
           {event.cover_url ? (

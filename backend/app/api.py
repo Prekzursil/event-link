@@ -6,6 +6,7 @@ import re
 import logging
 import asyncio
 import secrets
+import hashlib
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request, Query
@@ -236,18 +237,7 @@ def _load_cached_recommendations(
     if not settings.recommendations_use_ml_cache:
         return None
 
-    latest_generated_at = (
-        db.query(func.max(models.UserRecommendation.generated_at))
-        .filter(models.UserRecommendation.user_id == user.id)
-        .scalar()
-    )
-    if not latest_generated_at:
-        return None
-    if getattr(latest_generated_at, "tzinfo", None) is None:
-        latest_generated_at = latest_generated_at.replace(tzinfo=timezone.utc)
-
-    max_age = timedelta(seconds=settings.recommendations_cache_max_age_seconds)
-    if latest_generated_at < (now - max_age):
+    if not _recommendations_cache_is_fresh(db=db, user_id=user.id, now=now):
         return None
 
     rec_rows = (
@@ -290,6 +280,33 @@ def _load_cached_recommendations(
 
     ranked.sort(key=lambda row: row[0])
     return [(ev, seats, reason) for _rank, ev, seats, reason in ranked]
+
+
+def _recommendations_cache_is_fresh(*, db: Session, user_id: int, now: datetime) -> bool:
+    latest_generated_at = (
+        db.query(func.max(models.UserRecommendation.generated_at))
+        .filter(models.UserRecommendation.user_id == user_id)
+        .scalar()
+    )
+    if not latest_generated_at:
+        return False
+    if getattr(latest_generated_at, "tzinfo", None) is None:
+        latest_generated_at = latest_generated_at.replace(tzinfo=timezone.utc)
+    max_age = timedelta(seconds=settings.recommendations_cache_max_age_seconds)
+    return latest_generated_at >= (now - max_age)
+
+
+def _experiment_bucket(experiment: str, identity: str) -> int:
+    digest = hashlib.sha256(f"{experiment}:{identity}".encode("utf-8")).hexdigest()
+    return int(digest[:8], 16) % 100
+
+
+def _in_experiment_treatment(experiment: str, percent: int, identity: str) -> bool:
+    if percent <= 0:
+        return False
+    if percent >= 100:
+        return True
+    return _experiment_bucket(experiment, identity) < percent
 
 
 def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.PublicEventResponse:
@@ -567,6 +584,7 @@ def _ensure_registrations_enabled() -> None:
 
 @app.get("/api/events", response_model=schemas.PaginatedEvents)
 def get_events(
+    request: Request,
     search: Optional[str] = None,
     category: Optional[str] = None,
     start_date: Optional[date] = None,
@@ -576,6 +594,7 @@ def get_events(
     city: Optional[str] = None,
     location: Optional[str] = None,
     include_past: bool = False,
+    sort: Optional[str] = None,
     page: int = 1,
     page_size: int = 10,
     db: Session = Depends(get_db),
@@ -617,12 +636,126 @@ def get_events(
         query = query.filter(models.Event.start_time <= end_dt)
     query = query.distinct()
     total = query.count()
-    query = query.order_by(models.Event.id, models.Event.start_time)
+    sort_value = (sort or "").strip().lower()
+    if sort_value not in {"recommended", "time"}:
+        sort_value = "time"
+
+        if (
+            current_user is not None
+            and getattr(current_user, "role", None) == models.UserRole.student
+            and settings.recommendations_use_ml_cache
+            and _recommendations_cache_is_fresh(db=db, user_id=current_user.id, now=now)
+            and _in_experiment_treatment(
+                "personalization_ml_sort",
+                settings.experiments_personalization_ml_percent,
+                str(current_user.id),
+            )
+        ):
+            sort_value = "recommended"
+
+    use_recommended_sort = (
+        sort_value == "recommended"
+        and current_user is not None
+        and getattr(current_user, "role", None) == models.UserRole.student
+        and settings.recommendations_use_ml_cache
+        and _recommendations_cache_is_fresh(db=db, user_id=current_user.id, now=now)
+    )
+
+    if use_recommended_sort:
+        rec = models.UserRecommendation
+        query = query.outerjoin(
+            rec,
+            (rec.user_id == current_user.id) & (rec.event_id == models.Event.id),
+        )
+        query = query.order_by(
+            case((rec.rank.is_(None), 1), else_=0),
+            rec.rank.asc(),
+            models.Event.start_time.asc(),
+            models.Event.id.asc(),
+        )
+    else:
+        query = query.order_by(models.Event.start_time.asc(), models.Event.id.asc())
     query, _ = _events_with_counts_query(db, query)
     query = query.offset((page - 1) * page_size).limit(page_size)
     events = query.all()
-    items = [_serialize_event(event, seats) for event, seats in events]
+    if use_recommended_sort:
+        lang = current_user.language_preference
+        if not lang or lang == "system":
+            lang = request.headers.get("accept-language") or "ro"
+        lang = (lang or "ro").split(",")[0][:2].lower()
+
+        user_city = (current_user.city or "").strip().lower()
+        event_ids = [event.id for event, _seats in events]
+        reason_by_event_id = {
+            int(event_id): reason
+            for event_id, reason in (
+                db.query(models.UserRecommendation.event_id, models.UserRecommendation.reason)
+                .filter(models.UserRecommendation.user_id == current_user.id, models.UserRecommendation.event_id.in_(event_ids))
+                .all()
+            )
+        }
+        items = []
+        for event, seats in events:
+            reason = reason_by_event_id.get(event.id)
+            final_reason = reason
+            is_local = bool(user_city and event.city and event.city.strip().lower() == user_city)
+            if is_local:
+                suffix = f"Near you: {event.city}" if lang == "en" else f"În apropiere: {event.city}"
+                final_reason = f"{reason} • {suffix}" if reason else suffix
+            items.append(_serialize_event(event, seats, recommendation_reason=final_reason))
+    else:
+        items = [_serialize_event(event, seats) for event, seats in events]
     return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@app.post("/api/analytics/interactions", status_code=status.HTTP_204_NO_CONTENT)
+def record_interactions(
+    payload: schemas.InteractionBatchIn,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_optional_user),
+):
+    if not settings.analytics_enabled:
+        return
+
+    identifier = str(current_user.id) if current_user else None
+    _enforce_rate_limit(
+        "analytics_interactions",
+        request=request,
+        identifier=identifier,
+        limit=settings.analytics_rate_limit,
+        window_seconds=settings.analytics_rate_window_seconds,
+    )
+
+    event_ids = {event.event_id for event in payload.events if event.event_id is not None}
+    existing_event_ids: set[int] = set()
+    if event_ids:
+        existing_event_ids = {row[0] for row in db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all()}
+
+    now = datetime.now(timezone.utc)
+    interactions: list[models.EventInteraction] = []
+    for event in payload.events:
+        if event.event_id is not None and event.event_id not in existing_event_ids:
+            continue
+        occurred_at = event.occurred_at or now
+        if occurred_at.tzinfo is None:
+            occurred_at = occurred_at.replace(tzinfo=timezone.utc)
+        interactions.append(
+            models.EventInteraction(
+                user_id=current_user.id if current_user else None,
+                event_id=event.event_id,
+                interaction_type=event.interaction_type,
+                occurred_at=occurred_at,
+                meta=event.meta,
+            )
+        )
+
+    if not interactions:
+        return
+
+    db.add_all(interactions)
+    db.commit()
+    return
 
 
 @app.get("/api/public/events", response_model=schemas.PaginatedPublicEvents)

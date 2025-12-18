@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import eventService from '@/services/event.service';
+import { recordInteractions } from '@/services/analytics.service';
 import type { EventDetail } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
@@ -58,6 +59,17 @@ export function EventDetailPage() {
     };
     loadEvent();
   }, [id, navigate, toast, t]);
+
+  const eventId = event?.id;
+  useEffect(() => {
+    if (!eventId) return;
+    const startedAt = Date.now();
+    void recordInteractions([{ interaction_type: 'view', event_id: eventId, meta: { source: 'event_detail' } }]);
+    return () => {
+      const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+      void recordInteractions([{ interaction_type: 'dwell', event_id: eventId, meta: { source: 'event_detail', seconds } }]);
+    };
+  }, [eventId]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) {
@@ -184,6 +196,9 @@ export function EventDetailPage() {
           text: event?.description,
           url,
         });
+        if (event) {
+          void recordInteractions([{ interaction_type: 'share', event_id: event.id, meta: { channel: 'native' } }]);
+        }
       } catch {
         // User cancelled
       }
@@ -193,6 +208,9 @@ export function EventDetailPage() {
         title: t.eventDetail.shareCopiedTitle,
         description: t.eventDetail.shareCopiedDescription,
       });
+      if (event) {
+        void recordInteractions([{ interaction_type: 'share', event_id: event.id, meta: { channel: 'copy' } }]);
+      }
     }
   };
 

@@ -1001,6 +1001,84 @@
         "title": "HTTPValidationError",
         "type": "object"
       },
+      "InteractionBatchIn": {
+        "properties": {
+          "events": {
+            "items": {
+              "$ref": "#/components/schemas/InteractionEventIn"
+            },
+            "maxItems": 100,
+            "minItems": 1,
+            "title": "Events",
+            "type": "array"
+          }
+        },
+        "required": [
+          "events"
+        ],
+        "title": "InteractionBatchIn",
+        "type": "object"
+      },
+      "InteractionEventIn": {
+        "properties": {
+          "event_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Event Id"
+          },
+          "interaction_type": {
+            "enum": [
+              "impression",
+              "click",
+              "view",
+              "dwell",
+              "share",
+              "search",
+              "filter",
+              "favorite",
+              "register",
+              "unregister"
+            ],
+            "title": "Interaction Type",
+            "type": "string"
+          },
+          "meta": {
+            "anyOf": [
+              {
+                "additionalProperties": true,
+                "type": "object"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Meta"
+          },
+          "occurred_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Occurred At"
+          }
+        },
+        "required": [
+          "interaction_type"
+        ],
+        "title": "InteractionEventIn",
+        "type": "object"
+      },
       "LanguagePreferenceUpdate": {
         "properties": {
           "language_preference": {
@@ -2782,6 +2860,42 @@
         "summary": "Admin Update User"
       }
     },
+    "/api/analytics/interactions": {
+      "post": {
+        "operationId": "record_interactions_api_analytics_interactions_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/InteractionBatchIn"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Record Interactions"
+      }
+    },
     "/api/events": {
       "get": {
         "operationId": "get_events_api_events_get",
@@ -2927,6 +3041,22 @@
               "default": false,
               "title": "Include Past",
               "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
+            "name": "sort",
+            "required": false,
+            "schema": {
+              "anyOf": [
+                {
+                  "type": "string"
+                },
+                {
+                  "type": "null"
+                }
+              ],
+              "title": "Sort"
             }
           },
           {

@@ -25,6 +25,7 @@ export const eventService = {
     if (filters.city) params.append('city', filters.city);
     if (filters.location) params.append('location', filters.location);
     if (filters.include_past) params.append('include_past', 'true');
+    if (filters.sort) params.append('sort', filters.sort);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.page_size) params.append('page_size', filters.page_size.toString());
     if (filters.tags?.length) {

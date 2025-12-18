@@ -1,5 +1,5 @@
 from datetime import datetime
-from typing import List, Optional, Literal
+from typing import Any, List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 from .models import UserRole
 
@@ -382,3 +382,28 @@ class OrganizerEmailParticipantsRequest(BaseModel):
 
 class OrganizerEmailParticipantsResponse(BaseModel):
     recipients: int
+
+
+InteractionType = Literal[
+    "impression",
+    "click",
+    "view",
+    "dwell",
+    "share",
+    "search",
+    "filter",
+    "favorite",
+    "register",
+    "unregister",
+]
+
+
+class InteractionEventIn(BaseModel):
+    interaction_type: InteractionType
+    event_id: Optional[int] = None
+    occurred_at: Optional[datetime] = None
+    meta: Optional[dict[str, Any]] = None
+
+
+class InteractionBatchIn(BaseModel):
+    events: List[InteractionEventIn] = Field(..., min_length=1, max_length=100)
