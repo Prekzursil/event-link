@@ -25,6 +25,39 @@ def test_login_failure(helpers):
     assert "incorect" in bad.json().get("detail", "")
 
 
+def test_theme_preference_default_and_update(helpers):
+    client = helpers["client"]
+    token = helpers["register_student"]("theme@test.ro")
+
+    me = client.get("/me", headers=helpers["auth_header"](token))
+    assert me.status_code == 200
+    assert me.json()["theme_preference"] == "system"
+
+    update = client.put(
+        "/api/me/theme",
+        json={"theme_preference": "dark"},
+        headers=helpers["auth_header"](token),
+    )
+    assert update.status_code == 200
+    assert update.json()["theme_preference"] == "dark"
+
+    me2 = client.get("/me", headers=helpers["auth_header"](token))
+    assert me2.status_code == 200
+    assert me2.json()["theme_preference"] == "dark"
+
+
+def test_theme_preference_rejects_invalid_value(helpers):
+    client = helpers["client"]
+    token = helpers["register_student"]("theme-bad@test.ro")
+
+    resp = client.put(
+        "/api/me/theme",
+        json={"theme_preference": "midnight"},
+        headers=helpers["auth_header"](token),
+    )
+    assert resp.status_code == 422
+
+
 def test_event_creation_and_capacity_enforced(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()

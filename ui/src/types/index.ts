@@ -1,10 +1,12 @@
 export type UserRole = 'student' | 'organizator';
+export type ThemePreference = 'system' | 'light' | 'dark';
 
 export interface User {
   id: number;
   email: string;
   role: UserRole;
   full_name?: string;
+  theme_preference?: ThemePreference;
 }
 
 export interface Tag {

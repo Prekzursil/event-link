@@ -1,7 +1,10 @@
 from datetime import datetime
-from typing import List, Optional
+from typing import List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 from .models import UserRole
+
+
+ThemePreference = Literal["system", "light", "dark"]
 
 
 class UserBase(BaseModel):
@@ -44,12 +47,17 @@ class UserLogin(BaseModel):
 
 class UserResponse(UserBase):
     id: int
+    theme_preference: ThemePreference = "system"
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class OrganizerUpgradeRequest(BaseModel):
     invite_code: str
+
+
+class ThemePreferenceUpdate(BaseModel):
+    theme_preference: ThemePreference
 
 
 class Token(BaseModel):
