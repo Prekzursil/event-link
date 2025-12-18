@@ -94,7 +94,7 @@
 - [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
 - [x] Seed script: document usage in root README and add docker-compose helper (optional).
 - [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
-- [ ] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
+- [x] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
 - [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
 - [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
 - [ ] Integration tests hitting a real test database (not just unit tests).

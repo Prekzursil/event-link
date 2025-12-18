@@ -7,6 +7,7 @@ Environment variables (or `.topsecret` file) are loaded via `pydantic-settings`:
 - `DATABASE_URL` (required)
 - `SECRET_KEY` (required)
 - `ALLOWED_ORIGINS` (comma-separated or JSON list; defaults to localhost/127.0.0.1 on ports 3000 and 4200)
+- `ADMIN_EMAILS` (comma-separated or JSON list; optional; emails granted admin-only endpoints)
 - `AUTO_CREATE_TABLES` (bool; enable for local dev only)
 - `AUTO_RUN_MIGRATIONS` (bool; run Alembic upgrade head on startup – recommended for dev/CI)
 - `ACCESS_TOKEN_EXPIRE_MINUTES` (default 30)
