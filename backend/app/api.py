@@ -338,6 +338,20 @@ def get_me(current_user: models.User = Depends(auth.get_current_user)):
     return current_user
 
 
+@app.put("/api/me/theme", response_model=schemas.UserResponse)
+def update_theme_preference(
+    payload: schemas.ThemePreferenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    current_user.theme_preference = payload.theme_preference
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    log_event("theme_preference_updated", user_id=current_user.id, theme_preference=current_user.theme_preference)
+    return current_user
+
+
 @app.post("/organizer/upgrade")
 def upgrade_to_organizer(
     request: schemas.OrganizerUpgradeRequest,

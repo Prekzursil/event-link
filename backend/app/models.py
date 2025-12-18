@@ -34,6 +34,7 @@ class User(Base):
     org_description = Column(Text)
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
+    theme_preference = Column(String(10), nullable=False, server_default="system", default="system")
 
     events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
     registrations = relationship(
