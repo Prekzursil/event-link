@@ -1,6 +1,6 @@
 """Add user academic profile fields and event city
 
-Revision ID: 0009_user_academic_and_event_city
+Revision ID: 0009_user_academic_event_city
 Revises: 0008_add_theme_preference
 Create Date: 2025-12-18
 """
@@ -10,7 +10,7 @@ import sqlalchemy as sa
 
 
 # revision identifiers, used by Alembic.
-revision = "0009_user_academic_and_event_city"
+revision = "0009_user_academic_event_city"
 down_revision = "0008_add_theme_preference"
 branch_labels = None
 depends_on = None
@@ -36,4 +36,3 @@ def downgrade() -> None:
     op.drop_column("users", "faculty")
     op.drop_column("users", "university")
     op.drop_column("users", "city")
-
