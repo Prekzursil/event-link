@@ -119,8 +119,8 @@
 - [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
 - [x] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
 - [x] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
-- [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
-- [ ] Integration tests hitting a real test database (not just unit tests).
+- [x] Coverage reporting for backend/frontend with minimum thresholds in CI.
+- [x] Integration tests hitting a real test database (not just unit tests).
 - [x] Contract tests around API schema to keep UI and backend in sync.
 - [x] Bulk operations for organizers (bulk email registrants, bulk close events, bulk tag edits).
 - [x] "Favorite events" / "watchlist" feature for students.
