@@ -1,5 +1,6 @@
 export type UserRole = 'student' | 'organizator';
 export type ThemePreference = 'system' | 'light' | 'dark';
+export type StudyLevel = 'bachelor' | 'master' | 'phd' | 'medicine';
 
 export interface User {
   id: number;
@@ -21,6 +22,7 @@ export interface Event {
   category?: string;
   start_time: string;
   end_time?: string;
+  city?: string;
   location?: string;
   max_seats?: number;
   cover_url?: string;
@@ -61,6 +63,7 @@ export interface ParticipantList {
   cover_url?: string;
   seats_taken: number;
   max_seats?: number;
+  city?: string | null;
   participants: Participant[];
   total: number;
   page: number;
@@ -82,11 +85,21 @@ export interface StudentProfile {
   user_id: number;
   email: string;
   full_name?: string;
+  city?: string | null;
+  university?: string | null;
+  faculty?: string | null;
+  study_level?: StudyLevel | null;
+  study_year?: number | null;
   interest_tags: Tag[];
 }
 
 export interface StudentProfileUpdate {
   full_name?: string;
+  city?: string;
+  university?: string;
+  faculty?: string;
+  study_level?: StudyLevel;
+  study_year?: number;
   interest_tag_ids?: number[];
 }
 
@@ -104,6 +117,7 @@ export interface EventFilters {
   start_date?: string;
   end_date?: string;
   tags?: string[];
+  city?: string;
   location?: string;
   include_past?: boolean;
   page?: number;
@@ -116,10 +130,17 @@ export interface EventFormData {
   category?: string;
   start_time: string;
   end_time?: string;
+  city?: string;
   location?: string;
   max_seats?: number;
   cover_url?: string;
   tags?: string[];
   status?: 'draft' | 'published';
   publish_at?: string;
+}
+
+export interface UniversityCatalogItem {
+  name: string;
+  city?: string | null;
+  faculties: string[];
 }

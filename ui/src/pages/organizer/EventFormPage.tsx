@@ -51,6 +51,7 @@ export function EventFormPage() {
     category: '',
     start_time: '',
     end_time: '',
+    city: '',
     location: '',
     max_seats: undefined,
     cover_url: '',
@@ -69,6 +70,7 @@ export function EventFormPage() {
           category: event.category || '',
           start_time: formatDateTimeLocal(event.start_time),
           end_time: event.end_time ? formatDateTimeLocal(event.end_time) : '',
+          city: event.city || '',
           location: event.location || '',
           max_seats: event.max_seats || undefined,
           cover_url: event.cover_url || '',
@@ -125,6 +127,15 @@ export function EventFormPage() {
       return;
     }
 
+    if (!formData.city || formData.city.trim().length < 2) {
+      toast({
+        title: 'Eroare',
+        description: 'Orașul este obligatoriu (minim 2 caractere)',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     if (!formData.start_time) {
       toast({
         title: 'Eroare',
@@ -149,6 +160,7 @@ export function EventFormPage() {
       const dataToSend: EventFormData = {
         title: formData.title.trim(),
         category: formData.category,
+        city: formData.city.trim(),
         location: formData.location.trim(),
         start_time: new Date(formData.start_time).toISOString(),
         max_seats: formData.max_seats,
@@ -334,8 +346,20 @@ export function EventFormPage() {
               </div>
             </div>
 
-            {/* Location & Max Seats */}
-            <div className="grid gap-4 sm:grid-cols-2">
+            {/* City, Location & Max Seats */}
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="space-y-2">
+                <Label htmlFor="city">Oraș *</Label>
+                <Input
+                  id="city"
+                  value={formData.city}
+                  onChange={(e) =>
+                    setFormData((prev) => ({ ...prev, city: e.target.value }))
+                  }
+                  placeholder="ex: București"
+                  required
+                />
+              </div>
               <div className="space-y-2">
                 <Label htmlFor="location">Locație *</Label>
                 <Input

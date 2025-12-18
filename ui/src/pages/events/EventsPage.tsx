@@ -62,6 +62,7 @@ export function EventsPage() {
   const category = searchParams.get('category') || '';
   const start_date = searchParams.get('start_date') || '';
   const end_date = searchParams.get('end_date') || '';
+  const city = searchParams.get('city') || '';
   const location = searchParams.get('location') || '';
   const tagsParam = searchParams.get('tags') || '';
   const page = parseInt(searchParams.get('page') || '1');
@@ -72,11 +73,12 @@ export function EventsPage() {
     category,
     start_date,
     end_date,
+    city,
     location,
     tags: tagsParam ? tagsParam.split(',').filter(Boolean) : [],
     page,
     page_size,
-  }), [search, category, start_date, end_date, location, tagsParam, page, page_size]);
+  }), [search, category, start_date, end_date, city, location, tagsParam, page, page_size]);
 
   const updateFilters = useCallback(
     (newFilters: Partial<EventFilters>) => {
@@ -201,6 +203,7 @@ export function EventsPage() {
     filters.category ||
     filters.start_date ||
     filters.end_date ||
+    filters.city ||
     filters.location ||
     (filters.tags && filters.tags.length > 0);
 
@@ -309,6 +312,13 @@ export function EventsPage() {
 
           {/* Location */}
           <Input
+            placeholder="Oraș"
+            value={filters.city || ''}
+            onChange={(e) => updateFilters({ city: e.target.value })}
+            className="w-[180px]"
+          />
+
+          <Input
             placeholder="Locație"
             value={filters.location || ''}
             onChange={(e) => updateFilters({ location: e.target.value })}
@@ -344,6 +354,15 @@ export function EventsPage() {
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => updateFilters({ start_date: '', end_date: '' })}
+                />
+              </Badge>
+            )}
+            {filters.city && (
+              <Badge variant="secondary" className="gap-1">
+                Oraș: {filters.city}
+                <X
+                  className="h-3 w-3 cursor-pointer"
+                  onClick={() => updateFilters({ city: '' })}
                 />
               </Badge>
             )}

@@ -35,6 +35,12 @@
 - [x] UI/UX: add light/dark/system theme support with a global toggle and persisted user preference.
 - [x] Backend: persist `theme_preference` on `User` and add `PUT /api/me/theme`.
 - [x] UI: audit and fix hard-coded colors so pages remain readable in dark mode.
+- [x] Student profile: add academic info (city, university, faculty, study level, year).
+- [x] Data: add Romania universities list + seeded faculties catalog (partial coverage) for dropdowns.
+- [x] Events: add explicit `city` field (separate from `location`) across API + UI.
+- [x] Events: add city filter in event list UI + API.
+- [x] Recommendations: boost events in the user’s city (still include national events).
+- [ ] Data: expand faculties catalog coverage across all Romanian universities (keep fallback manual input).
 
 ## Medium
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).
