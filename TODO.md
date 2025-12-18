@@ -47,7 +47,8 @@
 - [x] Analytics: registrations over time + popular tags (admin dashboard).
 - [x] Remove organizer invite-code upgrade flow (UI + backend); manage organizer role via admin.
 - [x] Data: expand faculties catalog coverage across all Romanian universities (keep fallback manual input).
-- [ ] Data: fill the remaining missing faculty lists (private/specialized institutions) or remove obsolete entries.
+- [x] Data: fill the remaining missing faculty lists (private/specialized institutions) or remove obsolete entries.
+- [ ] Data: normalize/alias university names (fix typos like `Transilvany`, `Oil- Gas`, and handle legacy values).
 - [x] Events: expand category options in UI (align with seeded categories; add Music and more).
 - [x] Music: add genre tags (rock/pop/etc) to seed data and surface them in profile interests.
 - [x] Recommendations: include profile interest tags (cold-start) when building suggestions.

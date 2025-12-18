@@ -12,6 +12,8 @@ class UniversityCatalogItem(TypedDict, total=False):
 def _guess_city(name: str) -> str | None:
     lowered = name.lower()
     mapping = [
+        ("romanian-american", "București"),
+        ("spiru haret", "București"),
         ("bucharest", "București"),
         ("bucuresti", "București"),
         ("cluj-napoca", "Cluj-Napoca"),
@@ -26,6 +28,7 @@ def _guess_city(name: str) -> str | None:
         ("galatzi", "Galați"),
         ("brasov", "Brașov"),
         ("oradea", "Oradea"),
+        ("emanuel", "Oradea"),
         ("suceava", "Suceava"),
         ("petrosani", "Petroșani"),
         ("pitesti", "Pitești"),
@@ -79,6 +82,10 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
         "Facultatea de Teatru",
         "Facultatea de Arte Vizuale și Design",
     ],
+    "Academy of Music \"Georghe Dima\" Cluj-Napoca": [
+        "Facultatea de Interpretare Muzicală",
+        "Facultatea Teoretică",
+    ],
     "Babes-Bolyai University of Cluj-Napoca": [
         "Facultatea de Matematică și Informatică",
         "Facultatea de Fizică",
@@ -107,6 +114,10 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
         "Facultatea de Management Marketing în Afaceri Economice",
         "Facultatea de Finanțe Contabilitate",
         "Facultatea de Științe Juridice, Administrative și ale Comunicării",
+    ],
+    "Emanuel University": [
+        "Facultatea de Teologie",
+        "Facultatea de Management",
     ],
     "Institute of Architecture \"Ion Mincu\" Bucharest": [
         "Facultatea de Arhitectură",
@@ -179,6 +190,41 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
         "Facultatea de Mecanică",
         "Facultatea de Inginerie din Hunedoara",
         "Facultatea de Științe ale Comunicării",
+    ],
+    "Romanian-American University": [
+        "Facultatea de Afaceri Internaționale",
+        "Facultatea de Drept",
+        "Facultatea de Educație Fizică, Sport și Kinetoterapie",
+        "Facultatea de Finanțe și Contabilitate",
+        "Facultatea de Informatică Managerială",
+        "Facultatea de Management-Marketing",
+        "Facultatea de Psihologie și Științele Educației",
+        "Facultatea de Turism și Managementul Ospitalității",
+    ],
+    "Spiru Haret University": [
+        "Facultatea de Arhitectură (București)",
+        "Facultatea de Arte (București)",
+        "Facultatea de Științe Juridice și Administrative (Brașov)",
+        "Facultatea de Științe Juridice, Politice și Administrative (București)",
+        "Facultatea de Contabilitate și Finanțe (Râmnicu Vâlcea)",
+        "Facultatea de Drept și Administrație Publică (Constanța)",
+        "Facultatea de Drept și Administrație Publică (Craiova)",
+        "Facultatea de Drept și Administrație Publică (Râmnicu Vâlcea)",
+        "Facultatea de Științe Economice (Câmpulung-Muscel)",
+        "Facultatea de Educație Fizică și Sport (București)",
+        "Facultatea de Psihologie și Științele Educației (București)",
+        "Facultatea de Finanțe și Bănci (București)",
+        "Facultatea de Jurnalism și Științele Comunicării (București)",
+        "Facultatea de Litere (București)",
+        "Facultatea de Management (Brașov)",
+        "Facultatea de Management Financiar Contabil (București)",
+        "Facultatea de Management Financiar Contabil (Craiova)",
+        "Facultatea de Management Financiar Contabil (Constanța)",
+        "Facultatea de Marketing și Afaceri Economice Internaționale (București)",
+        "Facultatea de Matematică, Informatică și Științele Naturii (București)",
+        "Facultatea de Medicină Veterinară (București)",
+        "Facultatea de Psihologie și Pedagogie (Brașov)",
+        "Facultatea de Relații Internaționale, Istorie și Filosofie (București)",
     ],
     "Targu-Mures University of Theatre": [
         "Facultatea de Arte în Limba Română",
@@ -300,6 +346,13 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
         "Facultatea de Medicină",
         "Facultatea de Științe",
         "Facultatea de Științe Agricole, Industrie Alimentară și Protecția Mediului",
+        "Facultatea de Științe Economice",
+    ],
+    "University Oil- Gas Ploiesti": [
+        "Facultatea de Inginerie Mecanică și Electrică",
+        "Facultatea de Ingineria Petrolului și Gazelor",
+        "Facultatea de Tehnologia Petrolului și Petrochimie",
+        "Facultatea de Litere și Științe",
         "Facultatea de Științe Economice",
     ],
     "University Politehnica of Bucharest": [
@@ -576,7 +629,6 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
 def get_university_catalog() -> list[UniversityCatalogItem]:
     names = [
         "1 December University of Alba Iulia",
-        "AISTEDA",
         "Academia Tehnica Militara",
         "Academia de Studii Economice din Bucuresti",
         'Academy of Arts "George Enescu" Iasi',
@@ -631,7 +683,6 @@ def get_university_catalog() -> list[UniversityCatalogItem]:
         "University of Oradea",
         "University of Petrosani",
         "University of Pitesti",
-        "University of Resita",
         "University of Sibiu",
         "University of Suceava",
         "University of Targu Jiu",
