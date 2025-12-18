@@ -976,6 +976,160 @@ def organizer_events(
     return [_serialize_event(event, seats) for event, seats in events]
 
 
+@app.post("/api/organizer/events/bulk/status")
+def organizer_bulk_update_status(
+    payload: schemas.OrganizerBulkStatusUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
+):
+    event_ids = list(dict.fromkeys(payload.event_ids))
+    if not event_ids:
+        raise HTTPException(status_code=400, detail="Nu ați selectat niciun eveniment.")
+
+    events = (
+        db.query(models.Event)
+        .filter(models.Event.id.in_(event_ids), models.Event.deleted_at.is_(None))
+        .all()
+    )
+    if len(events) != len(set(event_ids)):
+        raise HTTPException(status_code=404, detail="Unele evenimente nu există.")
+    if not _is_admin(current_user) and any(ev.owner_id != current_user.id for ev in events):
+        raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați toate evenimentele selectate.")
+
+    for ev in events:
+        if ev.status == payload.status:
+            continue
+        old = ev.status
+        ev.status = payload.status
+        _audit_log(
+            db,
+            entity_type="event",
+            entity_id=ev.id,
+            action="status_updated",
+            actor_user_id=current_user.id,
+            meta={"from": old, "to": payload.status, "bulk": True},
+        )
+
+    db.commit()
+    log_event(
+        "organizer_bulk_event_status_updated",
+        actor_user_id=current_user.id,
+        status=payload.status,
+        event_ids=event_ids,
+    )
+    return {"updated": len(events)}
+
+
+@app.post("/api/organizer/events/bulk/tags")
+def organizer_bulk_update_tags(
+    payload: schemas.OrganizerBulkTagsUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
+):
+    event_ids = list(dict.fromkeys(payload.event_ids))
+    if not event_ids:
+        raise HTTPException(status_code=400, detail="Nu ați selectat niciun eveniment.")
+
+    events = (
+        db.query(models.Event)
+        .filter(models.Event.id.in_(event_ids), models.Event.deleted_at.is_(None))
+        .all()
+    )
+    if len(events) != len(set(event_ids)):
+        raise HTTPException(status_code=404, detail="Unele evenimente nu există.")
+    if not _is_admin(current_user) and any(ev.owner_id != current_user.id for ev in events):
+        raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați toate evenimentele selectate.")
+
+    for tag in payload.tags:
+        if tag and len(tag.strip()) > 100:
+            raise HTTPException(status_code=400, detail="Etichetele trebuie să aibă maxim 100 de caractere.")
+
+    for ev in events:
+        _attach_tags(db, ev, payload.tags)
+        _audit_log(
+            db,
+            entity_type="event",
+            entity_id=ev.id,
+            action="tags_updated",
+            actor_user_id=current_user.id,
+            meta={"tags": payload.tags, "bulk": True},
+        )
+
+    db.commit()
+    log_event(
+        "organizer_bulk_event_tags_updated",
+        actor_user_id=current_user.id,
+        event_ids=event_ids,
+        tags=payload.tags,
+    )
+    return {"updated": len(events)}
+
+
+@app.post(
+    "/api/organizer/events/{event_id}/participants/email",
+    response_model=schemas.OrganizerEmailParticipantsResponse,
+)
+def email_event_participants(
+    event_id: int,
+    payload: schemas.OrganizerEmailParticipantsRequest,
+    background_tasks: BackgroundTasks,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
+):
+    _enforce_rate_limit(
+        "organizer_email_participants",
+        request=request,
+        identifier=current_user.email.lower(),
+        limit=5,
+        window_seconds=60,
+    )
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    if event.owner_id != current_user.id and not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Nu aveți dreptul să trimiteți email pentru acest eveniment.")
+
+    recipients = (
+        db.query(models.User.email)
+        .join(models.Registration, models.Registration.user_id == models.User.id)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.deleted_at.is_(None),
+        )
+        .all()
+    )
+
+    for (email,) in recipients:
+        send_email_async(
+            background_tasks,
+            db,
+            email,
+            payload.subject,
+            payload.message,
+            None,
+            context={"event_id": event_id, "actor_user_id": current_user.id},
+        )
+
+    _audit_log(
+        db,
+        entity_type="event",
+        entity_id=event.id,
+        action="participants_emailed",
+        actor_user_id=current_user.id,
+        meta={"recipients": len(recipients)},
+    )
+    db.commit()
+    log_event(
+        "organizer_participants_emailed",
+        event_id=event.id,
+        owner_id=event.owner_id,
+        actor_user_id=current_user.id,
+        recipients=len(recipients),
+    )
+    return {"recipients": len(recipients)}
+
+
 def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfileResponse:
     base_query = db.query(models.Event).filter(models.Event.owner_id == user.id, models.Event.deleted_at.is_(None))
     now = datetime.now(timezone.utc)

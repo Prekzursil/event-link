@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -23,8 +25,17 @@ import {
 } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/contexts/LanguageContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   ArrowLeft,
   Users,
@@ -46,6 +57,10 @@ export function ParticipantsPage() {
   const [sortBy, setSortBy] = useState('registration_time');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
   const [updatingAttendance, setUpdatingAttendance] = useState<Set<number>>(() => new Set());
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [isEmailing, setIsEmailing] = useState(false);
   const { toast } = useToast();
   const { language, t } = useI18n();
 
@@ -162,6 +177,48 @@ export function ParticipantsPage() {
     link.click();
   };
 
+  const sendEmailToParticipants = async () => {
+    if (!id) return;
+    const subject = emailSubject.trim();
+    const message = emailMessage.trim();
+    if (!subject) {
+      toast({
+        title: t.common.error,
+        description: t.participants.emailMissingSubject,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!message) {
+      toast({
+        title: t.common.error,
+        description: t.participants.emailMissingMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsEmailing(true);
+    try {
+      const res = await eventService.emailEventParticipants(parseInt(id), subject, message);
+      toast({
+        title: t.common.success,
+        description: t.participants.emailSuccess.replace('{count}', String(res.recipients)),
+      });
+      setEmailDialogOpen(false);
+      setEmailSubject('');
+      setEmailMessage('');
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.participants.emailError,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEmailing(false);
+    }
+  };
+
   if (isLoading && !data) {
     return (
       <div className="container mx-auto px-4 py-8">
@@ -204,6 +261,44 @@ export function ParticipantsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.participants.emailDialogTitle}</DialogTitle>
+            <DialogDescription>{t.participants.emailDialogDescription}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="email-subject">{t.participants.emailSubjectLabel}</Label>
+            <Input
+              id="email-subject"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder={t.participants.emailSubjectPlaceholder}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email-message">{t.participants.emailMessageLabel}</Label>
+            <Textarea
+              id="email-message"
+              value={emailMessage}
+              onChange={(e) => setEmailMessage(e.target.value)}
+              placeholder={t.participants.emailMessagePlaceholder}
+              rows={6}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isEmailing}>
+              {t.common.cancel}
+            </Button>
+            <Button onClick={sendEmailToParticipants} disabled={isEmailing}>
+              {t.participants.emailSend}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Button variant="ghost" className="mb-6" onClick={() => navigate('/organizer')}>
         <ArrowLeft className="mr-2 h-4 w-4" />
         {t.participants.backToDashboard}
@@ -228,6 +323,14 @@ export function ParticipantsPage() {
               <Badge variant="secondary">
                 {attendedCount} {t.participants.attendedSuffix}
               </Badge>
+              <Button
+                variant="outline"
+                disabled={data.total === 0}
+                onClick={() => setEmailDialogOpen(true)}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                {t.participants.emailParticipants}
+              </Button>
               <Button variant="outline" onClick={exportToCSV}>
                 <Download className="mr-2 h-4 w-4" />
                 {t.participants.exportCsv}
