@@ -32,6 +32,9 @@
 - [x] CI: run Docker Compose build + smoke test (backend health + frontend).
 - [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
 - [x] Fix frontend CI for the Vite/React UI (`npm test` script + Actions workflow step).
+- [x] UI/UX: add light/dark/system theme support with a global toggle and persisted user preference.
+- [x] Backend: persist `theme_preference` on `User` and add `PUT /api/me/theme`.
+- [x] UI: audit and fix hard-coded colors so pages remain readable in dark mode.
 
 ## Medium
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).

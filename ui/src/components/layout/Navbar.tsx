@@ -1,5 +1,6 @@
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -23,12 +24,16 @@ import {
 import { LoadingSpinner } from '@/components/ui/loading';
 import {
   Calendar,
+  Check,
   Heart,
   Home,
   LogOut,
   Menu,
+  Monitor,
+  Moon,
   Plus,
   Settings,
+  Sun,
   User,
   X,
 } from 'lucide-react';
@@ -36,15 +41,18 @@ import { useState } from 'react';
 import { cn } from '@/lib/utils';
 import authService from '@/services/auth.service';
 import { useToast } from '@/hooks/use-toast';
+import type { ThemePreference } from '@/types';
 
 export function Navbar() {
   const { user, isAuthenticated, isOrganizer, logout, refreshUser } = useAuth();
+  const { preference, resolvedTheme, setPreference } = useTheme();
   const navigate = useNavigate();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const { toast } = useToast();
   const [organizerUpgradeOpen, setOrganizerUpgradeOpen] = useState(false);
   const [organizerInviteCode, setOrganizerInviteCode] = useState('');
   const [isUpgradingOrganizer, setIsUpgradingOrganizer] = useState(false);
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
 
   const handleLogout = () => {
     logout();
@@ -124,6 +132,27 @@ export function Navbar() {
     }
   };
 
+  const handleThemeChange = async (nextPreference: ThemePreference) => {
+    const prev = preference;
+    setPreference(nextPreference);
+    if (!isAuthenticated) return;
+
+    setIsSavingTheme(true);
+    try {
+      await authService.updateThemePreference(nextPreference);
+      await refreshUser();
+    } catch {
+      setPreference(prev);
+      toast({
+        title: 'Eroare',
+        description: 'Nu am putut salva preferința de temă.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingTheme(false);
+    }
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -149,6 +178,32 @@ export function Navbar() {
 
         {/* Auth Section */}
         <div className="hidden items-center gap-4 md:flex">
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" aria-label="Alege tema" disabled={isSavingTheme}>
+                {resolvedTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuLabel>Tema</DropdownMenuLabel>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem onSelect={() => handleThemeChange('system')} disabled={isSavingTheme}>
+                <Monitor className="mr-2 h-4 w-4" />
+                Sistem
+                {preference === 'system' && <Check className="ml-auto h-4 w-4" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleThemeChange('light')} disabled={isSavingTheme}>
+                <Sun className="mr-2 h-4 w-4" />
+                Luminos
+                {preference === 'light' && <Check className="ml-auto h-4 w-4" />}
+              </DropdownMenuItem>
+              <DropdownMenuItem onSelect={() => handleThemeChange('dark')} disabled={isSavingTheme}>
+                <Moon className="mr-2 h-4 w-4" />
+                Întunecat
+                {preference === 'dark' && <Check className="ml-auto h-4 w-4" />}
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
           {isAuthenticated ? (
             <>
               {isOrganizer && (

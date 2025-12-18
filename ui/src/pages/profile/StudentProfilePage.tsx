@@ -11,6 +11,7 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { LoadingPage, LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useTheme } from '@/contexts/ThemeContext';
 import {
   Dialog,
   DialogContent,
@@ -19,11 +20,21 @@ import {
   DialogHeader,
   DialogTitle,
 } from '@/components/ui/dialog';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles } from 'lucide-react';
+import authService from '@/services/auth.service';
+import type { ThemePreference } from '@/types';
 
 export function StudentProfilePage() {
   const { toast } = useToast();
-  const { logout } = useAuth();
+  const { logout, refreshUser } = useAuth();
+  const { preference, setPreference } = useTheme();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
@@ -31,6 +42,7 @@ export function StudentProfilePage() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isSavingTheme, setIsSavingTheme] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [fullName, setFullName] = useState('');
@@ -92,6 +104,29 @@ export function StudentProfilePage() {
       });
     } finally {
       setIsSaving(false);
+    }
+  };
+
+  const handleThemeChange = async (nextPreference: ThemePreference) => {
+    const prev = preference;
+    setPreference(nextPreference);
+    setIsSavingTheme(true);
+    try {
+      await authService.updateThemePreference(nextPreference);
+      await refreshUser();
+      toast({
+        title: 'Tema actualizată',
+        description: 'Preferința ta a fost salvată.',
+      });
+    } catch {
+      setPreference(prev);
+      toast({
+        title: 'Eroare',
+        description: 'Nu am putut salva preferința de temă.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingTheme(false);
     }
   };
 
@@ -205,6 +240,40 @@ export function StudentProfilePage() {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Introdu numele tău complet"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Appearance */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <User className="h-5 w-5" />
+            Aspect
+          </CardTitle>
+          <CardDescription>
+            Alege tema aplicației (se salvează în contul tău)
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label>Tema</Label>
+            <Select value={preference} onValueChange={(value) => handleThemeChange(value as ThemePreference)}>
+              <SelectTrigger className="max-w-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="system">Sistem</SelectItem>
+                <SelectItem value="light">Luminos</SelectItem>
+                <SelectItem value="dark">Întunecat</SelectItem>
+              </SelectContent>
+            </Select>
+            {isSavingTheme && (
+              <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <LoadingSpinner size="sm" />
+                Se salvează...
+              </div>
+            )}
           </div>
         </CardContent>
       </Card>
