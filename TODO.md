@@ -40,6 +40,12 @@
 - [x] Events: add explicit `city` field (separate from `location`) across API + UI.
 - [x] Events: add city filter in event list UI + API.
 - [x] Recommendations: boost events in the user’s city (still include national events).
+- [x] Admin: add DB-backed `admin` role + auth guards (UI + backend).
+- [x] Admin API: event moderation endpoints (list/update/delete/restore any event).
+- [x] Admin API: user management endpoints (list users + stats; change role; deactivate/delete).
+- [x] Admin UI: dashboard for stats + event/user management.
+- [x] Analytics: registrations over time + popular tags (admin dashboard).
+- [x] Remove organizer invite-code upgrade flow (UI + backend); manage organizer role via admin.
 - [ ] Data: expand faculties catalog coverage across all Romanian universities (keep fallback manual input).
 - [x] Events: expand category options in UI (align with seeded categories; add Music and more).
 - [x] Music: add genre tags (rock/pop/etc) to seed data and surface them in profile interests.
@@ -99,7 +105,6 @@
 - [x] UI: tune Vite chunk warning threshold (keep build output clean).
 - [x] Add staging/prod Vite env files with feature flags (e.g., recommendations toggle).
 - [x] Soft-delete support for events and registrations with an audit history.
-- [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
 - [x] Public read-only events API with stricter rate limiting for third-party integrations.
 - [x] Searchable filter bar on event list (tags, category, date range, location).
 - [x] Skeleton loaders and optimistic updates for event registration and attendance toggles.

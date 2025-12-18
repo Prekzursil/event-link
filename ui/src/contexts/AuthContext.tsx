@@ -7,6 +7,7 @@ interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isOrganizer: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, confirmPassword: string, fullName?: string) => Promise<void>;
@@ -69,7 +70,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
-        isOrganizer: user?.role === 'organizator',
+        isOrganizer: user?.role === 'organizator' || user?.role === 'admin',
+        isAdmin: user?.role === 'admin',
         isLoading,
         login,
         register,

@@ -24,7 +24,6 @@ class Settings(BaseSettings):
     admin_emails: list[str] = []
     auto_create_tables: bool = False
     auto_run_migrations: bool = False
-    organizer_invite_code: str | None = None
     email_enabled: bool = True
     smtp_host: str | None = None
     smtp_port: int | None = None

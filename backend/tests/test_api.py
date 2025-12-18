@@ -307,50 +307,197 @@ def test_restore_event_forbidden_for_other_organizer(helpers):
 
 
 def test_admin_can_restore_registration(helpers):
-    from app.config import settings
-
     client = helpers["client"]
     db = helpers["db"]
-    old_admins = list(settings.admin_emails)
-    settings.admin_emails = ["admin@test.ro"]
-    try:
-        helpers["make_organizer"]("org@test.ro", "organizer123")
-        organizer_token = helpers["login"]("org@test.ro", "organizer123")
-        event_id = client.post(
-            "/api/events",
-            json={
-                "title": "Admin restore reg",
-                "description": "Desc",
-                "category": "Cat",
-                "start_time": helpers["future_time"](days=2),
-                "city": "București",
-                "location": "Loc",
-                "max_seats": 2,
-                "tags": [],
-            },
-            headers=helpers["auth_header"](organizer_token),
-        ).json()["id"]
+    helpers["make_organizer"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    event_id = client.post(
+        "/api/events",
+        json={
+            "title": "Admin restore reg",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=2),
+            "city": "București",
+            "location": "Loc",
+            "max_seats": 2,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](organizer_token),
+    ).json()["id"]
 
-        student_token = helpers["register_student"]("admin-restore-stud@test.ro")
-        client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
-        client.delete(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+    student_token = helpers["register_student"]("admin-restore-stud@test.ro")
+    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+    client.delete(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
 
-        student = db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
-        assert student is not None
+    student = db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
+    assert student is not None
 
-        helpers["make_organizer"]("admin@test.ro", "adminpass")
-        admin_token = helpers["login"]("admin@test.ro", "adminpass")
-        restore = client.post(
-            f"/api/admin/events/{event_id}/registrations/{student.id}/restore",
-            headers=helpers["auth_header"](admin_token),
+    helpers["make_admin"]("admin@test.ro", "adminpass")
+    admin_token = helpers["login"]("admin@test.ro", "adminpass")
+    restore = client.post(
+        f"/api/admin/events/{event_id}/registrations/{student.id}/restore",
+        headers=helpers["auth_header"](admin_token),
+    )
+    assert restore.status_code == 200
+
+    reg = (
+        db.query(models.Registration)
+        .filter(models.Registration.event_id == event_id, models.Registration.user_id == student.id)
+        .first()
+    )
+    assert reg is not None
+    assert reg.deleted_at is None
+
+
+def test_admin_can_list_and_update_users(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+
+    helpers["make_admin"]("admin-users@test.ro", "adminpass")
+    admin_token = helpers["login"]("admin-users@test.ro", "adminpass")
+
+    helpers["register_student"]("user-to-update@test.ro")
+    user = db.query(models.User).filter(models.User.email == "user-to-update@test.ro").first()
+    assert user is not None
+
+    listed = client.get("/api/admin/users", headers=helpers["auth_header"](admin_token))
+    assert listed.status_code == 200
+    assert any(item["email"] == "user-to-update@test.ro" for item in listed.json()["items"])
+
+    promote = client.patch(
+        f"/api/admin/users/{user.id}",
+        json={"role": "organizator"},
+        headers=helpers["auth_header"](admin_token),
+    )
+    assert promote.status_code == 200
+    assert promote.json()["role"] == "organizator"
+
+    deactivate = client.patch(
+        f"/api/admin/users/{user.id}",
+        json={"is_active": False},
+        headers=helpers["auth_header"](admin_token),
+    )
+    assert deactivate.status_code == 200
+    assert deactivate.json()["is_active"] is False
+
+    relog = client.post("/login", json={"email": "user-to-update@test.ro", "password": "password123"})
+    assert relog.status_code == 403
+
+
+def test_admin_can_edit_and_delete_any_event(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+
+    helpers["make_organizer"]("owner@test.ro", "ownerpass")
+    owner_token = helpers["login"]("owner@test.ro", "ownerpass")
+    event_id = client.post(
+        "/api/events",
+        json={
+            "title": "Owned event",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=2),
+            "city": "București",
+            "location": "Loc",
+            "max_seats": 2,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](owner_token),
+    ).json()["id"]
+
+    helpers["make_admin"]("admin-events@test.ro", "adminpass")
+    admin_token = helpers["login"]("admin-events@test.ro", "adminpass")
+    admin_user = db.query(models.User).filter(models.User.email == "admin-events@test.ro").first()
+    assert admin_user is not None
+
+    updated = client.put(
+        f"/api/events/{event_id}",
+        json={"title": "Admin edited"},
+        headers=helpers["auth_header"](admin_token),
+    )
+    assert updated.status_code == 200
+    assert updated.json()["title"] == "Admin edited"
+
+    deleted = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](admin_token))
+    assert deleted.status_code == 204
+
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    assert event is not None
+    assert event.deleted_at is not None
+    assert event.deleted_by_user_id == admin_user.id
+
+
+def test_admin_can_view_participants_and_update_attendance(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+
+    helpers["make_organizer"]("participants-owner@test.ro", "ownerpass")
+    owner_token = helpers["login"]("participants-owner@test.ro", "ownerpass")
+    event_id = client.post(
+        "/api/events",
+        json={
+            "title": "Participants",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=2),
+            "city": "București",
+            "location": "Loc",
+            "max_seats": 2,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](owner_token),
+    ).json()["id"]
+
+    student_token = helpers["register_student"]("participants-stud@test.ro")
+    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+    student = db.query(models.User).filter(models.User.email == "participants-stud@test.ro").first()
+    assert student is not None
+
+    helpers["make_admin"]("participants-admin@test.ro", "adminpass")
+    admin_token = helpers["login"]("participants-admin@test.ro", "adminpass")
+
+    listed = client.get(
+        f"/api/organizer/events/{event_id}/participants",
+        headers=helpers["auth_header"](admin_token),
+    )
+    assert listed.status_code == 200
+    assert any(p["email"] == "participants-stud@test.ro" for p in listed.json()["participants"])
+
+    updated = client.put(
+        f"/api/organizer/events/{event_id}/participants/{student.id}",
+        params={"attended": True},
+        headers=helpers["auth_header"](admin_token),
+    )
+    assert updated.status_code == 204
+
+    reg = (
+        db.query(models.Registration)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.user_id == student.id,
+            models.Registration.deleted_at.is_(None),
         )
-        assert restore.status_code == 200
+        .first()
+    )
+    assert reg is not None
+    assert reg.attended is True
 
-        reg = db.query(models.Registration).filter(models.Registration.event_id == event_id, models.Registration.user_id == student.id).first()
-        assert reg is not None
-        assert reg.deleted_at is None
-    finally:
-        settings.admin_emails = old_admins
+
+def test_admin_stats_endpoint_smoke(helpers):
+    client = helpers["client"]
+
+    helpers["make_admin"]("admin-stats@test.ro", "adminpass")
+    admin_token = helpers["login"]("admin-stats@test.ro", "adminpass")
+
+    resp = client.get("/api/admin/stats", headers=helpers["auth_header"](admin_token))
+    assert resp.status_code == 200
+    body = resp.json()
+    assert "total_users" in body
+    assert "total_events" in body
+    assert "total_registrations" in body
+    assert "registrations_by_day" in body
+    assert "top_tags" in body
 
 
 def test_reregister_after_unregister_restores_registration(helpers):
@@ -926,13 +1073,6 @@ def test_event_ics_and_calendar_feed(helpers):
     feed_resp = client.get("/api/me/calendar", headers=helpers["auth_header"](student_token))
     assert feed_resp.status_code == 200
     assert "ICS Event" in feed_resp.text
-
-
-def test_upgrade_to_organizer_requires_code(helpers):
-    client = helpers["client"]
-    student_token = helpers["register_student"]("code@test.ro")
-    bad = client.post("/organizer/upgrade", json={"invite_code": "wrong"}, headers=helpers["auth_header"](student_token))
-    assert bad.status_code == 403
 
 
 def test_password_reset_flow(helpers):

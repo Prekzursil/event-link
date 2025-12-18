@@ -36,11 +36,6 @@ export const authService = {
     return response.data;
   },
 
-  async upgradeToOrganizer(inviteCode: string): Promise<{ status: string }> {
-    const response = await api.post('/organizer/upgrade', { invite_code: inviteCode });
-    return response.data;
-  },
-
   async requestPasswordReset(email: string): Promise<void> {
     await api.post('/password/forgot', { email });
   },
@@ -81,7 +76,7 @@ export const authService = {
 
   isOrganizer(): boolean {
     const user = this.getStoredUser();
-    return user?.role === 'organizator';
+    return user?.role === 'organizator' || user?.role === 'admin';
   },
 };
 

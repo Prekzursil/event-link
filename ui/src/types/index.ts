@@ -1,4 +1,4 @@
-export type UserRole = 'student' | 'organizator';
+export type UserRole = 'student' | 'organizator' | 'admin';
 export type ThemePreference = 'system' | 'light' | 'dark';
 export type StudyLevel = 'bachelor' | 'master' | 'phd' | 'medicine';
 
@@ -143,4 +143,77 @@ export interface UniversityCatalogItem {
   name: string;
   city?: string | null;
   faculties: string[];
+}
+
+export interface RegistrationDayStat {
+  date: string;
+  registrations: number;
+}
+
+export interface TagPopularityStat {
+  name: string;
+  registrations: number;
+  events: number;
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_events: number;
+  total_registrations: number;
+  registrations_by_day: RegistrationDayStat[];
+  top_tags: TagPopularityStat[];
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  role: UserRole;
+  full_name?: string | null;
+  org_name?: string | null;
+  created_at: string;
+  last_seen_at?: string | null;
+  is_active: boolean;
+  registrations_count: number;
+  attended_count: number;
+  events_created_count: number;
+}
+
+export interface PaginatedAdminUsers {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AdminUserUpdate {
+  role?: UserRole;
+  is_active?: boolean;
+}
+
+export interface AdminEvent {
+  id: number;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  start_time: string;
+  end_time?: string | null;
+  city?: string | null;
+  location?: string | null;
+  max_seats?: number | null;
+  cover_url?: string | null;
+  owner_id: number;
+  owner_email: string;
+  owner_name?: string | null;
+  tags: Tag[];
+  seats_taken: number;
+  status?: string | null;
+  publish_at?: string | null;
+  deleted_at?: string | null;
+}
+
+export interface PaginatedAdminEvents {
+  items: AdminEvent[];
+  total: number;
+  page: number;
+  page_size: number;
 }
