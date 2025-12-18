@@ -1,7 +1,7 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import eventService from '@/services/event.service';
-import type { Tag, StudentProfile } from '@/types';
+import type { StudyLevel, Tag, StudentProfile, UniversityCatalogItem } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -27,9 +27,16 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles } from 'lucide-react';
+import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles, GraduationCap } from 'lucide-react';
 import authService from '@/services/auth.service';
 import type { ThemePreference } from '@/types';
+
+const MAX_YEARS_BY_LEVEL: Record<StudyLevel, number> = {
+  bachelor: 4,
+  master: 2,
+  phd: 4,
+  medicine: 6,
+};
 
 export function StudentProfilePage() {
   const { toast } = useToast();
@@ -44,9 +51,43 @@ export function StudentProfilePage() {
   const [isDeleting, setIsDeleting] = useState(false);
   const [isSavingTheme, setIsSavingTheme] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [universityCatalog, setUniversityCatalog] = useState<UniversityCatalogItem[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
   const [fullName, setFullName] = useState('');
+  const [city, setCity] = useState('');
+  const [university, setUniversity] = useState('');
+  const [faculty, setFaculty] = useState('');
+  const [studyLevel, setStudyLevel] = useState<StudyLevel | ''>('');
+  const [studyYear, setStudyYear] = useState<number | undefined>(undefined);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+
+  const selectedUniversity = useMemo(() => {
+    const normalized = university.trim().toLowerCase();
+    if (!normalized) return null;
+    return (
+      universityCatalog.find((item) => item.name.toLowerCase() === normalized) ??
+      null
+    );
+  }, [university, universityCatalog]);
+
+  const facultyOptions = useMemo(
+    () => selectedUniversity?.faculties ?? [],
+    [selectedUniversity],
+  );
+
+  const cityOptions = useMemo(() => {
+    const set = new Set<string>();
+    for (const item of universityCatalog) {
+      if (item.city) set.add(item.city);
+    }
+    return Array.from(set).sort((a, b) => a.localeCompare(b, 'ro'));
+  }, [universityCatalog]);
+
+  const studyYearOptions = useMemo(() => {
+    if (!studyLevel) return [];
+    const max = MAX_YEARS_BY_LEVEL[studyLevel];
+    return Array.from({ length: max }, (_, idx) => idx + 1);
+  }, [studyLevel]);
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -57,8 +98,20 @@ export function StudentProfilePage() {
       ]);
       setProfile(profileData);
       setFullName(profileData.full_name || '');
+      setCity(profileData.city || '');
+      setUniversity(profileData.university || '');
+      setFaculty(profileData.faculty || '');
+      setStudyLevel(profileData.study_level || '');
+      setStudyYear(profileData.study_year ?? undefined);
       setSelectedTagIds(profileData.interest_tags.map(t => t.id));
       setAllTags(tagsData);
+
+      try {
+        const catalog = await eventService.getUniversityCatalog();
+        setUniversityCatalog(catalog);
+      } catch {
+        setUniversityCatalog([]);
+      }
     } catch (error) {
       console.error('Failed to load profile:', error);
       toast({
@@ -87,10 +140,21 @@ export function StudentProfilePage() {
     setIsSaving(true);
     try {
       const updatedProfile = await eventService.updateStudentProfile({
-        full_name: fullName || undefined,
+        full_name: fullName.trim() ? fullName.trim() : undefined,
+        city: city.trim(),
+        university: university.trim(),
+        faculty: faculty.trim(),
+        study_level: studyLevel || undefined,
+        study_year: typeof studyYear === 'number' ? studyYear : undefined,
         interest_tag_ids: selectedTagIds,
       });
       setProfile(updatedProfile);
+      setFullName(updatedProfile.full_name || '');
+      setCity(updatedProfile.city || '');
+      setUniversity(updatedProfile.university || '');
+      setFaculty(updatedProfile.faculty || '');
+      setStudyLevel(updatedProfile.study_level || '');
+      setStudyYear(updatedProfile.study_year ?? undefined);
       toast({
         title: 'Succes',
         description: 'Profilul a fost actualizat',
@@ -240,6 +304,142 @@ export function StudentProfilePage() {
               onChange={(e) => setFullName(e.target.value)}
               placeholder="Introdu numele tău complet"
             />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Academic Profile */}
+      <Card className="mb-6">
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <GraduationCap className="h-5 w-5" />
+            Studii & locație
+          </CardTitle>
+          <CardDescription>
+            Ajută recomandările: completând orașul, îți arătăm mai întâi evenimentele din zona ta.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-2">
+              <Label htmlFor="city">Oraș</Label>
+              <Input
+                id="city"
+                value={city}
+                onChange={(e) => setCity(e.target.value)}
+                placeholder="ex: București"
+                list="city-options"
+              />
+              {cityOptions.length > 0 && (
+                <datalist id="city-options">
+                  {cityOptions.map((c) => (
+                    <option key={c} value={c} />
+                  ))}
+                </datalist>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="university">Universitate</Label>
+              <Input
+                id="university"
+                value={university}
+                onChange={(e) => {
+                  const next = e.target.value;
+                  const prev = university;
+                  setUniversity(next);
+                  if (next !== prev) {
+                    setFaculty('');
+                  }
+                  const match = universityCatalog.find((item) => item.name.toLowerCase() === next.trim().toLowerCase());
+                  if (match?.city && !city.trim()) {
+                    setCity(match.city);
+                  }
+                }}
+                placeholder="Caută sau selectează universitatea"
+                list="university-options"
+              />
+              {universityCatalog.length > 0 && (
+                <datalist id="university-options">
+                  {universityCatalog.map((u) => (
+                    <option key={u.name} value={u.name} />
+                  ))}
+                </datalist>
+              )}
+              {universityCatalog.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Lista universităților nu este disponibilă momentan — poți completa manual.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="faculty">Facultate</Label>
+              <Input
+                id="faculty"
+                value={faculty}
+                onChange={(e) => setFaculty(e.target.value)}
+                placeholder={facultyOptions.length > 0 ? 'Alege din listă sau scrie' : 'Scrie facultatea (opțional)'}
+                list={facultyOptions.length > 0 ? 'faculty-options' : undefined}
+              />
+              {facultyOptions.length > 0 && (
+                <datalist id="faculty-options">
+                  {facultyOptions.map((f) => (
+                    <option key={f} value={f} />
+                  ))}
+                </datalist>
+              )}
+              {selectedUniversity && facultyOptions.length === 0 && (
+                <p className="text-xs text-muted-foreground">
+                  Lista facultăților pentru această universitate nu este încă disponibilă — poți completa manual.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2">
+              <Label>Nivel de studii</Label>
+              <Select
+                value={studyLevel}
+                onValueChange={(value) => {
+                  const next = value as StudyLevel;
+                  setStudyLevel(next);
+                  const max = MAX_YEARS_BY_LEVEL[next];
+                  if (typeof studyYear === 'number' && (studyYear < 1 || studyYear > max)) {
+                    setStudyYear(undefined);
+                  }
+                }}
+              >
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder="Selectează nivelul" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="bachelor">Licență</SelectItem>
+                  <SelectItem value="master">Master</SelectItem>
+                  <SelectItem value="phd">Doctorat</SelectItem>
+                  <SelectItem value="medicine">Medicină</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>An de studiu</Label>
+              <Select
+                value={typeof studyYear === 'number' ? String(studyYear) : ''}
+                onValueChange={(value) => setStudyYear(parseInt(value))}
+                disabled={!studyLevel}
+              >
+                <SelectTrigger className="max-w-xs">
+                  <SelectValue placeholder={studyLevel ? 'Selectează anul' : 'Selectează nivelul întâi'} />
+                </SelectTrigger>
+                <SelectContent>
+                  {studyYearOptions.map((y) => (
+                    <SelectItem key={y} value={String(y)}>
+                      {y}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
         </CardContent>
       </Card>

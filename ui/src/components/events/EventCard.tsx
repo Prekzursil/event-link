@@ -125,11 +125,13 @@ export function EventCard({
             <span>{formatTime(event.start_time)}</span>
           </div>
 
-          {/* Location */}
-          {event.location && (
+          {/* City / Location */}
+          {(event.city || event.location) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" />
-              <span className="line-clamp-1">{event.location}</span>
+              <span className="line-clamp-1">
+                {[event.city, event.location].filter(Boolean).join(' • ')}
+              </span>
             </div>
           )}
 

@@ -5,6 +5,7 @@ from .models import UserRole
 
 
 ThemePreference = Literal["system", "light", "dark"]
+StudyLevel = Literal["bachelor", "master", "phd", "medicine"]
 
 
 class UserBase(BaseModel):
@@ -87,6 +88,7 @@ class EventBase(BaseModel):
     category: str = Field(..., min_length=2, max_length=100)
     start_time: datetime
     end_time: Optional[datetime] = None
+    city: str = Field(..., min_length=2, max_length=100)
     location: str = Field(..., min_length=2, max_length=255)
     max_seats: int
     cover_url: Optional[HttpUrl] = None
@@ -105,6 +107,7 @@ class EventUpdate(BaseModel):
     category: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    city: Optional[str] = Field(default=None, min_length=2, max_length=100)
     location: Optional[str] = None
     max_seats: Optional[int] = None
     cover_url: Optional[str] = None
@@ -120,6 +123,7 @@ class EventResponse(BaseModel):
     category: Optional[str]
     start_time: datetime
     end_time: Optional[datetime]
+    city: Optional[str]
     location: Optional[str]
     max_seats: Optional[int]
     cover_url: Optional[str]
@@ -148,6 +152,7 @@ class PublicEventResponse(BaseModel):
     category: Optional[str]
     start_time: datetime
     end_time: Optional[datetime]
+    city: Optional[str]
     location: Optional[str]
     max_seats: Optional[int]
     cover_url: Optional[str]
@@ -181,6 +186,7 @@ class ParticipantListResponse(BaseModel):
     cover_url: Optional[str]
     seats_taken: int
     max_seats: Optional[int]
+    city: Optional[str] = None
     participants: list[ParticipantResponse]
     total: int
     page: int
@@ -227,15 +233,35 @@ class TagListResponse(BaseModel):
     items: List[TagResponse]
 
 
+class UniversityCatalogItem(BaseModel):
+    name: str
+    city: Optional[str] = None
+    faculties: List[str] = Field(default_factory=list)
+
+
+class UniversityCatalogResponse(BaseModel):
+    items: List[UniversityCatalogItem]
+
+
 class StudentProfileResponse(BaseModel):
     user_id: int
     email: EmailStr
     full_name: Optional[str] = None
+    city: Optional[str] = None
+    university: Optional[str] = None
+    faculty: Optional[str] = None
+    study_level: Optional[StudyLevel] = None
+    study_year: Optional[int] = None
     interest_tags: List[TagResponse] = []
 
 
 class StudentProfileUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(default=None, max_length=100)
+    university: Optional[str] = Field(default=None, max_length=255)
+    faculty: Optional[str] = Field(default=None, max_length=255)
+    study_level: Optional[StudyLevel] = None
+    study_year: Optional[int] = Field(default=None, ge=1, le=10)
     interest_tag_ids: Optional[List[int]] = None
 
 

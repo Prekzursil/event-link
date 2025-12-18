@@ -35,6 +35,11 @@ class User(Base):
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
     theme_preference = Column(String(10), nullable=False, server_default="system", default="system")
+    city = Column(String(100))
+    university = Column(String(255))
+    faculty = Column(String(255))
+    study_level = Column(String(20))
+    study_year = Column(Integer)
 
     events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
     registrations = relationship(
@@ -66,6 +71,7 @@ class Event(Base):
     start_time = Column(TIMESTAMP(timezone=True), nullable=False)
     end_time = Column(TIMESTAMP(timezone=True), nullable=True)
     location = Column(String(255))
+    city = Column(String(100), index=True)
     max_seats = Column(Integer)
     cover_url = Column(String(500))
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)

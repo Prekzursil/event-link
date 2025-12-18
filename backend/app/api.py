@@ -15,6 +15,7 @@ from sqlalchemy import func, text
 from sqlalchemy.orm import Session
 
 from . import auth, models, schemas
+from . import ro_universities
 from .config import settings
 from .database import engine, get_db, SessionLocal
 from .email_service import send_email_async
@@ -204,6 +205,7 @@ def _serialize_event(event: models.Event, seats_taken: int, recommendation_reaso
         category=event.category,
         start_time=event.start_time,
         end_time=event.end_time,
+        city=event.city,
         location=event.location,
         max_seats=event.max_seats,
         owner_id=event.owner_id,
@@ -228,6 +230,7 @@ def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.Pu
         category=event.category,
         start_time=event.start_time,
         end_time=event.end_time,
+        city=event.city,
         location=event.location,
         max_seats=event.max_seats,
         cover_url=event.cover_url,
@@ -452,6 +455,7 @@ def get_events(
     end_date: Optional[date] = None,
     tags: Optional[list[str]] = Query(None),
     tags_csv: Optional[str] = None,
+    city: Optional[str] = None,
     location: Optional[str] = None,
     include_past: bool = False,
     page: int = 1,
@@ -483,6 +487,8 @@ def get_events(
     if tag_filters:
         lowered = [t.lower() for t in tag_filters]
         query = query.join(models.Event.tags).filter(func.lower(models.Tag.name).in_(lowered))
+    if city:
+        query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
     if location:
         query = query.filter(func.lower(models.Event.location).like(f"%{location.lower()}%"))
     if start_date:
@@ -510,6 +516,7 @@ def get_public_events(
     end_date: Optional[date] = None,
     tags: Optional[list[str]] = Query(None),
     tags_csv: Optional[str] = None,
+    city: Optional[str] = None,
     location: Optional[str] = None,
     include_past: bool = False,
     page: int = 1,
@@ -545,6 +552,8 @@ def get_public_events(
     if tag_filters:
         lowered = [t.lower() for t in tag_filters]
         query = query.join(models.Event.tags).filter(func.lower(models.Tag.name).in_(lowered))
+    if city:
+        query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
     if location:
         query = query.filter(func.lower(models.Event.location).like(f"%{location.lower()}%"))
     if start_date:
@@ -627,6 +636,7 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
         category=event.category,
         start_time=event.start_time,
         end_time=event.end_time,
+        city=event.city,
         location=event.location,
         max_seats=event.max_seats,
         cover_url=event.cover_url,
@@ -664,6 +674,7 @@ def create_event(
         category=event.category,
         start_time=start_time,
         end_time=end_time,
+        city=event.city,
         location=event.location,
         max_seats=event.max_seats,
         cover_url=event.cover_url,
@@ -711,6 +722,8 @@ def update_event(
         if db_event.start_time and update.end_time and update.end_time <= db_event.start_time:
             raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
         db_event.end_time = update.end_time
+    if update.city is not None:
+        db_event.city = update.city
     if update.location is not None:
         db_event.location = update.location
     if update.max_seats is not None:
@@ -879,6 +892,7 @@ def clone_event(
         category=orig.category,
         start_time=start_time,
         end_time=_normalize_dt(orig.end_time) if orig.end_time else None,
+        city=orig.city,
         location=orig.location,
         max_seats=orig.max_seats,
         cover_url=orig.cover_url,
@@ -963,6 +977,11 @@ def update_organizer_profile(
 
 # ===================== TAGS =====================
 
+@app.get("/api/metadata/universities", response_model=schemas.UniversityCatalogResponse)
+def list_university_catalog():
+    return {"items": ro_universities.get_university_catalog()}
+
+
 @app.get("/api/tags", response_model=schemas.TagListResponse)
 def get_all_tags(db: Session = Depends(get_db)):
     """Get all available tags for filtering and student interests."""
@@ -982,6 +1001,11 @@ def get_student_profile(
         "user_id": current_user.id,
         "email": current_user.email,
         "full_name": current_user.full_name,
+        "city": current_user.city,
+        "university": current_user.university,
+        "faculty": current_user.faculty,
+        "study_level": current_user.study_level,
+        "study_year": current_user.study_year,
         "interest_tags": [{"id": t.id, "name": t.name} for t in current_user.interest_tags],
     }
 
@@ -995,6 +1019,25 @@ def update_student_profile(
     """Update current user's profile and interest tags."""
     if payload.full_name is not None:
         current_user.full_name = payload.full_name
+
+    if payload.city is not None:
+        current_user.city = payload.city.strip() or None
+    if payload.university is not None:
+        current_user.university = payload.university.strip() or None
+    if payload.faculty is not None:
+        current_user.faculty = payload.faculty.strip() or None
+    if payload.study_level is not None:
+        current_user.study_level = payload.study_level
+    if payload.study_year is not None:
+        current_user.study_year = payload.study_year
+
+    if current_user.study_level and current_user.study_year:
+        max_year = {"bachelor": 4, "master": 2, "phd": 4, "medicine": 6}.get(current_user.study_level, 10)
+        if current_user.study_year < 1 or current_user.study_year > max_year:
+            raise HTTPException(
+                status_code=400,
+                detail=f"An invalid pentru nivelul {current_user.study_level}. (1-{max_year})",
+            )
     
     if payload.interest_tag_ids is not None:
         # Get tags by IDs
@@ -1009,6 +1052,11 @@ def update_student_profile(
         "user_id": current_user.id,
         "email": current_user.email,
         "full_name": current_user.full_name,
+        "city": current_user.city,
+        "university": current_user.university,
+        "faculty": current_user.faculty,
+        "study_level": current_user.study_level,
+        "study_year": current_user.study_year,
         "interest_tags": [{"id": t.id, "name": t.name} for t in current_user.interest_tags],
     }
 
@@ -1024,6 +1072,7 @@ def _serialize_event_for_export(event: models.Event) -> dict:
         "category": event.category,
         "start_time": start_time.isoformat() if start_time else None,
         "end_time": end_time.isoformat() if end_time else None,
+        "city": event.city,
         "location": event.location,
         "max_seats": event.max_seats,
         "cover_url": event.cover_url,
@@ -1064,6 +1113,12 @@ def export_my_data(
             "email": current_user.email,
             "role": current_user.role.value if hasattr(current_user.role, "value") else str(current_user.role),
             "full_name": current_user.full_name,
+            "theme_preference": current_user.theme_preference,
+            "city": current_user.city,
+            "university": current_user.university,
+            "faculty": current_user.faculty,
+            "study_level": current_user.study_level,
+            "study_year": current_user.study_year,
             "org_name": current_user.org_name,
             "org_description": current_user.org_description,
             "org_logo_url": current_user.org_logo_url,
@@ -1239,6 +1294,7 @@ def event_participants(
         cover_url=event.cover_url,
         seats_taken=seats_taken,
         max_seats=event.max_seats,
+        city=event.city,
         participants=participant_list,
         total=total,
         page=page,
@@ -1545,6 +1601,7 @@ def recommended_events(
     current_user: models.User = Depends(auth.require_student),
 ):
     now = datetime.now(timezone.utc)
+    user_city = (current_user.city or "").strip().lower()
     registered_event_ids = [
         e.event_id
         for e in db.query(models.Registration.event_id)
@@ -1604,8 +1661,15 @@ def recommended_events(
     for event, seats, reason in events:
         if event.max_seats is not None and seats >= event.max_seats:
             continue
-        filtered.append(_serialize_event(event, seats, recommendation_reason=reason))
-    return filtered[:10]
+        is_local = bool(user_city and event.city and event.city.strip().lower() == user_city)
+        final_reason = reason
+        if is_local:
+            suffix = f"Near you: {event.city}"
+            final_reason = f"{reason} • {suffix}" if reason else suffix
+        filtered.append((is_local, _serialize_event(event, seats, recommendation_reason=final_reason)))
+
+    filtered.sort(key=lambda item: item[0], reverse=True)
+    return [item for _, item in filtered[:10]]
 
 @app.get("/api/health")
 def health_check(db: Session = Depends(get_db)):

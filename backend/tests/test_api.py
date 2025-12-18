@@ -58,6 +58,42 @@ def test_theme_preference_rejects_invalid_value(helpers):
     assert resp.status_code == 422
 
 
+def test_student_profile_updates_academic_fields(helpers):
+    client = helpers["client"]
+    token = helpers["register_student"]("profile@test.ro")
+
+    updated = client.put(
+        "/api/me/profile",
+        json={
+            "full_name": "Test User",
+            "city": "Cluj-Napoca",
+            "university": "Babes-Bolyai University of Cluj-Napoca",
+            "faculty": "Facultatea de Matematică și Informatică",
+            "study_level": "bachelor",
+            "study_year": 3,
+            "interest_tag_ids": [],
+        },
+        headers=helpers["auth_header"](token),
+    )
+    assert updated.status_code == 200
+    body = updated.json()
+    assert body["city"] == "Cluj-Napoca"
+    assert body["study_level"] == "bachelor"
+    assert body["study_year"] == 3
+
+
+def test_student_profile_rejects_invalid_study_year(helpers):
+    client = helpers["client"]
+    token = helpers["register_student"]("profile-bad@test.ro")
+
+    bad = client.put(
+        "/api/me/profile",
+        json={"study_level": "master", "study_year": 3},
+        headers=helpers["auth_header"](token),
+    )
+    assert bad.status_code == 400
+
+
 def test_event_creation_and_capacity_enforced(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
@@ -70,6 +106,7 @@ def test_event_creation_and_capacity_enforced(helpers):
         "category": "Test",
         "start_time": start_time,
         "end_time": None,
+        "city": "București",
         "location": "Online",
         "max_seats": 1,
         "tags": ["test"],
@@ -107,6 +144,7 @@ def test_student_cannot_create_event(helpers):
         "category": "Test",
         "start_time": helpers["future_time"](),
         "end_time": None,
+        "city": "București",
         "location": "Online",
         "max_seats": 10,
         "tags": [],
@@ -129,6 +167,7 @@ def test_edit_forbidden_for_non_owner(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](),
+            "city": "București",
             "location": "Loc",
             "max_seats": 5,
             "tags": [],
@@ -156,6 +195,7 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](),
+            "city": "București",
             "location": "Loc",
             "max_seats": 2,
             "tags": [],
@@ -202,6 +242,7 @@ def test_restore_event_restores_event_and_registrations(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=2),
+            "city": "București",
             "location": "Loc",
             "max_seats": 2,
             "tags": [],
@@ -252,6 +293,7 @@ def test_restore_event_forbidden_for_other_organizer(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=2),
+            "city": "București",
             "location": "Loc",
             "max_seats": 2,
             "tags": [],
@@ -281,6 +323,7 @@ def test_admin_can_restore_registration(helpers):
                 "description": "Desc",
                 "category": "Cat",
                 "start_time": helpers["future_time"](days=2),
+                "city": "București",
                 "location": "Loc",
                 "max_seats": 2,
                 "tags": [],
@@ -322,6 +365,7 @@ def test_reregister_after_unregister_restores_registration(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=1),
+            "city": "București",
             "location": "Loc",
             "max_seats": 1,
             "tags": [],
@@ -350,6 +394,7 @@ def test_events_list_filters_and_order(helpers):
     base_payload = {
         "description": "Desc",
         "category": "Tech",
+        "city": "București",
         "location": "Loc",
         "max_seats": 10,
         "tags": [],
@@ -398,6 +443,35 @@ def test_events_list_filters_and_order(helpers):
     assert paging["total"] == 2
 
 
+def test_events_list_filters_by_city(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    base_payload = {
+        "description": "Desc",
+        "category": "Tech",
+        "location": "Loc",
+        "max_seats": 10,
+        "tags": [],
+        "start_time": helpers["future_time"](days=2),
+    }
+    c1 = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Cluj Event", "city": "Cluj-Napoca"},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    client.post(
+        "/api/events",
+        json={**base_payload, "title": "Buc Event", "city": "București"},
+        headers=helpers["auth_header"](organizer_token),
+    )
+
+    filtered = client.get("/api/events", params={"city": "cluj"}).json()
+    assert filtered["total"] == 1
+    assert filtered["items"][0]["id"] == c1["id"]
+
+
 def test_public_events_api_exposes_published_only(helpers):
     client = helpers["client"]
     helpers["make_organizer"]("public-org@test.ro", "organizer123")
@@ -405,6 +479,7 @@ def test_public_events_api_exposes_published_only(helpers):
     base_payload = {
         "description": "Desc",
         "category": "Tech",
+        "city": "București",
         "location": "Loc",
         "max_seats": 10,
         "tags": [],
@@ -456,6 +531,7 @@ def test_public_events_api_is_rate_limited(helpers):
                 "description": "Desc",
                 "category": "Tech",
                 "start_time": helpers["future_time"](days=2),
+                "city": "București",
                 "location": "Loc",
                 "max_seats": 10,
                 "tags": [],
@@ -482,6 +558,7 @@ def test_event_validation_rules(helpers):
         "description": "Desc",
         "category": "C",
         "start_time": helpers["future_time"](days=1),
+        "city": "București",
         "location": "L",
         "max_seats": -1,
         "tags": [],
@@ -498,6 +575,7 @@ def test_recommendations_skip_full_and_past(helpers):
     tag_payload = {
         "description": "Desc",
         "category": "Tech",
+        "city": "București",
         "location": "Loc",
         "max_seats": 1,
         "tags": ["python"],
@@ -522,6 +600,47 @@ def test_recommendations_skip_full_and_past(helpers):
     assert "Past Event" not in titles
 
 
+def test_recommendations_boosts_user_city(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    base_payload = {
+        "description": "Desc",
+        "category": "Tech",
+        "location": "Loc",
+        "max_seats": 20,
+        "tags": [],
+    }
+    local = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Local", "city": "Cluj-Napoca", "start_time": helpers["future_time"](days=2)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    remote = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Remote", "city": "București", "start_time": helpers["future_time"](days=2)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    # Make the remote event "popular"
+    for i in range(3):
+        tok = helpers["register_student"](f"pop{i}@test.ro")
+        client.post(f"/api/events/{remote['id']}/register", headers=helpers["auth_header"](tok))
+
+    student_token = helpers["register_student"]("city@test.ro")
+    client.put(
+        "/api/me/profile",
+        json={"city": "Cluj-Napoca"},
+        headers=helpers["auth_header"](student_token),
+    )
+
+    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    assert len(rec) >= 2
+    assert rec[0]["id"] == local["id"]
+    assert "Near you" in (rec[0].get("recommendation_reason") or "")
+
+
 def test_my_events_and_registration_state(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
@@ -533,6 +652,7 @@ def test_my_events_and_registration_state(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=2),
+            "city": "București",
             "location": "Loc",
             "max_seats": 5,
             "tags": [],
@@ -546,6 +666,7 @@ def test_my_events_and_registration_state(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=5),
+            "city": "București",
             "location": "Loc",
             "max_seats": 5,
             "tags": [],
@@ -572,6 +693,7 @@ def test_recommended_uses_tags_and_excludes_registered(helpers):
     tag_payload = {
         "description": "Desc",
         "category": "Tech",
+        "city": "București",
         "location": "Loc",
         "max_seats": 10,
     }
@@ -608,6 +730,7 @@ def test_duplicate_registration_blocked(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=1),
+            "city": "București",
             "location": "Loc",
             "max_seats": 3,
             "tags": [],
@@ -633,6 +756,7 @@ def test_resend_registration_email_requires_registration(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=1),
+            "city": "București",
             "location": "Loc",
             "max_seats": 3,
             "tags": [],
@@ -661,6 +785,7 @@ def test_unregister_restores_spot(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=1),
+            "city": "București",
             "location": "Loc",
             "max_seats": 1,
             "tags": [],
@@ -692,6 +817,7 @@ def test_mark_attendance_requires_owner(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](days=1),
+            "city": "București",
             "location": "Loc",
             "max_seats": 3,
             "tags": [],
@@ -738,6 +864,7 @@ def test_event_ics_and_calendar_feed(helpers):
         "category": "Cat",
         "start_time": start_time,
         "end_time": None,
+        "city": "București",
         "location": "Loc",
         "max_seats": 5,
         "tags": [],
@@ -797,6 +924,7 @@ def test_participants_pagination(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](),
+            "city": "București",
             "location": "Loc",
             "max_seats": 50,
             "tags": [],
@@ -833,6 +961,7 @@ def test_account_export_and_deletion_student(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](),
+            "city": "București",
             "location": "Loc",
             "max_seats": 10,
             "tags": ["export"],
@@ -886,6 +1015,7 @@ def test_organizer_account_deletion_reassigns_events(helpers):
             "description": "Desc",
             "category": "Cat",
             "start_time": helpers["future_time"](),
+            "city": "București",
             "location": "Loc",
             "max_seats": 10,
             "tags": [],

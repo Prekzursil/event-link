@@ -344,12 +344,14 @@ export function EventDetailPage() {
                 </p>
               </div>
             </div>
-            {event.location && (
+            {(event.city || event.location) && (
               <div className="flex items-center gap-3 rounded-lg border p-4">
                 <MapPin className="h-5 w-5 text-primary" />
                 <div>
                   <p className="text-sm text-muted-foreground">Locație</p>
-                  <p className="font-medium">{event.location}</p>
+                  <p className="font-medium">
+                    {[event.city, event.location].filter(Boolean).join(' • ')}
+                  </p>
                 </div>
               </div>
             )}

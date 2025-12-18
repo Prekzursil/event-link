@@ -10,6 +10,7 @@ import type {
   Tag,
   StudentProfile,
   StudentProfileUpdate,
+  UniversityCatalogItem,
 } from '../types';
 
 export const eventService = {
@@ -21,6 +22,7 @@ export const eventService = {
     if (filters.category) params.append('category', filters.category);
     if (filters.start_date) params.append('start_date', filters.start_date);
     if (filters.end_date) params.append('end_date', filters.end_date);
+    if (filters.city) params.append('city', filters.city);
     if (filters.location) params.append('location', filters.location);
     if (filters.include_past) params.append('include_past', 'true');
     if (filters.page) params.append('page', filters.page.toString());
@@ -165,6 +167,12 @@ export const eventService = {
   // Tags
   async getAllTags(): Promise<Tag[]> {
     const response = await api.get<{ items: Tag[] }>('/api/tags');
+    return response.data.items;
+  },
+
+  // Metadata
+  async getUniversityCatalog(): Promise<UniversityCatalogItem[]> {
+    const response = await api.get<{ items: UniversityCatalogItem[] }>('/api/metadata/universities');
     return response.data.items;
   },
 

@@ -5,6 +5,7 @@ def test_create_event_requires_auth(helpers):
         "description": "Desc",
         "category": "Test",
         "start_time": helpers["future_time"](),
+        "city": "București",
         "location": "Loc",
         "max_seats": 10,
         "tags": [],
@@ -34,6 +35,7 @@ def test_participants_visible_only_to_owner(helpers):
             "description": "Desc",
             "category": "Tech",
             "start_time": helpers["future_time"](),
+            "city": "București",
             "location": "Loc",
             "max_seats": 5,
             "tags": [],
@@ -53,4 +55,3 @@ def test_participants_visible_only_to_owner(helpers):
         headers=helpers["auth_header"](owner_token),
     )
     assert ok.status_code == 200
-
