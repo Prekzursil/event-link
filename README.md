@@ -140,3 +140,14 @@ Sample credentials:
 - **Backend tests**: `cd backend && pytest`
 - **Frontend checks**: `cd ui && npm test` (lint + typecheck + build)
 - **Load tests (k6)**: `K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js`
+
+## Pre-commit hooks (optional)
+
+This repo includes `.pre-commit-config.yaml` to run format/lint checks before commits:
+
+- Install: `pipx install pre-commit` (or `pip install pre-commit`)
+- Enable: `pre-commit install`
+
+Notes:
+- Python hooks cover `backend/` (ruff + black).
+- UI hooks cover `ui/` (prettier + eslint) and require `cd ui && npm install`.
