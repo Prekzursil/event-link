@@ -47,6 +47,9 @@ SMTP_USERNAME=user
 SMTP_PASSWORD=pass
 SMTP_SENDER=notifications@eventlink.test
 SMTP_USE_TLS=true
+# Public API rate limiting (optional)
+PUBLIC_API_RATE_LIMIT=60
+PUBLIC_API_RATE_WINDOW_SECONDS=60
 ```
 
 `ALLOWED_ORIGINS` accepts comma- or JSON-separated lists. If email is enabled but SMTP settings
@@ -121,11 +124,12 @@ Sample credentials:
 
 - Auth: `POST /register`, `POST /login`, `POST /refresh`, `GET /me`, `POST /organizer/upgrade`
 - Events: `GET /api/events` (filters + pagination), `POST /api/events` (organizer),
-  `PUT /api/events/{id}`, `DELETE /api/events/{id}`, `GET /api/events/{id}/ics`
+  `PUT /api/events/{id}`, `DELETE /api/events/{id}` (soft-delete), `GET /api/events/{id}/ics`
 - Registration: `POST /api/events/{id}/register`, `DELETE /api/events/{id}/register`,
-  `GET /api/events/{id}/registrations`
+- Organizer: `GET /api/organizer/events/{id}/participants` (with pagination/sorting)
+- Public: `GET /api/public/events`, `GET /api/public/events/{id}` (rate-limited)
 - Recommendations and search utilities are available under `/api/events` filters, plus calendar
-  exports at `/api/events/registrations/ics` for the current user.
+  exports at `/api/me/calendar` for the current user.
 - Docs: Swagger at `/docs`, ReDoc at `/redoc`
 
 ## Testing

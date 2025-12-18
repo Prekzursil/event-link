@@ -176,12 +176,13 @@ def _attach_tags(db: Session, event: models.Event, tag_names: list[str]) -> None
 
 def _events_with_counts_query(db: Session, base_query=None):
     if base_query is None:
-        base_query = db.query(models.Event)
+        base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
     seats_subquery = (
         db.query(
             models.Registration.event_id,
             func.count(models.Registration.id).label("seats_taken"),
         )
+        .filter(models.Registration.deleted_at.is_(None))
         .group_by(models.Registration.event_id)
         .subquery()
     )
@@ -213,6 +214,26 @@ def _serialize_event(event: models.Event, seats_taken: int, recommendation_reaso
         status=event.status,
         publish_at=event.publish_at,
         recommendation_reason=recommendation_reason,
+    )
+
+
+def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.PublicEventResponse:
+    organizer_name = None
+    if event.owner:
+        organizer_name = event.owner.org_name or event.owner.full_name or event.owner.email
+    return schemas.PublicEventResponse(
+        id=event.id,
+        title=event.title,
+        description=event.description,
+        category=event.category,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        location=event.location,
+        max_seats=event.max_seats,
+        cover_url=event.cover_url,
+        organizer_name=organizer_name,
+        tags=event.tags,
+        seats_taken=int(seats_taken or 0),
     )
 
 
@@ -381,6 +402,26 @@ def _enforce_rate_limit(
     _RATE_LIMIT_STORE[key] = entries
 
 
+def _audit_log(
+    db: Session,
+    *,
+    entity_type: str,
+    entity_id: int,
+    action: str,
+    actor_user_id: int | None = None,
+    meta: dict | None = None,
+) -> None:
+    db.add(
+        models.AuditLog(
+            entity_type=entity_type,
+            entity_id=entity_id,
+            action=action,
+            actor_user_id=actor_user_id,
+            meta=meta,
+        )
+    )
+
+
 @app.get("/api/events", response_model=schemas.PaginatedEvents)
 def get_events(
     search: Optional[str] = None,
@@ -401,7 +442,7 @@ def get_events(
     if page_size < 1 or page_size > 100:
         raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
     now = datetime.now(timezone.utc)
-    query = db.query(models.Event)
+    query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
     if not include_past:
         query = query.filter(models.Event.start_time >= now)
     # only published and already live
@@ -431,16 +472,105 @@ def get_events(
     query = query.distinct()
     total = query.count()
     query = query.order_by(models.Event.id, models.Event.start_time)
-    query, seats_subquery = _events_with_counts_query(db, query)
+    query, _ = _events_with_counts_query(db, query)
     query = query.offset((page - 1) * page_size).limit(page_size)
     events = query.all()
     items = [_serialize_event(event, seats) for event, seats in events]
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
+@app.get("/api/public/events", response_model=schemas.PaginatedPublicEvents)
+def get_public_events(
+    request: Request,
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    start_date: Optional[date] = None,
+    end_date: Optional[date] = None,
+    tags: Optional[list[str]] = Query(None),
+    tags_csv: Optional[str] = None,
+    location: Optional[str] = None,
+    include_past: bool = False,
+    page: int = 1,
+    page_size: int = 10,
+    db: Session = Depends(get_db),
+):
+    _enforce_rate_limit(
+        "public_events_list",
+        request=request,
+        limit=settings.public_api_rate_limit,
+        window_seconds=settings.public_api_rate_window_seconds,
+    )
+    if page < 1:
+        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+    now = datetime.now(timezone.utc)
+    query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
+    if not include_past:
+        query = query.filter(models.Event.start_time >= now)
+    query = query.filter(models.Event.status == "published").filter(
+        (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+    )
+    if search:
+        query = query.filter(func.lower(models.Event.title).like(f"%{search.lower()}%"))
+    if category:
+        query = query.filter(func.lower(models.Event.category) == category.lower())
+    tag_filters: list[str] = []
+    if tags:
+        tag_filters.extend(tags)
+    if tags_csv:
+        tag_filters.extend([t.strip() for t in tags_csv.split(",") if t.strip()])
+    if tag_filters:
+        lowered = [t.lower() for t in tag_filters]
+        query = query.join(models.Event.tags).filter(func.lower(models.Tag.name).in_(lowered))
+    if location:
+        query = query.filter(func.lower(models.Event.location).like(f"%{location.lower()}%"))
+    if start_date:
+        start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        query = query.filter(models.Event.start_time >= start_dt)
+    if end_date:
+        end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
+        query = query.filter(models.Event.start_time <= end_dt)
+    query = query.distinct()
+    total = query.count()
+    query = query.order_by(models.Event.id, models.Event.start_time)
+    query, seats_subquery = _events_with_counts_query(db, query)
+    query = query.offset((page - 1) * page_size).limit(page_size)
+    events = query.all()
+    items = [_serialize_public_event(event, seats) for event, seats in events]
+    return {"items": items, "total": total, "page": page, "page_size": page_size}
+
+
+@app.get("/api/public/events/{event_id}", response_model=schemas.PublicEventDetailResponse)
+def get_public_event(event_id: int, request: Request, db: Session = Depends(get_db)):
+    _enforce_rate_limit(
+        "public_events_detail",
+        request=request,
+        limit=settings.public_api_rate_limit,
+        window_seconds=settings.public_api_rate_window_seconds,
+    )
+    query, _ = _events_with_counts_query(
+        db,
+        db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)),
+    )
+    result = query.first()
+    if not result:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    event, seats_taken = result
+    now = datetime.now(timezone.utc)
+    if event.status != "published" or (event.publish_at and event.publish_at > now):
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+    available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
+    base = _serialize_public_event(event, seats_taken)
+    return schemas.PublicEventDetailResponse(**base.model_dump(), available_seats=available_seats)
+
+
 @app.get("/api/events/{event_id}", response_model=schemas.EventDetailResponse)
 def get_event(event_id: int, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(auth.get_optional_user)):
-    query, seats_subquery = _events_with_counts_query(db, db.query(models.Event).filter(models.Event.id == event_id))
+    query, seats_subquery = _events_with_counts_query(
+        db,
+        db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)),
+    )
     result = query.first()
     if not result:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -456,6 +586,7 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
         is_registered = (
             db.query(models.Registration)
             .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+            .filter(models.Registration.deleted_at.is_(None))
             .first()
             is not None
         )
@@ -533,7 +664,11 @@ def update_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_organizer),
 ):
-    db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    db_event = (
+        db.query(models.Event)
+        .filter(models.Event.id == event_id, models.Event.deleted_at.is_(None))
+        .first()
+    )
     if not db_event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     if db_event.owner_id != current_user.id:
@@ -580,7 +715,7 @@ def update_event(
     log_event("event_updated", event_id=db_event.id, owner_id=current_user.id)
     seats_count = (
         db.query(func.count(models.Registration.id))
-        .filter(models.Registration.event_id == db_event.id)
+        .filter(models.Registration.event_id == db_event.id, models.Registration.deleted_at.is_(None))
         .scalar()
     ) or 0
     return _serialize_event(db_event, seats_count)
@@ -588,15 +723,51 @@ def update_event(
 
 @app.delete("/api/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT)
 def delete_event(event_id: int, db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)):
-    db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    db_event = (
+        db.query(models.Event)
+        .filter(models.Event.id == event_id, models.Event.deleted_at.is_(None))
+        .first()
+    )
     if not db_event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     if db_event.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să ștergeți acest eveniment.")
 
-    db.delete(db_event)
+    now = datetime.now(timezone.utc)
+    db_event.deleted_at = now
+    db_event.deleted_by_user_id = current_user.id
+
+    registrations = (
+        db.query(models.Registration)
+        .filter(
+            models.Registration.event_id == db_event.id,
+            models.Registration.deleted_at.is_(None),
+        )
+        .all()
+    )
+    for registration in registrations:
+        registration.deleted_at = now
+        registration.deleted_by_user_id = current_user.id
+        _audit_log(
+            db,
+            entity_type="registration",
+            entity_id=registration.id,
+            action="soft_deleted",
+            actor_user_id=current_user.id,
+            meta={"event_id": db_event.id, "reason": "event_deleted"},
+        )
+
+    _audit_log(
+        db,
+        entity_type="event",
+        entity_id=db_event.id,
+        action="soft_deleted",
+        actor_user_id=current_user.id,
+        meta={"registrations_soft_deleted": len(registrations)},
+    )
+
     db.commit()
-    log_event("event_deleted", event_id=db_event.id, owner_id=current_user.id)
+    log_event("event_soft_deleted", event_id=db_event.id, owner_id=current_user.id)
     return
 
 
@@ -606,7 +777,7 @@ def clone_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_organizer),
 ):
-    orig = db.query(models.Event).filter(models.Event.id == event_id).first()
+    orig = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not orig:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     if orig.owner_id != current_user.id:
@@ -636,7 +807,7 @@ def clone_event(
     log_event("event_cloned", source_event_id=orig.id, new_event_id=new_event.id, owner_id=current_user.id)
     seats = (
         db.query(func.count(models.Registration.id))
-        .filter(models.Registration.event_id == new_event.id)
+        .filter(models.Registration.event_id == new_event.id, models.Registration.deleted_at.is_(None))
         .scalar()
     ) or 0
     return _serialize_event(new_event, seats)
@@ -646,14 +817,18 @@ def clone_event(
 def organizer_events(
     db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
 ):
-    base_query = db.query(models.Event).filter(models.Event.owner_id == current_user.id).order_by(models.Event.start_time)
+    base_query = (
+        db.query(models.Event)
+        .filter(models.Event.owner_id == current_user.id, models.Event.deleted_at.is_(None))
+        .order_by(models.Event.start_time)
+    )
     query, seats_subquery = _events_with_counts_query(db, base_query)
     events = query.all()
     return [_serialize_event(event, seats) for event, seats in events]
 
 
 def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfileResponse:
-    base_query = db.query(models.Event).filter(models.Event.owner_id == user.id)
+    base_query = db.query(models.Event).filter(models.Event.owner_id == user.id, models.Event.deleted_at.is_(None))
     now = datetime.now(timezone.utc)
     base_query = base_query.filter(
         models.Event.status == "published",
@@ -938,7 +1113,7 @@ def event_participants(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_organizer),
 ):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     if event.owner_id != current_user.id:
@@ -954,7 +1129,7 @@ def event_participants(
     base_query = (
         db.query(models.User, models.Registration.registration_time, models.Registration.attended)
         .join(models.Registration, models.User.id == models.Registration.user_id)
-        .filter(models.Registration.event_id == event_id)
+        .filter(models.Registration.event_id == event_id, models.Registration.deleted_at.is_(None))
     )
     total = base_query.count()
     page = max(page, 1)
@@ -992,7 +1167,7 @@ def update_participant_attendance(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_organizer),
 ):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     if event.owner_id != current_user.id:
@@ -1000,7 +1175,11 @@ def update_participant_attendance(
 
     registration = (
         db.query(models.Registration)
-        .filter(models.Registration.event_id == event_id, models.Registration.user_id == user_id)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.user_id == user_id,
+            models.Registration.deleted_at.is_(None),
+        )
         .first()
     )
     if not registration:
@@ -1021,7 +1200,7 @@ def register_for_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     now = datetime.now(timezone.utc)
@@ -1032,7 +1211,10 @@ def register_for_event(
         raise HTTPException(status_code=400, detail="Evenimentul a început deja.")
 
     seats_taken = (
-        db.query(func.count(models.Registration.id)).filter(models.Registration.event_id == event_id).scalar() or 0
+        db.query(func.count(models.Registration.id))
+        .filter(models.Registration.event_id == event_id, models.Registration.deleted_at.is_(None))
+        .scalar()
+        or 0
     )
     if event.max_seats is not None and seats_taken >= event.max_seats:
         raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Evenimentul este plin.")
@@ -1043,7 +1225,23 @@ def register_for_event(
         .first()
     )
     if existing:
-        raise HTTPException(status_code=400, detail="Ești deja înscris la eveniment.")
+        if existing.deleted_at is None:
+            raise HTTPException(status_code=400, detail="Ești deja înscris la eveniment.")
+        existing.deleted_at = None
+        existing.deleted_by_user_id = None
+        existing.registration_time = datetime.now(timezone.utc)
+        db.add(existing)
+        _audit_log(
+            db,
+            entity_type="registration",
+            entity_id=existing.id,
+            action="restored",
+            actor_user_id=current_user.id,
+            meta={"event_id": event.id},
+        )
+        db.commit()
+        log_event("event_reregistered", event_id=event.id, user_id=current_user.id)
+        return {"status": "registered"}
 
     registration = models.Registration(user_id=current_user.id, event_id=event_id)
     db.add(registration)
@@ -1073,12 +1271,16 @@ def resend_registration_email(
     current_user: models.User = Depends(auth.require_student),
 ):
     _enforce_rate_limit("resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600)
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     registration = (
         db.query(models.Registration)
-        .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.user_id == current_user.id,
+            models.Registration.deleted_at.is_(None),
+        )
         .first()
     )
     if not registration:
@@ -1104,7 +1306,7 @@ def unregister_from_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     now = datetime.now(timezone.utc)
@@ -1114,13 +1316,27 @@ def unregister_from_event(
 
     registration = (
         db.query(models.Registration)
-        .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.user_id == current_user.id,
+            models.Registration.deleted_at.is_(None),
+        )
         .first()
     )
     if not registration:
         raise HTTPException(status_code=400, detail="Nu ești înscris la acest eveniment.")
 
-    db.delete(registration)
+    registration.deleted_at = datetime.now(timezone.utc)
+    registration.deleted_by_user_id = current_user.id
+    db.add(registration)
+    _audit_log(
+        db,
+        entity_type="registration",
+        entity_id=registration.id,
+        action="soft_deleted",
+        actor_user_id=current_user.id,
+        meta={"event_id": event.id, "reason": "unregistered"},
+    )
     db.commit()
     log_event("event_unregistered", event_id=event.id, user_id=current_user.id)
     return
@@ -1132,7 +1348,7 @@ def favorite_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     existing = (
@@ -1175,6 +1391,7 @@ def list_favorites(db: Session = Depends(get_db), current_user: models.User = De
     )
     now = datetime.now(timezone.utc)
     base_query = base_query.filter(
+        models.Event.deleted_at.is_(None),
         models.Event.status == "published",
         (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
     )
@@ -1189,7 +1406,11 @@ def my_events(db: Session = Depends(get_db), current_user: models.User = Depends
     base_query = (
         db.query(models.Event)
         .join(models.Registration, models.Event.id == models.Registration.event_id)
-        .filter(models.Registration.user_id == current_user.id)
+        .filter(
+            models.Event.deleted_at.is_(None),
+            models.Registration.user_id == current_user.id,
+            models.Registration.deleted_at.is_(None),
+        )
         .order_by(models.Event.start_time)
     )
     query, seats_subquery = _events_with_counts_query(db, base_query)
@@ -1206,7 +1427,7 @@ def recommended_events(
     registered_event_ids = [
         e.event_id
         for e in db.query(models.Registration.event_id)
-        .filter(models.Registration.user_id == current_user.id)
+        .filter(models.Registration.user_id == current_user.id, models.Registration.deleted_at.is_(None))
         .all()
     ]
     tag_names = [
@@ -1216,7 +1437,11 @@ def recommended_events(
             .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
             .join(models.Event, models.Event.id == models.event_tags.c.event_id)
             .join(models.Registration, models.Registration.event_id == models.Event.id)
-            .filter(models.Registration.user_id == current_user.id)
+            .filter(
+                models.Registration.user_id == current_user.id,
+                models.Registration.deleted_at.is_(None),
+                models.Event.deleted_at.is_(None),
+            )
             .all()
         )
     ]
@@ -1227,6 +1452,7 @@ def recommended_events(
             db.query(models.Event)
             .join(models.Event.tags)
             .filter(func.lower(models.Tag.name).in_([name.lower() for name in tag_names]))
+            .filter(models.Event.deleted_at.is_(None))
             .filter(models.Event.start_time >= now)
             .filter(models.Event.status == "published")
             .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
@@ -1239,7 +1465,7 @@ def recommended_events(
         events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
 
     if not events:
-        base_query = db.query(models.Event).filter(models.Event.start_time >= now)
+        base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None), models.Event.start_time >= now)
         if registered_event_ids:
             base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
         base_query = base_query.filter(models.Event.status == "published").filter(
@@ -1271,7 +1497,7 @@ def health_check(db: Session = Depends(get_db)):
 
 @app.get("/api/events/{event_id}/ics")
 def event_ics(event_id: int, db: Session = Depends(get_db)):
-    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     ics = "\n".join([
@@ -1289,7 +1515,11 @@ def user_calendar(db: Session = Depends(get_db), current_user: models.User = Dep
     regs = (
         db.query(models.Event)
         .join(models.Registration, models.Registration.event_id == models.Event.id)
-        .filter(models.Registration.user_id == current_user.id)
+        .filter(
+            models.Event.deleted_at.is_(None),
+            models.Registration.user_id == current_user.id,
+            models.Registration.deleted_at.is_(None),
+        )
         .all()
     )
     vevents = [ _event_to_ics(e, uid_suffix=f"-u{current_user.id}") for e in regs ]

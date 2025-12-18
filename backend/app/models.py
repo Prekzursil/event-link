@@ -35,8 +35,13 @@ class User(Base):
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
 
-    events = relationship("Event", back_populates="owner")
-    registrations = relationship("Registration", back_populates="user", cascade="all, delete-orphan")
+    events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
+    registrations = relationship(
+        "Registration",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="Registration.user_id",
+    )
     favorites = relationship("FavoriteEvent", back_populates="user", cascade="all, delete-orphan")
     interest_tags = relationship("Tag", secondary="user_interest_tags")
 
@@ -66,11 +71,14 @@ class Event(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     status = Column(String(20), nullable=False, server_default="published")
     publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    owner = relationship("User", back_populates="events")
+    owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
     registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
     tags = relationship("Tag", secondary="event_tags", back_populates="events")
     favorites = relationship("FavoriteEvent", back_populates="event", cascade="all, delete-orphan")
+    deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
 
 
 class Registration(Base):
@@ -82,9 +90,12 @@ class Registration(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     registration_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     attended = Column(Boolean, server_default="false", nullable=False)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    user = relationship("User", back_populates="registrations")
+    user = relationship("User", back_populates="registrations", foreign_keys=[user_id])
     event = relationship("Event", back_populates="registrations")
+    deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
 
 
 class FavoriteEvent(Base):
@@ -128,6 +139,20 @@ class BackgroundJob(Base):
     last_error = Column(Text, nullable=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     finished_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(50), nullable=False, index=True)
+    entity_id = Column(Integer, nullable=False, index=True)
+    action = Column(String(50), nullable=False, index=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    meta = Column(JSON, nullable=True)
+
+    actor = relationship("User", foreign_keys=[actor_user_id])
 
 
 event_tags = Table(

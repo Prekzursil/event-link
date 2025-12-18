@@ -36,6 +36,9 @@ class Settings(BaseSettings):
     task_queue_poll_interval_seconds: float = 1.0
     task_queue_max_attempts: int = 3
     task_queue_stale_after_seconds: int = 300
+
+    public_api_rate_limit: int = 60
+    public_api_rate_window_seconds: int = 60
     
     # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
     # so our validator can handle both formats.

@@ -86,14 +86,15 @@
 - [x] UI: add `ui/.env.example` for `VITE_API_URL` and document usage.
 - [x] UI: tune Vite chunk warning threshold (keep build output clean).
 - [x] Add staging/prod Vite env files with feature flags (e.g., recommendations toggle).
-- [ ] Soft-delete support for events and registrations with an audit history.
+- [x] Soft-delete support for events and registrations with an audit history.
 - [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
-- [ ] Public read-only events API with stricter rate limiting for third-party integrations.
+- [x] Public read-only events API with stricter rate limiting for third-party integrations.
 - [x] Searchable filter bar on event list (tags, category, date range, location).
 - [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
 - [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
 - [x] Seed script: document usage in root README and add docker-compose helper (optional).
 - [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
+- [ ] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
 - [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
 - [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
 - [ ] Integration tests hitting a real test database (not just unit tests).

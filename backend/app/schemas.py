@@ -133,6 +133,32 @@ class EventDetailResponse(EventResponse):
     is_favorite: bool = False
 
 
+class PublicEventResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    category: Optional[str]
+    start_time: datetime
+    end_time: Optional[datetime]
+    location: Optional[str]
+    max_seats: Optional[int]
+    cover_url: Optional[str]
+    organizer_name: Optional[str]
+    tags: List[TagResponse]
+    seats_taken: int
+
+
+class PublicEventDetailResponse(PublicEventResponse):
+    available_seats: Optional[int] = None
+
+
+class PaginatedPublicEvents(BaseModel):
+    items: List[PublicEventResponse]
+    total: int
+    page: int
+    page_size: int
+
+
 class ParticipantResponse(BaseModel):
     id: int
     email: EmailStr
