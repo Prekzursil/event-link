@@ -112,10 +112,10 @@ def test_edit_forbidden_for_non_owner(helpers):
     assert update.status_code == 403
 
 
-def test_delete_cascades_registrations(helpers):
+def test_delete_soft_deletes_event_and_registrations(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    helpers["make_organizer"]("softdel-org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("softdel-org@test.ro", "organizer123")
     create_resp = client.post(
         "/api/events",
         json={
@@ -131,14 +131,63 @@ def test_delete_cascades_registrations(helpers):
     )
     event_id = create_resp.json()["id"]
 
-    student_token = helpers["register_student"]("stud@test.ro")
+    student_token = helpers["register_student"]("softdel-stud@test.ro")
     client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
 
     delete_resp = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token))
     assert delete_resp.status_code == 204
 
-    remaining_regs = helpers["db"].query(models.Registration).count()
-    assert remaining_regs == 0
+    db = helpers["db"]
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    assert event is not None
+    assert event.deleted_at is not None
+    assert event.deleted_by_user_id is not None
+
+    remaining_regs = db.query(models.Registration).count()
+    active_regs = db.query(models.Registration).filter(models.Registration.deleted_at.is_(None)).count()
+    assert remaining_regs == 1
+    assert active_regs == 0
+
+    reg = db.query(models.Registration).first()
+    assert reg is not None
+    assert reg.deleted_at is not None
+    assert reg.deleted_by_user_id is not None
+
+    audit = db.query(models.AuditLog).filter(models.AuditLog.action == "soft_deleted").all()
+    assert len(audit) >= 2
+
+
+def test_reregister_after_unregister_restores_registration(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_organizer"]("rereg-org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("rereg-org@test.ro", "organizer123")
+    event = client.post(
+        "/api/events",
+        json={
+            "title": "ReReg",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=1),
+            "location": "Loc",
+            "max_seats": 1,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    student_token = helpers["register_student"]("rereg-stud@test.ro")
+
+    first = client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
+    assert first.status_code == 201
+    unregister = client.delete(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
+    assert unregister.status_code == 204
+
+    second = client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
+    assert second.status_code == 201
+
+    regs = db.query(models.Registration).filter(models.Registration.event_id == event["id"]).all()
+    assert len(regs) == 1
+    assert regs[0].deleted_at is None
 
 
 def test_events_list_filters_and_order(helpers):
@@ -194,6 +243,81 @@ def test_events_list_filters_and_order(helpers):
     assert paging["page_size"] == 1
     assert len(paging["items"]) == 1
     assert paging["total"] == 2
+
+
+def test_public_events_api_exposes_published_only(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("public-org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("public-org@test.ro", "organizer123")
+    base_payload = {
+        "description": "Desc",
+        "category": "Tech",
+        "location": "Loc",
+        "max_seats": 10,
+        "tags": [],
+        "start_time": helpers["future_time"](days=2),
+    }
+    published = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Published"},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    draft = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Draft", "status": "draft"},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    public_list = client.get("/api/public/events")
+    assert public_list.status_code == 200
+    items = public_list.json()["items"]
+    assert any(e["id"] == published["id"] for e in items)
+    assert all(e["id"] != draft["id"] for e in items)
+
+    public_detail = client.get(f"/api/public/events/{published['id']}")
+    assert public_detail.status_code == 200
+    assert public_detail.json()["id"] == published["id"]
+
+    draft_detail = client.get(f"/api/public/events/{draft['id']}")
+    assert draft_detail.status_code == 404
+
+
+def test_public_events_api_is_rate_limited(helpers):
+    client = helpers["client"]
+    from app import api as api_module
+    from app.config import settings
+
+    helpers["make_organizer"]("public-limit-org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("public-limit-org@test.ro", "organizer123")
+
+    old_limit = settings.public_api_rate_limit
+    old_window = settings.public_api_rate_window_seconds
+    settings.public_api_rate_limit = 2
+    settings.public_api_rate_window_seconds = 60
+    api_module._RATE_LIMIT_STORE.clear()
+    try:
+        client.post(
+            "/api/events",
+            json={
+                "title": "Rate limit",
+                "description": "Desc",
+                "category": "Tech",
+                "start_time": helpers["future_time"](days=2),
+                "location": "Loc",
+                "max_seats": 10,
+                "tags": [],
+            },
+            headers=helpers["auth_header"](organizer_token),
+        )
+
+        assert client.get("/api/public/events").status_code == 200
+        assert client.get("/api/public/events").status_code == 200
+        limited = client.get("/api/public/events")
+        assert limited.status_code == 429
+    finally:
+        settings.public_api_rate_limit = old_limit
+        settings.public_api_rate_window_seconds = old_window
+        api_module._RATE_LIMIT_STORE.clear()
 
 
 def test_event_validation_rules(helpers):
