@@ -143,6 +143,7 @@ export interface UniversityCatalogItem {
   name: string;
   city?: string | null;
   faculties: string[];
+  aliases?: string[];
 }
 
 export interface RegistrationDayStat {

@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+import unicodedata
 from typing import TypedDict
 
 
@@ -7,6 +9,23 @@ class UniversityCatalogItem(TypedDict, total=False):
     name: str
     city: str | None
     faculties: list[str]
+    aliases: list[str]
+
+
+def _normalize_university_key(value: str) -> str:
+    # Normalize casing + diacritics + punctuation/whitespace so we can match legacy inputs.
+    value = value.strip().casefold()
+    value = (
+        value.replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
+    value = unicodedata.normalize("NFKD", value)
+    value = "".join(ch for ch in value if not unicodedata.combining(ch))
+    value = re.sub(r"[^a-z0-9]+", " ", value)
+    return " ".join(value.split())
 
 
 def _guess_city(name: str) -> str | None:
@@ -318,7 +337,7 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
         "Facultatea de Științele Educației, Comunicare și Relații Internaționale",
         "Facultatea de Asistență Medicală",
     ],
-    "University \"Transilvany\" of Brasov": [
+    "University \"Transilvania\" of Brasov": [
         "Facultatea de Inginerie Tehnologică și Management Industrial",
         "Facultatea de Știința și Ingineria Materialelor",
         "Facultatea de Design de Produs și Mediu",
@@ -348,7 +367,7 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
         "Facultatea de Științe Agricole, Industrie Alimentară și Protecția Mediului",
         "Facultatea de Științe Economice",
     ],
-    "University Oil- Gas Ploiesti": [
+    "University Oil-Gas Ploiesti": [
         "Facultatea de Inginerie Mecanică și Electrică",
         "Facultatea de Ingineria Petrolului și Gazelor",
         "Facultatea de Tehnologia Petrolului și Petrochimie",
@@ -625,78 +644,101 @@ _FACULTIES_BY_UNIVERSITY: dict[str, list[str]] = {
     ],
 }
 
+_UNIVERSITY_NAMES = [
+    "1 December University of Alba Iulia",
+    "Academia Tehnica Militara",
+    "Academia de Studii Economice din Bucuresti",
+    'Academy of Arts "George Enescu" Iasi',
+    'Academy of Music "Georghe Dima" Cluj-Napoca',
+    "Babes-Bolyai University of Cluj-Napoca",
+    "Constantin Brancoveanu University Pitesti",
+    "Emanuel University",
+    'Institute of Architecture "Ion Mincu" Bucharest',
+    "Maritime University Constanta",
+    "National Academy for Physical Education and Sports Bucharest",
+    "National School of Political and Administrative Studies Bucharest",
+    "National University of Arts",
+    "National University of Music",
+    "National University of Theater and Film Arts",
+    "North University of Baia Mare",
+    "Oradea University",
+    "Petru Maior University of Targu Mures",
+    "Polytechnic University of Timisoara",
+    "Romanian-American University",
+    "Spiru Haret University",
+    "Targu-Mures University of Theatre",
+    "Technical University of Civil Engineering Bucharest",
+    "Technical University of Cluj-Napoca",
+    "Technical University of Iasi",
+    "Technical University of Timisoara",
+    'Universitatea de Vest "Vasile Goldiş"',
+    'University "Aurel Vlaicu" Arad',
+    'University "Petre Andrei" Iasi',
+    'University "Titu Maiorescu"',
+    'University "Transilvania" of Brasov',
+    "University Lucian Blaga of Sibiu",
+    "University Oil-Gas Ploiesti",
+    "University Politehnica of Bucharest",
+    "University of Agriculture and Veterinary Medicine Bucharest",
+    "University of Agriculture and Veterinary Medicine Cluj-Napoca",
+    "University of Agriculture and Veterinary Medicine Iasi",
+    "University of Agriculture and Veterinary Medicine Timisoara",
+    "University of Art and Design Cluj-Napoca",
+    "University of Bacau",
+    "University of Bucharest",
+    "University of Constanta",
+    "University of Constanta Medical School",
+    "University of Craiova",
+    "University of Galatzi",
+    "University of Iasi",
+    "University of Medicine and Pharmacology of Oradea",
+    "University of Medicine and Pharmacy of Bucharest",
+    "University of Medicine and Pharmacy of Cluj-Napoca",
+    "University of Medicine and Pharmacy of Iasi",
+    "University of Medicine and Pharmacy of Targu Mures",
+    "University of Medicine and Pharmacy of Timisoara",
+    "University of Oradea",
+    "University of Petrosani",
+    "University of Pitesti",
+    "University of Sibiu",
+    "University of Suceava",
+    "University of Targu Jiu",
+    "Valahia University of Targoviste",
+    "West University of Timisoara",
+]
+
+_UNIVERSITY_ALIASES: dict[str, list[str]] = {
+    'University "Transilvania" of Brasov': ['University "Transilvany" of Brasov'],
+    "University Oil-Gas Ploiesti": ["University Oil- Gas Ploiesti"],
+}
+
+_UNIVERSITY_KEY_TO_CANONICAL: dict[str, str] = {}
+for canonical in _UNIVERSITY_NAMES:
+    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = canonical
+for canonical, aliases in _UNIVERSITY_ALIASES.items():
+    for alias in aliases:
+        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = canonical
+
+
+def normalize_university_name(name: str | None) -> str | None:
+    if name is None:
+        return None
+    trimmed = name.strip()
+    if not trimmed:
+        return None
+    canonical = _UNIVERSITY_KEY_TO_CANONICAL.get(_normalize_university_key(trimmed))
+    return canonical or trimmed
+
 
 def get_university_catalog() -> list[UniversityCatalogItem]:
-    names = [
-        "1 December University of Alba Iulia",
-        "Academia Tehnica Militara",
-        "Academia de Studii Economice din Bucuresti",
-        'Academy of Arts "George Enescu" Iasi',
-        'Academy of Music "Georghe Dima" Cluj-Napoca',
-        "Babes-Bolyai University of Cluj-Napoca",
-        "Constantin Brancoveanu University Pitesti",
-        "Emanuel University",
-        'Institute of Architecture "Ion Mincu" Bucharest',
-        "Maritime University Constanta",
-        "National Academy for Physical Education and Sports Bucharest",
-        "National School of Political and Administrative Studies Bucharest",
-        "National University of Arts",
-        "National University of Music",
-        "National University of Theater and Film Arts",
-        "North University of Baia Mare",
-        "Oradea University",
-        "Petru Maior University of Targu Mures",
-        "Polytechnic University of Timisoara",
-        "Romanian-American University",
-        "Spiru Haret University",
-        "Targu-Mures University of Theatre",
-        "Technical University of Civil Engineering Bucharest",
-        "Technical University of Cluj-Napoca",
-        "Technical University of Iasi",
-        "Technical University of Timisoara",
-        'Universitatea de Vest "Vasile Goldiş"',
-        'University "Aurel Vlaicu" Arad',
-        'University "Petre Andrei" Iasi',
-        'University "Titu Maiorescu"',
-        'University "Transilvany" of Brasov',
-        "University Lucian Blaga of Sibiu",
-        "University Oil- Gas Ploiesti",
-        "University Politehnica of Bucharest",
-        "University of Agriculture and Veterinary Medicine Bucharest",
-        "University of Agriculture and Veterinary Medicine Cluj-Napoca",
-        "University of Agriculture and Veterinary Medicine Iasi",
-        "University of Agriculture and Veterinary Medicine Timisoara",
-        "University of Art and Design Cluj-Napoca",
-        "University of Bacau",
-        "University of Bucharest",
-        "University of Constanta",
-        "University of Constanta Medical School",
-        "University of Craiova",
-        "University of Galatzi",
-        "University of Iasi",
-        "University of Medicine and Pharmacology of Oradea",
-        "University of Medicine and Pharmacy of Bucharest",
-        "University of Medicine and Pharmacy of Cluj-Napoca",
-        "University of Medicine and Pharmacy of Iasi",
-        "University of Medicine and Pharmacy of Targu Mures",
-        "University of Medicine and Pharmacy of Timisoara",
-        "University of Oradea",
-        "University of Petrosani",
-        "University of Pitesti",
-        "University of Sibiu",
-        "University of Suceava",
-        "University of Targu Jiu",
-        "Valahia University of Targoviste",
-        "West University of Timisoara",
-    ]
-
     items: list[UniversityCatalogItem] = []
-    for name in names:
+    for name in _UNIVERSITY_NAMES:
         items.append(
             {
                 "name": name,
                 "city": _guess_city(name),
                 "faculties": _FACULTIES_BY_UNIVERSITY.get(name, []),
+                "aliases": _UNIVERSITY_ALIASES.get(name, []),
             }
         )
     return items

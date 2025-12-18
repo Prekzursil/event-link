@@ -232,6 +232,7 @@ class UniversityCatalogItem(BaseModel):
     name: str
     city: Optional[str] = None
     faculties: List[str] = Field(default_factory=list)
+    aliases: List[str] = Field(default_factory=list)
 
 
 class UniversityCatalogResponse(BaseModel):

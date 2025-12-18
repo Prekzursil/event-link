@@ -1032,7 +1032,7 @@ def get_student_profile(
         "email": current_user.email,
         "full_name": current_user.full_name,
         "city": current_user.city,
-        "university": current_user.university,
+        "university": ro_universities.normalize_university_name(current_user.university),
         "faculty": current_user.faculty,
         "study_level": current_user.study_level,
         "study_year": current_user.study_year,
@@ -1053,7 +1053,7 @@ def update_student_profile(
     if payload.city is not None:
         current_user.city = payload.city.strip() or None
     if payload.university is not None:
-        current_user.university = payload.university.strip() or None
+        current_user.university = ro_universities.normalize_university_name(payload.university)
     if payload.faculty is not None:
         current_user.faculty = payload.faculty.strip() or None
     if payload.study_level is not None:
@@ -1083,7 +1083,7 @@ def update_student_profile(
         "email": current_user.email,
         "full_name": current_user.full_name,
         "city": current_user.city,
-        "university": current_user.university,
+        "university": ro_universities.normalize_university_name(current_user.university),
         "faculty": current_user.faculty,
         "study_level": current_user.study_level,
         "study_year": current_user.study_year,
