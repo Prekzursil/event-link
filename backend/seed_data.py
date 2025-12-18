@@ -23,12 +23,14 @@ TAGS = [
     "AI & ML", "Web Development", "Mobile", "Cloud", "DevOps",
     "Data Science", "Cybersecurity", "Gaming", "Blockchain",
     "Career", "Networking", "Workshop", "Hackathon", "Conference",
-    "Social", "Sport", "Muzică", "Artă", "Voluntariat"
+    "Social", "Sport", "Muzică", "Rock", "Pop", "Hip-Hop", "EDM", "Jazz", "Clasică", "Folk", "Metal",
+    "Artă", "Voluntariat"
 ]
 
 CATEGORIES = [
     "Workshop", "Seminar", "Conference", "Hackathon", "Networking",
-    "Career Fair", "Presentation", "Cultural", "Sports", "Social"
+    "Career Fair", "Presentation", "Music", "Cultural", "Sports", "Social",
+    "Volunteering", "Party", "Festival", "Technical", "Academic"
 ]
 
 LOCATIONS = [
@@ -220,9 +222,33 @@ Intrare liberă!
 Bar cu băuturi și snacks disponibil.
 
 Dress code: smart casual 🎷""",
-        "category": "Cultural",
-        "tags": ["Muzică", "Social", "Artă"],
+        "category": "Music",
+        "tags": ["Muzică", "Jazz", "Social", "Artă"],
         "max_seats": 120
+    },
+    {
+        "title": "Concert: Rock Night în campus",
+        "description": """O seară cu rock live, energie și bună dispoziție!
+
+Line-up:
+- Trupa A (alternative rock)
+- Trupa B (classic rock covers)
+
+Intrare liberă. Vino devreme pentru locuri bune! 🤘""",
+        "category": "Music",
+        "tags": ["Muzică", "Rock", "Social"],
+        "max_seats": 200
+    },
+    {
+        "title": "Festival: Pop & EDM Student Fest",
+        "description": """Festival studențesc cu DJ sets și artiști locali.
+
+Genuri: pop, EDM, dance
+
+Acces pe bază de bilet (reducere studenți). 🎧""",
+        "category": "Festival",
+        "tags": ["Muzică", "Pop", "EDM", "Social"],
+        "max_seats": 800
     },
     {
         "title": "Curs: Web Development Full Stack",

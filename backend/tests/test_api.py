@@ -719,6 +719,46 @@ def test_recommended_uses_tags_and_excludes_registered(helpers):
     assert python_event["id"] not in rec_ids
 
 
+def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    payload = {
+        "description": "Desc",
+        "category": "Music",
+        "city": "București",
+        "location": "Loc",
+        "max_seats": 50,
+    }
+    rock_event = client.post(
+        "/api/events",
+        json={**payload, "title": "Rock show", "start_time": helpers["future_time"](days=2), "tags": ["Rock"]},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    client.post(
+        "/api/events",
+        json={**payload, "title": "Other", "start_time": helpers["future_time"](days=3), "tags": ["python"]},
+        headers=helpers["auth_header"](organizer_token),
+    )
+
+    student_token = helpers["register_student"]("interest@test.ro")
+
+    tags = client.get("/api/tags").json()["items"]
+    rock_tag_id = next(t["id"] for t in tags if t["name"] == "Rock")
+
+    update = client.put(
+        "/api/me/profile",
+        json={"interest_tag_ids": [rock_tag_id]},
+        headers=helpers["auth_header"](student_token),
+    )
+    assert update.status_code == 200
+
+    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    assert any(e["id"] == rock_event["id"] for e in rec)
+    assert "Your interests" in (rec[0].get("recommendation_reason") or "")
+
+
 def test_duplicate_registration_blocked(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()

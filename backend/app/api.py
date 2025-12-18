@@ -163,10 +163,16 @@ def _event_to_ics(event: models.Event, uid_suffix: str = "") -> str:
 
 
 def _attach_tags(db: Session, event: models.Event, tag_names: list[str]) -> None:
-    cleaned = {name.strip().lower() for name in tag_names if name and name.strip()}
+    normalized: dict[str, str] = {}
+    for raw in tag_names:
+        name = raw.strip() if raw else ""
+        if not name:
+            continue
+        key = name.lower()
+        normalized.setdefault(key, name)
     tags: list[models.Tag] = []
-    for name in cleaned:
-        tag = db.query(models.Tag).filter(func.lower(models.Tag.name) == name.lower()).first()
+    for key, name in normalized.items():
+        tag = db.query(models.Tag).filter(func.lower(models.Tag.name) == key).first()
         if not tag:
             tag = models.Tag(name=name)
             db.add(tag)
@@ -1608,7 +1614,7 @@ def recommended_events(
         .filter(models.Registration.user_id == current_user.id, models.Registration.deleted_at.is_(None))
         .all()
     ]
-    tag_names = [
+    history_tag_names = [
         t[0]
         for t in (
             db.query(models.Tag.name)
@@ -1624,12 +1630,15 @@ def recommended_events(
         )
     ]
 
+    profile_tag_names = [t.name for t in current_user.interest_tags]
+    match_tag_names = list(dict.fromkeys([*history_tag_names, *profile_tag_names]))
+
     events: List[tuple[models.Event, int, Optional[str]]] = []
-    if tag_names:
+    if match_tag_names:
         base_query = (
             db.query(models.Event)
             .join(models.Event.tags)
-            .filter(func.lower(models.Tag.name).in_([name.lower() for name in tag_names]))
+            .filter(func.lower(models.Tag.name).in_([name.lower() for name in match_tag_names]))
             .filter(models.Event.deleted_at.is_(None))
             .filter(models.Event.start_time >= now)
             .filter(models.Event.status == "published")
@@ -1639,7 +1648,12 @@ def recommended_events(
             base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
         base_query = base_query.distinct().order_by(models.Event.start_time)
         query, seats_subquery = _events_with_counts_query(db, base_query)
-        reason = f"Similar tags: {', '.join(sorted(set(tag_names))[:3])}"
+        reason_parts: list[str] = []
+        if history_tag_names:
+            reason_parts.append(f"Similar tags: {', '.join(sorted(set(history_tag_names))[:3])}")
+        if profile_tag_names:
+            reason_parts.append(f"Your interests: {', '.join(sorted(set(profile_tag_names))[:3])}")
+        reason = " • ".join(reason_parts[:2]) if reason_parts else None
         events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
 
     if not events:

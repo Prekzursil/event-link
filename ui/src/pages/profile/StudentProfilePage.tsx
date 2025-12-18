@@ -61,6 +61,66 @@ export function StudentProfilePage() {
   const [studyYear, setStudyYear] = useState<number | undefined>(undefined);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
 
+  const musicInterestNames = useMemo(
+    () =>
+      new Set([
+        'Muzică',
+        'Rock',
+        'Pop',
+        'Hip-Hop',
+        'EDM',
+        'Jazz',
+        'Clasică',
+        'Folk',
+        'Metal',
+      ]),
+    [],
+  );
+
+  const musicTags = useMemo(
+    () => allTags.filter((tag) => musicInterestNames.has(tag.name)),
+    [allTags, musicInterestNames],
+  );
+
+  const otherTags = useMemo(
+    () => allTags.filter((tag) => !musicInterestNames.has(tag.name)),
+    [allTags, musicInterestNames],
+  );
+
+  const renderTagOption = (tag: Tag) => {
+    const isSelected = selectedTagIds.includes(tag.id);
+    return (
+      <div
+        key={tag.id}
+        className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
+          isSelected
+            ? 'border-primary bg-primary/5'
+            : 'border-border hover:border-primary/50'
+        }`}
+        onClick={() => handleTagToggle(tag.id)}
+        role="button"
+        tabIndex={0}
+        onKeyDown={(e) => {
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            handleTagToggle(tag.id);
+          }
+        }}
+      >
+        <Checkbox
+          id={`tag-${tag.id}`}
+          checked={isSelected}
+          onClick={(e) => e.stopPropagation()}
+          onKeyDown={(e) => e.stopPropagation()}
+          onCheckedChange={() => handleTagToggle(tag.id)}
+        />
+        <Label htmlFor={`tag-${tag.id}`} className="cursor-pointer flex-1 text-sm">
+          {tag.name}
+        </Label>
+      </div>
+    );
+  };
+
   const selectedUniversity = useMemo(() => {
     const normalized = university.trim().toLowerCase();
     if (!normalized) return null;
@@ -495,43 +555,23 @@ export function StudentProfilePage() {
               Nu există etichete disponibile momentan
             </p>
           ) : (
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              {allTags.map((tag) => {
-                const isSelected = selectedTagIds.includes(tag.id);
-                return (
-                  <div
-                    key={tag.id}
-                    className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-                      isSelected
-                        ? 'border-primary bg-primary/5'
-                        : 'border-border hover:border-primary/50'
-                    }`}
-                    onClick={() => handleTagToggle(tag.id)}
-                    role="button"
-                    tabIndex={0}
-                    onKeyDown={(e) => {
-                      if (e.key === 'Enter' || e.key === ' ') {
-                        e.preventDefault();
-                        handleTagToggle(tag.id);
-                      }
-                    }}
-                  >
-                    <Checkbox
-                      id={`tag-${tag.id}`}
-                      checked={isSelected}
-                      onClick={(e) => e.stopPropagation()}
-                      onKeyDown={(e) => e.stopPropagation()}
-                      onCheckedChange={() => handleTagToggle(tag.id)}
-                    />
-                    <Label
-                      htmlFor={`tag-${tag.id}`}
-                      className="cursor-pointer flex-1 text-sm"
-                    >
-                      {tag.name}
-                    </Label>
+            <div className="space-y-6">
+              {musicTags.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Muzică</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {musicTags.map(renderTagOption)}
                   </div>
-                );
-              })}
+                </div>
+              )}
+              {otherTags.length > 0 && (
+                <div className="space-y-3">
+                  <div className="text-sm font-medium">Alte interese</div>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+                    {otherTags.map(renderTagOption)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

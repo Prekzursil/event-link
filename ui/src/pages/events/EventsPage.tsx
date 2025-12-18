@@ -29,17 +29,9 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { ro } from 'date-fns/locale';
+import { EVENT_CATEGORIES } from '@/lib/eventCategories';
 
-const CATEGORIES = [
-  'Toate',
-  'Technical',
-  'Cultural',
-  'Sports',
-  'Academic',
-  'Social',
-  'Workshop',
-  'Conference',
-];
+const CATEGORIES = ['Toate', ...EVENT_CATEGORIES] as const;
 
 const PAGE_SIZES = [6, 12, 24, 48];
 
