@@ -91,6 +91,109 @@ def _validate_cover_url(url: str | None) -> None:
         raise HTTPException(status_code=400, detail="Cover URL trebuie să fie un link http/https valid.")
 
 
+_URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
+_SHORTENER_DOMAINS = {
+    "bit.ly",
+    "tinyurl.com",
+    "t.co",
+    "goo.gl",
+    "ow.ly",
+}
+_SUSPICIOUS_KEYWORDS = {
+    "crypto",
+    "bitcoin",
+    "investment",
+    "investiție",
+    "investitie",
+    "profit",
+    "giveaway",
+    "free money",
+    "câștig",
+    "castig",
+    "premiu",
+    "urgent",
+    "telegram",
+    "whatsapp",
+    "dm me",
+    "support",
+}
+
+
+def _compute_moderation(*, title: str, description: str | None, location: str | None) -> tuple[float, list[str], str]:
+    text = f"{title or ''}\n{description or ''}\n{location or ''}"
+    lowered = text.lower()
+
+    flags: list[str] = []
+    score = 0.0
+
+    urls = _URL_PATTERN.findall(lowered)
+    if len(urls) >= 3:
+        flags.append("many_links")
+        score += 0.3
+
+    if any(any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls):
+        flags.append("shortener_link")
+        score += 0.4
+
+    if any(keyword in lowered for keyword in _SUSPICIOUS_KEYWORDS):
+        flags.append("suspicious_keywords")
+        score += 0.4
+
+    if urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered):
+        flags.append("credential_request")
+        score += 0.5
+
+    score = min(1.0, score)
+    status = "flagged" if score >= 0.5 else "clean"
+    return score, flags, status
+
+
+_CATEGORY_KEYWORDS: dict[str, list[str]] = {
+    "Hackathon": ["hackathon", "ctf"],
+    "Workshop": ["workshop", "atelier"],
+    "Seminar": ["seminar", "webinar"],
+    "Presentation": ["presentation", "prezentare", "talk"],
+    "Conference": ["conference", "conferin"],
+    "Networking": ["networking", "meetup", "network"],
+    "Career Fair": ["career fair", "career", "job", "târg", "targ", "cariere"],
+    "Music": ["music", "muzic", "concert", "gig", "dj"],
+    "Festival": ["festival"],
+    "Party": ["party", "petrec", "club"],
+    "Sports": ["sport", "marathon", "run", "alerg"],
+    "Volunteering": ["volunteer", "volunt"],
+    "Cultural": ["cultural", "theatre", "teatru", "film", "art"],
+    "Technical": ["tech", "program", "coding", "software", "ai", "ml", "data", "cloud"],
+    "Academic": ["academic", "universit", "research", "cercet"],
+    "Social": ["social", "community", "comunit"],
+}
+
+
+def _suggest_category_from_text(text: str) -> str | None:
+    lowered = (text or "").lower()
+    best: tuple[int, str] | None = None
+    for category, keywords in _CATEGORY_KEYWORDS.items():
+        score = sum(1 for kw in keywords if kw in lowered)
+        if score <= 0:
+            continue
+        if best is None or score > best[0]:
+            best = (score, category)
+    return best[1] if best else None
+
+
+def _tokenize(text: str) -> set[str]:
+    return {t for t in re.findall(r"[a-z0-9ăâîșț]+", (text or "").lower()) if t}
+
+
+def _jaccard_similarity(a: set[str], b: set[str]) -> float:
+    if not a and not b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    inter = len(a & b)
+    union = len(a | b)
+    return inter / union if union else 0.0
+
+
 def _ensure_future_date(start_time: datetime) -> None:
     start_time = _normalize_dt(start_time)
     if start_time and start_time < datetime.now(timezone.utc):
@@ -226,6 +329,30 @@ def _serialize_event(event: models.Event, seats_taken: int, recommendation_reaso
     )
 
 
+def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
+    hidden_tag_ids = {
+        int(row[0])
+        for row in db.query(models.user_hidden_tags.c.tag_id)
+        .filter(models.user_hidden_tags.c.user_id == user_id)
+        .all()
+    }
+    blocked_organizer_ids = {
+        int(row[0])
+        for row in db.query(models.user_blocked_organizers.c.organizer_id)
+        .filter(models.user_blocked_organizers.c.user_id == user_id)
+        .all()
+    }
+    return hidden_tag_ids, blocked_organizer_ids
+
+
+def _apply_personalization_exclusions(query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]):  # noqa: ANN001
+    if blocked_organizer_ids:
+        query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
+    if hidden_tag_ids:
+        query = query.filter(~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids))))
+    return query
+
+
 def _load_cached_recommendations(
     *,
     db: Session,
@@ -263,6 +390,13 @@ def _load_cached_recommendations(
     )
     if registered_event_ids:
         base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+
+    hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(db=db, user_id=user.id)
+    base_query = _apply_personalization_exclusions(
+        base_query,
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
+    )
 
     query, seats_subquery = _events_with_counts_query(db, base_query)
     default_reason = "Recommended for you" if lang == "en" else "Recomandat pentru tine"
@@ -353,6 +487,11 @@ def _serialize_admin_event(event: models.Event, seats_taken: int) -> schemas.Adm
         seats_taken=int(seats_taken or 0),
         status=event.status,
         publish_at=event.publish_at,
+        moderation_score=float(getattr(event, "moderation_score", 0.0) or 0.0),
+        moderation_status=getattr(event, "moderation_status", None),
+        moderation_flags=getattr(event, "moderation_flags", None),
+        moderation_reviewed_at=getattr(event, "moderation_reviewed_at", None),
+        moderation_reviewed_by_user_id=getattr(event, "moderation_reviewed_by_user_id", None),
         deleted_at=event.deleted_at,
     )
 
@@ -634,6 +773,14 @@ def get_events(
     if end_date:
         end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time <= end_dt)
+
+    if current_user is not None and getattr(current_user, "role", None) == models.UserRole.student:
+        hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(db=db, user_id=current_user.id)
+        query = _apply_personalization_exclusions(
+            query,
+            hidden_tag_ids=hidden_tag_ids,
+            blocked_organizer_ids=blocked_organizer_ids,
+        )
     query = query.distinct()
     total = query.count()
     sort_value = (sort or "").strip().lower()
@@ -848,7 +995,12 @@ def get_public_event(event_id: int, request: Request, db: Session = Depends(get_
 
 
 @app.get("/api/events/{event_id}", response_model=schemas.EventDetailResponse)
-def get_event(event_id: int, db: Session = Depends(get_db), current_user: Optional[models.User] = Depends(auth.get_optional_user)):
+def get_event(
+    event_id: int,
+    request: Request,
+    db: Session = Depends(get_db),
+    current_user: Optional[models.User] = Depends(auth.get_optional_user),
+):
     query, seats_subquery = _events_with_counts_query(
         db,
         db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)),
@@ -878,6 +1030,25 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
             .first()
             is not None
         )
+    recommendation_reason: str | None = None
+    if current_user and getattr(current_user, "role", None) == models.UserRole.student:
+        lang = current_user.language_preference
+        if not lang or lang == "system":
+            lang = request.headers.get("accept-language") or "ro"
+        lang = (lang or "ro").split(",")[0][:2].lower()
+
+        rec_reason = (
+            db.query(models.UserRecommendation.reason)
+            .filter(models.UserRecommendation.user_id == current_user.id, models.UserRecommendation.event_id == event.id)
+            .scalar()
+        )
+        recommendation_reason = rec_reason
+
+        user_city = (current_user.city or "").strip().lower()
+        is_local = bool(user_city and event.city and event.city.strip().lower() == user_city)
+        if is_local:
+            suffix = f"Near you: {event.city}" if lang == "en" else f"În apropiere: {event.city}"
+            recommendation_reason = f"{rec_reason} • {suffix}" if rec_reason else suffix
     available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
     owner_name = event.owner.full_name or event.owner.email if event.owner else None
     return schemas.EventDetailResponse(
@@ -895,6 +1066,7 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
         owner_name=owner_name,
         tags=event.tags,
         seats_taken=seats_taken or 0,
+        recommendation_reason=recommendation_reason,
         is_registered=is_registered,
         is_owner=current_user.id == event.owner_id if current_user else False,
         available_seats=available_seats,
@@ -933,6 +1105,14 @@ def create_event(
         status=event.status or "published",
         publish_at=_normalize_dt(event.publish_at) if event.publish_at else None,
     )
+    score, flags, moderation_status = _compute_moderation(
+        title=new_event.title,
+        description=new_event.description,
+        location=new_event.location,
+    )
+    new_event.moderation_score = float(score)
+    new_event.moderation_flags = flags or None
+    new_event.moderation_status = moderation_status
     _attach_tags(db, new_event, event.tags or [])
     db.add(new_event)
     db.commit()
@@ -995,6 +1175,19 @@ def update_event(
         db_event.status = update.status
     if update.publish_at is not None:
         db_event.publish_at = _normalize_dt(update.publish_at)
+
+    content_changed = update.title is not None or update.description is not None or update.location is not None
+    if content_changed:
+        score, flags, moderation_status = _compute_moderation(
+            title=db_event.title,
+            description=db_event.description,
+            location=db_event.location,
+        )
+        db_event.moderation_score = float(score)
+        db_event.moderation_flags = flags or None
+        db_event.moderation_status = moderation_status
+        db_event.moderation_reviewed_at = None
+        db_event.moderation_reviewed_by_user_id = None
 
     db.commit()
     db.refresh(db_event)
@@ -1273,6 +1466,84 @@ def organizer_bulk_update_tags(
     return {"updated": len(events)}
 
 
+@app.post("/api/organizer/events/suggest", response_model=schemas.EventSuggestResponse)
+def organizer_suggest_event(
+    payload: schemas.EventSuggestRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
+):
+    text = " ".join(
+        [
+            payload.title or "",
+            payload.description or "",
+            payload.city or "",
+            payload.location or "",
+        ]
+    ).strip()
+
+    suggested_category = payload.category or _suggest_category_from_text(text)
+    suggested_city = payload.city
+    if not suggested_city:
+        cities = {item.get("city") for item in ro_universities.get_university_catalog() if item.get("city")}
+        lowered = text.lower()
+        for city in sorted(cities, key=lambda c: len(str(c)), reverse=True):
+            if str(city).lower() in lowered:
+                suggested_city = str(city)
+                break
+
+    all_tags = db.query(models.Tag).order_by(models.Tag.name).all()
+    lowered = text.lower()
+    suggested_tags: list[str] = []
+    for tag in all_tags:
+        name = (tag.name or "").strip()
+        if not name:
+            continue
+        if name.lower() in lowered:
+            suggested_tags.append(name)
+    suggested_tags = list(dict.fromkeys(suggested_tags))[:10]
+
+    duplicates: list[schemas.EventDuplicateCandidate] = []
+    title_tokens = _tokenize(payload.title)
+    if title_tokens:
+        query = db.query(models.Event).filter(models.Event.owner_id == current_user.id, models.Event.deleted_at.is_(None))
+        if payload.start_time:
+            st = _normalize_dt(payload.start_time)
+            if st:
+                query = query.filter(models.Event.start_time >= st - timedelta(days=30), models.Event.start_time <= st + timedelta(days=30))
+        candidates = query.order_by(models.Event.start_time.desc()).limit(50).all()
+        for ev in candidates:
+            sim = _jaccard_similarity(title_tokens, _tokenize(ev.title))
+            if sim < 0.6:
+                continue
+            duplicates.append(
+                schemas.EventDuplicateCandidate(
+                    id=int(ev.id),
+                    title=ev.title,
+                    start_time=ev.start_time,
+                    city=ev.city,
+                    similarity=float(sim),
+                )
+            )
+        duplicates.sort(key=lambda item: item.similarity, reverse=True)
+        duplicates = duplicates[:5]
+
+    moderation_score, moderation_flags, moderation_status = _compute_moderation(
+        title=payload.title,
+        description=payload.description,
+        location=payload.location,
+    )
+
+    return schemas.EventSuggestResponse(
+        suggested_category=suggested_category,
+        suggested_city=suggested_city,
+        suggested_tags=suggested_tags,
+        duplicates=duplicates,
+        moderation_score=float(moderation_score),
+        moderation_flags=moderation_flags,
+        moderation_status=moderation_status,
+    )
+
+
 @app.post(
     "/api/organizer/events/{event_id}/participants/email",
     response_model=schemas.OrganizerEmailParticipantsResponse,
@@ -1468,6 +1739,195 @@ def update_student_profile(
         "study_level": current_user.study_level,
         "study_year": current_user.study_year,
         "interest_tags": [{"id": t.id, "name": t.name} for t in current_user.interest_tags],
+    }
+
+
+# ===================== PERSONALIZATION SETTINGS =====================
+
+
+@app.get("/api/me/personalization", response_model=schemas.PersonalizationSettingsResponse)
+def get_personalization_settings(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    hidden_tags = (
+        db.query(models.Tag)
+        .join(models.user_hidden_tags, models.user_hidden_tags.c.tag_id == models.Tag.id)
+        .filter(models.user_hidden_tags.c.user_id == current_user.id)
+        .order_by(models.Tag.name)
+        .all()
+    )
+    blocked_organizers = (
+        db.query(models.User)
+        .join(
+            models.user_blocked_organizers,
+            models.user_blocked_organizers.c.organizer_id == models.User.id,
+        )
+        .filter(models.user_blocked_organizers.c.user_id == current_user.id)
+        .order_by(models.User.email)
+        .all()
+    )
+    return {"hidden_tags": hidden_tags, "blocked_organizers": blocked_organizers}
+
+
+@app.post("/api/me/personalization/hidden-tags/{tag_id}", status_code=status.HTTP_201_CREATED)
+def add_hidden_tag(
+    tag_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
+    if not tag:
+        raise HTTPException(status_code=404, detail="Eticheta nu există.")
+
+    existing = (
+        db.query(models.user_hidden_tags.c.user_id)
+        .filter(models.user_hidden_tags.c.user_id == current_user.id, models.user_hidden_tags.c.tag_id == tag_id)
+        .first()
+    )
+    if existing:
+        return {"status": "exists"}
+
+    db.execute(models.user_hidden_tags.insert().values(user_id=current_user.id, tag_id=tag_id))
+    _audit_log(
+        db,
+        entity_type="user",
+        entity_id=current_user.id,
+        action="hide_tag",
+        actor_user_id=current_user.id,
+        meta={"tag_id": tag_id},
+    )
+    db.commit()
+    return {"status": "hidden"}
+
+
+@app.delete("/api/me/personalization/hidden-tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_hidden_tag(
+    tag_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    result = db.execute(
+        models.user_hidden_tags.delete().where(
+            (models.user_hidden_tags.c.user_id == current_user.id) & (models.user_hidden_tags.c.tag_id == tag_id)
+        )
+    )
+    if not result.rowcount:
+        raise HTTPException(status_code=404, detail="Eticheta nu este ascunsă.")
+    _audit_log(
+        db,
+        entity_type="user",
+        entity_id=current_user.id,
+        action="unhide_tag",
+        actor_user_id=current_user.id,
+        meta={"tag_id": tag_id},
+    )
+    db.commit()
+    return
+
+
+@app.post("/api/me/personalization/blocked-organizers/{organizer_id}", status_code=status.HTTP_201_CREATED)
+def add_blocked_organizer(
+    organizer_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    organizer = db.query(models.User).filter(models.User.id == organizer_id).first()
+    if not organizer or organizer.role not in {models.UserRole.organizator, models.UserRole.admin}:
+        raise HTTPException(status_code=404, detail="Organizatorul nu există.")
+
+    existing = (
+        db.query(models.user_blocked_organizers.c.user_id)
+        .filter(
+            models.user_blocked_organizers.c.user_id == current_user.id,
+            models.user_blocked_organizers.c.organizer_id == organizer_id,
+        )
+        .first()
+    )
+    if existing:
+        return {"status": "exists"}
+
+    db.execute(models.user_blocked_organizers.insert().values(user_id=current_user.id, organizer_id=organizer_id))
+    _audit_log(
+        db,
+        entity_type="user",
+        entity_id=current_user.id,
+        action="block_organizer",
+        actor_user_id=current_user.id,
+        meta={"organizer_id": organizer_id},
+    )
+    db.commit()
+    return {"status": "blocked"}
+
+
+@app.delete("/api/me/personalization/blocked-organizers/{organizer_id}", status_code=status.HTTP_204_NO_CONTENT)
+def remove_blocked_organizer(
+    organizer_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    result = db.execute(
+        models.user_blocked_organizers.delete().where(
+            (models.user_blocked_organizers.c.user_id == current_user.id)
+            & (models.user_blocked_organizers.c.organizer_id == organizer_id)
+        )
+    )
+    if not result.rowcount:
+        raise HTTPException(status_code=404, detail="Organizatorul nu este blocat.")
+    _audit_log(
+        db,
+        entity_type="user",
+        entity_id=current_user.id,
+        action="unblock_organizer",
+        actor_user_id=current_user.id,
+        meta={"organizer_id": organizer_id},
+    )
+    db.commit()
+    return
+
+
+# ===================== NOTIFICATION PREFERENCES =====================
+
+
+@app.get("/api/me/notifications", response_model=schemas.NotificationPreferencesResponse)
+def get_notification_preferences(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    return {
+        "email_digest_enabled": getattr(current_user, "email_digest_enabled", False),
+        "email_filling_fast_enabled": getattr(current_user, "email_filling_fast_enabled", False),
+    }
+
+
+@app.put("/api/me/notifications", response_model=schemas.NotificationPreferencesResponse)
+def update_notification_preferences(
+    payload: schemas.NotificationPreferencesUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_student),
+):
+    updates: dict[str, bool] = {}
+    if payload.email_digest_enabled is not None:
+        current_user.email_digest_enabled = bool(payload.email_digest_enabled)
+        updates["email_digest_enabled"] = bool(payload.email_digest_enabled)
+    if payload.email_filling_fast_enabled is not None:
+        current_user.email_filling_fast_enabled = bool(payload.email_filling_fast_enabled)
+        updates["email_filling_fast_enabled"] = bool(payload.email_filling_fast_enabled)
+
+    db.add(current_user)
+    _audit_log(
+        db,
+        entity_type="user",
+        entity_id=current_user.id,
+        action="notification_preferences_updated",
+        actor_user_id=current_user.id,
+        meta=updates or None,
+    )
+    db.commit()
+    db.refresh(current_user)
+    return {
+        "email_digest_enabled": current_user.email_digest_enabled,
+        "email_filling_fast_enabled": current_user.email_filling_fast_enabled,
     }
 
 
@@ -2013,6 +2473,114 @@ def admin_stats(
     }
 
 
+@app.get("/api/admin/personalization/metrics", response_model=schemas.PersonalizationMetricsResponse)
+def admin_personalization_metrics(
+    days: int = 30,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    if days < 1 or days > 365:
+        raise HTTPException(status_code=400, detail="`days` trebuie să fie între 1 și 365.")
+
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    rows = (
+        db.query(
+            func.date(models.EventInteraction.occurred_at).label("day"),
+            models.EventInteraction.interaction_type.label("type"),
+            func.count(models.EventInteraction.id).label("count"),
+        )
+        .filter(models.EventInteraction.occurred_at >= start)
+        .filter(models.EventInteraction.interaction_type.in_(["impression", "click", "register"]))
+        .group_by("day", "type")
+        .order_by("day")
+        .all()
+    )
+
+    by_day: dict[str, dict[str, int]] = {}
+    for day, interaction_type, count in rows:
+        day_key = str(day)
+        bucket = by_day.setdefault(day_key, {"impression": 0, "click": 0, "register": 0})
+        bucket[str(interaction_type)] = int(count or 0)
+
+    items: list[schemas.PersonalizationMetricsDay] = []
+    total_impressions = 0
+    total_clicks = 0
+    total_registrations = 0
+    for day in sorted(by_day.keys()):
+        impressions = int(by_day[day].get("impression", 0))
+        clicks = int(by_day[day].get("click", 0))
+        registrations = int(by_day[day].get("register", 0))
+        total_impressions += impressions
+        total_clicks += clicks
+        total_registrations += registrations
+
+        ctr = (clicks / impressions) if impressions else 0.0
+        registration_conversion = (registrations / clicks) if clicks else 0.0
+        items.append(
+            schemas.PersonalizationMetricsDay(
+                date=day,
+                impressions=impressions,
+                clicks=clicks,
+                registrations=registrations,
+                ctr=ctr,
+                registration_conversion=registration_conversion,
+            )
+        )
+
+    totals_ctr = (total_clicks / total_impressions) if total_impressions else 0.0
+    totals_conversion = (total_registrations / total_clicks) if total_clicks else 0.0
+    return {
+        "items": items,
+        "totals": {
+            "impressions": total_impressions,
+            "clicks": total_clicks,
+            "registrations": total_registrations,
+            "ctr": totals_ctr,
+            "registration_conversion": totals_conversion,
+        },
+    }
+
+
+@app.post("/api/admin/personalization/retrain", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED)
+def admin_enqueue_retrain_recommendations(
+    payload: schemas.AdminRetrainRecommendationsRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    from .task_queue import enqueue_job, JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML  # noqa: PLC0415
+
+    job = enqueue_job(
+        db,
+        JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
+        payload.model_dump(exclude_none=True),
+    )
+    return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
+
+
+@app.post("/api/admin/notifications/weekly-digest", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED)
+def admin_enqueue_weekly_digest(
+    payload: schemas.AdminWeeklyDigestRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    from .task_queue import enqueue_job, JOB_TYPE_SEND_WEEKLY_DIGEST  # noqa: PLC0415
+
+    job = enqueue_job(db, JOB_TYPE_SEND_WEEKLY_DIGEST, payload.model_dump(exclude_none=True))
+    return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
+
+
+@app.post("/api/admin/notifications/filling-fast", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED)
+def admin_enqueue_filling_fast(
+    payload: schemas.AdminFillingFastRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    from .task_queue import enqueue_job, JOB_TYPE_SEND_FILLING_FAST_ALERTS  # noqa: PLC0415
+
+    job = enqueue_job(db, JOB_TYPE_SEND_FILLING_FAST_ALERTS, payload.model_dump(exclude_none=True))
+    return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
+
+
 @app.get("/api/admin/users", response_model=schemas.PaginatedAdminUsers)
 def admin_list_users(
     search: Optional[str] = None,
@@ -2194,6 +2762,7 @@ def admin_list_events(
     city: Optional[str] = None,
     status: Optional[str] = None,
     include_deleted: bool = False,
+    flagged_only: bool = False,
     page: int = 1,
     page_size: int = 20,
     db: Session = Depends(get_db),
@@ -2207,6 +2776,8 @@ def admin_list_events(
     query = db.query(models.Event).options(joinedload(models.Event.owner), joinedload(models.Event.tags))
     if not include_deleted:
         query = query.filter(models.Event.deleted_at.is_(None))
+    if flagged_only:
+        query = query.filter(models.Event.moderation_status == "flagged")
     if status:
         if status not in {"draft", "published"}:
             raise HTTPException(status_code=400, detail="Status invalid.")
@@ -2231,6 +2802,33 @@ def admin_list_events(
 
     items = [_serialize_admin_event(event, seats_taken) for event, seats_taken in rows]
     return {"items": items, "total": int(total), "page": page, "page_size": page_size}
+
+
+@app.post("/api/admin/events/{event_id}/moderation/review")
+def admin_review_event_moderation(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not event:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există.")
+
+    now = datetime.now(timezone.utc)
+    event.moderation_status = "reviewed"
+    event.moderation_reviewed_at = now
+    event.moderation_reviewed_by_user_id = current_user.id
+    db.add(event)
+    _audit_log(
+        db,
+        entity_type="event",
+        entity_id=event.id,
+        action="moderation_reviewed",
+        actor_user_id=current_user.id,
+        meta={"moderation_score": float(getattr(event, "moderation_score", 0.0) or 0.0)},
+    )
+    db.commit()
+    return {"status": "reviewed"}
 
 
 @app.post("/api/events/{event_id}/favorite", status_code=status.HTTP_201_CREATED)
@@ -2328,6 +2926,7 @@ def recommended_events(
         .filter(models.Registration.user_id == current_user.id, models.Registration.deleted_at.is_(None))
         .all()
     ]
+    hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(db=db, user_id=current_user.id)
     events = _load_cached_recommendations(
         db=db,
         user=current_user,
@@ -2369,6 +2968,11 @@ def recommended_events(
             )
             if registered_event_ids:
                 base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+            base_query = _apply_personalization_exclusions(
+                base_query,
+                hidden_tag_ids=hidden_tag_ids,
+                blocked_organizer_ids=blocked_organizer_ids,
+            )
             base_query = base_query.distinct().order_by(models.Event.start_time)
             query, seats_subquery = _events_with_counts_query(db, base_query)
             reason_parts: list[str] = []
@@ -2395,6 +2999,11 @@ def recommended_events(
             base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None), models.Event.start_time >= now)
             if registered_event_ids:
                 base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+            base_query = _apply_personalization_exclusions(
+                base_query,
+                hidden_tag_ids=hidden_tag_ids,
+                blocked_organizer_ids=blocked_organizer_ids,
+            )
             base_query = base_query.filter(models.Event.status == "published").filter(
                 (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
             )

@@ -112,6 +112,59 @@
             ],
             "title": "Max Seats"
           },
+          "moderation_flags": {
+            "anyOf": [
+              {
+                "items": {
+                  "type": "string"
+                },
+                "type": "array"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moderation Flags"
+          },
+          "moderation_reviewed_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moderation Reviewed At"
+          },
+          "moderation_reviewed_by_user_id": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moderation Reviewed By User Id"
+          },
+          "moderation_score": {
+            "default": 0.0,
+            "title": "Moderation Score",
+            "type": "number"
+          },
+          "moderation_status": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Moderation Status"
+          },
           "owner_email": {
             "format": "email",
             "title": "Owner Email",
@@ -186,6 +239,147 @@
           "owner_email"
         ],
         "title": "AdminEventResponse",
+        "type": "object"
+      },
+      "AdminFillingFastRequest": {
+        "properties": {
+          "max_per_user": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 3,
+            "title": "Max Per User"
+          },
+          "threshold_abs": {
+            "anyOf": [
+              {
+                "maximum": 100.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 5,
+            "title": "Threshold Abs"
+          },
+          "threshold_ratio": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 0.2,
+            "title": "Threshold Ratio"
+          }
+        },
+        "title": "AdminFillingFastRequest",
+        "type": "object"
+      },
+      "AdminRetrainRecommendationsRequest": {
+        "properties": {
+          "epochs": {
+            "anyOf": [
+              {
+                "maximum": 50.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Epochs"
+          },
+          "l2": {
+            "anyOf": [
+              {
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "L2"
+          },
+          "lr": {
+            "anyOf": [
+              {
+                "exclusiveMinimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Lr"
+          },
+          "model_version": {
+            "anyOf": [
+              {
+                "maxLength": 100,
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Model Version"
+          },
+          "seed": {
+            "anyOf": [
+              {
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Seed"
+          },
+          "timeout_seconds": {
+            "anyOf": [
+              {
+                "maximum": 3600.0,
+                "minimum": 30.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Timeout Seconds"
+          },
+          "top_n": {
+            "anyOf": [
+              {
+                "maximum": 200.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 50,
+            "title": "Top N"
+          }
+        },
+        "title": "AdminRetrainRecommendationsRequest",
         "type": "object"
       },
       "AdminStatsResponse": {
@@ -335,6 +529,49 @@
           }
         },
         "title": "AdminUserUpdate",
+        "type": "object"
+      },
+      "AdminWeeklyDigestRequest": {
+        "properties": {
+          "top_n": {
+            "anyOf": [
+              {
+                "maximum": 20.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "default": 8,
+            "title": "Top N"
+          }
+        },
+        "title": "AdminWeeklyDigestRequest",
+        "type": "object"
+      },
+      "EnqueuedJobResponse": {
+        "properties": {
+          "job_id": {
+            "title": "Job Id",
+            "type": "integer"
+          },
+          "job_type": {
+            "title": "Job Type",
+            "type": "string"
+          },
+          "status": {
+            "title": "Status",
+            "type": "string"
+          }
+        },
+        "required": [
+          "job_id",
+          "job_type",
+          "status"
+        ],
+        "title": "EnqueuedJobResponse",
         "type": "object"
       },
       "EventCreate": {
@@ -652,6 +889,46 @@
         "title": "EventDetailResponse",
         "type": "object"
       },
+      "EventDuplicateCandidate": {
+        "properties": {
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "similarity": {
+            "title": "Similarity",
+            "type": "number"
+          },
+          "start_time": {
+            "format": "date-time",
+            "title": "Start Time",
+            "type": "string"
+          },
+          "title": {
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "title",
+          "start_time",
+          "similarity"
+        ],
+        "title": "EventDuplicateCandidate",
+        "type": "object"
+      },
       "EventResponse": {
         "properties": {
           "category": {
@@ -823,6 +1100,139 @@
           "seats_taken"
         ],
         "title": "EventResponse",
+        "type": "object"
+      },
+      "EventSuggestRequest": {
+        "properties": {
+          "category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Category"
+          },
+          "city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "City"
+          },
+          "description": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Description"
+          },
+          "location": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Location"
+          },
+          "start_time": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Start Time"
+          },
+          "title": {
+            "maxLength": 255,
+            "minLength": 3,
+            "title": "Title",
+            "type": "string"
+          }
+        },
+        "required": [
+          "title"
+        ],
+        "title": "EventSuggestRequest",
+        "type": "object"
+      },
+      "EventSuggestResponse": {
+        "properties": {
+          "duplicates": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/EventDuplicateCandidate"
+            },
+            "title": "Duplicates",
+            "type": "array"
+          },
+          "moderation_flags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Moderation Flags",
+            "type": "array"
+          },
+          "moderation_score": {
+            "default": 0.0,
+            "title": "Moderation Score",
+            "type": "number"
+          },
+          "moderation_status": {
+            "default": "clean",
+            "title": "Moderation Status",
+            "type": "string"
+          },
+          "suggested_category": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested Category"
+          },
+          "suggested_city": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Suggested City"
+          },
+          "suggested_tags": {
+            "default": [],
+            "items": {
+              "type": "string"
+            },
+            "title": "Suggested Tags",
+            "type": "array"
+          }
+        },
+        "title": "EventSuggestResponse",
         "type": "object"
       },
       "EventUpdate": {
@@ -1097,6 +1507,52 @@
         "title": "LanguagePreferenceUpdate",
         "type": "object"
       },
+      "NotificationPreferencesResponse": {
+        "properties": {
+          "email_digest_enabled": {
+            "title": "Email Digest Enabled",
+            "type": "boolean"
+          },
+          "email_filling_fast_enabled": {
+            "title": "Email Filling Fast Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "email_digest_enabled",
+          "email_filling_fast_enabled"
+        ],
+        "title": "NotificationPreferencesResponse",
+        "type": "object"
+      },
+      "NotificationPreferencesUpdate": {
+        "properties": {
+          "email_digest_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Digest Enabled"
+          },
+          "email_filling_fast_enabled": {
+            "anyOf": [
+              {
+                "type": "boolean"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Email Filling Fast Enabled"
+          }
+        },
+        "title": "NotificationPreferencesUpdate",
+        "type": "object"
+      },
       "OrganizerBulkStatusUpdate": {
         "properties": {
           "event_ids": {
@@ -1322,6 +1778,47 @@
           }
         },
         "title": "OrganizerProfileUpdate",
+        "type": "object"
+      },
+      "OrganizerSummaryResponse": {
+        "properties": {
+          "email": {
+            "format": "email",
+            "title": "Email",
+            "type": "string"
+          },
+          "full_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Full Name"
+          },
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "org_name": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Org Name"
+          }
+        },
+        "required": [
+          "id",
+          "email"
+        ],
+        "title": "OrganizerSummaryResponse",
         "type": "object"
       },
       "PaginatedAdminEvents": {
@@ -1607,6 +2104,119 @@
           "email"
         ],
         "title": "PasswordResetRequest",
+        "type": "object"
+      },
+      "PersonalizationMetricsDay": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "ctr": {
+            "title": "Ctr",
+            "type": "number"
+          },
+          "date": {
+            "title": "Date",
+            "type": "string"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "registration_conversion": {
+            "title": "Registration Conversion",
+            "type": "number"
+          },
+          "registrations": {
+            "title": "Registrations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "date",
+          "impressions",
+          "clicks",
+          "registrations",
+          "ctr",
+          "registration_conversion"
+        ],
+        "title": "PersonalizationMetricsDay",
+        "type": "object"
+      },
+      "PersonalizationMetricsResponse": {
+        "properties": {
+          "items": {
+            "items": {
+              "$ref": "#/components/schemas/PersonalizationMetricsDay"
+            },
+            "title": "Items",
+            "type": "array"
+          },
+          "totals": {
+            "$ref": "#/components/schemas/PersonalizationMetricsTotals"
+          }
+        },
+        "required": [
+          "items",
+          "totals"
+        ],
+        "title": "PersonalizationMetricsResponse",
+        "type": "object"
+      },
+      "PersonalizationMetricsTotals": {
+        "properties": {
+          "clicks": {
+            "title": "Clicks",
+            "type": "integer"
+          },
+          "ctr": {
+            "title": "Ctr",
+            "type": "number"
+          },
+          "impressions": {
+            "title": "Impressions",
+            "type": "integer"
+          },
+          "registration_conversion": {
+            "title": "Registration Conversion",
+            "type": "number"
+          },
+          "registrations": {
+            "title": "Registrations",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "impressions",
+          "clicks",
+          "registrations",
+          "ctr",
+          "registration_conversion"
+        ],
+        "title": "PersonalizationMetricsTotals",
+        "type": "object"
+      },
+      "PersonalizationSettingsResponse": {
+        "properties": {
+          "blocked_organizers": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/OrganizerSummaryResponse"
+            },
+            "title": "Blocked Organizers",
+            "type": "array"
+          },
+          "hidden_tags": {
+            "default": [],
+            "items": {
+              "$ref": "#/components/schemas/app__schemas__TagResponse"
+            },
+            "title": "Hidden Tags",
+            "type": "array"
+          }
+        },
+        "title": "PersonalizationSettingsResponse",
         "type": "object"
       },
       "PublicEventDetailResponse": {
@@ -2548,6 +3158,16 @@
           },
           {
             "in": "query",
+            "name": "flagged_only",
+            "required": false,
+            "schema": {
+              "default": false,
+              "title": "Flagged Only",
+              "type": "boolean"
+            }
+          },
+          {
+            "in": "query",
             "name": "page",
             "required": false,
             "schema": {
@@ -2595,6 +3215,48 @@
           }
         ],
         "summary": "Admin List Events"
+      }
+    },
+    "/api/admin/events/{event_id}/moderation/review": {
+      "post": {
+        "operationId": "admin_review_event_moderation_api_admin_events__event_id__moderation_review_post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "event_id",
+            "required": true,
+            "schema": {
+              "title": "Event Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Review Event Moderation"
       }
     },
     "/api/admin/events/{event_id}/registrations/{user_id}/restore": {
@@ -2646,6 +3308,180 @@
           }
         ],
         "summary": "Admin Restore Registration"
+      }
+    },
+    "/api/admin/notifications/filling-fast": {
+      "post": {
+        "operationId": "admin_enqueue_filling_fast_api_admin_notifications_filling_fast_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminFillingFastRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueuedJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Enqueue Filling Fast"
+      }
+    },
+    "/api/admin/notifications/weekly-digest": {
+      "post": {
+        "operationId": "admin_enqueue_weekly_digest_api_admin_notifications_weekly_digest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminWeeklyDigestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueuedJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Enqueue Weekly Digest"
+      }
+    },
+    "/api/admin/personalization/metrics": {
+      "get": {
+        "operationId": "admin_personalization_metrics_api_admin_personalization_metrics_get",
+        "parameters": [
+          {
+            "in": "query",
+            "name": "days",
+            "required": false,
+            "schema": {
+              "default": 30,
+              "title": "Days",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalizationMetricsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Personalization Metrics"
+      }
+    },
+    "/api/admin/personalization/retrain": {
+      "post": {
+        "operationId": "admin_enqueue_retrain_recommendations_api_admin_personalization_retrain_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminRetrainRecommendationsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueuedJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Enqueue Retrain Recommendations"
       }
     },
     "/api/admin/stats": {
@@ -3793,6 +4629,247 @@
         "summary": "Update Language Preference"
       }
     },
+    "/api/me/notifications": {
+      "get": {
+        "operationId": "get_notification_preferences_api_me_notifications_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Notification Preferences"
+      },
+      "put": {
+        "operationId": "update_notification_preferences_api_me_notifications_put",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/NotificationPreferencesUpdate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/NotificationPreferencesResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Update Notification Preferences"
+      }
+    },
+    "/api/me/personalization": {
+      "get": {
+        "operationId": "get_personalization_settings_api_me_personalization_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PersonalizationSettingsResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Get Personalization Settings"
+      }
+    },
+    "/api/me/personalization/blocked-organizers/{organizer_id}": {
+      "delete": {
+        "operationId": "remove_blocked_organizer_api_me_personalization_blocked_organizers__organizer_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organizer_id",
+            "required": true,
+            "schema": {
+              "title": "Organizer Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Remove Blocked Organizer"
+      },
+      "post": {
+        "operationId": "add_blocked_organizer_api_me_personalization_blocked_organizers__organizer_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "organizer_id",
+            "required": true,
+            "schema": {
+              "title": "Organizer Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Add Blocked Organizer"
+      }
+    },
+    "/api/me/personalization/hidden-tags/{tag_id}": {
+      "delete": {
+        "operationId": "remove_hidden_tag_api_me_personalization_hidden_tags__tag_id__delete",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Remove Hidden Tag"
+      },
+      "post": {
+        "operationId": "add_hidden_tag_api_me_personalization_hidden_tags__tag_id__post",
+        "parameters": [
+          {
+            "in": "path",
+            "name": "tag_id",
+            "required": true,
+            "schema": {
+              "title": "Tag Id",
+              "type": "integer"
+            }
+          }
+        ],
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {}
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Add Hidden Tag"
+      }
+    },
     "/api/me/profile": {
       "get": {
         "description": "Get current user's profile with interest tags.",
@@ -4049,6 +5126,49 @@
           }
         ],
         "summary": "Organizer Bulk Update Tags"
+      }
+    },
+    "/api/organizer/events/suggest": {
+      "post": {
+        "operationId": "organizer_suggest_event_api_organizer_events_suggest_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/EventSuggestRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EventSuggestResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Organizer Suggest Event"
       }
     },
     "/api/organizer/events/{event_id}/participants": {

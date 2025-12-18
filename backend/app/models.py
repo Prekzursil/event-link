@@ -46,6 +46,8 @@ class User(Base):
     faculty = Column(String(255))
     study_level = Column(String(20))
     study_year = Column(Integer)
+    email_digest_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
+    email_filling_fast_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
 
     events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
     registrations = relationship(
@@ -84,6 +86,11 @@ class Event(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     status = Column(String(20), nullable=False, server_default="published")
     publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    moderation_score = Column(Float, nullable=False, server_default="0", default=0.0)
+    moderation_flags = Column(JSON, nullable=True)
+    moderation_status = Column(String(20), nullable=False, server_default="clean", default="clean")
+    moderation_reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    moderation_reviewed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
@@ -92,6 +99,7 @@ class Event(Base):
     tags = relationship("Tag", secondary="event_tags", back_populates="events")
     favorites = relationship("FavoriteEvent", back_populates="event", cascade="all, delete-orphan")
     deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
+    moderation_reviewed_by = relationship("User", foreign_keys=[moderation_reviewed_by_user_id])
 
 
 class Registration(Base):
@@ -154,6 +162,22 @@ class BackgroundJob(Base):
     finished_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
 
+class NotificationDelivery(Base):
+    __tablename__ = "notification_deliveries"
+    __table_args__ = (UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    dedupe_key = Column(String(200), nullable=False)
+    notification_type = Column(String(50), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=True, index=True)
+    sent_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    meta = Column(JSON, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    event = relationship("Event", foreign_keys=[event_id])
+
+
 class AuditLog(Base):
     __tablename__ = "audit_logs"
 
@@ -213,4 +237,22 @@ user_interest_tags = Table(
     Base.metadata,
     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
     Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
+
+
+# User hidden tags - tags that students want to hide from feeds/recommendations
+user_hidden_tags = Table(
+    "user_hidden_tags",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
+
+
+# User blocked organizers - organizer/user IDs that students want to mute from feeds/recommendations
+user_blocked_organizers = Table(
+    "user_blocked_organizers",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("organizer_id", Integer, ForeignKey("users.id"), primary_key=True),
 )

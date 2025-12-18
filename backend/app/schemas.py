@@ -266,6 +266,30 @@ class StudentProfileUpdate(BaseModel):
     interest_tag_ids: Optional[List[int]] = None
 
 
+class OrganizerSummaryResponse(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    org_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonalizationSettingsResponse(BaseModel):
+    hidden_tags: List[TagResponse] = []
+    blocked_organizers: List[OrganizerSummaryResponse] = []
+
+
+class NotificationPreferencesResponse(BaseModel):
+    email_digest_enabled: bool
+    email_filling_fast_enabled: bool
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    email_digest_enabled: Optional[bool] = None
+    email_filling_fast_enabled: Optional[bool] = None
+
+
 class AdminUserUpdate(BaseModel):
     role: Optional[UserRole] = None
     is_active: Optional[bool] = None
@@ -310,6 +334,11 @@ class AdminEventResponse(BaseModel):
     seats_taken: int = 0
     status: Optional[str] = None
     publish_at: Optional[datetime] = None
+    moderation_score: float = 0.0
+    moderation_status: Optional[str] = None
+    moderation_flags: Optional[list[str]] = None
+    moderation_reviewed_at: Optional[datetime] = None
+    moderation_reviewed_by_user_id: Optional[int] = None
     deleted_at: Optional[datetime] = None
 
 
@@ -337,6 +366,54 @@ class AdminStatsResponse(BaseModel):
     total_registrations: int
     registrations_by_day: List[RegistrationDayStat]
     top_tags: List[TagPopularityStat]
+
+
+class PersonalizationMetricsDay(BaseModel):
+    date: str
+    impressions: int
+    clicks: int
+    registrations: int
+    ctr: float
+    registration_conversion: float
+
+
+class PersonalizationMetricsTotals(BaseModel):
+    impressions: int
+    clicks: int
+    registrations: int
+    ctr: float
+    registration_conversion: float
+
+
+class PersonalizationMetricsResponse(BaseModel):
+    items: List[PersonalizationMetricsDay]
+    totals: PersonalizationMetricsTotals
+
+
+class EnqueuedJobResponse(BaseModel):
+    job_id: int
+    job_type: str
+    status: str
+
+
+class AdminRetrainRecommendationsRequest(BaseModel):
+    top_n: Optional[int] = Field(default=50, ge=1, le=200)
+    epochs: Optional[int] = Field(default=None, ge=1, le=50)
+    lr: Optional[float] = Field(default=None, gt=0)
+    l2: Optional[float] = Field(default=None, ge=0)
+    seed: Optional[int] = None
+    model_version: Optional[str] = Field(default=None, max_length=100)
+    timeout_seconds: Optional[int] = Field(default=None, ge=30, le=60 * 60)
+
+
+class AdminWeeklyDigestRequest(BaseModel):
+    top_n: Optional[int] = Field(default=8, ge=1, le=20)
+
+
+class AdminFillingFastRequest(BaseModel):
+    threshold_abs: Optional[int] = Field(default=5, ge=1, le=100)
+    threshold_ratio: Optional[float] = Field(default=0.2, ge=0, le=1)
+    max_per_user: Optional[int] = Field(default=3, ge=1, le=20)
 
 
 class PasswordResetRequest(BaseModel):
@@ -382,6 +459,33 @@ class OrganizerEmailParticipantsRequest(BaseModel):
 
 class OrganizerEmailParticipantsResponse(BaseModel):
     recipients: int
+
+
+class EventDuplicateCandidate(BaseModel):
+    id: int
+    title: str
+    start_time: datetime
+    city: Optional[str] = None
+    similarity: float
+
+
+class EventSuggestRequest(BaseModel):
+    title: str = Field(..., min_length=3, max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    start_time: Optional[datetime] = None
+
+
+class EventSuggestResponse(BaseModel):
+    suggested_category: Optional[str] = None
+    suggested_city: Optional[str] = None
+    suggested_tags: List[str] = []
+    duplicates: List[EventDuplicateCandidate] = []
+    moderation_score: float = 0.0
+    moderation_flags: List[str] = []
+    moderation_status: str = "clean"
 
 
 InteractionType = Literal[
