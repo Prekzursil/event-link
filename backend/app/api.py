@@ -490,6 +490,14 @@ def _is_admin(user: models.User) -> bool:
     return False
 
 
+def _ensure_registrations_enabled() -> None:
+    if getattr(settings, "maintenance_mode_registrations_disabled", False):
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Înscrierile sunt temporar dezactivate. Încearcă din nou mai târziu.",
+        )
+
+
 @app.get("/api/events", response_model=schemas.PaginatedEvents)
 def get_events(
     search: Optional[str] = None,
@@ -1552,6 +1560,7 @@ def register_for_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
+    _ensure_registrations_enabled()
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
@@ -1624,6 +1633,7 @@ def resend_registration_email(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
+    _ensure_registrations_enabled()
     _enforce_rate_limit("resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600)
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
@@ -1662,6 +1672,7 @@ def unregister_from_event(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
+    _ensure_registrations_enabled()
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")

@@ -118,6 +118,10 @@ The seed script clears existing tables and inserts sample users/events/tags/regi
 - Local (venv): `cd backend && python seed_data.py`
 - Docker Compose: `docker compose exec backend python seed_data.py`
 
+## Backups / disaster recovery
+
+See `docs/disaster-recovery.md` for Postgres backup/restore scripts and a basic DR runbook.
+
 Sample credentials:
 - Student: `student@test.com` / `test123`
 - Organizer: `organizer@test.com` / `test123`
