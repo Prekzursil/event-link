@@ -1050,6 +1050,110 @@ def test_recommendations_ignore_stale_ml_cache(helpers):
     assert rec[0]["id"] == first_by_time["id"]
 
 
+def test_analytics_interactions_recorded(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    event = client.post(
+        "/api/events",
+        json={
+            "title": "Track",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=2),
+            "city": "București",
+            "location": "Loc",
+            "max_seats": 10,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    student_token = helpers["register_student"]("track@test.ro")
+    resp = client.post(
+        "/api/analytics/interactions",
+        json={
+            "events": [
+                {"interaction_type": "impression", "event_id": event["id"], "meta": {"source": "events_list"}},
+                {"interaction_type": "click", "event_id": event["id"], "meta": {"source": "events_list"}},
+                {"interaction_type": "search", "meta": {"query": "Track", "city": "București"}},
+            ]
+        },
+        headers=helpers["auth_header"](student_token),
+    )
+    assert resp.status_code == 204
+
+    rows = db.query(models.EventInteraction).order_by(models.EventInteraction.id).all()
+    assert len(rows) == 3
+    assert rows[0].interaction_type == "impression"
+    assert rows[0].event_id == event["id"]
+    assert rows[2].interaction_type == "search"
+    assert rows[2].event_id is None
+
+
+def test_events_list_sort_recommended_uses_ml_cache(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    payload = {
+        "description": "Desc",
+        "category": "Cat",
+        "city": "București",
+        "location": "Loc",
+        "max_seats": 10,
+        "tags": [],
+    }
+    earlier = client.post(
+        "/api/events",
+        json={**payload, "title": "Earlier", "start_time": helpers["future_time"](days=2)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    later = client.post(
+        "/api/events",
+        json={**payload, "title": "Later", "start_time": helpers["future_time"](days=3)},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    student_token = helpers["register_student"]("mlsort@test.ro")
+    student = db.query(models.User).filter(models.User.email == "mlsort@test.ro").first()
+    assert student
+
+    now = datetime.now(timezone.utc)
+    db.add_all(
+        [
+            models.UserRecommendation(
+                user_id=student.id,
+                event_id=later["id"],
+                score=0.9,
+                rank=1,
+                model_version="test",
+                reason="cache-first",
+                generated_at=now,
+            ),
+            models.UserRecommendation(
+                user_id=student.id,
+                event_id=earlier["id"],
+                score=0.8,
+                rank=2,
+                model_version="test",
+                reason="cache-second",
+                generated_at=now,
+            ),
+        ]
+    )
+    db.commit()
+
+    resp = client.get("/api/events?sort=recommended&page_size=10", headers=helpers["auth_header"](student_token))
+    assert resp.status_code == 200
+    data = resp.json()
+    assert data["items"][0]["id"] == later["id"]
+    assert data["items"][0].get("recommendation_reason") == "cache-first"
+
+
 def test_duplicate_registration_blocked(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()

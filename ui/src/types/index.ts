@@ -122,6 +122,7 @@ export interface EventFilters {
   city?: string;
   location?: string;
   include_past?: boolean;
+  sort?: 'time' | 'recommended';
   page?: number;
   page_size?: number;
 }

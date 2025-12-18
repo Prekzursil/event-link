@@ -185,6 +185,20 @@ class UserRecommendation(Base):
     event = relationship("Event", foreign_keys=[event_id])
 
 
+class EventInteraction(Base):
+    __tablename__ = "event_interactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=True, index=True)
+    interaction_type = Column(String(50), nullable=False, index=True)
+    occurred_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+    meta = Column(JSON, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    event = relationship("Event", foreign_keys=[event_id])
+
+
 event_tags = Table(
     "event_tags",
     Base.metadata,

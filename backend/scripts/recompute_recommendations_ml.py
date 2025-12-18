@@ -298,6 +298,46 @@ def main() -> int:
             key = (int(user_id), int(event_id))
             positive_weights[key] = max(positive_weights.get(key, 0.0), 1.2)
 
+        # Optional implicit-feedback signals from interaction tracking (if enabled/migrated).
+        try:
+            interaction_rows = (
+                db.query(
+                    models.EventInteraction.user_id,
+                    models.EventInteraction.event_id,
+                    models.EventInteraction.interaction_type,
+                    models.EventInteraction.meta,
+                )
+                .filter(models.EventInteraction.user_id.isnot(None))
+                .filter(models.EventInteraction.event_id.isnot(None))
+                .all()
+            )
+            for user_id, event_id, interaction_type, meta in interaction_rows:
+                user_id_int = int(user_id)
+                event_id_int = int(event_id)
+                itype = str(interaction_type or "").strip().lower()
+                weight = 0.0
+                if itype == "click":
+                    weight = 0.4
+                elif itype == "view":
+                    weight = 0.25
+                elif itype == "dwell":
+                    weight = 0.35
+                    if isinstance(meta, dict):
+                        seconds = meta.get("seconds")
+                        if isinstance(seconds, (int, float)) and seconds > 0:
+                            weight = min(0.8, weight + (float(seconds) / 120.0) * 0.25)
+                elif itype == "favorite":
+                    weight = 1.2
+                elif itype == "register":
+                    weight = 1.0
+                else:
+                    continue
+
+                key = (user_id_int, event_id_int)
+                positive_weights[key] = max(positive_weights.get(key, 0.0), weight)
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] could not load event_interactions ({exc}); continuing without interaction signals")
+
         positives_by_user: dict[int, dict[int, float]] = {}
         for (user_id, event_id), weight in positive_weights.items():
             positives_by_user.setdefault(user_id, {})[event_id] = weight

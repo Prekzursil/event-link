@@ -44,6 +44,12 @@ class Settings(BaseSettings):
 
     recommendations_use_ml_cache: bool = True
     recommendations_cache_max_age_seconds: int = 60 * 60 * 24
+
+    analytics_enabled: bool = True
+    analytics_rate_limit: int = 120
+    analytics_rate_window_seconds: int = 60
+
+    experiments_personalization_ml_percent: int = 0
     
     # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
     # so our validator can handle both formats.

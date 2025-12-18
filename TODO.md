@@ -57,6 +57,13 @@
 - [x] Recommendations ML v1: add `user_recommendations` cache table + use it in `GET /api/recommendations` when fresh.
 - [x] Recommendations ML v1: add offline trainer script + docs for batch recompute.
 - [ ] Recommendations ML: schedule periodic retraining (cron/CronJob) and monitor quality metrics (CTR, register conversion).
+- [x] Personalization: use ML ranking as a unified "For You" sort across event lists/search/filters (not only `/api/recommendations`).
+- [x] Analytics: add interaction tracking (impressions/clicks/dwell/search/filter/share) and feed signals into ML training.
+- [x] Experiments: add A/B assignment + feature flags for personalization rollouts (control vs ML ranking).
+- [ ] Personalization: "Why am I seeing this?" explanations + user controls (hide tags/organizers, show less like this, personalization settings).
+- [ ] Notifications: personalized digests + "filling fast" alerts with opt-in/out preferences.
+- [ ] Organizer assist: suggest tags/category/city from title/description and detect near-duplicate events.
+- [ ] Trust & safety: spam/phishing detection and suspicious organizer/event scoring + admin review tooling.
 
 ## Medium
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).
