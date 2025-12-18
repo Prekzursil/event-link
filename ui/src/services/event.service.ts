@@ -5,8 +5,13 @@ import type {
   PaginatedEvents, 
   EventFilters, 
   EventFormData,
+  EventSuggestRequest,
+  EventSuggestResponse,
+  NotificationPreferences,
+  NotificationPreferencesUpdate,
   ParticipantList,
   OrganizerProfile,
+  PersonalizationSettings,
   Tag,
   StudentProfile,
   StudentProfileUpdate,
@@ -221,6 +226,47 @@ export const eventService = {
 
   async updateStudentProfile(data: StudentProfileUpdate): Promise<StudentProfile> {
     const response = await api.put<StudentProfile>('/api/me/profile', data);
+    return response.data;
+  },
+
+  // Personalization controls (students)
+  async getPersonalizationSettings(): Promise<PersonalizationSettings> {
+    const response = await api.get<PersonalizationSettings>('/api/me/personalization');
+    return response.data;
+  },
+
+  async hideTag(tagId: number): Promise<void> {
+    await api.post(`/api/me/personalization/hidden-tags/${tagId}`);
+  },
+
+  async unhideTag(tagId: number): Promise<void> {
+    await api.delete(`/api/me/personalization/hidden-tags/${tagId}`);
+  },
+
+  async blockOrganizer(organizerId: number): Promise<void> {
+    await api.post(`/api/me/personalization/blocked-organizers/${organizerId}`);
+  },
+
+  async unblockOrganizer(organizerId: number): Promise<void> {
+    await api.delete(`/api/me/personalization/blocked-organizers/${organizerId}`);
+  },
+
+  // Notification preferences (students)
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
+    const response = await api.get<NotificationPreferences>('/api/me/notifications');
+    return response.data;
+  },
+
+  async updateNotificationPreferences(
+    payload: NotificationPreferencesUpdate,
+  ): Promise<NotificationPreferences> {
+    const response = await api.put<NotificationPreferences>('/api/me/notifications', payload);
+    return response.data;
+  },
+
+  // Organizer assist
+  async suggestEvent(payload: EventSuggestRequest): Promise<EventSuggestResponse> {
+    const response = await api.post<EventSuggestResponse>('/api/organizer/events/suggest', payload);
     return response.data;
   },
 };

@@ -83,6 +83,55 @@ export interface OrganizerProfile {
   events: Event[];
 }
 
+export interface OrganizerSummary {
+  id: number;
+  email: string;
+  full_name?: string | null;
+  org_name?: string | null;
+}
+
+export interface PersonalizationSettings {
+  hidden_tags: Tag[];
+  blocked_organizers: OrganizerSummary[];
+}
+
+export interface NotificationPreferences {
+  email_digest_enabled: boolean;
+  email_filling_fast_enabled: boolean;
+}
+
+export interface NotificationPreferencesUpdate {
+  email_digest_enabled?: boolean;
+  email_filling_fast_enabled?: boolean;
+}
+
+export interface EventDuplicateCandidate {
+  id: number;
+  title: string;
+  start_time: string;
+  city?: string | null;
+  similarity: number;
+}
+
+export interface EventSuggestRequest {
+  title: string;
+  description?: string;
+  category?: string;
+  city?: string;
+  location?: string;
+  start_time?: string;
+}
+
+export interface EventSuggestResponse {
+  suggested_category?: string | null;
+  suggested_city?: string | null;
+  suggested_tags: string[];
+  duplicates: EventDuplicateCandidate[];
+  moderation_score: number;
+  moderation_flags: string[];
+  moderation_status: string;
+}
+
 export interface StudentProfile {
   user_id: number;
   email: string;
@@ -212,6 +261,11 @@ export interface AdminEvent {
   seats_taken: number;
   status?: string | null;
   publish_at?: string | null;
+  moderation_score?: number | null;
+  moderation_status?: string | null;
+  moderation_flags?: string[] | null;
+  moderation_reviewed_at?: string | null;
+  moderation_reviewed_by_user_id?: number | null;
   deleted_at?: string | null;
 }
 
@@ -220,4 +274,32 @@ export interface PaginatedAdminEvents {
   total: number;
   page: number;
   page_size: number;
+}
+
+export interface PersonalizationMetricsDay {
+  date: string;
+  impressions: number;
+  clicks: number;
+  registrations: number;
+  ctr: number;
+  registration_conversion: number;
+}
+
+export interface PersonalizationMetricsTotals {
+  impressions: number;
+  clicks: number;
+  registrations: number;
+  ctr: number;
+  registration_conversion: number;
+}
+
+export interface PersonalizationMetricsResponse {
+  items: PersonalizationMetricsDay[];
+  totals: PersonalizationMetricsTotals;
+}
+
+export interface EnqueuedJobResponse {
+  job_id: number;
+  job_type: string;
+  status: string;
 }

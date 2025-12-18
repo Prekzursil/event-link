@@ -7,6 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
@@ -22,6 +24,9 @@ import {
   User,
   ExternalLink,
   Copy,
+  SlidersHorizontal,
+  EyeOff,
+  UserX,
 } from 'lucide-react';
 import { formatDate, formatTime, cn } from '@/lib/utils';
 import { getEventCategoryLabel } from '@/lib/eventCategories';
@@ -35,9 +40,13 @@ export function EventDetailPage() {
   const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+  const [hideTagId, setHideTagId] = useState<string>('');
+  const [isHidingTag, setIsHidingTag] = useState(false);
+  const [isBlockingOrganizer, setIsBlockingOrganizer] = useState(false);
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
   const { language, t } = useI18n();
+  const isStudent = isAuthenticated && user?.role === 'student';
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -89,6 +98,7 @@ export function EventDetailPage() {
     });
     try {
       await eventService.registerForEvent(event.id);
+      void recordInteractions([{ interaction_type: 'register', event_id: event.id, meta: { source: 'event_detail' } }]);
       toast({
         title: t.eventDetail.registerSuccessTitle,
         description: t.eventDetail.registerSuccessDescription,
@@ -121,6 +131,7 @@ export function EventDetailPage() {
     });
     try {
       await eventService.unregisterFromEvent(event.id);
+      void recordInteractions([{ interaction_type: 'unregister', event_id: event.id, meta: { source: 'event_detail' } }]);
       toast({
         title: t.eventDetail.unregisterSuccessTitle,
         description: t.eventDetail.unregisterSuccessDescription,
@@ -172,8 +183,10 @@ export function EventDetailPage() {
     try {
       if (event.is_favorite) {
         await eventService.removeFromFavorites(event.id);
+        void recordInteractions([{ interaction_type: 'favorite', event_id: event.id, meta: { action: 'remove' } }]);
       } else {
         await eventService.addToFavorites(event.id);
+        void recordInteractions([{ interaction_type: 'favorite', event_id: event.id, meta: { action: 'add' } }]);
       }
       setEvent((prev) => (prev ? { ...prev, is_favorite: !prev.is_favorite } : null));
     } catch {
@@ -241,6 +254,54 @@ export function EventDetailPage() {
       });
     } finally {
       setIsCloning(false);
+    }
+  };
+
+  const handleHideTag = async () => {
+    if (!isStudent) return;
+    const tagId = parseInt(hideTagId);
+    if (!tagId || !event) return;
+
+    setIsHidingTag(true);
+    try {
+      await eventService.hideTag(tagId);
+      setHideTagId('');
+      toast({
+        title: t.personalization.tagHiddenTitle,
+        description: t.personalization.tagHiddenDescription,
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.personalization.tagHiddenErrorFallback,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsHidingTag(false);
+    }
+  };
+
+  const handleBlockOrganizer = async () => {
+    if (!isStudent || !event) return;
+    setIsBlockingOrganizer(true);
+    try {
+      await eventService.blockOrganizer(event.owner_id);
+      toast({
+        title: t.personalization.organizerBlockedTitle,
+        description: t.personalization.organizerBlockedDescription,
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.personalization.organizerBlockedErrorFallback,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBlockingOrganizer(false);
     }
   };
 
@@ -537,6 +598,70 @@ export function EventDetailPage() {
                 <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
               </Link>
             </div>
+
+            {/* Personalization */}
+            {isStudent && (event.recommendation_reason || event.tags.length > 0) && (
+              <div className="rounded-xl border p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  <SlidersHorizontal className="h-5 w-5" />
+                  {t.personalization.title}
+                </h3>
+
+                {event.recommendation_reason ? (
+                  <p className="text-sm text-muted-foreground">{event.recommendation_reason}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t.personalization.genericReason}</p>
+                )}
+
+                <Separator className="my-4" />
+
+                <div className="space-y-4">
+                  {event.tags.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>{t.personalization.hideTagLabel}</Label>
+                      <div className="flex gap-2">
+                        <Select value={hideTagId} onValueChange={setHideTagId} disabled={isHidingTag}>
+                          <SelectTrigger className="w-auto flex-1">
+                            <SelectValue placeholder={t.personalization.hideTagPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {event.tags.map((tag) => (
+                              <SelectItem key={tag.id} value={String(tag.id)}>
+                                {tag.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleHideTag}
+                          disabled={!hideTagId || isHidingTag}
+                        >
+                          <EyeOff className="mr-2 h-4 w-4" />
+                          {isHidingTag ? t.personalization.hiding : t.personalization.hideTagAction}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBlockOrganizer}
+                    disabled={isBlockingOrganizer}
+                    className="w-full justify-start"
+                  >
+                    <UserX className="mr-2 h-4 w-4" />
+                    {isBlockingOrganizer ? t.personalization.blockingOrganizer : t.personalization.blockOrganizerAction}
+                  </Button>
+
+                  <Link to="/profile" className="text-sm text-primary hover:underline">
+                    {t.personalization.manageLink}
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

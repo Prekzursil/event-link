@@ -13,9 +13,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingPage } from '@/components/ui/loading';
 import { useI18n } from '@/contexts/LanguageContext';
-import type { AdminEvent, AdminStats, AdminUser, UserRole } from '@/types';
+import type { AdminEvent, AdminStats, AdminUser, PersonalizationMetricsResponse, UserRole } from '@/types';
 import { formatDateTime } from '@/lib/utils';
-import { Edit, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
+import { Bell, Edit, Mail, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'users' | 'events';
 
@@ -50,6 +50,15 @@ export function AdminDashboardPage() {
   const [eventsStatus, setEventsStatus] = useState<'all' | 'draft' | 'published'>('all');
   const [eventsIncludeDeleted, setEventsIncludeDeleted] = useState(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [eventsFlaggedOnly, setEventsFlaggedOnly] = useState(false);
+  const [reviewingEventId, setReviewingEventId] = useState<number | null>(null);
+
+  const [personalizationMetrics, setPersonalizationMetrics] =
+    useState<PersonalizationMetricsResponse | null>(null);
+  const [isLoadingPersonalizationMetrics, setIsLoadingPersonalizationMetrics] = useState(false);
+  const [isEnqueueingRetrain, setIsEnqueueingRetrain] = useState(false);
+  const [isEnqueueingDigest, setIsEnqueueingDigest] = useState(false);
+  const [isEnqueueingFillingFast, setIsEnqueueingFillingFast] = useState(false);
 
   const loadStats = useCallback(async () => {
     setIsLoadingStats(true);
@@ -103,6 +112,7 @@ export function AdminDashboardPage() {
           search: eventsSearch || undefined,
           status: eventsStatus === 'all' ? undefined : eventsStatus,
           include_deleted: eventsIncludeDeleted || undefined,
+          flagged_only: eventsFlaggedOnly || undefined,
           page,
           page_size: eventsPageSize,
         });
@@ -119,12 +129,29 @@ export function AdminDashboardPage() {
         setIsLoadingEvents(false);
       }
     },
-    [eventsIncludeDeleted, eventsPage, eventsPageSize, eventsSearch, eventsStatus, t, toast],
+    [eventsFlaggedOnly, eventsIncludeDeleted, eventsPage, eventsPageSize, eventsSearch, eventsStatus, t, toast],
   );
+
+  const loadPersonalizationMetrics = useCallback(async () => {
+    setIsLoadingPersonalizationMetrics(true);
+    try {
+      const data = await adminService.getPersonalizationMetrics(30);
+      setPersonalizationMetrics(data);
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.adminDashboard.personalizationMetrics.loadErrorDescription,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsLoadingPersonalizationMetrics(false);
+    }
+  }, [t, toast]);
 
   useEffect(() => {
     loadStats();
-  }, [loadStats]);
+    loadPersonalizationMetrics();
+  }, [loadPersonalizationMetrics, loadStats]);
 
   useEffect(() => {
     if (tab === 'users') {
@@ -189,6 +216,64 @@ export function AdminDashboardPage() {
         description: t.adminDashboard.eventRestoreErrorDescription,
         variant: 'destructive',
       });
+    }
+  };
+
+  const handleEnqueueRetrain = async () => {
+    setIsEnqueueingRetrain(true);
+    try {
+      const job = await adminService.enqueueRecommendationsRetrain();
+      toast({
+        title: t.adminDashboard.personalizationMetrics.retrainQueuedTitle,
+        description: t.adminDashboard.personalizationMetrics.retrainQueuedDescription.replace('{jobId}', String(job.job_id)),
+      });
+      await loadPersonalizationMetrics();
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.adminDashboard.personalizationMetrics.retrainQueuedErrorDescription,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEnqueueingRetrain(false);
+    }
+  };
+
+  const handleEnqueueDigest = async () => {
+    setIsEnqueueingDigest(true);
+    try {
+      const job = await adminService.enqueueWeeklyDigest();
+      toast({
+        title: t.adminDashboard.notifications.digestQueuedTitle,
+        description: t.adminDashboard.notifications.digestQueuedDescription.replace('{jobId}', String(job.job_id)),
+      });
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.adminDashboard.notifications.digestQueuedErrorDescription,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEnqueueingDigest(false);
+    }
+  };
+
+  const handleEnqueueFillingFast = async () => {
+    setIsEnqueueingFillingFast(true);
+    try {
+      const job = await adminService.enqueueFillingFast();
+      toast({
+        title: t.adminDashboard.notifications.fillingFastQueuedTitle,
+        description: t.adminDashboard.notifications.fillingFastQueuedDescription.replace('{jobId}', String(job.job_id)),
+      });
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.adminDashboard.notifications.fillingFastQueuedErrorDescription,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEnqueueingFillingFast(false);
     }
   };
 
@@ -309,6 +394,104 @@ export function AdminDashboardPage() {
               </CardContent>
             </Card>
           </div>
+
+          <Card>
+            <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+              <CardTitle>{t.adminDashboard.personalizationMetrics.title}</CardTitle>
+              <div className="flex flex-wrap gap-2">
+                <Button variant="outline" size="sm" onClick={handleEnqueueRetrain} disabled={isEnqueueingRetrain}>
+                  <Sparkles className="mr-2 h-4 w-4" />
+                  {isEnqueueingRetrain
+                    ? t.adminDashboard.personalizationMetrics.queueing
+                    : t.adminDashboard.personalizationMetrics.retrainNow}
+                </Button>
+                <Button variant="outline" size="sm" onClick={handleEnqueueDigest} disabled={isEnqueueingDigest}>
+                  <Mail className="mr-2 h-4 w-4" />
+                  {isEnqueueingDigest ? t.adminDashboard.notifications.queueing : t.adminDashboard.notifications.enqueueDigest}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleEnqueueFillingFast}
+                  disabled={isEnqueueingFillingFast}
+                >
+                  <Bell className="mr-2 h-4 w-4" />
+                  {isEnqueueingFillingFast
+                    ? t.adminDashboard.notifications.queueing
+                    : t.adminDashboard.notifications.enqueueFillingFast}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoadingPersonalizationMetrics ? (
+                <LoadingPage message={t.adminDashboard.personalizationMetrics.loading} />
+              ) : !personalizationMetrics?.items?.length ? (
+                <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>
+              ) : (
+                <div className="space-y-4">
+                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {t.adminDashboard.personalizationMetrics.totals.impressions}
+                      </div>
+                      <div className="text-lg font-bold">{personalizationMetrics.totals.impressions}</div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {t.adminDashboard.personalizationMetrics.totals.clicks}
+                      </div>
+                      <div className="text-lg font-bold">{personalizationMetrics.totals.clicks}</div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {t.adminDashboard.personalizationMetrics.totals.registrations}
+                      </div>
+                      <div className="text-lg font-bold">{personalizationMetrics.totals.registrations}</div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {t.adminDashboard.personalizationMetrics.totals.ctr}
+                      </div>
+                      <div className="text-lg font-bold">{Math.round(personalizationMetrics.totals.ctr * 100)}%</div>
+                    </div>
+                    <div className="rounded-lg border p-3">
+                      <div className="text-xs font-medium text-muted-foreground">
+                        {t.adminDashboard.personalizationMetrics.totals.conversion}
+                      </div>
+                      <div className="text-lg font-bold">
+                        {Math.round(personalizationMetrics.totals.registration_conversion * 100)}%
+                      </div>
+                    </div>
+                  </div>
+
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>{t.adminDashboard.personalizationMetrics.table.day}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.impressions}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.clicks}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.registrations}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.ctr}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.conversion}</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {personalizationMetrics.items.slice(-14).map((row) => (
+                        <TableRow key={row.date}>
+                          <TableCell>{row.date}</TableCell>
+                          <TableCell className="text-right">{row.impressions}</TableCell>
+                          <TableCell className="text-right">{row.clicks}</TableCell>
+                          <TableCell className="text-right">{row.registrations}</TableCell>
+                          <TableCell className="text-right">{Math.round(row.ctr * 100)}%</TableCell>
+                          <TableCell className="text-right">{Math.round(row.registration_conversion * 100)}%</TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </div>
+              )}
+            </CardContent>
+          </Card>
         </TabsContent>
 
         <TabsContent value="users" className="mt-6 space-y-4">
@@ -487,6 +670,13 @@ export function AdminDashboardPage() {
                   />
                   <span className="text-sm">{t.adminDashboard.events.includeDeleted}</span>
                 </div>
+                <div className="flex items-center gap-2">
+                  <Checkbox
+                    checked={eventsFlaggedOnly}
+                    onCheckedChange={(checked) => setEventsFlaggedOnly(Boolean(checked))}
+                  />
+                  <span className="text-sm">{t.adminDashboard.events.flaggedOnly}</span>
+                </div>
                 <Button onClick={() => loadEvents(1)} disabled={isLoadingEvents}>
                   <RefreshCw className="mr-2 h-4 w-4" />
                   {t.adminDashboard.events.apply}
@@ -507,6 +697,7 @@ export function AdminDashboardPage() {
                         <TableHead>{t.adminDashboard.events.table.date}</TableHead>
                         <TableHead>{t.adminDashboard.events.table.owner}</TableHead>
                         <TableHead>{t.adminDashboard.events.table.status}</TableHead>
+                        <TableHead>{t.adminDashboard.events.table.moderation}</TableHead>
                         <TableHead className="text-right">{t.adminDashboard.events.table.seats}</TableHead>
                         <TableHead className="w-[160px]"></TableHead>
                       </TableRow>
@@ -516,6 +707,19 @@ export function AdminDashboardPage() {
                         const deleted = Boolean(e.deleted_at);
                         const statusLabel =
                           e.status === 'draft' ? t.adminDashboard.events.statusDraft : t.adminDashboard.events.statusPublished;
+                        const moderationStatus = e.moderation_status || 'clean';
+                        const moderationLabel =
+                          moderationStatus === 'flagged'
+                            ? t.adminDashboard.events.moderation.flagged
+                            : moderationStatus === 'reviewed'
+                              ? t.adminDashboard.events.moderation.reviewed
+                              : t.adminDashboard.events.moderation.clean;
+                        const moderationVariant =
+                          moderationStatus === 'flagged'
+                            ? 'destructive'
+                            : moderationStatus === 'reviewed'
+                              ? 'secondary'
+                              : 'outline';
                         return (
                           <TableRow key={e.id} className={deleted ? 'opacity-70' : undefined}>
                             <TableCell>
@@ -541,6 +745,22 @@ export function AdminDashboardPage() {
                                 {statusLabel}
                               </Badge>
                             </TableCell>
+                            <TableCell>
+                              <div className="space-y-1">
+                                <Badge variant={moderationVariant}>{moderationLabel}</Badge>
+                                {typeof e.moderation_score === 'number' && (
+                                  <div className="text-xs text-muted-foreground">
+                                    {t.adminDashboard.events.moderation.scoreLabel} {e.moderation_score.toFixed(2)}
+                                  </div>
+                                )}
+                                {e.moderation_flags?.length ? (
+                                  <div className="text-xs text-muted-foreground">
+                                    {e.moderation_flags.slice(0, 3).join(', ')}
+                                    {e.moderation_flags.length > 3 ? '…' : ''}
+                                  </div>
+                                ) : null}
+                              </div>
+                            </TableCell>
                             <TableCell className="text-right">
                               {e.seats_taken}/{e.max_seats ?? '-'}
                             </TableCell>
@@ -552,6 +772,41 @@ export function AdminDashboardPage() {
                                     {t.adminDashboard.events.actions.edit}
                                   </Link>
                                 </Button>
+                                {moderationStatus === 'flagged' && !deleted && (
+                                  <Button
+                                    variant="outline"
+                                    size="sm"
+                                    disabled={reviewingEventId === e.id}
+                                    onClick={async () => {
+                                      setReviewingEventId(e.id);
+                                      try {
+                                        await adminService.reviewEventModeration(e.id);
+                                        setEvents((prev) =>
+                                          prev.map((row) =>
+                                            row.id === e.id ? { ...row, moderation_status: 'reviewed' } : row,
+                                          ),
+                                        );
+                                        toast({
+                                          title: t.adminDashboard.events.moderation.reviewedTitle,
+                                          description: t.adminDashboard.events.moderation.reviewedDescription,
+                                        });
+                                      } catch {
+                                        toast({
+                                          title: t.common.error,
+                                          description: t.adminDashboard.events.moderation.reviewErrorDescription,
+                                          variant: 'destructive',
+                                        });
+                                      } finally {
+                                        setReviewingEventId(null);
+                                      }
+                                    }}
+                                  >
+                                    <ShieldCheck className="mr-2 h-4 w-4" />
+                                    {reviewingEventId === e.id
+                                      ? t.adminDashboard.events.moderation.reviewing
+                                      : t.adminDashboard.events.moderation.markReviewed}
+                                  </Button>
+                                )}
                                 {deleted ? (
                                   <Button
                                     variant="outline"

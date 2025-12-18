@@ -1,7 +1,14 @@
 import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import eventService from '@/services/event.service';
-import type { StudyLevel, Tag, StudentProfile, UniversityCatalogItem } from '@/types';
+import type {
+  NotificationPreferences,
+  PersonalizationSettings,
+  StudyLevel,
+  Tag,
+  StudentProfile,
+  UniversityCatalogItem,
+} from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -28,7 +35,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles, GraduationCap } from 'lucide-react';
+import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles, GraduationCap, EyeOff, UserX, Mail } from 'lucide-react';
 import authService from '@/services/auth.service';
 import type { LanguagePreference, ThemePreference } from '@/types';
 
@@ -41,10 +48,11 @@ const MAX_YEARS_BY_LEVEL: Record<StudyLevel, number> = {
 
 export function StudentProfilePage() {
   const { toast } = useToast();
-  const { logout, refreshUser } = useAuth();
+  const { user, logout, refreshUser } = useAuth();
   const { preference: themePreference, setPreference: setThemePreference } = useTheme();
   const { preference: languagePreference, setPreference: setLanguagePreference, language, t } = useI18n();
   const navigate = useNavigate();
+  const isStudent = user?.role === 'student';
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isExporting, setIsExporting] = useState(false);
@@ -63,6 +71,9 @@ export function StudentProfilePage() {
   const [studyLevel, setStudyLevel] = useState<StudyLevel | ''>('');
   const [studyYear, setStudyYear] = useState<number | undefined>(undefined);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [personalization, setPersonalization] = useState<PersonalizationSettings | null>(null);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
+  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
 
   const musicInterestNames = useMemo(
     () =>
@@ -169,6 +180,21 @@ export function StudentProfilePage() {
       setSelectedTagIds(profileData.interest_tags.map(t => t.id));
       setAllTags(tagsData);
 
+      if (isStudent) {
+        const [personalizationData, notificationData] = await Promise.all([
+          eventService.getPersonalizationSettings().catch(() => ({ hidden_tags: [], blocked_organizers: [] })),
+          eventService.getNotificationPreferences().catch(() => ({
+            email_digest_enabled: false,
+            email_filling_fast_enabled: false,
+          })),
+        ]);
+        setPersonalization(personalizationData);
+        setNotificationPrefs(notificationData);
+      } else {
+        setPersonalization(null);
+        setNotificationPrefs(null);
+      }
+
       try {
         const catalog = await eventService.getUniversityCatalog();
         setUniversityCatalog(catalog);
@@ -185,7 +211,7 @@ export function StudentProfilePage() {
     } finally {
       setIsLoading(false);
     }
-  }, [t, toast]);
+  }, [isStudent, t, toast]);
 
   useEffect(() => {
     loadData();
@@ -277,6 +303,76 @@ export function StudentProfilePage() {
       });
     } finally {
       setIsSavingLanguage(false);
+    }
+  };
+
+  const handleNotificationPreferenceChange = async (
+    patch: Partial<NotificationPreferences>,
+  ) => {
+    if (!isStudent || !notificationPrefs) return;
+
+    const previous = notificationPrefs;
+    const next = { ...notificationPrefs, ...patch };
+    setNotificationPrefs(next);
+    setIsSavingNotifications(true);
+    try {
+      const saved = await eventService.updateNotificationPreferences(patch);
+      setNotificationPrefs(saved);
+      toast({
+        title: t.notifications.savedTitle,
+        description: t.notifications.savedDescription,
+      });
+    } catch {
+      setNotificationPrefs(previous);
+      toast({
+        title: t.common.error,
+        description: t.notifications.saveErrorDescription,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSavingNotifications(false);
+    }
+  };
+
+  const handleUnhideTag = async (tagId: number) => {
+    if (!isStudent || !personalization) return;
+    try {
+      await eventService.unhideTag(tagId);
+      setPersonalization((prev) =>
+        prev ? { ...prev, hidden_tags: prev.hidden_tags.filter((tag) => tag.id !== tagId) } : prev,
+      );
+      toast({
+        title: t.personalization.tagUnhiddenTitle,
+        description: t.personalization.tagUnhiddenDescription,
+      });
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.personalization.tagUnhiddenErrorFallback,
+        variant: 'destructive',
+      });
+    }
+  };
+
+  const handleUnblockOrganizer = async (organizerId: number) => {
+    if (!isStudent || !personalization) return;
+    try {
+      await eventService.unblockOrganizer(organizerId);
+      setPersonalization((prev) =>
+        prev
+          ? { ...prev, blocked_organizers: prev.blocked_organizers.filter((org) => org.id !== organizerId) }
+          : prev,
+      );
+      toast({
+        title: t.personalization.organizerUnblockedTitle,
+        description: t.personalization.organizerUnblockedDescription,
+      });
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.personalization.organizerUnblockedErrorFallback,
+        variant: 'destructive',
+      });
     }
   };
 
@@ -595,6 +691,118 @@ export function StudentProfilePage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Personalization & Notifications (students only) */}
+      {isStudent && (
+        <>
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Sparkles className="h-5 w-5" />
+                {t.personalization.profileTitle}
+              </CardTitle>
+              <CardDescription>{t.personalization.profileDescription}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <EyeOff className="h-4 w-4" />
+                  {t.personalization.hiddenTagsTitle}
+                </div>
+                {!personalization?.hidden_tags?.length ? (
+                  <p className="text-sm text-muted-foreground">{t.personalization.hiddenTagsEmpty}</p>
+                ) : (
+                  <div className="flex flex-wrap gap-2">
+                    {personalization.hidden_tags.map((tag) => (
+                      <Badge key={tag.id} variant="secondary" className="gap-2">
+                        {tag.name}
+                        <button
+                          type="button"
+                          className="text-muted-foreground hover:text-foreground"
+                          onClick={() => handleUnhideTag(tag.id)}
+                          aria-label={t.personalization.unhideTagAriaLabel}
+                        >
+                          ✕
+                        </button>
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div className="space-y-2">
+                <div className="flex items-center gap-2 text-sm font-medium">
+                  <UserX className="h-4 w-4" />
+                  {t.personalization.blockedOrganizersTitle}
+                </div>
+                {!personalization?.blocked_organizers?.length ? (
+                  <p className="text-sm text-muted-foreground">{t.personalization.blockedOrganizersEmpty}</p>
+                ) : (
+                  <div className="space-y-2">
+                    {personalization.blocked_organizers.map((org) => (
+                      <div key={org.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+                        <div className="min-w-0">
+                          <div className="truncate text-sm font-medium">{org.org_name || org.full_name || org.email}</div>
+                          <div className="truncate text-xs text-muted-foreground">{org.email}</div>
+                        </div>
+                        <Button variant="outline" size="sm" onClick={() => handleUnblockOrganizer(org.id)}>
+                          {t.personalization.unblockOrganizerAction}
+                        </Button>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="mb-6">
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Mail className="h-5 w-5" />
+                {t.notifications.title}
+              </CardTitle>
+              <CardDescription>{t.notifications.description}</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">{t.notifications.weeklyDigestLabel}</div>
+                  <div className="text-xs text-muted-foreground">{t.notifications.weeklyDigestDescription}</div>
+                </div>
+                <Checkbox
+                  checked={Boolean(notificationPrefs?.email_digest_enabled)}
+                  disabled={isSavingNotifications || !notificationPrefs}
+                  onCheckedChange={(checked) =>
+                    handleNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
+                  }
+                />
+              </div>
+
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-sm font-medium">{t.notifications.fillingFastLabel}</div>
+                  <div className="text-xs text-muted-foreground">{t.notifications.fillingFastDescription}</div>
+                </div>
+                <Checkbox
+                  checked={Boolean(notificationPrefs?.email_filling_fast_enabled)}
+                  disabled={isSavingNotifications || !notificationPrefs}
+                  onCheckedChange={(checked) =>
+                    handleNotificationPreferenceChange({ email_filling_fast_enabled: Boolean(checked) })
+                  }
+                />
+              </div>
+
+              {isSavingNotifications && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <LoadingSpinner size="sm" />
+                  {t.profile.saving}
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </>
+      )}
 
       {/* Interest Tags */}
       <Card className="mb-6">

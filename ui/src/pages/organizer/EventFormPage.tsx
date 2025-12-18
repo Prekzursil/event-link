@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import eventService from '@/services/event.service';
-import type { EventFormData } from '@/types';
+import type { EventFormData, EventSuggestResponse } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -18,7 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/contexts/LanguageContext';
-import { ArrowLeft, Save, X } from 'lucide-react';
+import { ArrowLeft, Save, X, Sparkles, AlertTriangle } from 'lucide-react';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const formatDateTimeLocal = (dateString: string) => {
@@ -34,6 +34,8 @@ export function EventFormPage() {
   const isEditing = !!id;
   const [isLoading, setIsLoading] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isSuggesting, setIsSuggesting] = useState(false);
+  const [suggestion, setSuggestion] = useState<EventSuggestResponse | null>(null);
   const [tagInput, setTagInput] = useState('');
   const { toast } = useToast();
   const { language, t } = useI18n();
@@ -89,6 +91,56 @@ export function EventFormPage() {
       loadEvent(parseInt(id));
     }
   }, [id, isEditing, loadEvent]);
+
+  const handleSuggest = async () => {
+    if (!formData.title.trim() || isSuggesting) return;
+    setIsSuggesting(true);
+    try {
+        const payload = {
+          title: formData.title.trim(),
+          description: formData.description?.trim() || undefined,
+          category: formData.category || undefined,
+          city: formData.city?.trim() || undefined,
+          location: formData.location?.trim() || undefined,
+          start_time: formData.start_time ? new Date(formData.start_time).toISOString() : undefined,
+        };
+      const res = await eventService.suggestEvent(payload);
+      setSuggestion(res);
+      toast({
+        title: t.eventForm.suggestedTitle,
+        description: t.eventForm.suggestedDescription,
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventForm.suggestErrorFallback,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsSuggesting(false);
+    }
+  };
+
+  const applySuggestion = () => {
+    if (!suggestion) return;
+    setFormData((prev) => {
+      const nextTags = Array.from(
+        new Set([...(prev.tags ?? []), ...(suggestion.suggested_tags ?? [])].map((t) => t.trim()).filter(Boolean)),
+      );
+      return {
+        ...prev,
+        category: prev.category || suggestion.suggested_category || prev.category,
+        city: prev.city || suggestion.suggested_city || prev.city,
+        tags: nextTags,
+      };
+    });
+    toast({
+      title: t.eventForm.suggestionAppliedTitle,
+      description: t.eventForm.suggestionAppliedDescription,
+    });
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -231,12 +283,101 @@ export function EventFormPage() {
       </Button>
 
       <Card>
-        <CardHeader>
-          <CardTitle>
-            {isEditing ? t.eventForm.editTitle : t.eventForm.createTitle}
-          </CardTitle>
+        <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <CardTitle>{isEditing ? t.eventForm.editTitle : t.eventForm.createTitle}</CardTitle>
+          <Button
+            type="button"
+            variant="outline"
+            onClick={handleSuggest}
+            disabled={isSuggesting || !formData.title.trim()}
+          >
+            <Sparkles className="mr-2 h-4 w-4" />
+            {isSuggesting ? t.eventForm.suggesting : t.eventForm.suggestButton}
+          </Button>
         </CardHeader>
         <CardContent>
+          {suggestion && (
+            <div className="mb-6 space-y-3 rounded-lg border bg-muted/30 p-4">
+              <div className="flex items-center justify-between gap-3">
+                <div className="text-sm font-medium">{t.eventForm.suggestionsTitle}</div>
+                <Button type="button" variant="secondary" size="sm" onClick={applySuggestion}>
+                  {t.eventForm.applySuggestions}
+                </Button>
+              </div>
+
+              {(suggestion.moderation_status === 'flagged' || suggestion.moderation_flags.length > 0) && (
+                <div className="rounded-md border border-destructive/40 bg-destructive/5 p-3 text-sm">
+                  <div className="mb-1 flex items-center gap-2 font-medium text-destructive">
+                    <AlertTriangle className="h-4 w-4" />
+                    {t.eventForm.moderationWarningTitle}
+                  </div>
+                  <div className="text-muted-foreground">
+                    {t.eventForm.moderationWarningDescription}
+                  </div>
+                  {suggestion.moderation_flags.length > 0 && (
+                    <div className="mt-2 flex flex-wrap gap-2">
+                      {suggestion.moderation_flags.map((flag) => (
+                        <Badge key={flag} variant="destructive">
+                          {flag}
+                        </Badge>
+                      ))}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">{t.eventForm.suggestedCategory}</div>
+                  <div className="text-sm">
+                    {suggestion.suggested_category
+                      ? getEventCategoryLabel(suggestion.suggested_category, language)
+                      : t.eventForm.suggestionNone}
+                  </div>
+                </div>
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">{t.eventForm.suggestedCity}</div>
+                  <div className="text-sm">{suggestion.suggested_city || t.eventForm.suggestionNone}</div>
+                </div>
+              </div>
+
+              <div>
+                <div className="text-xs font-medium text-muted-foreground">{t.eventForm.suggestedTags}</div>
+                {!suggestion.suggested_tags.length ? (
+                  <div className="text-sm">{t.eventForm.suggestionNone}</div>
+                ) : (
+                  <div className="mt-1 flex flex-wrap gap-2">
+                    {suggestion.suggested_tags.map((tag) => (
+                      <Badge key={tag} variant="secondary">
+                        {tag}
+                      </Badge>
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              {suggestion.duplicates.length > 0 && (
+                <div>
+                  <div className="text-xs font-medium text-muted-foreground">{t.eventForm.duplicatesTitle}</div>
+                  <div className="mt-2 space-y-2">
+                    {suggestion.duplicates.slice(0, 5).map((dup) => (
+                      <div key={dup.id} className="flex items-center justify-between gap-3 rounded-md border bg-background p-3">
+                        <div className="min-w-0">
+                          <Link to={`/events/${dup.id}`} className="truncate text-sm font-medium hover:underline">
+                            {dup.title}
+                          </Link>
+                          <div className="text-xs text-muted-foreground">
+                            {dup.city || '-'} • {Math.round(dup.similarity * 100)}%
+                          </div>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Title */}
             <div className="space-y-2">
