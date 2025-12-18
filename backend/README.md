@@ -14,6 +14,7 @@ Environment variables (or `.topsecret` file) are loaded via `pydantic-settings`:
 - Email: `EMAIL_ENABLED` (default true), `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_SENDER`, `SMTP_USE_TLS`
 - Background jobs: `TASK_QUEUE_ENABLED` (default false), `TASK_QUEUE_POLL_INTERVAL_SECONDS`, `TASK_QUEUE_MAX_ATTEMPTS`, `TASK_QUEUE_STALE_AFTER_SECONDS`
 - Public API: `PUBLIC_API_RATE_LIMIT` (default 60 per window), `PUBLIC_API_RATE_WINDOW_SECONDS` (default 60)
+- Maintenance mode: `MAINTENANCE_MODE_REGISTRATIONS_DISABLED` (default false; returns 503 for registration-related endpoints)
 - Alembic uses `DATABASE_URL` from the same env for migrations.
 
 ## Running locally

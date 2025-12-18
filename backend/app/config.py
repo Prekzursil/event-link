@@ -39,6 +39,8 @@ class Settings(BaseSettings):
 
     public_api_rate_limit: int = 60
     public_api_rate_window_seconds: int = 60
+
+    maintenance_mode_registrations_disabled: bool = False
     
     # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
     # so our validator can handle both formats.

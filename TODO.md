@@ -124,9 +124,9 @@
 - [x] Contract tests around API schema to keep UI and backend in sync.
 - [x] Bulk operations for organizers (bulk email registrants, bulk close events, bulk tag edits).
 - [x] "Favorite events" / "watchlist" feature for students.
-- [ ] Maintenance mode flag to temporarily disable registrations during deployments.
+- [x] Maintenance mode flag to temporarily disable registrations during deployments.
 - [x] Draft vs published events with scheduled publishing.
-- [ ] DB backup/restore scripts and disaster-recovery documentation.
-- [ ] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
+- [x] DB backup/restore scripts and disaster-recovery documentation.
+- [x] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
 - [x] Organization profile pages with logo, description, and links to their events.
 - [x] Duplicate/clone event action for organizers.
