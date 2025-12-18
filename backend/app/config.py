@@ -21,6 +21,7 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_minutes: int = 60 * 24 * 30
     allowed_origins: list[str] = DEFAULT_ALLOWED_ORIGINS
+    admin_emails: list[str] = []
     auto_create_tables: bool = False
     auto_run_migrations: bool = False
     organizer_invite_code: str | None = None
@@ -71,6 +72,28 @@ class Settings(BaseSettings):
             return [origin for origin in value if origin]
 
         raise ValueError("allowed_origins must be a list or comma-separated string")
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, value):
+        if value is None or value == "":
+            return []
+
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(email).strip().lower() for email in parsed if str(email).strip()]
+            except json.JSONDecodeError:
+                pass
+
+            parsed = [email.strip().lower() for email in value.split(",")]
+            return [email for email in parsed if email]
+
+        if isinstance(value, (list, tuple)):
+            return [str(email).strip().lower() for email in value if str(email).strip()]
+
+        raise ValueError("admin_emails must be a list or comma-separated string")
 
 
 settings = Settings()

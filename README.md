@@ -35,6 +35,8 @@ DATABASE_URL=postgresql+psycopg2://user:pass@host:5432/db
 SECRET_KEY=change-me
 # Comma-separated or JSON list; defaults cover localhost/127.0.0.1 for ports 3000/4200/5173
 ALLOWED_ORIGINS=http://localhost:5173,http://localhost:4200,http://localhost:3000
+# Optional admin-only endpoints (comma-separated or JSON list)
+ADMIN_EMAILS=admin@example.com
 # Use migrations in prod; enable for quick local setup
 AUTO_CREATE_TABLES=true
 # Run Alembic automatically on startup (recommended for dev/CI)
@@ -124,10 +126,11 @@ Sample credentials:
 
 - Auth: `POST /register`, `POST /login`, `POST /refresh`, `GET /me`, `POST /organizer/upgrade`
 - Events: `GET /api/events` (filters + pagination), `POST /api/events` (organizer),
-  `PUT /api/events/{id}`, `DELETE /api/events/{id}` (soft-delete), `GET /api/events/{id}/ics`
-- Registration: `POST /api/events/{id}/register`, `DELETE /api/events/{id}/register`,
+  `PUT /api/events/{id}`, `DELETE /api/events/{id}` (soft-delete), `POST /api/events/{id}/restore`, `GET /api/events/{id}/ics`
+- Registration: `POST /api/events/{id}/register`, `DELETE /api/events/{id}/register`
 - Organizer: `GET /api/organizer/events/{id}/participants` (with pagination/sorting)
 - Public: `GET /api/public/events`, `GET /api/public/events/{id}` (rate-limited)
+- Admin: `POST /api/admin/events/{eventId}/registrations/{userId}/restore`
 - Recommendations and search utilities are available under `/api/events` filters, plus calendar
   exports at `/api/me/calendar` for the current user.
 - Docs: Swagger at `/docs`, ReDoc at `/redoc`
