@@ -5,7 +5,6 @@ import time
 import re
 import logging
 import asyncio
-import os
 import secrets
 from pathlib import Path
 
@@ -120,7 +119,7 @@ def _run_cleanup_once(retention_days: int = 90) -> None:
     try:
         expired_tokens = (
             db.query(models.PasswordResetToken)
-            .filter((models.PasswordResetToken.used == True) | (models.PasswordResetToken.expires_at < now))
+            .filter((models.PasswordResetToken.used.is_(True)) | (models.PasswordResetToken.expires_at < now))
             .delete(synchronize_session=False)
         )
         old_regs = (
@@ -1315,7 +1314,7 @@ def password_forgot(
     user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
     if user:
         db.query(models.PasswordResetToken).filter(
-            models.PasswordResetToken.user_id == user.id, models.PasswordResetToken.used == False
+            models.PasswordResetToken.user_id == user.id, models.PasswordResetToken.used.is_(False)
         ).update({"used": True})
         token = secrets.token_urlsafe(32)
         expires_at = datetime.now(timezone.utc) + timedelta(hours=1)
@@ -1335,7 +1334,7 @@ def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: 
     _enforce_rate_limit("password_reset", request=request, limit=10, window_seconds=300)
     token_row = (
         db.query(models.PasswordResetToken)
-        .filter(models.PasswordResetToken.token == payload.token, models.PasswordResetToken.used == False)
+        .filter(models.PasswordResetToken.token == payload.token, models.PasswordResetToken.used.is_(False))
         .first()
     )
     expires_at = _normalize_dt(token_row.expires_at) if token_row else None

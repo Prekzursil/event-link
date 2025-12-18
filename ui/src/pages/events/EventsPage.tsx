@@ -43,6 +43,9 @@ const CATEGORIES = [
 
 const PAGE_SIZES = [6, 12, 24, 48];
 
+const RECOMMENDATIONS_ENABLED =
+  (import.meta.env.VITE_FEATURE_RECOMMENDATIONS ?? 'true').toLowerCase() !== 'false';
+
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
@@ -134,7 +137,7 @@ export function EventsPage() {
   }, [filters, toast]);
 
   useEffect(() => {
-    if (!isAuthenticated) return;
+    if (!isAuthenticated || !RECOMMENDATIONS_ENABLED) return;
     
     const loadRecommendations = async () => {
       try {
@@ -212,7 +215,7 @@ export function EventsPage() {
       </div>
 
       {/* Recommendations Section */}
-      {isAuthenticated && recommendations.length > 0 && !hasActiveFilters && (
+      {RECOMMENDATIONS_ENABLED && isAuthenticated && recommendations.length > 0 && !hasActiveFilters && (
         <div className="mb-8">
           <div className="mb-4 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
