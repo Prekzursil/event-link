@@ -67,6 +67,15 @@ def helpers(client, db_session):
         db_session.add(organizer)
         db_session.commit()
 
+    def make_admin(email: str = "admin@test.ro", password: str = "admin123") -> None:
+        admin = models.User(
+            email=email,
+            password_hash=auth.get_password_hash(password),
+            role=models.UserRole.admin,
+        )
+        db_session.add(admin)
+        db_session.commit()
+
     def future_time(days: int = 1) -> str:
         return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
 
@@ -79,7 +88,7 @@ def helpers(client, db_session):
         "register_student": register_student,
         "login": login,
         "make_organizer": make_organizer,
+        "make_admin": make_admin,
         "future_time": future_time,
         "auth_header": auth_header,
     }
-

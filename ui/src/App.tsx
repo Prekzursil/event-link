@@ -19,6 +19,9 @@ import { StudentProfilePage } from '@/pages/profile';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
+// Admin pages
+import { AdminDashboardPage } from '@/pages/admin';
+
 // Organizer pages
 import {
   OrganizerDashboardPage,
@@ -55,6 +58,25 @@ function OrganizerRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isOrganizer) {
+    return <Navigate to="/forbidden" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Admin route wrapper
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingPage />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
     return <Navigate to="/forbidden" replace />;
   }
 
@@ -143,6 +165,16 @@ function AppRoutes() {
             <OrganizerRoute>
               <ParticipantsPage />
             </OrganizerRoute>
+          }
+        />
+
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboardPage />
+            </AdminRoute>
           }
         />
 

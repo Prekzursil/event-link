@@ -124,7 +124,7 @@ Sample credentials:
 
 ## API overview
 
-- Auth: `POST /register`, `POST /login`, `POST /refresh`, `GET /me`, `POST /organizer/upgrade`
+- Auth: `POST /register`, `POST /login`, `POST /refresh`, `GET /me`
 - Events: `GET /api/events` (filters + pagination), `POST /api/events` (organizer),
   `PUT /api/events/{id}`, `DELETE /api/events/{id}` (soft-delete), `POST /api/events/{id}/restore`, `GET /api/events/{id}/ics`
   - Filters include `search`, `category`, `tags_csv`, `start_date`, `end_date`, `location`, `city`, `include_past`, plus paging.
@@ -133,7 +133,8 @@ Sample credentials:
 - Public: `GET /api/public/events`, `GET /api/public/events/{id}` (rate-limited)
 - Profile: `GET /api/me/profile`, `PUT /api/me/profile` (supports `city`, `university`, `faculty`, `study_level`, `study_year`, `interest_tag_ids`)
 - Metadata: `GET /api/metadata/universities` (Romanian university catalog for UI dropdowns)
-- Admin: `POST /api/admin/events/{eventId}/registrations/{userId}/restore`
+- Admin: `GET /api/admin/stats`, `GET /api/admin/users`, `PATCH /api/admin/users/{userId}`, `GET /api/admin/events`,
+  `POST /api/admin/events/{eventId}/registrations/{userId}/restore`
 - Recommendations and search utilities are available under `/api/events` filters, plus calendar
   exports at `/api/me/calendar` for the current user.
 - Docs: Swagger at `/docs`, ReDoc at `/redoc`

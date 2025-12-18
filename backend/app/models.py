@@ -20,6 +20,7 @@ from .database import Base
 class UserRole(str, enum.Enum):
     student = "student"
     organizator = "organizator"
+    admin = "admin"
 
 
 class User(Base):
@@ -29,6 +30,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="true")
     full_name = Column(String(255))
     org_name = Column(String(255))
     org_description = Column(Text)

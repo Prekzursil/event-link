@@ -11,8 +11,8 @@ from pathlib import Path
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import func, text
-from sqlalchemy.orm import Session
+from sqlalchemy import func, text, case
+from sqlalchemy.orm import Session, joinedload
 
 from . import auth, models, schemas
 from . import ro_universities
@@ -246,6 +246,33 @@ def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.Pu
     )
 
 
+def _serialize_admin_event(event: models.Event, seats_taken: int) -> schemas.AdminEventResponse:
+    owner_email = event.owner.email if event.owner else "unknown@example.com"
+    owner_name = None
+    if event.owner:
+        owner_name = event.owner.org_name or event.owner.full_name or event.owner.email
+    return schemas.AdminEventResponse(
+        id=event.id,
+        title=event.title,
+        description=event.description,
+        category=event.category,
+        start_time=event.start_time,
+        end_time=event.end_time,
+        city=event.city,
+        location=event.location,
+        max_seats=event.max_seats,
+        cover_url=event.cover_url,
+        owner_id=event.owner_id,
+        owner_email=owner_email,
+        owner_name=owner_name,
+        tags=event.tags,
+        seats_taken=int(seats_taken or 0),
+        status=event.status,
+        publish_at=event.publish_at,
+        deleted_at=event.deleted_at,
+    )
+
+
 @app.post("/register", response_model=schemas.Token)
 def register(user: schemas.StudentRegister, request: Request, db: Session = Depends(get_db)):
     _enforce_rate_limit("register", request=request, identifier=user.email.lower())
@@ -292,6 +319,12 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: Session = D
             detail="Email sau parolă incorectă",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    if getattr(user, "is_active", True) is False:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat.")
+
+    user.last_seen_at = datetime.now(timezone.utc)
+    db.add(user)
+    db.commit()
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
@@ -359,22 +392,6 @@ def update_theme_preference(
     db.refresh(current_user)
     log_event("theme_preference_updated", user_id=current_user.id, theme_preference=current_user.theme_preference)
     return current_user
-
-
-@app.post("/organizer/upgrade")
-def upgrade_to_organizer(
-    request: schemas.OrganizerUpgradeRequest,
-    db: Session = Depends(get_db),
-    current_user: models.User = Depends(auth.get_current_user),
-):
-    if current_user.role == models.UserRole.organizator:
-        return {"status": "already_organizer"}
-    if not settings.organizer_invite_code or request.invite_code != settings.organizer_invite_code:
-        raise HTTPException(status_code=403, detail="Cod invalid sau lipsă.")
-    current_user.role = models.UserRole.organizator
-    db.add(current_user)
-    db.commit()
-    return {"status": "upgraded"}
 
 
 @app.get("/")
@@ -446,11 +463,13 @@ def _audit_log(
 
 
 def _is_admin(user: models.User) -> bool:
-    if not user or not user.email:
+    if not user:
         return False
-    if not settings.admin_emails:
-        return False
-    return user.email.strip().lower() in set(settings.admin_emails)
+    if getattr(user, "role", None) == models.UserRole.admin:
+        return True
+    if user.email and settings.admin_emails:
+        return user.email.strip().lower() in set(settings.admin_emails)
+    return False
 
 
 @app.get("/api/events", response_model=schemas.PaginatedEvents)
@@ -614,7 +633,7 @@ def get_event(event_id: int, db: Session = Depends(get_db), current_user: Option
     event, seats_taken = result
     now = datetime.now(timezone.utc)
     if (event.status != "published" or (event.publish_at and event.publish_at > now)) and not (
-        current_user and current_user.id == event.owner_id
+        current_user and (current_user.id == event.owner_id or _is_admin(current_user))
     ):
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
     is_registered = False
@@ -710,7 +729,7 @@ def update_event(
     )
     if not db_event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
-    if db_event.owner_id != current_user.id:
+    if db_event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați acest eveniment.")
 
     if update.title is not None:
@@ -753,7 +772,7 @@ def update_event(
 
     db.commit()
     db.refresh(db_event)
-    log_event("event_updated", event_id=db_event.id, owner_id=current_user.id)
+    log_event("event_updated", event_id=db_event.id, owner_id=db_event.owner_id, actor_user_id=current_user.id)
     seats_count = (
         db.query(func.count(models.Registration.id))
         .filter(models.Registration.event_id == db_event.id, models.Registration.deleted_at.is_(None))
@@ -771,7 +790,7 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
     )
     if not db_event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
-    if db_event.owner_id != current_user.id:
+    if db_event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să ștergeți acest eveniment.")
 
     now = datetime.now(timezone.utc)
@@ -808,7 +827,12 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
     )
 
     db.commit()
-    log_event("event_soft_deleted", event_id=db_event.id, owner_id=current_user.id)
+    log_event(
+        "event_soft_deleted",
+        event_id=db_event.id,
+        owner_id=db_event.owner_id,
+        actor_user_id=current_user.id,
+    )
     return
 
 
@@ -1264,7 +1288,7 @@ def event_participants(
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
-    if event.owner_id != current_user.id:
+    if event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să accesați acest eveniment.")
 
     sort_column = models.Registration.registration_time
@@ -1319,7 +1343,7 @@ def update_participant_attendance(
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există")
-    if event.owner_id != current_user.id:
+    if event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați acest eveniment.")
 
     registration = (
@@ -1337,7 +1361,14 @@ def update_participant_attendance(
     registration.attended = attended
     db.add(registration)
     db.commit()
-    log_event("attendance_updated", event_id=registration.event_id, user_id=user_id, owner_id=current_user.id, attended=attended)
+    log_event(
+        "attendance_updated",
+        event_id=registration.event_id,
+        user_id=user_id,
+        owner_id=event.owner_id,
+        actor_user_id=current_user.id,
+        attended=attended,
+    )
     return
 
 
@@ -1523,6 +1554,296 @@ def admin_restore_registration(
     db.commit()
     log_event("registration_restored", event_id=event_id, user_id=user_id, actor_user_id=current_user.id)
     return {"status": "restored"}
+
+
+@app.get("/api/admin/stats", response_model=schemas.AdminStatsResponse)
+def admin_stats(
+    days: int = 30,
+    top_tags_limit: int = 10,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    if days < 1 or days > 365:
+        raise HTTPException(status_code=400, detail="`days` trebuie să fie între 1 și 365.")
+    if top_tags_limit < 1 or top_tags_limit > 100:
+        raise HTTPException(status_code=400, detail="`top_tags_limit` trebuie să fie între 1 și 100.")
+
+    total_users = db.query(func.count(models.User.id)).scalar() or 0
+    total_events = db.query(func.count(models.Event.id)).filter(models.Event.deleted_at.is_(None)).scalar() or 0
+    total_registrations = (
+        db.query(func.count(models.Registration.id)).filter(models.Registration.deleted_at.is_(None)).scalar() or 0
+    )
+
+    start = datetime.now(timezone.utc) - timedelta(days=days)
+    reg_rows = (
+        db.query(
+            func.date(models.Registration.registration_time).label("day"),
+            func.count(models.Registration.id).label("registrations"),
+        )
+        .filter(models.Registration.deleted_at.is_(None), models.Registration.registration_time >= start)
+        .group_by("day")
+        .order_by("day")
+        .all()
+    )
+    registrations_by_day = [
+        schemas.RegistrationDayStat(date=str(row.day), registrations=int(row.registrations or 0)) for row in reg_rows
+    ]
+
+    tag_rows = (
+        db.query(
+            models.Tag.name.label("name"),
+            func.count(models.Registration.id).label("registrations"),
+            func.count(func.distinct(models.Event.id)).label("events"),
+        )
+        .select_from(models.Tag)
+        .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
+        .join(models.Event, models.Event.id == models.event_tags.c.event_id)
+        .outerjoin(
+            models.Registration,
+            (models.Registration.event_id == models.Event.id) & (models.Registration.deleted_at.is_(None)),
+        )
+        .filter(models.Event.deleted_at.is_(None))
+        .group_by(models.Tag.id, models.Tag.name)
+        .order_by(func.count(models.Registration.id).desc(), func.count(func.distinct(models.Event.id)).desc())
+        .limit(top_tags_limit)
+        .all()
+    )
+    top_tags = [
+        schemas.TagPopularityStat(
+            name=row.name,
+            registrations=int(row.registrations or 0),
+            events=int(row.events or 0),
+        )
+        for row in tag_rows
+    ]
+
+    return {
+        "total_users": int(total_users),
+        "total_events": int(total_events),
+        "total_registrations": int(total_registrations),
+        "registrations_by_day": registrations_by_day,
+        "top_tags": top_tags,
+    }
+
+
+@app.get("/api/admin/users", response_model=schemas.PaginatedAdminUsers)
+def admin_list_users(
+    search: Optional[str] = None,
+    role: Optional[models.UserRole] = None,
+    is_active: Optional[bool] = None,
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    if page < 1:
+        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+
+    filters = []
+    if search:
+        needle = f"%{search.strip().lower()}%"
+        filters.append(
+            (func.lower(models.User.email).like(needle))
+            | (func.lower(models.User.full_name).like(needle))
+            | (func.lower(models.User.org_name).like(needle))
+        )
+    if role:
+        filters.append(models.User.role == role)
+    if is_active is not None:
+        filters.append(models.User.is_active == is_active)
+
+    total = db.query(func.count(models.User.id)).filter(*filters).scalar() or 0
+
+    reg_counts = (
+        db.query(
+            models.Registration.user_id.label("user_id"),
+            func.count(models.Registration.id).label("registrations_count"),
+            func.coalesce(
+                func.sum(case((models.Registration.attended.is_(True), 1), else_=0)),
+                0,
+            ).label("attended_count"),
+        )
+        .filter(models.Registration.deleted_at.is_(None))
+        .group_by(models.Registration.user_id)
+        .subquery()
+    )
+    events_counts = (
+        db.query(
+            models.Event.owner_id.label("user_id"),
+            func.count(models.Event.id).label("events_created_count"),
+        )
+        .filter(models.Event.deleted_at.is_(None))
+        .group_by(models.Event.owner_id)
+        .subquery()
+    )
+
+    rows = (
+        db.query(
+            models.User,
+            func.coalesce(reg_counts.c.registrations_count, 0).label("registrations_count"),
+            func.coalesce(reg_counts.c.attended_count, 0).label("attended_count"),
+            func.coalesce(events_counts.c.events_created_count, 0).label("events_created_count"),
+        )
+        .outerjoin(reg_counts, reg_counts.c.user_id == models.User.id)
+        .outerjoin(events_counts, events_counts.c.user_id == models.User.id)
+        .filter(*filters)
+        .order_by(models.User.created_at.desc(), models.User.id.desc())
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
+    )
+
+    items: list[schemas.AdminUserResponse] = []
+    for user, registrations_count, attended_count, events_created_count in rows:
+        items.append(
+            schemas.AdminUserResponse(
+                id=user.id,
+                email=user.email,
+                role=user.role,
+                full_name=user.full_name,
+                org_name=user.org_name,
+                created_at=user.created_at,
+                last_seen_at=user.last_seen_at,
+                is_active=bool(user.is_active),
+                registrations_count=int(registrations_count or 0),
+                attended_count=int(attended_count or 0),
+                events_created_count=int(events_created_count or 0),
+            )
+        )
+
+    return {"items": items, "total": int(total), "page": page, "page_size": page_size}
+
+
+@app.patch("/api/admin/users/{user_id}", response_model=schemas.AdminUserResponse)
+def admin_update_user(
+    user_id: int,
+    payload: schemas.AdminUserUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    user = db.query(models.User).filter(models.User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=404, detail="Utilizatorul nu există.")
+
+    changed = False
+    if payload.role is not None:
+        user.role = payload.role
+        changed = True
+    if payload.is_active is not None:
+        user.is_active = payload.is_active
+        changed = True
+    if changed:
+        db.add(user)
+        db.commit()
+        db.refresh(user)
+        _audit_log(
+            db,
+            entity_type="user",
+            entity_id=user.id,
+            action="admin_update",
+            actor_user_id=current_user.id,
+            meta={"role": user.role.value, "is_active": bool(user.is_active)},
+        )
+        db.commit()
+
+    reg_counts = (
+        db.query(
+            models.Registration.user_id.label("user_id"),
+            func.count(models.Registration.id).label("registrations_count"),
+            func.coalesce(
+                func.sum(case((models.Registration.attended.is_(True), 1), else_=0)),
+                0,
+            ).label("attended_count"),
+        )
+        .filter(models.Registration.deleted_at.is_(None))
+        .group_by(models.Registration.user_id)
+        .subquery()
+    )
+    events_counts = (
+        db.query(
+            models.Event.owner_id.label("user_id"),
+            func.count(models.Event.id).label("events_created_count"),
+        )
+        .filter(models.Event.deleted_at.is_(None))
+        .group_by(models.Event.owner_id)
+        .subquery()
+    )
+
+    row = (
+        db.query(
+            models.User,
+            func.coalesce(reg_counts.c.registrations_count, 0).label("registrations_count"),
+            func.coalesce(reg_counts.c.attended_count, 0).label("attended_count"),
+            func.coalesce(events_counts.c.events_created_count, 0).label("events_created_count"),
+        )
+        .outerjoin(reg_counts, reg_counts.c.user_id == models.User.id)
+        .outerjoin(events_counts, events_counts.c.user_id == models.User.id)
+        .filter(models.User.id == user_id)
+        .first()
+    )
+    assert row is not None
+    user, registrations_count, attended_count, events_created_count = row
+    return schemas.AdminUserResponse(
+        id=user.id,
+        email=user.email,
+        role=user.role,
+        full_name=user.full_name,
+        org_name=user.org_name,
+        created_at=user.created_at,
+        last_seen_at=user.last_seen_at,
+        is_active=bool(user.is_active),
+        registrations_count=int(registrations_count or 0),
+        attended_count=int(attended_count or 0),
+        events_created_count=int(events_created_count or 0),
+    )
+
+
+@app.get("/api/admin/events", response_model=schemas.PaginatedAdminEvents)
+def admin_list_events(
+    search: Optional[str] = None,
+    category: Optional[str] = None,
+    city: Optional[str] = None,
+    status: Optional[str] = None,
+    include_deleted: bool = False,
+    page: int = 1,
+    page_size: int = 20,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    if page < 1:
+        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+    if page_size < 1 or page_size > 100:
+        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+
+    query = db.query(models.Event).options(joinedload(models.Event.owner), joinedload(models.Event.tags))
+    if not include_deleted:
+        query = query.filter(models.Event.deleted_at.is_(None))
+    if status:
+        if status not in {"draft", "published"}:
+            raise HTTPException(status_code=400, detail="Status invalid.")
+        query = query.filter(models.Event.status == status)
+    if category:
+        query = query.filter(func.lower(models.Event.category) == category.lower())
+    if city:
+        query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
+    if search:
+        needle = f"%{search.strip().lower()}%"
+        query = query.join(models.Event.owner).filter(
+            (func.lower(models.Event.title).like(needle))
+            | (func.lower(models.User.email).like(needle))
+            | (func.lower(models.User.org_name).like(needle))
+        )
+
+    total = query.count()
+
+    query = query.order_by(models.Event.start_time.desc(), models.Event.id.desc())
+    query, _ = _events_with_counts_query(db, query)
+    rows = query.offset((page - 1) * page_size).limit(page_size).all()
+
+    items = [_serialize_admin_event(event, seats_taken) for event, seats_taken in rows]
+    return {"items": items, "total": int(total), "page": page, "page_size": page_size}
 
 
 @app.post("/api/events/{event_id}/favorite", status_code=status.HTTP_201_CREATED)

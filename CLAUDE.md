@@ -150,7 +150,6 @@ start.bat  # Opens two terminals for backend + frontend
 - `POST /login` - User login (returns access + refresh tokens)
 - `POST /refresh` - Refresh access token
 - `GET /me` - Current user profile
-- `POST /organizer/upgrade` - Upgrade to organizer role
 - `POST /password/forgot` - Request password reset email
 - `POST /password/reset` - Confirm password reset
 
@@ -158,8 +157,8 @@ start.bat  # Opens two terminals for backend + frontend
 - `GET /api/events` - List events (filters: search, category, date_from, date_to, location, tags, skip, limit)
 - `GET /api/events/{id}` - Event details
 - `POST /api/events` - Create event (organizer only)
-- `PUT /api/events/{id}` - Update event (owner only)
-- `DELETE /api/events/{id}` - Delete event (owner only)
+- `PUT /api/events/{id}` - Update event (owner or admin)
+- `DELETE /api/events/{id}` - Delete event (owner or admin)
 - `POST /api/events/{id}/clone` - Clone event (organizer only)
 - `GET /api/events/{id}/ics` - Export event as iCalendar
 
@@ -167,8 +166,14 @@ start.bat  # Opens two terminals for backend + frontend
 - `POST /api/events/{id}/register` - Register for event
 - `POST /api/events/{id}/register/resend` - Resend registration email
 - `DELETE /api/events/{id}/register` - Unregister from event
-- `GET /api/organizer/events/{id}/participants` - List participants (organizer only)
-- `PUT /api/organizer/events/{id}/participants/{user_id}` - Update attendance
+- `GET /api/organizer/events/{id}/participants` - List participants (owner or admin)
+- `PUT /api/organizer/events/{id}/participants/{user_id}` - Update attendance (owner or admin)
+
+### Admin
+- `GET /api/admin/stats` - Summary stats (registrations over time, popular tags)
+- `GET /api/admin/users` - List users + stats
+- `PATCH /api/admin/users/{id}` - Update user role/active flag
+- `GET /api/admin/events` - List events (including unpublished/deleted with filters)
 
 ### User Events
 - `GET /api/me/events` - User's registered events

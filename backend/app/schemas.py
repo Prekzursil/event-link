@@ -52,11 +52,6 @@ class UserResponse(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
-
-class OrganizerUpgradeRequest(BaseModel):
-    invite_code: str
-
-
 class ThemePreferenceUpdate(BaseModel):
     theme_preference: ThemePreference
 
@@ -263,6 +258,79 @@ class StudentProfileUpdate(BaseModel):
     study_level: Optional[StudyLevel] = None
     study_year: Optional[int] = Field(default=None, ge=1, le=10)
     interest_tag_ids: Optional[List[int]] = None
+
+
+class AdminUserUpdate(BaseModel):
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    role: UserRole
+    full_name: Optional[str] = None
+    org_name: Optional[str] = None
+    created_at: datetime
+    last_seen_at: Optional[datetime] = None
+    is_active: bool
+    registrations_count: int = 0
+    attended_count: int = 0
+    events_created_count: int = 0
+
+
+class PaginatedAdminUsers(BaseModel):
+    items: List[AdminUserResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class AdminEventResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    max_seats: Optional[int] = None
+    cover_url: Optional[str] = None
+    owner_id: int
+    owner_email: EmailStr
+    owner_name: Optional[str] = None
+    tags: List[TagResponse] = []
+    seats_taken: int = 0
+    status: Optional[str] = None
+    publish_at: Optional[datetime] = None
+    deleted_at: Optional[datetime] = None
+
+
+class PaginatedAdminEvents(BaseModel):
+    items: List[AdminEventResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class RegistrationDayStat(BaseModel):
+    date: str
+    registrations: int
+
+
+class TagPopularityStat(BaseModel):
+    name: str
+    registrations: int
+    events: int
+
+
+class AdminStatsResponse(BaseModel):
+    total_users: int
+    total_events: int
+    total_registrations: int
+    registrations_by_day: List[RegistrationDayStat]
+    top_tags: List[TagPopularityStat]
 
 
 class PasswordResetRequest(BaseModel):

@@ -114,6 +114,11 @@ export const eventService = {
     await api.delete(`/api/events/${id}`);
   },
 
+  async restoreEvent(id: number): Promise<{ status: string; restored_registrations?: number }> {
+    const response = await api.post(`/api/events/${id}/restore`);
+    return response.data as { status: string; restored_registrations?: number };
+  },
+
   async cloneEvent(id: number): Promise<Event> {
     const response = await api.post<Event>(`/api/events/${id}/clone`);
     return response.data;

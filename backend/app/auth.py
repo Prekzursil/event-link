@@ -67,6 +67,8 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     user = db.query(models.User).filter(models.User.id == token_data.user_id).first()
     if user is None:
         raise credentials_exception
+    if getattr(user, "is_active", True) is False:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat.")
     return user
 
 
@@ -86,6 +88,20 @@ def require_student(user: models.User = Depends(get_current_user)):
 
 
 def require_organizer(user: models.User = Depends(get_current_user)):
-    if user.role != models.UserRole.organizator:
+    if user.role not in {models.UserRole.organizator, models.UserRole.admin}:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru organizatori.")
+    return user
+
+
+def is_admin(user: models.User) -> bool:
+    if user.role == models.UserRole.admin:
+        return True
+    if user.email and user.email.strip().lower() in set(settings.admin_emails or []):
+        return True
+    return False
+
+
+def require_admin(user: models.User = Depends(get_current_user)):
+    if not is_admin(user):
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru administratori.")
     return user
