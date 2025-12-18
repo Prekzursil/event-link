@@ -422,6 +422,14 @@ def _audit_log(
     )
 
 
+def _is_admin(user: models.User) -> bool:
+    if not user or not user.email:
+        return False
+    if not settings.admin_emails:
+        return False
+    return user.email.strip().lower() in set(settings.admin_emails)
+
+
 @app.get("/api/events", response_model=schemas.PaginatedEvents)
 def get_events(
     search: Optional[str] = None,
@@ -771,6 +779,70 @@ def delete_event(event_id: int, db: Session = Depends(get_db), current_user: mod
     return
 
 
+@app.post("/api/events/{event_id}/restore")
+def restore_event(
+    event_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    if not db_event or db_event.deleted_at is None:
+        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+
+    if not _is_admin(current_user):
+        if current_user.role != models.UserRole.organizator:
+            raise HTTPException(status_code=403, detail="Acces doar pentru organizatori.")
+        if db_event.owner_id != current_user.id:
+            raise HTTPException(status_code=403, detail="Nu aveți dreptul să restaurați acest eveniment.")
+
+    deleted_by_user_id = db_event.deleted_by_user_id
+    db_event.deleted_at = None
+    db_event.deleted_by_user_id = None
+
+    restored_registrations = 0
+    if deleted_by_user_id:
+        regs = (
+            db.query(models.Registration)
+            .filter(
+                models.Registration.event_id == db_event.id,
+                models.Registration.deleted_at.is_not(None),
+                models.Registration.deleted_by_user_id == deleted_by_user_id,
+            )
+            .all()
+        )
+        for reg in regs:
+            reg.deleted_at = None
+            reg.deleted_by_user_id = None
+            restored_registrations += 1
+            _audit_log(
+                db,
+                entity_type="registration",
+                entity_id=reg.id,
+                action="restored",
+                actor_user_id=current_user.id,
+                meta={"event_id": db_event.id, "reason": "event_restored"},
+            )
+
+    _audit_log(
+        db,
+        entity_type="event",
+        entity_id=db_event.id,
+        action="restored",
+        actor_user_id=current_user.id,
+        meta={"restored_registrations": restored_registrations},
+    )
+
+    db.commit()
+    log_event(
+        "event_restored",
+        event_id=db_event.id,
+        owner_id=db_event.owner_id,
+        actor_user_id=current_user.id,
+        restored_registrations=restored_registrations,
+    )
+    return {"status": "restored", "restored_registrations": restored_registrations}
+
+
 @app.post("/api/events/{event_id}/clone", response_model=schemas.EventResponse)
 def clone_event(
     event_id: int,
@@ -815,13 +887,14 @@ def clone_event(
 
 @app.get("/api/organizer/events", response_model=List[schemas.EventResponse])
 def organizer_events(
-    db: Session = Depends(get_db), current_user: models.User = Depends(auth.require_organizer)
+    include_deleted: bool = False,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_organizer),
 ):
-    base_query = (
-        db.query(models.Event)
-        .filter(models.Event.owner_id == current_user.id, models.Event.deleted_at.is_(None))
-        .order_by(models.Event.start_time)
-    )
+    base_query = db.query(models.Event).filter(models.Event.owner_id == current_user.id)
+    if not include_deleted:
+        base_query = base_query.filter(models.Event.deleted_at.is_(None))
+    base_query = base_query.order_by(models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, base_query)
     events = query.all()
     return [_serialize_event(event, seats) for event, seats in events]
@@ -1340,6 +1413,40 @@ def unregister_from_event(
     db.commit()
     log_event("event_unregistered", event_id=event.id, user_id=current_user.id)
     return
+
+
+@app.post("/api/admin/events/{event_id}/registrations/{user_id}/restore")
+def admin_restore_registration(
+    event_id: int,
+    user_id: int,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    if not _is_admin(current_user):
+        raise HTTPException(status_code=403, detail="Acces doar pentru administratori.")
+
+    registration = (
+        db.query(models.Registration)
+        .filter(models.Registration.event_id == event_id, models.Registration.user_id == user_id)
+        .first()
+    )
+    if not registration or registration.deleted_at is None:
+        raise HTTPException(status_code=404, detail="Participarea nu există.")
+
+    registration.deleted_at = None
+    registration.deleted_by_user_id = None
+    db.add(registration)
+    _audit_log(
+        db,
+        entity_type="registration",
+        entity_id=registration.id,
+        action="restored",
+        actor_user_id=current_user.id,
+        meta={"event_id": event_id, "user_id": user_id, "reason": "admin_restore"},
+    )
+    db.commit()
+    log_event("registration_restored", event_id=event_id, user_id=user_id, actor_user_id=current_user.id)
+    return {"status": "restored"}
 
 
 @app.post("/api/events/{event_id}/favorite", status_code=status.HTTP_201_CREATED)

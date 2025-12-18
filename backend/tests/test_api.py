@@ -157,6 +157,126 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
     assert len(audit) >= 2
 
 
+def test_restore_event_restores_event_and_registrations(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_organizer"]("restore-owner@test.ro", "organizer123")
+    organizer_token = helpers["login"]("restore-owner@test.ro", "organizer123")
+    create_resp = client.post(
+        "/api/events",
+        json={
+            "title": "Restore Me",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=2),
+            "location": "Loc",
+            "max_seats": 2,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](organizer_token),
+    )
+    event_id = create_resp.json()["id"]
+
+    student_token = helpers["register_student"]("restore-stud@test.ro")
+    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+
+    delete_resp = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token))
+    assert delete_resp.status_code == 204
+
+    visible = client.get("/api/organizer/events", headers=helpers["auth_header"](organizer_token)).json()
+    assert all(e["id"] != event_id for e in visible)
+    include_deleted = client.get(
+        "/api/organizer/events",
+        params={"include_deleted": "true"},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    assert any(e["id"] == event_id for e in include_deleted)
+
+    restore_resp = client.post(f"/api/events/{event_id}/restore", headers=helpers["auth_header"](organizer_token))
+    assert restore_resp.status_code == 200
+    assert restore_resp.json()["status"] == "restored"
+    assert restore_resp.json()["restored_registrations"] == 1
+
+    event = db.query(models.Event).filter(models.Event.id == event_id).first()
+    assert event is not None
+    assert event.deleted_at is None
+
+    reg = db.query(models.Registration).filter(models.Registration.event_id == event_id).first()
+    assert reg is not None
+    assert reg.deleted_at is None
+
+
+def test_restore_event_forbidden_for_other_organizer(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("owner@test.ro", "pass1")
+    helpers["make_organizer"]("other@test.ro", "pass2")
+    owner_token = helpers["login"]("owner@test.ro", "pass1")
+    other_token = helpers["login"]("other@test.ro", "pass2")
+    event_id = client.post(
+        "/api/events",
+        json={
+            "title": "Restore perms",
+            "description": "Desc",
+            "category": "Cat",
+            "start_time": helpers["future_time"](days=2),
+            "location": "Loc",
+            "max_seats": 2,
+            "tags": [],
+        },
+        headers=helpers["auth_header"](owner_token),
+    ).json()["id"]
+
+    client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](owner_token))
+    resp = client.post(f"/api/events/{event_id}/restore", headers=helpers["auth_header"](other_token))
+    assert resp.status_code == 403
+
+
+def test_admin_can_restore_registration(helpers):
+    from app.config import settings
+
+    client = helpers["client"]
+    db = helpers["db"]
+    old_admins = list(settings.admin_emails)
+    settings.admin_emails = ["admin@test.ro"]
+    try:
+        helpers["make_organizer"]("org@test.ro", "organizer123")
+        organizer_token = helpers["login"]("org@test.ro", "organizer123")
+        event_id = client.post(
+            "/api/events",
+            json={
+                "title": "Admin restore reg",
+                "description": "Desc",
+                "category": "Cat",
+                "start_time": helpers["future_time"](days=2),
+                "location": "Loc",
+                "max_seats": 2,
+                "tags": [],
+            },
+            headers=helpers["auth_header"](organizer_token),
+        ).json()["id"]
+
+        student_token = helpers["register_student"]("admin-restore-stud@test.ro")
+        client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+        client.delete(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+
+        student = db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
+        assert student is not None
+
+        helpers["make_organizer"]("admin@test.ro", "adminpass")
+        admin_token = helpers["login"]("admin@test.ro", "adminpass")
+        restore = client.post(
+            f"/api/admin/events/{event_id}/registrations/{student.id}/restore",
+            headers=helpers["auth_header"](admin_token),
+        )
+        assert restore.status_code == 200
+
+        reg = db.query(models.Registration).filter(models.Registration.event_id == event_id, models.Registration.user_id == student.id).first()
+        assert reg is not None
+        assert reg.deleted_at is None
+    finally:
+        settings.admin_emails = old_admins
+
+
 def test_reregister_after_unregister_restores_registration(helpers):
     client = helpers["client"]
     db = helpers["db"]

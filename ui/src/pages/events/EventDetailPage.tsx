@@ -5,7 +5,7 @@ import type { EventDetail } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { LoadingPage } from '@/components/ui/loading';
+import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -64,24 +64,23 @@ export function EventDetailPage() {
     if (!event) return;
 
     setIsRegistering(true);
+    const previous = event;
+    setEvent({
+      ...event,
+      is_registered: true,
+      seats_taken: event.seats_taken + 1,
+      available_seats:
+        typeof event.available_seats === 'number' ? event.available_seats - 1 : event.available_seats,
+    });
     try {
       await eventService.registerForEvent(event.id);
-      setEvent((prev) =>
-        prev
-          ? {
-              ...prev,
-              is_registered: true,
-              seats_taken: prev.seats_taken + 1,
-              available_seats: prev.available_seats !== undefined ? prev.available_seats - 1 : undefined,
-            }
-          : null
-      );
       toast({
         title: 'Înscriere reușită!',
         description: 'Te-ai înscris cu succes la acest eveniment.',
         variant: 'success' as const,
       });
     } catch (error: unknown) {
+      setEvent(previous);
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
         title: 'Eroare',
@@ -97,23 +96,22 @@ export function EventDetailPage() {
     if (!event) return;
 
     setIsRegistering(true);
+    const previous = event;
+    setEvent({
+      ...event,
+      is_registered: false,
+      seats_taken: Math.max(0, event.seats_taken - 1),
+      available_seats:
+        typeof event.available_seats === 'number' ? event.available_seats + 1 : event.available_seats,
+    });
     try {
       await eventService.unregisterFromEvent(event.id);
-      setEvent((prev) =>
-        prev
-          ? {
-              ...prev,
-              is_registered: false,
-              seats_taken: prev.seats_taken - 1,
-              available_seats: prev.available_seats !== undefined ? prev.available_seats + 1 : undefined,
-            }
-          : null
-      );
       toast({
         title: 'Dezabonare reușită',
         description: 'Te-ai dezabonat de la acest eveniment.',
       });
     } catch (error: unknown) {
+      setEvent(previous);
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
         title: 'Eroare',
@@ -226,7 +224,44 @@ export function EventDetailPage() {
   };
 
   if (isLoading) {
-    return <LoadingPage message="Se încarcă evenimentul..." />;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="mb-6 h-10 w-24" />
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Skeleton className="mb-6 aspect-video w-full rounded-xl" />
+
+            <div className="mb-6 space-y-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-10 w-3/4" />
+            </div>
+
+            <div className="mb-6 grid gap-4 sm:grid-cols-2">
+              <Skeleton className="h-[88px] rounded-lg" />
+              <Skeleton className="h-[88px] rounded-lg" />
+              <Skeleton className="h-[88px] rounded-lg" />
+              <Skeleton className="h-[88px] rounded-lg" />
+            </div>
+
+            <Separator className="my-6" />
+
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <Skeleton className="h-[320px] w-full rounded-xl" />
+            <Skeleton className="h-[56px] w-full rounded-xl" />
+            <Skeleton className="h-[120px] w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!event) {
@@ -234,7 +269,7 @@ export function EventDetailPage() {
   }
 
   const isPast = new Date(event.start_time) < new Date();
-  const isFull = event.available_seats !== undefined && event.available_seats <= 0;
+  const isFull = typeof event.available_seats === 'number' && event.available_seats <= 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -440,7 +475,7 @@ export function EventDetailPage() {
                   )}
 
                   {/* Available Seats */}
-                  {event.available_seats !== null && !isPast && (
+                  {typeof event.available_seats === 'number' && !isPast && (
                     <p className="text-center text-sm text-muted-foreground">
                       {event.available_seats} locuri disponibile
                     </p>

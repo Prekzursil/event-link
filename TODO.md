@@ -90,12 +90,12 @@
 - [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
 - [x] Public read-only events API with stricter rate limiting for third-party integrations.
 - [x] Searchable filter bar on event list (tags, category, date range, location).
-- [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
+- [x] Skeleton loaders and optimistic updates for event registration and attendance toggles.
 - [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
 - [x] Seed script: document usage in root README and add docker-compose helper (optional).
 - [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
-- [ ] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
-- [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
+- [x] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
+- [x] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
 - [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
 - [ ] Integration tests hitting a real test database (not just unit tests).
 - [ ] Contract tests around API schema to keep UI and backend in sync.
