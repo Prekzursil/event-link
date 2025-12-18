@@ -18,16 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { ArrowLeft, Save, X } from 'lucide-react';
-
-const CATEGORIES = [
-  'Technical',
-  'Cultural',
-  'Sports',
-  'Academic',
-  'Social',
-  'Workshop',
-  'Conference',
-];
+import { EVENT_CATEGORIES } from '@/lib/eventCategories';
 
 const formatDateTimeLocal = (dateString: string) => {
   const date = new Date(dateString);
@@ -287,7 +278,7 @@ export function EventFormPage() {
                     <SelectValue placeholder="Selectează categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    {CATEGORIES.map((cat) => (
+                    {EVENT_CATEGORIES.map((cat) => (
                       <SelectItem key={cat} value={cat}>
                         {cat}
                       </SelectItem>
