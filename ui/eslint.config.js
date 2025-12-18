@@ -18,7 +18,7 @@ export default defineConfig([
     rules: {
       'react-refresh/only-export-components': [
         'error',
-        { allowConstantExport: true, allowExportNames: ['useAuth', 'useTheme'] },
+        { allowConstantExport: true, allowExportNames: ['useAuth', 'useTheme', 'useI18n'] },
       ],
     },
     languageOptions: {

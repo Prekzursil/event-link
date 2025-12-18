@@ -12,6 +12,7 @@ import { Input } from '@/components/ui/input';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingPage } from '@/components/ui/loading';
+import { useI18n } from '@/contexts/LanguageContext';
 import type { AdminEvent, AdminStats, AdminUser, UserRole } from '@/types';
 import { formatDateTime } from '@/lib/utils';
 import { Edit, RefreshCw, RotateCcw, Trash2 } from 'lucide-react';
@@ -26,6 +27,7 @@ function roleBadgeVariant(role: UserRole): 'default' | 'secondary' | 'destructiv
 
 export function AdminDashboardPage() {
   const { toast } = useToast();
+  const { language, t } = useI18n();
   const [tab, setTab] = useState<AdminTab>('overview');
 
   const [stats, setStats] = useState<AdminStats | null>(null);
@@ -56,14 +58,14 @@ export function AdminDashboardPage() {
       setStats(data);
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut încărca statisticile admin.',
+        title: t.common.error,
+        description: t.adminDashboard.loadStatsErrorDescription,
         variant: 'destructive',
       });
     } finally {
       setIsLoadingStats(false);
     }
-  }, [toast]);
+  }, [t, toast]);
 
   const loadUsers = useCallback(
     async (page = usersPage) => {
@@ -82,15 +84,15 @@ export function AdminDashboardPage() {
         setUsersPage(data.page);
       } catch {
         toast({
-          title: 'Eroare',
-          description: 'Nu am putut încărca utilizatorii.',
+          title: t.common.error,
+          description: t.adminDashboard.loadUsersErrorDescription,
           variant: 'destructive',
         });
       } finally {
         setIsLoadingUsers(false);
       }
     },
-    [toast, usersActive, usersPage, usersPageSize, usersRole, usersSearch],
+    [t, toast, usersActive, usersPage, usersPageSize, usersRole, usersSearch],
   );
 
   const loadEvents = useCallback(
@@ -109,15 +111,15 @@ export function AdminDashboardPage() {
         setEventsPage(data.page);
       } catch {
         toast({
-          title: 'Eroare',
-          description: 'Nu am putut încărca evenimentele.',
+          title: t.common.error,
+          description: t.adminDashboard.loadEventsErrorDescription,
           variant: 'destructive',
         });
       } finally {
         setIsLoadingEvents(false);
       }
     },
-    [eventsIncludeDeleted, eventsPage, eventsPageSize, eventsSearch, eventsStatus, toast],
+    [eventsIncludeDeleted, eventsPage, eventsPageSize, eventsSearch, eventsStatus, t, toast],
   );
 
   useEffect(() => {
@@ -150,27 +152,27 @@ export function AdminDashboardPage() {
     try {
       const updated = await adminService.updateUser(userId, patch);
       setUsers((current) => current.map((u) => (u.id === userId ? updated : u)));
-      toast({ title: 'Salvat', description: 'Utilizator actualizat.' });
+      toast({ title: t.adminDashboard.userUpdatedTitle, description: t.adminDashboard.userUpdatedDescription });
     } catch {
       setUsers(prev);
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza utilizatorul.',
+        title: t.common.error,
+        description: t.adminDashboard.userUpdateErrorDescription,
         variant: 'destructive',
       });
     }
   };
 
   const handleDeleteEvent = async (eventId: number) => {
-    if (!confirm('Ștergi acest eveniment?')) return;
+    if (!confirm(t.adminDashboard.deleteConfirm)) return;
     try {
       await eventService.deleteEvent(eventId);
-      toast({ title: 'Succes', description: 'Eveniment șters.' });
+      toast({ title: t.common.success, description: t.adminDashboard.eventDeletedDescription });
       await loadEvents(eventsPage);
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut șterge evenimentul.',
+        title: t.common.error,
+        description: t.adminDashboard.eventDeleteErrorDescription,
         variant: 'destructive',
       });
     }
@@ -179,46 +181,52 @@ export function AdminDashboardPage() {
   const handleRestoreEvent = async (eventId: number) => {
     try {
       await eventService.restoreEvent(eventId);
-      toast({ title: 'Succes', description: 'Eveniment restaurat.' });
+      toast({ title: t.common.success, description: t.adminDashboard.eventRestoredDescription });
       await loadEvents(eventsPage);
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut restaura evenimentul.',
+        title: t.common.error,
+        description: t.adminDashboard.eventRestoreErrorDescription,
         variant: 'destructive',
       });
     }
   };
 
   if (!stats && isLoadingStats) {
-    return <LoadingPage message="Se încarcă dashboard-ul admin..." />;
+    return <LoadingPage message={t.adminDashboard.loading} />;
   }
+
+  const roleLabel: Record<UserRole, string> = {
+    student: t.adminDashboard.roles.student,
+    organizator: t.adminDashboard.roles.organizer,
+    admin: t.adminDashboard.roles.admin,
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8 flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Admin Dashboard</h1>
-          <p className="mt-2 text-muted-foreground">Monitorizare și management platformă</p>
+          <h1 className="text-3xl font-bold">{t.adminDashboard.title}</h1>
+          <p className="mt-2 text-muted-foreground">{t.adminDashboard.subtitle}</p>
         </div>
         <Button variant="outline" onClick={() => loadStats()} disabled={isLoadingStats}>
           <RefreshCw className="mr-2 h-4 w-4" />
-          Reîncarcă
+          {t.adminDashboard.reload}
         </Button>
       </div>
 
       <Tabs value={tab} onValueChange={(value) => setTab(value as AdminTab)}>
         <TabsList>
-          <TabsTrigger value="overview">Overview</TabsTrigger>
-          <TabsTrigger value="users">Utilizatori</TabsTrigger>
-          <TabsTrigger value="events">Evenimente</TabsTrigger>
+          <TabsTrigger value="overview">{t.adminDashboard.tabs.overview}</TabsTrigger>
+          <TabsTrigger value="users">{t.adminDashboard.tabs.users}</TabsTrigger>
+          <TabsTrigger value="events">{t.adminDashboard.tabs.events}</TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6 space-y-6">
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total utilizatori</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.adminDashboard.stats.totalUsers}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats?.total_users ?? 0}</div>
@@ -226,7 +234,7 @@ export function AdminDashboardPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total evenimente</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.adminDashboard.stats.totalEvents}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats?.total_events ?? 0}</div>
@@ -234,7 +242,7 @@ export function AdminDashboardPage() {
             </Card>
             <Card>
               <CardHeader className="pb-2">
-                <CardTitle className="text-sm font-medium">Total înscrieri</CardTitle>
+                <CardTitle className="text-sm font-medium">{t.adminDashboard.stats.totalRegistrations}</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="text-2xl font-bold">{stats?.total_registrations ?? 0}</div>
@@ -245,17 +253,17 @@ export function AdminDashboardPage() {
           <div className="grid gap-6 lg:grid-cols-2">
             <Card>
               <CardHeader>
-                <CardTitle>Înscrieri pe zile</CardTitle>
+                <CardTitle>{t.adminDashboard.registrationsByDay.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 {!stats?.registrations_by_day?.length ? (
-                  <p className="text-sm text-muted-foreground">Nu există date încă.</p>
+                  <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Zi</TableHead>
-                        <TableHead className="text-right">Înscrieri</TableHead>
+                        <TableHead>{t.adminDashboard.registrationsByDay.day}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.registrationsByDay.registrations}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -273,18 +281,18 @@ export function AdminDashboardPage() {
 
             <Card>
               <CardHeader>
-                <CardTitle>Top taguri</CardTitle>
+                <CardTitle>{t.adminDashboard.topTags.title}</CardTitle>
               </CardHeader>
               <CardContent>
                 {!stats?.top_tags?.length ? (
-                  <p className="text-sm text-muted-foreground">Nu există date încă.</p>
+                  <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>
                 ) : (
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Tag</TableHead>
-                        <TableHead className="text-right">Înscrieri</TableHead>
-                        <TableHead className="text-right">Evenimente</TableHead>
+                        <TableHead>{t.adminDashboard.topTags.tag}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.topTags.registrations}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.topTags.events}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -306,64 +314,68 @@ export function AdminDashboardPage() {
         <TabsContent value="users" className="mt-6 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Utilizatori</CardTitle>
+              <CardTitle>{t.adminDashboard.users.title}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
                 <div className="flex-1">
-                  <label className="mb-1 block text-sm font-medium">Caută</label>
-                  <Input value={usersSearch} onChange={(e) => setUsersSearch(e.target.value)} placeholder="email / nume" />
+                  <label className="mb-1 block text-sm font-medium">{t.adminDashboard.users.searchLabel}</label>
+                  <Input
+                    value={usersSearch}
+                    onChange={(e) => setUsersSearch(e.target.value)}
+                    placeholder={t.adminDashboard.users.searchPlaceholder}
+                  />
                 </div>
                 <div className="w-full md:w-56">
-                  <label className="mb-1 block text-sm font-medium">Rol</label>
+                  <label className="mb-1 block text-sm font-medium">{t.adminDashboard.users.roleLabel}</label>
                   <Select value={usersRole} onValueChange={(v) => setUsersRole(v as 'all' | UserRole)}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Toate" />
+                      <SelectValue placeholder={t.adminDashboard.users.all} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toate</SelectItem>
-                      <SelectItem value="student">Student</SelectItem>
-                      <SelectItem value="organizator">Organizator</SelectItem>
-                      <SelectItem value="admin">Admin</SelectItem>
+                      <SelectItem value="all">{t.adminDashboard.users.all}</SelectItem>
+                      <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+                      <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+                      <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="w-full md:w-56">
-                  <label className="mb-1 block text-sm font-medium">Status</label>
+                  <label className="mb-1 block text-sm font-medium">{t.adminDashboard.users.statusLabel}</label>
                   <Select value={usersActive} onValueChange={(v) => setUsersActive(v as 'all' | 'active' | 'inactive')}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Toate" />
+                      <SelectValue placeholder={t.adminDashboard.users.all} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toate</SelectItem>
-                      <SelectItem value="active">Active</SelectItem>
-                      <SelectItem value="inactive">Dezactivate</SelectItem>
+                      <SelectItem value="all">{t.adminDashboard.users.all}</SelectItem>
+                      <SelectItem value="active">{t.adminDashboard.users.statusActive}</SelectItem>
+                      <SelectItem value="inactive">{t.adminDashboard.users.statusInactive}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
                 <Button onClick={() => loadUsers(1)} disabled={isLoadingUsers}>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Aplică
+                  {t.adminDashboard.users.apply}
                 </Button>
               </div>
 
               {isLoadingUsers ? (
-                <LoadingPage message="Se încarcă utilizatorii..." />
+                <LoadingPage message={t.adminDashboard.users.loading} />
               ) : users.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Niciun utilizator găsit.</p>
+                <p className="text-sm text-muted-foreground">{t.adminDashboard.users.empty}</p>
               ) : (
                 <>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Email</TableHead>
-                        <TableHead>Rol</TableHead>
-                        <TableHead>Activ</TableHead>
-                        <TableHead>Creat</TableHead>
-                        <TableHead>Ultima activitate</TableHead>
-                        <TableHead className="text-right">Înscrieri</TableHead>
-                        <TableHead className="text-right">Prezențe</TableHead>
-                        <TableHead className="text-right">Evenimente</TableHead>
+                        <TableHead>{t.adminDashboard.users.table.email}</TableHead>
+                        <TableHead>{t.adminDashboard.users.table.role}</TableHead>
+                        <TableHead>{t.adminDashboard.users.table.active}</TableHead>
+                        <TableHead>{t.adminDashboard.users.table.created}</TableHead>
+                        <TableHead>{t.adminDashboard.users.table.lastSeen}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.users.table.registrations}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.users.table.attendances}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.users.table.events}</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -375,7 +387,7 @@ export function AdminDashboardPage() {
                           </TableCell>
                           <TableCell>
                             <div className="flex items-center gap-2">
-                              <Badge variant={roleBadgeVariant(u.role)}>{u.role}</Badge>
+                              <Badge variant={roleBadgeVariant(u.role)}>{roleLabel[u.role]}</Badge>
                               <Select
                                 value={u.role}
                                 onValueChange={(value) =>
@@ -386,9 +398,9 @@ export function AdminDashboardPage() {
                                   <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
-                                  <SelectItem value="student">Student</SelectItem>
-                                  <SelectItem value="organizator">Organizator</SelectItem>
-                                  <SelectItem value="admin">Admin</SelectItem>
+                                  <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+                                  <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+                                  <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
                                 </SelectContent>
                               </Select>
                             </div>
@@ -401,8 +413,8 @@ export function AdminDashboardPage() {
                               }
                             />
                           </TableCell>
-                          <TableCell>{formatDateTime(u.created_at)}</TableCell>
-                          <TableCell>{u.last_seen_at ? formatDateTime(u.last_seen_at) : '-'}</TableCell>
+                          <TableCell>{formatDateTime(u.created_at, language)}</TableCell>
+                          <TableCell>{u.last_seen_at ? formatDateTime(u.last_seen_at, language) : '-'}</TableCell>
                           <TableCell className="text-right">{u.registrations_count}</TableCell>
                           <TableCell className="text-right">{u.attended_count}</TableCell>
                           <TableCell className="text-right">{u.events_created_count}</TableCell>
@@ -413,7 +425,7 @@ export function AdminDashboardPage() {
 
                   <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      Pagina {usersPage} / {totalUserPages} • Total {usersTotal}
+                      {t.adminDashboard.pagination.page} {usersPage} / {totalUserPages} • {t.adminDashboard.pagination.total} {usersTotal}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -422,7 +434,7 @@ export function AdminDashboardPage() {
                         disabled={usersPage <= 1}
                         onClick={() => loadUsers(usersPage - 1)}
                       >
-                        Înapoi
+                        {t.adminDashboard.pagination.prev}
                       </Button>
                       <Button
                         variant="outline"
@@ -430,7 +442,7 @@ export function AdminDashboardPage() {
                         disabled={usersPage >= totalUserPages}
                         onClick={() => loadUsers(usersPage + 1)}
                       >
-                        Înainte
+                        {t.adminDashboard.pagination.next}
                       </Button>
                     </div>
                   </div>
@@ -443,24 +455,28 @@ export function AdminDashboardPage() {
         <TabsContent value="events" className="mt-6 space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>Evenimente</CardTitle>
+              <CardTitle>{t.adminDashboard.events.title}</CardTitle>
             </CardHeader>
             <CardContent>
               <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
                 <div className="flex-1">
-                  <label className="mb-1 block text-sm font-medium">Caută</label>
-                  <Input value={eventsSearch} onChange={(e) => setEventsSearch(e.target.value)} placeholder="titlu / owner" />
+                  <label className="mb-1 block text-sm font-medium">{t.adminDashboard.events.searchLabel}</label>
+                  <Input
+                    value={eventsSearch}
+                    onChange={(e) => setEventsSearch(e.target.value)}
+                    placeholder={t.adminDashboard.events.searchPlaceholder}
+                  />
                 </div>
                 <div className="w-full md:w-56">
-                  <label className="mb-1 block text-sm font-medium">Status</label>
+                  <label className="mb-1 block text-sm font-medium">{t.adminDashboard.events.statusLabel}</label>
                   <Select value={eventsStatus} onValueChange={(v) => setEventsStatus(v as 'all' | 'draft' | 'published')}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Toate" />
+                      <SelectValue placeholder={t.adminDashboard.events.statusAll} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Toate</SelectItem>
-                      <SelectItem value="published">Published</SelectItem>
-                      <SelectItem value="draft">Draft</SelectItem>
+                      <SelectItem value="all">{t.adminDashboard.events.statusAll}</SelectItem>
+                      <SelectItem value="published">{t.adminDashboard.events.statusPublished}</SelectItem>
+                      <SelectItem value="draft">{t.adminDashboard.events.statusDraft}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -469,35 +485,37 @@ export function AdminDashboardPage() {
                     checked={eventsIncludeDeleted}
                     onCheckedChange={(checked) => setEventsIncludeDeleted(Boolean(checked))}
                   />
-                  <span className="text-sm">Include șterse</span>
+                  <span className="text-sm">{t.adminDashboard.events.includeDeleted}</span>
                 </div>
                 <Button onClick={() => loadEvents(1)} disabled={isLoadingEvents}>
                   <RefreshCw className="mr-2 h-4 w-4" />
-                  Aplică
+                  {t.adminDashboard.events.apply}
                 </Button>
               </div>
 
               {isLoadingEvents ? (
-                <LoadingPage message="Se încarcă evenimentele..." />
+                <LoadingPage message={t.adminDashboard.events.loading} />
               ) : events.length === 0 ? (
-                <p className="text-sm text-muted-foreground">Niciun eveniment găsit.</p>
+                <p className="text-sm text-muted-foreground">{t.adminDashboard.events.empty}</p>
               ) : (
                 <>
                   <Table>
                     <TableHeader>
                       <TableRow>
-                        <TableHead>Titlu</TableHead>
-                        <TableHead>Oraș</TableHead>
-                        <TableHead>Dată</TableHead>
-                        <TableHead>Owner</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead className="text-right">Locuri</TableHead>
+                        <TableHead>{t.adminDashboard.events.table.title}</TableHead>
+                        <TableHead>{t.adminDashboard.events.table.city}</TableHead>
+                        <TableHead>{t.adminDashboard.events.table.date}</TableHead>
+                        <TableHead>{t.adminDashboard.events.table.owner}</TableHead>
+                        <TableHead>{t.adminDashboard.events.table.status}</TableHead>
+                        <TableHead className="text-right">{t.adminDashboard.events.table.seats}</TableHead>
                         <TableHead className="w-[160px]"></TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {events.map((e) => {
                         const deleted = Boolean(e.deleted_at);
+                        const statusLabel =
+                          e.status === 'draft' ? t.adminDashboard.events.statusDraft : t.adminDashboard.events.statusPublished;
                         return (
                           <TableRow key={e.id} className={deleted ? 'opacity-70' : undefined}>
                             <TableCell>
@@ -506,12 +524,12 @@ export function AdminDashboardPage() {
                               </Link>
                               {deleted && (
                                 <Badge className="ml-2" variant="destructive">
-                                  deleted
+                                  {t.adminDashboard.events.deletedBadge}
                                 </Badge>
                               )}
                             </TableCell>
                             <TableCell>{e.city || '-'}</TableCell>
-                            <TableCell>{formatDateTime(e.start_time)}</TableCell>
+                            <TableCell>{formatDateTime(e.start_time, language)}</TableCell>
                             <TableCell>
                               <div className="text-sm">{e.owner_email}</div>
                               {e.owner_name && (
@@ -520,7 +538,7 @@ export function AdminDashboardPage() {
                             </TableCell>
                             <TableCell>
                               <Badge variant={e.status === 'draft' ? 'secondary' : 'default'}>
-                                {e.status || 'published'}
+                                {statusLabel}
                               </Badge>
                             </TableCell>
                             <TableCell className="text-right">
@@ -531,7 +549,7 @@ export function AdminDashboardPage() {
                                 <Button asChild variant="outline" size="sm" disabled={deleted}>
                                   <Link to={`/organizer/events/${e.id}/edit`}>
                                     <Edit className="mr-2 h-4 w-4" />
-                                    Edit
+                                    {t.adminDashboard.events.actions.edit}
                                   </Link>
                                 </Button>
                                 {deleted ? (
@@ -541,7 +559,7 @@ export function AdminDashboardPage() {
                                     onClick={() => handleRestoreEvent(e.id)}
                                   >
                                     <RotateCcw className="mr-2 h-4 w-4" />
-                                    Restore
+                                    {t.adminDashboard.events.actions.restore}
                                   </Button>
                                 ) : (
                                   <Button
@@ -550,7 +568,7 @@ export function AdminDashboardPage() {
                                     onClick={() => handleDeleteEvent(e.id)}
                                   >
                                     <Trash2 className="mr-2 h-4 w-4" />
-                                    Delete
+                                    {t.adminDashboard.events.actions.delete}
                                   </Button>
                                 )}
                               </div>
@@ -563,7 +581,7 @@ export function AdminDashboardPage() {
 
                   <div className="mt-4 flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">
-                      Pagina {eventsPage} / {totalEventPages} • Total {eventsTotal}
+                      {t.adminDashboard.pagination.page} {eventsPage} / {totalEventPages} • {t.adminDashboard.pagination.total} {eventsTotal}
                     </p>
                     <div className="flex gap-2">
                       <Button
@@ -572,7 +590,7 @@ export function AdminDashboardPage() {
                         disabled={eventsPage <= 1}
                         onClick={() => loadEvents(eventsPage - 1)}
                       >
-                        Înapoi
+                        {t.adminDashboard.pagination.prev}
                       </Button>
                       <Button
                         variant="outline"
@@ -580,7 +598,7 @@ export function AdminDashboardPage() {
                         disabled={eventsPage >= totalEventPages}
                         onClick={() => loadEvents(eventsPage + 1)}
                       >
-                        Înainte
+                        {t.adminDashboard.pagination.next}
                       </Button>
                     </div>
                   </div>
@@ -593,4 +611,3 @@ export function AdminDashboardPage() {
     </div>
   );
 }
-

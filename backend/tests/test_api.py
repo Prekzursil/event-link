@@ -58,6 +58,39 @@ def test_theme_preference_rejects_invalid_value(helpers):
     assert resp.status_code == 422
 
 
+def test_language_preference_default_and_update(helpers):
+    client = helpers["client"]
+    token = helpers["register_student"]("lang@test.ro")
+
+    me = client.get("/me", headers=helpers["auth_header"](token))
+    assert me.status_code == 200
+    assert me.json()["language_preference"] == "system"
+
+    update = client.put(
+        "/api/me/language",
+        json={"language_preference": "en"},
+        headers=helpers["auth_header"](token),
+    )
+    assert update.status_code == 200
+    assert update.json()["language_preference"] == "en"
+
+    me2 = client.get("/me", headers=helpers["auth_header"](token))
+    assert me2.status_code == 200
+    assert me2.json()["language_preference"] == "en"
+
+
+def test_language_preference_rejects_invalid_value(helpers):
+    client = helpers["client"]
+    token = helpers["register_student"]("lang-bad@test.ro")
+
+    resp = client.put(
+        "/api/me/language",
+        json={"language_preference": "fr"},
+        headers=helpers["auth_header"](token),
+    )
+    assert resp.status_code == 422
+
+
 def test_student_profile_updates_academic_fields(helpers):
     client = helpers["client"]
     token = helpers["register_student"]("profile@test.ro")
@@ -782,10 +815,13 @@ def test_recommendations_boosts_user_city(helpers):
         headers=helpers["auth_header"](student_token),
     )
 
-    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    rec = client.get(
+        "/api/recommendations",
+        headers={**helpers["auth_header"](student_token), "Accept-Language": "ro"},
+    ).json()
     assert len(rec) >= 2
     assert rec[0]["id"] == local["id"]
-    assert "Near you" in (rec[0].get("recommendation_reason") or "")
+    assert "În apropiere" in (rec[0].get("recommendation_reason") or "")
 
 
 def test_my_events_and_registration_state(helpers):
@@ -901,9 +937,12 @@ def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
     )
     assert update.status_code == 200
 
-    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    rec = client.get(
+        "/api/recommendations",
+        headers={**helpers["auth_header"](student_token), "Accept-Language": "ro"},
+    ).json()
     assert any(e["id"] == rock_event["id"] for e in rec)
-    assert "Your interests" in (rec[0].get("recommendation_reason") or "")
+    assert "Interesele tale" in (rec[0].get("recommendation_reason") or "")
 
 
 def test_duplicate_registration_blocked(helpers):

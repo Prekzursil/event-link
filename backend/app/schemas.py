@@ -5,6 +5,7 @@ from .models import UserRole
 
 
 ThemePreference = Literal["system", "light", "dark"]
+LanguagePreference = Literal["system", "ro", "en"]
 StudyLevel = Literal["bachelor", "master", "phd", "medicine"]
 
 
@@ -49,11 +50,15 @@ class UserLogin(BaseModel):
 class UserResponse(UserBase):
     id: int
     theme_preference: ThemePreference = "system"
+    language_preference: LanguagePreference = "system"
 
     model_config = ConfigDict(from_attributes=True)
 
 class ThemePreferenceUpdate(BaseModel):
     theme_preference: ThemePreference
+
+class LanguagePreferenceUpdate(BaseModel):
+    language_preference: LanguagePreference
 
 
 class Token(BaseModel):

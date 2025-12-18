@@ -8,6 +8,7 @@ import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/LanguageContext';
 import {
   Calendar,
   Clock,
@@ -21,7 +22,8 @@ import {
   ExternalLink,
   Copy,
 } from 'lucide-react';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, formatTime, cn } from '@/lib/utils';
+import { getEventCategoryLabel } from '@/lib/eventCategories';
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -34,6 +36,7 @@ export function EventDetailPage() {
   const [isCloning, setIsCloning] = useState(false);
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
+  const { language, t } = useI18n();
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -44,8 +47,8 @@ export function EventDetailPage() {
         setEvent(data);
       } catch {
         toast({
-          title: 'Eroare',
-          description: 'Evenimentul nu a fost găsit',
+          title: t.eventDetail.notFoundTitle,
+          description: t.eventDetail.notFoundDescription,
           variant: 'destructive',
         });
         navigate('/');
@@ -54,7 +57,7 @@ export function EventDetailPage() {
       }
     };
     loadEvent();
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, t]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) {
@@ -75,16 +78,16 @@ export function EventDetailPage() {
     try {
       await eventService.registerForEvent(event.id);
       toast({
-        title: 'Înscriere reușită!',
-        description: 'Te-ai înscris cu succes la acest eveniment.',
+        title: t.eventDetail.registerSuccessTitle,
+        description: t.eventDetail.registerSuccessDescription,
         variant: 'success' as const,
       });
     } catch (error: unknown) {
       setEvent(previous);
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut finaliza înscrierea',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.registerErrorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -107,15 +110,15 @@ export function EventDetailPage() {
     try {
       await eventService.unregisterFromEvent(event.id);
       toast({
-        title: 'Dezabonare reușită',
-        description: 'Te-ai dezabonat de la acest eveniment.',
+        title: t.eventDetail.unregisterSuccessTitle,
+        description: t.eventDetail.unregisterSuccessDescription,
       });
     } catch (error: unknown) {
       setEvent(previous);
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut finaliza dezabonarea',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.unregisterErrorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -130,15 +133,15 @@ export function EventDetailPage() {
     try {
       await eventService.resendRegistrationEmail(event.id);
       toast({
-        title: 'Email trimis',
-        description: 'Am retrimis emailul de confirmare pentru acest eveniment.',
+        title: t.eventDetail.resendSuccessTitle,
+        description: t.eventDetail.resendSuccessDescription,
         variant: 'success' as const,
       });
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut retrimite emailul',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.resendErrorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -163,8 +166,8 @@ export function EventDetailPage() {
       setEvent((prev) => (prev ? { ...prev, is_favorite: !prev.is_favorite } : null));
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza favoritele',
+        title: t.eventDetail.favoritesErrorTitle,
+        description: t.eventDetail.favoritesErrorDescription,
         variant: 'destructive',
       });
     } finally {
@@ -187,8 +190,8 @@ export function EventDetailPage() {
     } else {
       await navigator.clipboard.writeText(url);
       toast({
-        title: 'Link copiat!',
-        description: 'Link-ul a fost copiat în clipboard.',
+        title: t.eventDetail.shareCopiedTitle,
+        description: t.eventDetail.shareCopiedDescription,
       });
     }
   };
@@ -205,8 +208,8 @@ export function EventDetailPage() {
     try {
       const clonedEvent = await eventService.cloneEvent(event.id);
       toast({
-        title: 'Eveniment duplicat!',
-        description: 'Vei fi redirecționat către pagina de editare.',
+        title: t.eventDetail.cloneSuccessTitle,
+        description: t.eventDetail.cloneSuccessDescription,
         variant: 'success' as const,
       });
       // Navigate to edit the cloned event
@@ -214,8 +217,8 @@ export function EventDetailPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut duplica evenimentul',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.cloneErrorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -276,7 +279,7 @@ export function EventDetailPage() {
       {/* Back Button */}
       <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Înapoi
+        {t.eventDetail.back}
       </Button>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -302,9 +305,9 @@ export function EventDetailPage() {
 
             {/* Status Badges */}
             <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-              {event.status === 'draft' && <Badge variant="secondary">Draft</Badge>}
-              {isPast && <Badge variant="secondary">Încheiat</Badge>}
-              {isFull && !isPast && <Badge variant="destructive">Complet</Badge>}
+              {event.status === 'draft' && <Badge variant="secondary">{t.eventDetail.draft}</Badge>}
+              {isPast && <Badge variant="secondary">{t.eventDetail.ended}</Badge>}
+              {isFull && !isPast && <Badge variant="destructive">{t.eventDetail.full}</Badge>}
             </div>
           </div>
 
@@ -312,7 +315,7 @@ export function EventDetailPage() {
           <div className="mb-6">
             {event.category && (
               <Badge variant="outline" className="mb-2">
-                {event.category}
+                {getEventCategoryLabel(event.category, language)}
               </Badge>
             )}
             <h1 className="text-3xl font-bold">{event.title}</h1>
@@ -323,24 +326,17 @@ export function EventDetailPage() {
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Calendar className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Data</p>
-                <p className="font-medium">{formatDate(event.start_time)}</p>
+                <p className="text-sm text-muted-foreground">{t.eventDetail.dateLabel}</p>
+                <p className="font-medium">{formatDate(event.start_time, language)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Clock className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Ora</p>
+                <p className="text-sm text-muted-foreground">{t.eventDetail.timeLabel}</p>
                 <p className="font-medium">
-                  {new Date(event.start_time).toLocaleTimeString('ro-RO', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {event.end_time &&
-                    ` - ${new Date(event.end_time).toLocaleTimeString('ro-RO', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}`}
+                  {formatTime(event.start_time, language)}
+                  {event.end_time && ` - ${formatTime(event.end_time, language)}`}
                 </p>
               </div>
             </div>
@@ -348,7 +344,7 @@ export function EventDetailPage() {
               <div className="flex items-center gap-3 rounded-lg border p-4">
                 <MapPin className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Locație</p>
+                  <p className="text-sm text-muted-foreground">{t.eventDetail.locationLabel}</p>
                   <p className="font-medium">
                     {[event.city, event.location].filter(Boolean).join(' • ')}
                   </p>
@@ -358,10 +354,10 @@ export function EventDetailPage() {
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Users className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Participanți</p>
+                <p className="text-sm text-muted-foreground">{t.eventDetail.participantsLabel}</p>
                 <p className="font-medium">
                   {event.seats_taken}
-                  {event.max_seats && ` / ${event.max_seats}`} locuri ocupate
+                  {event.max_seats && ` / ${event.max_seats}`} {t.eventDetail.seatsTakenSuffix}
                 </p>
               </div>
             </div>
@@ -371,13 +367,13 @@ export function EventDetailPage() {
 
           {/* Description */}
           <div className="mb-6">
-            <h2 className="mb-4 text-xl font-semibold">Descriere</h2>
+            <h2 className="mb-4 text-xl font-semibold">{t.eventDetail.descriptionTitle}</h2>
             <div className="prose prose-neutral dark:prose-invert max-w-none">
               {event.description ? (
                 <p className="whitespace-pre-wrap">{event.description}</p>
               ) : (
                 <p className="text-muted-foreground">
-                  Nu există o descriere pentru acest eveniment.
+                  {t.eventDetail.descriptionEmpty}
                 </p>
               )}
             </div>
@@ -386,7 +382,7 @@ export function EventDetailPage() {
           {/* Tags */}
           {event.tags.length > 0 && (
             <div className="mb-6">
-              <h2 className="mb-4 text-xl font-semibold">Etichete</h2>
+              <h2 className="mb-4 text-xl font-semibold">{t.eventDetail.tagsTitle}</h2>
               <div className="flex flex-wrap gap-2">
                 {event.tags.map((tag) => (
                   <Badge key={tag.id} variant="secondary">
@@ -403,21 +399,21 @@ export function EventDetailPage() {
           <div className="sticky top-24 space-y-6">
             {/* Registration Card */}
             <div className="rounded-xl border p-6">
-              <h3 className="mb-4 text-lg font-semibold">Înregistrare</h3>
+              <h3 className="mb-4 text-lg font-semibold">{t.eventDetail.registrationTitle}</h3>
 
               {event.is_owner ? (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Ești organizatorul acestui eveniment.
+                    {t.eventDetail.ownerNote}
                   </p>
                   <Button asChild className="w-full">
                     <Link to={`/organizer/events/${event.id}/edit`}>
-                      Editează evenimentul
+                      {t.eventDetail.editEvent}
                     </Link>
                   </Button>
                   <Button asChild variant="outline" className="w-full">
                     <Link to={`/organizer/events/${event.id}/participants`}>
-                      Vezi participanții
+                      {t.eventDetail.viewParticipants}
                     </Link>
                   </Button>
                   <Button 
@@ -427,7 +423,7 @@ export function EventDetailPage() {
                     disabled={isCloning}
                   >
                     <Copy className="mr-2 h-4 w-4" />
-                    {isCloning ? 'Se duplică...' : 'Duplică evenimentul'}
+                    {isCloning ? t.eventDetail.cloning : t.eventDetail.cloneEvent}
                   </Button>
                 </div>
               ) : (
@@ -436,7 +432,7 @@ export function EventDetailPage() {
                     <>
                       <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
                         <p className="font-medium text-green-700 dark:text-green-400">
-                          ✓ Ești înscris la acest eveniment
+                          {t.eventDetail.registeredOk}
                         </p>
                       </div>
                       <Button
@@ -445,7 +441,7 @@ export function EventDetailPage() {
                         onClick={handleResendRegistrationEmail}
                         disabled={isResendingEmail}
                       >
-                        {isResendingEmail ? 'Se trimite...' : 'Retrimite email de confirmare'}
+                        {isResendingEmail ? t.eventDetail.resendingEmail : t.eventDetail.resendEmail}
                       </Button>
                       {!isPast && (
                         <Button
@@ -454,17 +450,17 @@ export function EventDetailPage() {
                           onClick={handleUnregister}
                           disabled={isRegistering}
                         >
-                          Dezabonare
+                          {t.eventDetail.unregister}
                         </Button>
                       )}
                     </>
                   ) : isPast ? (
                     <p className="text-center text-muted-foreground">
-                      Acest eveniment s-a încheiat
+                      {t.eventDetail.eventEndedText}
                     </p>
                   ) : isFull ? (
                     <p className="text-center text-destructive">
-                      Nu mai sunt locuri disponibile
+                      {t.eventDetail.eventFullText}
                     </p>
                   ) : (
                     <Button
@@ -472,14 +468,14 @@ export function EventDetailPage() {
                       onClick={handleRegister}
                       disabled={isRegistering}
                     >
-                      {isRegistering ? 'Se înscrie...' : 'Înscrie-te la eveniment'}
+                      {isRegistering ? t.eventDetail.registering : t.eventDetail.register}
                     </Button>
                   )}
 
                   {/* Available Seats */}
                   {typeof event.available_seats === 'number' && !isPast && (
                     <p className="text-center text-sm text-muted-foreground">
-                      {event.available_seats} locuri disponibile
+                      {event.available_seats} {t.eventDetail.seatsAvailableSuffix}
                     </p>
                   )}
                 </div>
@@ -502,13 +498,13 @@ export function EventDetailPage() {
               </Button>
               <Button variant="outline" className="flex-1" onClick={handleExportCalendar}>
                 <CalendarPlus className="mr-2 h-4 w-4" />
-                Adaugă în calendar
+                {t.eventDetail.addToCalendar}
               </Button>
             </div>
 
             {/* Organizer Info */}
             <div className="rounded-xl border p-6">
-              <h3 className="mb-4 text-lg font-semibold">Organizator</h3>
+              <h3 className="mb-4 text-lg font-semibold">{t.eventDetail.organizerTitle}</h3>
               <Link
                 to={`/organizers/${event.owner_id}`}
                 className="flex items-center gap-3 hover:underline"
@@ -517,8 +513,8 @@ export function EventDetailPage() {
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">{event.owner_name || 'Organizator'}</p>
-                  <p className="text-sm text-muted-foreground">Vezi profilul</p>
+                  <p className="font-medium">{event.owner_name || t.eventDetail.organizerFallback}</p>
+                  <p className="text-sm text-muted-foreground">{t.eventDetail.viewProfile}</p>
                 </div>
                 <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
               </Link>

@@ -394,6 +394,24 @@ def update_theme_preference(
     return current_user
 
 
+@app.put("/api/me/language", response_model=schemas.UserResponse)
+def update_language_preference(
+    payload: schemas.LanguagePreferenceUpdate,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.get_current_user),
+):
+    current_user.language_preference = payload.language_preference
+    db.add(current_user)
+    db.commit()
+    db.refresh(current_user)
+    log_event(
+        "language_preference_updated",
+        user_id=current_user.id,
+        language_preference=current_user.language_preference,
+    )
+    return current_user
+
+
 @app.get("/")
 def read_root():
     return {"message": "Hello from Event Link API!"}
@@ -1428,7 +1446,9 @@ def register_for_event(
     db.commit()
     log_event("event_registered", event_id=event.id, user_id=current_user.id)
 
-    lang = (request.headers.get("accept-language") if request else None) or "ro"
+    lang = current_user.language_preference
+    if not lang or lang == "system":
+        lang = (request.headers.get("accept-language") if request else None) or "ro"
     subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
     send_email_async(
         background_tasks,
@@ -1466,7 +1486,9 @@ def resend_registration_email(
     if not registration:
         raise HTTPException(status_code=400, detail="Nu ești înscris la acest eveniment.")
 
-    lang = (request.headers.get("accept-language") or "ro")
+    lang = current_user.language_preference
+    if not lang or lang == "system":
+        lang = request.headers.get("accept-language") or "ro"
     subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
     send_email_async(
         background_tasks,
@@ -1924,9 +1946,15 @@ def my_events(db: Session = Depends(get_db), current_user: models.User = Depends
 
 @app.get("/api/recommendations", response_model=List[schemas.EventResponse])
 def recommended_events(
+    request: Request,
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_student),
 ):
+    lang = current_user.language_preference
+    if not lang or lang == "system":
+        lang = request.headers.get("accept-language") or "ro"
+    lang = (lang or "ro").split(",")[0][:2].lower()
+
     now = datetime.now(timezone.utc)
     user_city = (current_user.city or "").strip().lower()
     registered_event_ids = [
@@ -1971,9 +1999,21 @@ def recommended_events(
         query, seats_subquery = _events_with_counts_query(db, base_query)
         reason_parts: list[str] = []
         if history_tag_names:
-            reason_parts.append(f"Similar tags: {', '.join(sorted(set(history_tag_names))[:3])}")
+            reason_parts.append(
+                (
+                    f"Similar tags: {', '.join(sorted(set(history_tag_names))[:3])}"
+                    if lang == "en"
+                    else f"Etichete similare: {', '.join(sorted(set(history_tag_names))[:3])}"
+                )
+            )
         if profile_tag_names:
-            reason_parts.append(f"Your interests: {', '.join(sorted(set(profile_tag_names))[:3])}")
+            reason_parts.append(
+                (
+                    f"Your interests: {', '.join(sorted(set(profile_tag_names))[:3])}"
+                    if lang == "en"
+                    else f"Interesele tale: {', '.join(sorted(set(profile_tag_names))[:3])}"
+                )
+            )
         reason = " • ".join(reason_parts[:2]) if reason_parts else None
         events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
 
@@ -1985,11 +2025,14 @@ def recommended_events(
             (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
         )
         query, seats_subquery = _events_with_counts_query(db, base_query)
+        fallback_reason = "Popular / upcoming events" if lang == "en" else "Evenimente populare / viitoare"
         events = [
-            (ev, seats, "Popular / upcoming events")
+            (ev, seats, fallback_reason)
             for ev, seats in query.order_by(
                 func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time
-            ).limit(10).all()
+            )
+            .limit(10)
+            .all()
         ]
 
     filtered = []
@@ -1999,7 +2042,7 @@ def recommended_events(
         is_local = bool(user_city and event.city and event.city.strip().lower() == user_city)
         final_reason = reason
         if is_local:
-            suffix = f"Near you: {event.city}"
+            suffix = f"Near you: {event.city}" if lang == "en" else f"În apropiere: {event.city}"
             final_reason = f"{reason} • {suffix}" if reason else suffix
         filtered.append((is_local, _serialize_event(event, seats, recommendation_reason=final_reason)))
 
@@ -2073,7 +2116,9 @@ def password_forgot(
         db.commit()
         frontend_hint = settings.allowed_origins[0] if settings.allowed_origins else ""
         link = f"{frontend_hint}/reset-password?token={token}" if frontend_hint else token
-        lang = (request.headers.get("accept-language") if request else None) or "ro"
+        lang = user.language_preference
+        if not lang or lang == "system":
+            lang = (request.headers.get("accept-language") if request else None) or "ro"
         subject, body, body_html = render_password_reset_email(user, link, lang=lang)
         send_email_async(background_tasks, db, user.email, subject, body, body_html, context={"user_id": user.id, "lang": lang})
     return {"status": "ok"}

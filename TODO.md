@@ -8,6 +8,8 @@
 - [x] React UI: add “My calendar (.ics)” download wired to `GET /api/me/calendar` (auth required).
 - [x] Fix Student Profile interest tag toggling (avoid double-toggle when clicking the checkbox).
 - [x] Localization (RO/EN) for UI labels and outbound emails with Accept-Language support.
+- [x] UI: add language switcher (RO/EN/System) + persist language preference in profile.
+- [x] Backend: localize recommendation reasons (`recommendation_reason`) based on language preference/Accept-Language.
 - [x] [EL-3] Student signup: allow students to create an account with email + password so they can register for events.
 - [x] [EL-4] User login: allow both students and organizers to log into their account securely to use the platform.
 - [x] [EL-6] Organizer create event form: provide a form for organizers to create and publish new events.

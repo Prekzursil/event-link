@@ -18,6 +18,7 @@ import { Badge } from '@/components/ui/badge';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/LanguageContext';
 import {
   Search,
   Filter,
@@ -28,12 +29,11 @@ import {
   Sparkles,
 } from 'lucide-react';
 import { format } from 'date-fns';
-import { ro } from 'date-fns/locale';
-import { EVENT_CATEGORIES } from '@/lib/eventCategories';
-
-const CATEGORIES = ['Toate', ...EVENT_CATEGORIES] as const;
+import { getDateFnsLocale } from '@/lib/language';
+import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const PAGE_SIZES = [6, 12, 24, 48];
+const ALL_CATEGORIES_VALUE = '__all__';
 
 const RECOMMENDATIONS_ENABLED =
   (import.meta.env.VITE_FEATURE_RECOMMENDATIONS ?? 'true').toLowerCase() !== 'false';
@@ -48,6 +48,20 @@ export function EventsPage() {
   const [totalEvents, setTotalEvents] = useState(0);
   const { toast } = useToast();
   const { isAuthenticated } = useAuth();
+  const { language, t } = useI18n();
+
+  const dateFnsLocale = useMemo(() => getDateFnsLocale(language), [language]);
+
+  const categoryOptions = useMemo(
+    () => [
+      { value: ALL_CATEGORIES_VALUE, label: t.events.allCategories },
+      ...EVENT_CATEGORIES.map((cat) => ({
+        value: cat,
+        label: getEventCategoryLabel(cat, language) ?? cat,
+      })),
+    ],
+    [language, t],
+  );
 
   // Memoize filters to prevent infinite loops
   const search = searchParams.get('search') || '';
@@ -111,8 +125,8 @@ export function EventsPage() {
       } catch {
         if (!cancelled) {
           toast({
-            title: 'Eroare',
-            description: 'Nu am putut încărca evenimentele',
+            title: t.events.loadErrorTitle,
+            description: t.events.loadErrorDescription,
             variant: 'destructive',
           });
         }
@@ -128,7 +142,7 @@ export function EventsPage() {
     return () => {
       cancelled = true;
     };
-  }, [filters, toast]);
+  }, [filters, toast, t]);
 
   useEffect(() => {
     if (!isAuthenticated || !RECOMMENDATIONS_ENABLED) return;
@@ -158,8 +172,8 @@ export function EventsPage() {
   const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
     if (!isAuthenticated) {
       toast({
-        title: 'Autentificare necesară',
-        description: 'Trebuie să fii autentificat pentru a adăuga la favorite',
+        title: t.events.loginRequiredTitle,
+        description: t.events.loginRequiredDescription,
         variant: 'destructive',
       });
       return;
@@ -179,8 +193,8 @@ export function EventsPage() {
       }
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza favoritele',
+        title: t.events.favoritesUpdateErrorTitle,
+        description: t.events.favoritesUpdateErrorDescription,
         variant: 'destructive',
       });
     }
@@ -203,9 +217,9 @@ export function EventsPage() {
     <div className="container mx-auto px-4 py-8">
       {/* Header */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Evenimente</h1>
+        <h1 className="text-3xl font-bold">{t.events.title}</h1>
         <p className="mt-2 text-muted-foreground">
-          Descoperă și participă la evenimentele din comunitatea ta
+          {t.events.subtitle}
         </p>
       </div>
 
@@ -214,7 +228,7 @@ export function EventsPage() {
         <div className="mb-8">
           <div className="mb-4 flex items-center gap-2">
             <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">Recomandate pentru tine</h2>
+            <h2 className="text-xl font-semibold">{t.events.recommendationsTitle}</h2>
           </div>
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
             {recommendations.map((event) => (
@@ -237,7 +251,7 @@ export function EventsPage() {
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
             <Input
-              placeholder="Caută evenimente..."
+              placeholder={t.events.searchPlaceholder}
               value={filters.search || ''}
               onChange={(e) => updateFilters({ search: e.target.value })}
               className="pl-10"
@@ -246,18 +260,18 @@ export function EventsPage() {
 
           {/* Category */}
           <Select
-            value={filters.category || 'Toate'}
+            value={filters.category || ALL_CATEGORIES_VALUE}
             onValueChange={(value) =>
-              updateFilters({ category: value === 'Toate' ? '' : value })
+              updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value })
             }
           >
             <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Categorie" />
+              <SelectValue placeholder={t.events.categoryPlaceholder} />
             </SelectTrigger>
             <SelectContent>
-              {CATEGORIES.map((cat) => (
-                <SelectItem key={cat} value={cat}>
-                  {cat}
+              {categoryOptions.map((cat) => (
+                <SelectItem key={cat.value} value={cat.value}>
+                  {cat.label}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -270,9 +284,9 @@ export function EventsPage() {
                 <CalendarIcon className="mr-2 h-4 w-4" />
                 {filters.start_date
                   ? filters.end_date
-                    ? `${format(new Date(filters.start_date), 'd MMM', { locale: ro })} - ${format(new Date(filters.end_date), 'd MMM', { locale: ro })}`
-                    : format(new Date(filters.start_date), 'd MMM yyyy', { locale: ro })
-                  : 'Selectează perioada'}
+                    ? `${format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })} - ${format(new Date(filters.end_date), 'd MMM', { locale: dateFnsLocale })}`
+                    : format(new Date(filters.start_date), 'd MMM yyyy', { locale: dateFnsLocale })
+                  : t.events.dateRangePlaceholder}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -298,20 +312,21 @@ export function EventsPage() {
                 }}
                 numberOfMonths={2}
                 defaultMonth={filters.start_date ? new Date(filters.start_date + 'T00:00:00') : new Date()}
+                locale={dateFnsLocale}
               />
             </PopoverContent>
           </Popover>
 
           {/* Location */}
           <Input
-            placeholder="Oraș"
+            placeholder={t.events.cityPlaceholder}
             value={filters.city || ''}
             onChange={(e) => updateFilters({ city: e.target.value })}
             className="w-[180px]"
           />
 
           <Input
-            placeholder="Locație"
+            placeholder={t.events.locationPlaceholder}
             value={filters.location || ''}
             onChange={(e) => updateFilters({ location: e.target.value })}
             className="w-[180px]"
@@ -321,10 +336,10 @@ export function EventsPage() {
         {/* Active Filters */}
         {hasActiveFilters && (
           <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">Filtre active:</span>
+            <span className="text-sm text-muted-foreground">{t.events.activeFilters}</span>
             {filters.search && (
               <Badge variant="secondary" className="gap-1">
-                Căutare: {filters.search}
+                {t.events.filterSearch}: {filters.search}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => updateFilters({ search: '' })}
@@ -333,7 +348,7 @@ export function EventsPage() {
             )}
             {filters.category && (
               <Badge variant="secondary" className="gap-1">
-                {filters.category}
+                {getEventCategoryLabel(filters.category, language)}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => updateFilters({ category: '' })}
@@ -342,7 +357,7 @@ export function EventsPage() {
             )}
             {filters.start_date && (
               <Badge variant="secondary" className="gap-1">
-                De la: {format(new Date(filters.start_date), 'd MMM', { locale: ro })}
+                {t.events.filterFrom}: {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => updateFilters({ start_date: '', end_date: '' })}
@@ -351,7 +366,7 @@ export function EventsPage() {
             )}
             {filters.city && (
               <Badge variant="secondary" className="gap-1">
-                Oraș: {filters.city}
+                {t.events.filterCity}: {filters.city}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => updateFilters({ city: '' })}
@@ -360,7 +375,7 @@ export function EventsPage() {
             )}
             {filters.location && (
               <Badge variant="secondary" className="gap-1">
-                Locație: {filters.location}
+                {t.events.filterLocation}: {filters.location}
                 <X
                   className="h-3 w-3 cursor-pointer"
                   onClick={() => updateFilters({ location: '' })}
@@ -368,7 +383,7 @@ export function EventsPage() {
               </Badge>
             )}
             <Button variant="ghost" size="sm" onClick={clearFilters}>
-              Șterge toate
+              {t.events.clearAll}
             </Button>
           </div>
         )}
@@ -377,7 +392,7 @@ export function EventsPage() {
       {/* Results Count */}
       <div className="mb-4 flex items-center justify-between">
         <p className="text-sm text-muted-foreground">
-          {totalEvents} {totalEvents === 1 ? 'eveniment găsit' : 'evenimente găsite'}
+          {totalEvents} {totalEvents === 1 ? t.events.foundOne : t.events.foundMany}
         </p>
         <Select
           value={String(filters.page_size || 12)}
@@ -389,7 +404,8 @@ export function EventsPage() {
           <SelectContent>
             {PAGE_SIZES.map((size) => (
               <SelectItem key={size} value={String(size)}>
-                {size} / pagină
+                {size}
+                {t.events.perPage}
               </SelectItem>
             ))}
           </SelectContent>
@@ -398,17 +414,17 @@ export function EventsPage() {
 
       {/* Events Grid */}
       {isLoading ? (
-        <LoadingPage message="Se încarcă evenimentele..." />
+        <LoadingPage message={t.events.loading} />
       ) : events.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Nu am găsit evenimente</h3>
+          <h3 className="text-lg font-semibold">{t.events.noResultsTitle}</h3>
           <p className="mt-2 text-muted-foreground">
-            Încearcă să modifici filtrele sau să cauți altceva
+            {t.events.noResultsDescription}
           </p>
           {hasActiveFilters && (
             <Button variant="outline" className="mt-4" onClick={clearFilters}>
-              Șterge filtrele
+              {t.events.clearFilters}
             </Button>
           )}
         </div>
@@ -437,7 +453,7 @@ export function EventsPage() {
                 <ChevronLeft className="h-4 w-4" />
               </Button>
               <span className="text-sm">
-                Pagina {filters.page} din {totalPages}
+                {t.events.pageLabel} {filters.page} {t.events.pageOf} {totalPages}
               </span>
               <Button
                 variant="outline"
