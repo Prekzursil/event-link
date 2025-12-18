@@ -209,6 +209,19 @@ class UserRecommendation(Base):
     event = relationship("Event", foreign_keys=[event_id])
 
 
+class RecommenderModel(Base):
+    __tablename__ = "recommender_models"
+    __table_args__ = (UniqueConstraint("model_version", name="uq_recommender_models_model_version"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    model_version = Column(String(100), nullable=False, index=True)
+    feature_names = Column(JSON, nullable=False)
+    weights = Column(JSON, nullable=False)
+    meta = Column(JSON, nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
 class EventInteraction(Base):
     __tablename__ = "event_interactions"
 

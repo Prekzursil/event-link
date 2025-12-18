@@ -902,6 +902,65 @@ def record_interactions(
 
     db.add_all(interactions)
     db.commit()
+
+    if (
+        current_user is not None
+        and getattr(current_user, "role", None) == models.UserRole.student
+        and settings.task_queue_enabled
+        and settings.recommendations_use_ml_cache
+        and settings.recommendations_realtime_refresh_enabled
+    ):
+        should_refresh = False
+        for event in payload.events:
+            if event.interaction_type in {"click", "view", "share", "favorite", "register", "unregister", "search", "filter"}:
+                should_refresh = True
+                break
+            if event.interaction_type == "dwell":
+                seconds = None
+                if isinstance(event.meta, dict):
+                    seconds = event.meta.get("seconds")
+                if isinstance(seconds, (int, float)) and float(seconds) >= 10.0:
+                    should_refresh = True
+                    break
+
+        if should_refresh:
+            from .task_queue import enqueue_job, JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML  # noqa: PLC0415
+
+            existing_jobs = (
+                db.query(models.BackgroundJob)
+                .filter(
+                    models.BackgroundJob.job_type == JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
+                    models.BackgroundJob.status.in_(["queued", "running"]),
+                )
+                .order_by(models.BackgroundJob.id.desc())
+                .limit(200)
+                .all()
+            )
+            for job in existing_jobs:
+                if (job.payload or {}).get("user_id") == current_user.id:
+                    return
+
+            latest_generated_at = (
+                db.query(func.max(models.UserRecommendation.generated_at))
+                .filter(models.UserRecommendation.user_id == current_user.id)
+                .scalar()
+            )
+            if latest_generated_at is not None:
+                if latest_generated_at.tzinfo is None:
+                    latest_generated_at = latest_generated_at.replace(tzinfo=timezone.utc)
+                age_seconds = (now - latest_generated_at).total_seconds()
+                if age_seconds < float(settings.recommendations_realtime_refresh_min_interval_seconds):
+                    return
+
+            enqueue_job(
+                db,
+                JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
+                {
+                    "user_id": int(current_user.id),
+                    "top_n": int(settings.recommendations_realtime_refresh_top_n),
+                    "skip_training": True,
+                },
+            )
     return
 
 
