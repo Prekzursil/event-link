@@ -158,6 +158,37 @@ export const eventService = {
     );
   },
 
+  async bulkUpdateEventStatus(
+    eventIds: number[],
+    status: 'draft' | 'published'
+  ): Promise<{ updated: number }> {
+    const response = await api.post<{ updated: number }>('/api/organizer/events/bulk/status', {
+      event_ids: eventIds,
+      status,
+    });
+    return response.data;
+  },
+
+  async bulkUpdateEventTags(eventIds: number[], tags: string[]): Promise<{ updated: number }> {
+    const response = await api.post<{ updated: number }>('/api/organizer/events/bulk/tags', {
+      event_ids: eventIds,
+      tags,
+    });
+    return response.data;
+  },
+
+  async emailEventParticipants(
+    eventId: number,
+    subject: string,
+    message: string
+  ): Promise<{ recipients: number }> {
+    const response = await api.post<{ recipients: number }>(
+      `/api/organizer/events/${eventId}/participants/email`,
+      { subject, message }
+    );
+    return response.data;
+  },
+
   // Organizer profile
   async getOrganizerProfile(id: number): Promise<OrganizerProfile> {
     const response = await api.get<OrganizerProfile>(`/api/organizers/${id}`);

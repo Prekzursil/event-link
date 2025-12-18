@@ -363,3 +363,22 @@ class RefreshRequest(BaseModel):
 
 class AccountDeleteRequest(BaseModel):
     password: str = Field(..., min_length=1, max_length=255)
+
+
+class OrganizerBulkStatusUpdate(BaseModel):
+    event_ids: List[int] = Field(..., min_length=1)
+    status: Literal["draft", "published"]
+
+
+class OrganizerBulkTagsUpdate(BaseModel):
+    event_ids: List[int] = Field(..., min_length=1)
+    tags: List[str] = Field(default_factory=list)
+
+
+class OrganizerEmailParticipantsRequest(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=1, max_length=10000)
+
+
+class OrganizerEmailParticipantsResponse(BaseModel):
+    recipients: int
