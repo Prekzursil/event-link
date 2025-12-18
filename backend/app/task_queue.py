@@ -17,6 +17,7 @@ from .logging_utils import log_event, log_warning
 
 JOB_TYPE_SEND_EMAIL = "send_email"
 JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML = "recompute_recommendations_ml"
+JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML = "refresh_user_recommendations_ml"
 JOB_TYPE_SEND_WEEKLY_DIGEST = "send_weekly_digest"
 JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
 
@@ -184,6 +185,10 @@ def _run_recompute_recommendations_ml(*, payload: dict[str, Any]) -> None:
     cmd = [sys.executable, str(script_path)]
     if payload.get("top_n") is not None:
         cmd.extend(["--top-n", str(int(payload["top_n"]))])
+    if payload.get("user_id") is not None:
+        cmd.extend(["--user-id", str(int(payload["user_id"]))])
+    if payload.get("skip_training"):
+        cmd.append("--skip-training")
     if payload.get("epochs") is not None:
         cmd.extend(["--epochs", str(int(payload["epochs"]))])
     if payload.get("lr") is not None:
@@ -422,6 +427,11 @@ def process_job(db: Session, job: models.BackgroundJob) -> None:
             return
 
         if job.job_type == JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML:
+            _run_recompute_recommendations_ml(payload=payload)
+            mark_job_succeeded(db, job)
+            return
+
+        if job.job_type == JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML:
             _run_recompute_recommendations_ml(payload=payload)
             mark_job_succeeded(db, job)
             return

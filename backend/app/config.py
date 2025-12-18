@@ -44,6 +44,9 @@ class Settings(BaseSettings):
 
     recommendations_use_ml_cache: bool = True
     recommendations_cache_max_age_seconds: int = 60 * 60 * 24
+    recommendations_realtime_refresh_enabled: bool = False
+    recommendations_realtime_refresh_min_interval_seconds: int = 300
+    recommendations_realtime_refresh_top_n: int = 50
 
     analytics_enabled: bool = True
     analytics_rate_limit: int = 120

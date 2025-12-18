@@ -45,6 +45,19 @@ class _UserFeatures:
     history_organizer_ids: set[int]
 
 
+# Must match `_build_feature_vector` output order.
+FEATURE_NAMES = [
+    "bias",
+    "overlap_interest_ratio",
+    "overlap_history_ratio",
+    "same_city",
+    "category_match",
+    "organizer_match",
+    "popularity",
+    "days_until",
+]
+
+
 def _normalize_tag(name: str) -> str:
     return (name or "").strip().lower()
 
@@ -198,6 +211,12 @@ def main() -> int:
     parser.add_argument("--negatives-per-positive", type=int, default=3)
     parser.add_argument("--eval-negatives", type=int, default=50)
     parser.add_argument("--seed", type=int, default=1337)
+    parser.add_argument("--user-id", type=int, default=None, help="Only recompute recommendations for a single student user.")
+    parser.add_argument(
+        "--skip-training",
+        action="store_true",
+        help="Skip training and load weights from the persisted recommender_models table.",
+    )
     parser.add_argument("--dry-run", action="store_true", help="Train/eval but do not write to the DB.")
     args = parser.parse_args()
 
@@ -218,13 +237,18 @@ def main() -> int:
     from sqlalchemy import func  # noqa: PLC0415
 
     now = datetime.now(timezone.utc)
-    model_version = os.environ.get("RECOMMENDER_MODEL_VERSION") or f"ml-v1-{now.date().isoformat()}"
+    requested_model_version = os.environ.get("RECOMMENDER_MODEL_VERSION")
 
     with SessionLocal() as db:
-        students = db.query(models.User).filter(models.User.role == models.UserRole.student).all()
+        students_query = db.query(models.User).filter(models.User.role == models.UserRole.student)
+        if args.user_id is not None:
+            students_query = students_query.filter(models.User.id == int(args.user_id))
+        students = students_query.all()
         if not students:
             print("No student users found; nothing to do.")
             return 0
+
+        user_ids = [int(u.id) for u in students]
 
         tags_by_event_id: dict[int, set[str]] = {}
         events: dict[int, _EventFeatures] = {}
@@ -270,11 +294,13 @@ def main() -> int:
             print("No events found; nothing to do.")
             return 0
 
-        interest_tag_rows = (
+        interest_tag_query = (
             db.query(models.user_interest_tags.c.user_id, models.Tag.name)
             .join(models.Tag, models.Tag.id == models.user_interest_tags.c.tag_id)
-            .all()
         )
+        if args.user_id is not None:
+            interest_tag_query = interest_tag_query.filter(models.user_interest_tags.c.user_id == int(args.user_id))
+        interest_tag_rows = interest_tag_query.all()
         interest_tags_by_user: dict[int, set[str]] = {}
         for user_id, tag_name in interest_tag_rows:
             normalized = _normalize_tag(str(tag_name))
@@ -282,12 +308,22 @@ def main() -> int:
                 continue
             interest_tags_by_user.setdefault(int(user_id), set()).add(normalized)
 
-        reg_rows = (
+        reg_query = (
             db.query(models.Registration.user_id, models.Registration.event_id, models.Registration.attended)
             .filter(models.Registration.deleted_at.is_(None))
-            .all()
         )
-        fav_rows = db.query(models.FavoriteEvent.user_id, models.FavoriteEvent.event_id).all()
+        if args.user_id is not None:
+            reg_query = reg_query.filter(models.Registration.user_id == int(args.user_id))
+        reg_rows = reg_query.all()
+
+        fav_query = db.query(models.FavoriteEvent.user_id, models.FavoriteEvent.event_id)
+        if args.user_id is not None:
+            fav_query = fav_query.filter(models.FavoriteEvent.user_id == int(args.user_id))
+        fav_rows = fav_query.all()
+
+        registered_event_ids_by_user: dict[int, set[int]] = {}
+        for user_id, event_id, _attended in reg_rows:
+            registered_event_ids_by_user.setdefault(int(user_id), set()).add(int(event_id))
 
         positive_weights: dict[tuple[int, int], float] = {}
         for user_id, event_id, attended in reg_rows:
@@ -298,9 +334,49 @@ def main() -> int:
             key = (int(user_id), int(event_id))
             positive_weights[key] = max(positive_weights.get(key, 0.0), 1.2)
 
+        negative_weights: dict[tuple[int, int], float] = {}
+        seen_by_user: dict[int, set[int]] = {}
+        implicit_interest_tags_by_user: dict[int, set[str]] = {}
+        implicit_categories_by_user: dict[int, set[str]] = {}
+        implicit_city_by_user: dict[int, str] = {}
+
         # Optional implicit-feedback signals from interaction tracking (if enabled/migrated).
         try:
-            interaction_rows = (
+            search_filter_query = (
+                db.query(
+                    models.EventInteraction.user_id,
+                    models.EventInteraction.interaction_type,
+                    models.EventInteraction.meta,
+                )
+                .filter(models.EventInteraction.user_id.isnot(None))
+                .filter(models.EventInteraction.event_id.is_(None))
+                .filter(models.EventInteraction.interaction_type.in_(["search", "filter"]))
+            )
+            if args.user_id is not None:
+                search_filter_query = search_filter_query.filter(models.EventInteraction.user_id == int(args.user_id))
+            for user_id, interaction_type, meta in search_filter_query.all():
+                user_id_int = int(user_id)
+                if not isinstance(meta, dict):
+                    continue
+                tags_value = meta.get("tags")
+                if isinstance(tags_value, list):
+                    for tag in tags_value:
+                        normalized = _normalize_tag(str(tag))
+                        if not normalized:
+                            continue
+                        implicit_interest_tags_by_user.setdefault(user_id_int, set()).add(normalized)
+
+                category_value = meta.get("category")
+                if isinstance(category_value, str) and category_value.strip():
+                    implicit_categories_by_user.setdefault(user_id_int, set()).add(category_value.strip())
+
+                city_value = meta.get("city")
+                if isinstance(city_value, str):
+                    normalized_city = _normalize_city(city_value)
+                    if normalized_city:
+                        implicit_city_by_user[user_id_int] = normalized_city
+
+            interaction_query = (
                 db.query(
                     models.EventInteraction.user_id,
                     models.EventInteraction.event_id,
@@ -309,12 +385,35 @@ def main() -> int:
                 )
                 .filter(models.EventInteraction.user_id.isnot(None))
                 .filter(models.EventInteraction.event_id.isnot(None))
-                .all()
+                .filter(
+                    models.EventInteraction.interaction_type.in_(
+                        [
+                            "impression",
+                            "click",
+                            "view",
+                            "dwell",
+                            "share",
+                            "favorite",
+                            "register",
+                            "unregister",
+                        ]
+                    )
+                )
             )
+            if args.user_id is not None:
+                interaction_query = interaction_query.filter(models.EventInteraction.user_id == int(args.user_id))
+            interaction_rows = interaction_query.all()
             for user_id, event_id, interaction_type, meta in interaction_rows:
                 user_id_int = int(user_id)
                 event_id_int = int(event_id)
                 itype = str(interaction_type or "").strip().lower()
+                if itype == "impression":
+                    seen_by_user.setdefault(user_id_int, set()).add(event_id_int)
+                    continue
+                if itype == "unregister":
+                    key = (user_id_int, event_id_int)
+                    negative_weights[key] = max(negative_weights.get(key, 0.0), 2.0)
+                    continue
                 weight = 0.0
                 if itype == "click":
                     weight = 0.4
@@ -326,6 +425,8 @@ def main() -> int:
                         seconds = meta.get("seconds")
                         if isinstance(seconds, (int, float)) and seconds > 0:
                             weight = min(0.8, weight + (float(seconds) / 120.0) * 0.25)
+                elif itype == "share":
+                    weight = 0.6
                 elif itype == "favorite":
                     weight = 1.2
                 elif itype == "register":
@@ -338,6 +439,9 @@ def main() -> int:
         except Exception as exc:  # noqa: BLE001
             print(f"[warn] could not load event_interactions ({exc}); continuing without interaction signals")
 
+        for key in negative_weights:
+            positive_weights.pop(key, None)
+
         positives_by_user: dict[int, dict[int, float]] = {}
         for (user_id, event_id), weight in positive_weights.items():
             positives_by_user.setdefault(user_id, {})[event_id] = weight
@@ -349,7 +453,7 @@ def main() -> int:
 
         for student in students:
             user_id = int(student.id)
-            city = _normalize_city(student.city)
+            city = _normalize_city(student.city) or implicit_city_by_user.get(user_id)
             pref_lang = (student.language_preference or "system").strip().lower()
             if pref_lang == "en":
                 user_lang[user_id] = "en"
@@ -376,65 +480,158 @@ def main() -> int:
                     history_categories.add(ev.category)
                 history_organizers.add(ev.owner_id)
 
+            history_categories |= implicit_categories_by_user.get(user_id, set())
             users[user_id] = _UserFeatures(
                 city=city,
-                interest_tags=interest_tags_by_user.get(user_id, set()),
+                interest_tags=interest_tags_by_user.get(user_id, set()) | implicit_interest_tags_by_user.get(user_id, set()),
                 history_tags=history_tags,
                 history_categories=history_categories,
                 history_organizer_ids=history_organizers,
             )
 
-        examples: list[tuple[list[float], int, float]] = []
-        for user_id, positives in positives_by_user.items():
-            user = users.get(user_id)
-            if not user:
-                continue
-            user_positive_ids = set(positives.keys()) | ({holdout[user_id]} if user_id in holdout else set())
-            for event_id, weight in positives.items():
-                ev = events.get(event_id)
-                if not ev:
+        model_version: str
+        weights: list[float]
+        hitrate: float | None = None
+
+        if args.skip_training:
+            model_query = db.query(models.RecommenderModel)
+            model_row = None
+            if requested_model_version:
+                model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
+            if model_row is None:
+                model_row = (
+                    model_query.filter(models.RecommenderModel.is_active.is_(True))
+                    .order_by(models.RecommenderModel.id.desc())
+                    .first()
+                )
+            if model_row is None:
+                model_row = model_query.order_by(models.RecommenderModel.id.desc()).first()
+
+            if model_row is None:
+                print("[warn] no persisted recommender model found; run the retraining job first")
+                return 0
+
+            feature_names = list(model_row.feature_names or [])
+            weights = [float(w) for w in (model_row.weights or [])]
+            if feature_names != FEATURE_NAMES:
+                print(f"[error] persisted model feature_names mismatch: expected={FEATURE_NAMES} got={feature_names}")
+                return 2
+            if len(weights) != len(FEATURE_NAMES):
+                print(f"[error] persisted model weights length mismatch: expected={len(FEATURE_NAMES)} got={len(weights)}")
+                return 2
+
+            model_version = str(model_row.model_version)
+            print(f"[load] using persisted model_version={model_version}")
+        else:
+            model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
+
+            examples: list[tuple[list[float], int, float]] = []
+            for user_id, positives in positives_by_user.items():
+                user = users.get(user_id)
+                if not user:
                     continue
-                x_pos = _build_feature_vector(user=user, event=ev, now=now)
-                examples.append((x_pos, 1, float(weight)))
+                user_positive_ids = set(positives.keys()) | ({holdout[user_id]} if user_id in holdout else set())
+                impression_negatives = list(seen_by_user.get(user_id, set()) - user_positive_ids)
 
-                neg_added = 0
-                while neg_added < args.negatives_per_positive and neg_added < len(all_event_ids):
-                    neg_event_id = rng.choice(all_event_ids)
-                    if neg_event_id in user_positive_ids:
+                for event_id, weight in positives.items():
+                    ev = events.get(event_id)
+                    if not ev:
                         continue
-                    neg_ev = events.get(neg_event_id)
-                    if not neg_ev:
-                        continue
-                    x_neg = _build_feature_vector(user=user, event=neg_ev, now=now)
-                    examples.append((x_neg, 0, 1.0))
-                    neg_added += 1
+                    x_pos = _build_feature_vector(user=user, event=ev, now=now)
+                    examples.append((x_pos, 1, float(weight)))
 
-        if not examples:
-            print("No training data found (no registrations/favorites); nothing to do.")
-            return 0
+                    neg_added = 0
+                    while neg_added < args.negatives_per_positive and neg_added < len(all_event_ids):
+                        if impression_negatives:
+                            neg_event_id = rng.choice(impression_negatives)
+                        else:
+                            neg_event_id = rng.choice(all_event_ids)
+                        if neg_event_id in user_positive_ids:
+                            continue
+                        neg_ev = events.get(neg_event_id)
+                        if not neg_ev:
+                            continue
+                        x_neg = _build_feature_vector(user=user, event=neg_ev, now=now)
+                        examples.append((x_neg, 0, 1.0))
+                        neg_added += 1
 
-        n_features = len(examples[0][0])
-        weights = _train_log_regression_sgd(
-            examples=examples,
-            n_features=n_features,
-            epochs=args.epochs,
-            lr=args.lr,
-            l2=args.l2,
-            seed=args.seed,
-        )
+            for (user_id, event_id), weight in negative_weights.items():
+                user = users.get(user_id)
+                ev = events.get(event_id)
+                if not user or not ev:
+                    continue
+                x_neg = _build_feature_vector(user=user, event=ev, now=now)
+                examples.append((x_neg, 0, float(weight)))
 
-        hitrate = _evaluate_hitrate_at_k(
-            weights=weights,
-            users=users,
-            events=events,
-            positives_holdout=holdout,
-            all_event_ids=all_event_ids,
-            now=now,
-            k=10,
-            negatives_per_user=args.eval_negatives,
-            seed=args.seed,
-        )
-        print(f"[eval] hitrate@10={hitrate:.3f} users={len(holdout)}")
+            if not examples:
+                print("No training data found (no registrations/favorites/interactions); nothing to do.")
+                return 0
+
+            n_features = len(examples[0][0])
+            if n_features != len(FEATURE_NAMES):
+                print(f"[error] feature vector length mismatch: expected={len(FEATURE_NAMES)} got={n_features}")
+                return 2
+
+            weights = _train_log_regression_sgd(
+                examples=examples,
+                n_features=n_features,
+                epochs=args.epochs,
+                lr=args.lr,
+                l2=args.l2,
+                seed=args.seed,
+            )
+
+            hitrate = _evaluate_hitrate_at_k(
+                weights=weights,
+                users=users,
+                events=events,
+                positives_holdout=holdout,
+                all_event_ids=all_event_ids,
+                now=now,
+                k=10,
+                negatives_per_user=args.eval_negatives,
+                seed=args.seed,
+            )
+            print(f"[eval] hitrate@10={hitrate:.3f} users={len(holdout)}")
+
+            if args.dry_run:
+                print("[write] dry-run enabled; skipping DB writes.")
+                return 0
+
+            meta = {
+                "hitrate_at_10": float(hitrate),
+                "trained_at": now.isoformat(),
+                "examples": len(examples),
+                "epochs": int(args.epochs),
+                "lr": float(args.lr),
+                "l2": float(args.l2),
+                "negatives_per_positive": int(args.negatives_per_positive),
+            }
+
+            existing_model = (
+                db.query(models.RecommenderModel)
+                .filter(models.RecommenderModel.model_version == model_version)
+                .first()
+            )
+            if existing_model is None:
+                existing_model = models.RecommenderModel(
+                    model_version=model_version,
+                    feature_names=list(FEATURE_NAMES),
+                    weights=[float(w) for w in weights],
+                    meta=meta,
+                    is_active=True,
+                )
+                db.add(existing_model)
+            else:
+                existing_model.feature_names = list(FEATURE_NAMES)
+                existing_model.weights = [float(w) for w in weights]
+                existing_model.meta = meta
+                existing_model.is_active = True
+
+            db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version != model_version).update(
+                {"is_active": False},
+                synchronize_session=False,
+            )
 
         if args.dry_run:
             print("[write] dry-run enabled; skipping DB writes.")
@@ -452,7 +649,6 @@ def main() -> int:
                 continue
             eligible_event_ids.append(event_id)
 
-        user_ids = [int(u.id) for u in students]
         db.query(models.UserRecommendation).filter(models.UserRecommendation.user_id.in_(user_ids)).delete(
             synchronize_session=False
         )
@@ -463,11 +659,7 @@ def main() -> int:
             if not user:
                 continue
 
-            registered_ids = {
-                int(event_id)
-                for (uid, event_id), _w in positive_weights.items()
-                if int(uid) == user_id
-            }
+            registered_ids = registered_event_ids_by_user.get(user_id, set())
 
             scored: list[tuple[float, int]] = []
             for event_id in eligible_event_ids:

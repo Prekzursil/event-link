@@ -59,6 +59,7 @@
 - [x] Recommendations ML: schedule periodic retraining (cron/CronJob) and monitor quality metrics (CTR, register conversion).
 - [x] Personalization: use ML ranking as a unified "For You" sort across event lists/search/filters (not only `/api/recommendations`).
 - [x] Analytics: add interaction tracking (impressions/clicks/dwell/search/filter/share) and feed signals into ML training.
+- [x] Personalization: near-real-time refresh of `user_recommendations` on meaningful interactions (config-gated).
 - [x] Experiments: add A/B assignment + feature flags for personalization rollouts (control vs ML ranking).
 - [x] Personalization: "Why am I seeing this?" explanations + user controls (hide tags/organizers, show less like this, personalization settings).
 - [x] Notifications: personalized digests + "filling fast" alerts with opt-in/out preferences.
