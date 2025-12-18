@@ -225,6 +225,73 @@ def _serialize_event(event: models.Event, seats_taken: int, recommendation_reaso
     )
 
 
+def _load_cached_recommendations(
+    *,
+    db: Session,
+    user: models.User,
+    now: datetime,
+    registered_event_ids: list[int],
+    lang: str,
+) -> list[tuple[models.Event, int, Optional[str]]] | None:
+    if not settings.recommendations_use_ml_cache:
+        return None
+
+    latest_generated_at = (
+        db.query(func.max(models.UserRecommendation.generated_at))
+        .filter(models.UserRecommendation.user_id == user.id)
+        .scalar()
+    )
+    if not latest_generated_at:
+        return None
+    if getattr(latest_generated_at, "tzinfo", None) is None:
+        latest_generated_at = latest_generated_at.replace(tzinfo=timezone.utc)
+
+    max_age = timedelta(seconds=settings.recommendations_cache_max_age_seconds)
+    if latest_generated_at < (now - max_age):
+        return None
+
+    rec_rows = (
+        db.query(models.UserRecommendation)
+        .filter(models.UserRecommendation.user_id == user.id)
+        .order_by(models.UserRecommendation.rank)
+        .limit(50)
+        .all()
+    )
+    if not rec_rows:
+        return None
+
+    rec_by_event_id: dict[int, models.UserRecommendation] = {row.event_id: row for row in rec_rows}
+    event_ids = list(rec_by_event_id.keys())
+
+    base_query = (
+        db.query(models.Event)
+        .filter(models.Event.id.in_(event_ids))
+        .filter(models.Event.deleted_at.is_(None))
+        .filter(models.Event.start_time >= now)
+        .filter(models.Event.status == "published")
+        .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
+    )
+    if registered_event_ids:
+        base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+
+    query, seats_subquery = _events_with_counts_query(db, base_query)
+    default_reason = "Recommended for you" if lang == "en" else "Recomandat pentru tine"
+    ranked: list[tuple[int, models.Event, int, Optional[str]]] = []
+    for ev, seats in query.all():
+        rec = rec_by_event_id.get(ev.id)
+        if not rec:
+            continue
+        if ev.max_seats is not None and int(seats or 0) >= ev.max_seats:
+            continue
+        ranked.append((int(rec.rank), ev, int(seats or 0), rec.reason or default_reason))
+
+    if not ranked:
+        return None
+
+    ranked.sort(key=lambda row: row[0])
+    return [(ev, seats, reason) for _rank, ev, seats, reason in ranked]
+
+
 def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.PublicEventResponse:
     organizer_name = None
     if event.owner:
@@ -2128,77 +2195,86 @@ def recommended_events(
         .filter(models.Registration.user_id == current_user.id, models.Registration.deleted_at.is_(None))
         .all()
     ]
-    history_tag_names = [
-        t[0]
-        for t in (
-            db.query(models.Tag.name)
-            .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
-            .join(models.Event, models.Event.id == models.event_tags.c.event_id)
-            .join(models.Registration, models.Registration.event_id == models.Event.id)
-            .filter(
-                models.Registration.user_id == current_user.id,
-                models.Registration.deleted_at.is_(None),
-                models.Event.deleted_at.is_(None),
-            )
-            .all()
-        )
-    ]
-
-    profile_tag_names = [t.name for t in current_user.interest_tags]
-    match_tag_names = list(dict.fromkeys([*history_tag_names, *profile_tag_names]))
-
-    events: List[tuple[models.Event, int, Optional[str]]] = []
-    if match_tag_names:
-        base_query = (
-            db.query(models.Event)
-            .join(models.Event.tags)
-            .filter(func.lower(models.Tag.name).in_([name.lower() for name in match_tag_names]))
-            .filter(models.Event.deleted_at.is_(None))
-            .filter(models.Event.start_time >= now)
-            .filter(models.Event.status == "published")
-            .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
-        )
-        if registered_event_ids:
-            base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
-        base_query = base_query.distinct().order_by(models.Event.start_time)
-        query, seats_subquery = _events_with_counts_query(db, base_query)
-        reason_parts: list[str] = []
-        if history_tag_names:
-            reason_parts.append(
-                (
-                    f"Similar tags: {', '.join(sorted(set(history_tag_names))[:3])}"
-                    if lang == "en"
-                    else f"Etichete similare: {', '.join(sorted(set(history_tag_names))[:3])}"
-                )
-            )
-        if profile_tag_names:
-            reason_parts.append(
-                (
-                    f"Your interests: {', '.join(sorted(set(profile_tag_names))[:3])}"
-                    if lang == "en"
-                    else f"Interesele tale: {', '.join(sorted(set(profile_tag_names))[:3])}"
-                )
-            )
-        reason = " • ".join(reason_parts[:2]) if reason_parts else None
-        events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
+    events = _load_cached_recommendations(
+        db=db,
+        user=current_user,
+        now=now,
+        registered_event_ids=registered_event_ids,
+        lang=lang,
+    )
 
     if not events:
-        base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None), models.Event.start_time >= now)
-        if registered_event_ids:
-            base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
-        base_query = base_query.filter(models.Event.status == "published").filter(
-            (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
-        )
-        query, seats_subquery = _events_with_counts_query(db, base_query)
-        fallback_reason = "Popular / upcoming events" if lang == "en" else "Evenimente populare / viitoare"
-        events = [
-            (ev, seats, fallback_reason)
-            for ev, seats in query.order_by(
-                func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time
+        history_tag_names = [
+            t[0]
+            for t in (
+                db.query(models.Tag.name)
+                .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
+                .join(models.Event, models.Event.id == models.event_tags.c.event_id)
+                .join(models.Registration, models.Registration.event_id == models.Event.id)
+                .filter(
+                    models.Registration.user_id == current_user.id,
+                    models.Registration.deleted_at.is_(None),
+                    models.Event.deleted_at.is_(None),
+                )
+                .all()
             )
-            .limit(10)
-            .all()
         ]
+
+        profile_tag_names = [t.name for t in current_user.interest_tags]
+        match_tag_names = list(dict.fromkeys([*history_tag_names, *profile_tag_names]))
+
+        events: List[tuple[models.Event, int, Optional[str]]] = []
+        if match_tag_names:
+            base_query = (
+                db.query(models.Event)
+                .join(models.Event.tags)
+                .filter(func.lower(models.Tag.name).in_([name.lower() for name in match_tag_names]))
+                .filter(models.Event.deleted_at.is_(None))
+                .filter(models.Event.start_time >= now)
+                .filter(models.Event.status == "published")
+                .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
+            )
+            if registered_event_ids:
+                base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+            base_query = base_query.distinct().order_by(models.Event.start_time)
+            query, seats_subquery = _events_with_counts_query(db, base_query)
+            reason_parts: list[str] = []
+            if history_tag_names:
+                reason_parts.append(
+                    (
+                        f"Similar tags: {', '.join(sorted(set(history_tag_names))[:3])}"
+                        if lang == "en"
+                        else f"Etichete similare: {', '.join(sorted(set(history_tag_names))[:3])}"
+                    )
+                )
+            if profile_tag_names:
+                reason_parts.append(
+                    (
+                        f"Your interests: {', '.join(sorted(set(profile_tag_names))[:3])}"
+                        if lang == "en"
+                        else f"Interesele tale: {', '.join(sorted(set(profile_tag_names))[:3])}"
+                    )
+                )
+            reason = " • ".join(reason_parts[:2]) if reason_parts else None
+            events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
+
+        if not events:
+            base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None), models.Event.start_time >= now)
+            if registered_event_ids:
+                base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+            base_query = base_query.filter(models.Event.status == "published").filter(
+                (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+            )
+            query, seats_subquery = _events_with_counts_query(db, base_query)
+            fallback_reason = "Popular / upcoming events" if lang == "en" else "Evenimente populare / viitoare"
+            events = [
+                (ev, seats, fallback_reason)
+                for ev, seats in query.order_by(
+                    func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time
+                )
+                .limit(10)
+                .all()
+            ]
 
     filtered = []
     for event, seats, reason in events:
