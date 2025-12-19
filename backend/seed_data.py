@@ -332,6 +332,10 @@ ORGANIZERS = [
     }
 ]
 
+ADMINS = [
+    {"email": "admin@test.com", "full_name": "EventLink Admin", "password": "test123"},
+]
+
 
 def seed_database():
     """Seed the database with sample data."""
@@ -417,6 +421,21 @@ def seed_database():
             organizer_objects.append(organizer)
         session.flush()
         print(f"   Created {len(ORGANIZERS)} organizers")
+
+        # Create admins
+        print("🛡️ Creating admins...")
+        admin_objects = []
+        for admin_data in ADMINS:
+            admin = User(
+                email=admin_data["email"],
+                password_hash=pwd_context.hash(admin_data["password"]),
+                role=UserRole.admin,
+                full_name=admin_data["full_name"],
+            )
+            session.add(admin)
+            admin_objects.append(admin)
+        session.flush()
+        print(f"   Created {len(ADMINS)} admins")
         
         # Create events
         print("📅 Creating events...")
@@ -520,6 +539,9 @@ def seed_database():
         print("   Organizers:")
         for o in ORGANIZERS:
             print(f"      - {o['email']} / {o['password']}")
+        print("   Admins:")
+        for a in ADMINS:
+            print(f"      - {a['email']} / {a['password']}")
         
     except Exception as e:
         session.rollback()
