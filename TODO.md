@@ -103,7 +103,14 @@
 - [x] Mobile UX: make Events filter controls full-width and easier to tap on small screens.
 - [x] Mobile UX: make tab navigation wrap/scroll on small screens (My Events, Organizer Profile, Admin).
 - [x] Backend pytest migration + coverage reporting for core flows (auth, events, register, recommendations, reset).
-- [ ] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
+- [x] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
+- [ ] E2E (Playwright): password reset flow (request + reset) coverage.
+- [ ] E2E (Playwright): student profile flows (interest tags + academic profile fields).
+- [ ] E2E (Playwright): organizer participants tools (attendance toggle, CSV export, email participants).
+- [ ] E2E (Playwright): organizer clone event + soft-delete/restore flows.
+- [ ] E2E (Playwright): admin dashboard flows (user management + event moderation) once admin seed exists.
+- [ ] E2E (Playwright): personalization controls (hide tags/blocked organizers) + “Why am I seeing this?” drawer.
+- [ ] E2E (Playwright): notifications preferences + admin-triggered digest/filling-fast job enqueue.
 - [x] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [x] Pagination and sorting for all list endpoints (registrations, users).
 - [x] Task queue for background jobs (emails/heavy processing).

@@ -147,6 +147,10 @@ Sample credentials:
 
 - **Backend tests**: `cd backend && pytest`
 - **Frontend checks**: `cd ui && npm test` (lint + typecheck + build)
+- **E2E (Playwright)**:
+  - Start the stack: `cp .env.example .env && docker compose up -d --build`
+  - Seed sample data: `docker compose exec backend python seed_data.py`
+  - Run: `cd ui && npm ci && npx playwright install chromium && npm run test:e2e`
 - **Load tests (k6)**: `K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js`
 
 ## Pre-commit hooks (optional)
