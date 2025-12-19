@@ -31,7 +31,7 @@ test('student profile: interests + academic fields', async ({ page }) => {
   await expect(tagCheckbox).toHaveAttribute('aria-checked', 'true');
 
   await page.getByRole('button', { name: 'Save changes' }).click();
-  await expect(page.getByText('Profile updated')).toBeVisible();
+  await expect(page.getByText('Profile updated').first()).toBeVisible();
 
   await page.reload();
   await expect(page.locator('#city')).toHaveValue('Cluj-Napoca');

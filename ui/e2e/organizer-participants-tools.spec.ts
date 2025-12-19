@@ -81,5 +81,5 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   await page.locator('#email-subject').fill('E2E Participants email');
   await page.locator('#email-message').fill('Hello participants! This is an automated E2E test message.');
   await page.getByRole('button', { name: 'Send' }).click();
-  await expect(page.getByText('Email sent to 1 participants.')).toBeVisible();
+  await expect(page.getByText('Email sent to 1 participants.').first()).toBeVisible();
 });

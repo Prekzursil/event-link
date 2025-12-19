@@ -534,8 +534,9 @@ export function StudentProfilePage() {
                     setFaculty('');
                   }
                   const match = universityCatalog.find((item) => item.name.toLowerCase() === next.trim().toLowerCase());
-                  if (match?.city && !city.trim()) {
-                    setCity(match.city);
+                  const matchCity = match?.city;
+                  if (matchCity) {
+                    setCity((previousCity) => (previousCity.trim() ? previousCity : matchCity));
                   }
                 }}
                 placeholder={t.profile.universityPlaceholder}
