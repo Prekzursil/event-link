@@ -245,10 +245,37 @@ class UserImplicitInterestTag(Base):
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
     tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False, index=True)
+    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
 
     user = relationship("User", foreign_keys=[user_id])
     tag = relationship("Tag", foreign_keys=[tag_id])
+
+
+class UserImplicitInterestCategory(Base):
+    __tablename__ = "user_implicit_interest_categories"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_implicit_interest_category"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(100), nullable=False, index=True)
+    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
+    last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
+class UserImplicitInterestCity(Base):
+    __tablename__ = "user_implicit_interest_cities"
+    __table_args__ = (UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    city = Column(String(100), nullable=False, index=True)
+    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
+    last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
 
 
 event_tags = Table(

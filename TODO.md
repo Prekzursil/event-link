@@ -65,7 +65,7 @@
 - [x] Personalization ML v2: position-bias-aware impression learning and stronger search/filter label usage.
 - [x] Personalization ML v2: quality guardrails (auto-stop/rollback on CTR/conversion drops) + admin controls.
 - [x] Ops: add clear runtime status endpoint/docs for worker + realtime refresh + active model requirements.
-- [ ] Personalization ML v3: weighted per-user interest signals (tag/category/city decay) beyond implicit tag sets.
+- [x] Personalization ML v3: weighted per-user interest signals (tag/category/city decay) beyond implicit tag sets.
 - [x] Experiments: add A/B assignment + feature flags for personalization rollouts (control vs ML ranking).
 - [x] Personalization: "Why am I seeing this?" explanations + user controls (hide tags/organizers, show less like this, personalization settings).
 - [x] Notifications: personalized digests + "filling fast" alerts with opt-in/out preferences.

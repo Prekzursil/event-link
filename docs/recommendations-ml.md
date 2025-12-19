@@ -105,8 +105,11 @@ When enabled, `POST /api/analytics/interactions` also updates a student's implic
 and search/filter usage:
 
 - table: `user_implicit_interest_tags`
+- also: `user_implicit_interest_categories`, `user_implicit_interest_cities`
 - gated by `recommendations_online_learning_enabled=true`
 - uses `recommendations_online_learning_dwell_threshold_seconds` to treat long dwell as a positive signal
+- scores decay over time (half-life) via `recommendations_online_learning_decay_half_life_hours`
+- scores are capped via `recommendations_online_learning_max_score`
 
 This does **not** update the global model weights continuously; it updates per-user implicit interests so near-real-time
 re-scoring can react without a full retrain.

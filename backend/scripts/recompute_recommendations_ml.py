@@ -39,10 +39,12 @@ class _EventFeatures:
 @dataclass(frozen=True)
 class _UserFeatures:
     city: str | None
-    interest_tags: set[str]
+    interest_tag_weights: dict[str, float]
     history_tags: set[str]
     history_categories: set[str]
     history_organizer_ids: set[int]
+    category_weights: dict[str, float]
+    city_weights: dict[str, float]
 
 
 # Must match `_build_feature_vector` output order.
@@ -69,6 +71,13 @@ def _normalize_city(name: str | None) -> str | None:
     return name.lower() or None
 
 
+def _normalize_category(name: str | None) -> str | None:
+    if not name:
+        return None
+    name = name.strip()
+    return name.lower() or None
+
+
 def _build_feature_vector(
     *,
     user: _UserFeatures,
@@ -78,19 +87,23 @@ def _build_feature_vector(
     tags = event.tags
     tag_count = max(1, len(tags))
 
-    overlap_interest = len(user.interest_tags & tags)
+    overlap_interest = sum(float(user.interest_tag_weights.get(tag, 0.0)) for tag in tags)
     overlap_history = len(user.history_tags & tags)
 
     overlap_interest_ratio = overlap_interest / tag_count
     overlap_history_ratio = overlap_history / tag_count
 
     same_city = 0.0
-    if user.city and event.city and user.city == _normalize_city(event.city):
+    if user.city and event.city and user.city == event.city:
         same_city = 1.0
+    elif event.city:
+        same_city = float(user.city_weights.get(event.city, 0.0))
 
     category_match = 0.0
     if event.category and event.category in user.history_categories:
         category_match = 1.0
+    elif event.category:
+        category_match = float(user.category_weights.get(event.category, 0.0))
 
     organizer_match = 1.0 if event.owner_id in user.history_organizer_ids else 0.0
 
@@ -114,12 +127,18 @@ def _build_feature_vector(
 
 
 def _reason_for(*, user: _UserFeatures, event: _EventFeatures, lang: str) -> str:
-    overlap = list(user.interest_tags & event.tags)
-    overlap.sort()
+    overlap: list[tuple[str, float]] = []
+    for tag in event.tags:
+        weight = float(user.interest_tag_weights.get(tag, 0.0))
+        if weight > 0:
+            overlap.append((tag, weight))
+    overlap.sort(key=lambda item: (-item[1], item[0]))
     if overlap:
-        top = ", ".join(overlap[:3])
+        top = ", ".join(tag for tag, _weight in overlap[:3])
         return f"Your interests: {top}" if lang == "en" else f"Interesele tale: {top}"
-    if user.city and event.city and user.city == _normalize_city(event.city):
+    if user.city and event.city and user.city == event.city:
+        return "Near you" if lang == "en" else "În apropiere"
+    if event.city and float(user.city_weights.get(event.city, 0.0)) >= 0.5:
         return "Near you" if lang == "en" else "În apropiere"
     return "Recommended for you" if lang == "en" else "Recomandat pentru tine"
 
@@ -245,11 +264,27 @@ def main() -> int:
         return 2
 
     from app import models  # noqa: PLC0415
+    from app.config import settings  # noqa: PLC0415
     from app.database import SessionLocal  # noqa: PLC0415
     from sqlalchemy import func  # noqa: PLC0415
 
     now = datetime.now(timezone.utc)
     requested_model_version = os.environ.get("RECOMMENDER_MODEL_VERSION")
+    half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
+    decay_lambda = math.log(2.0) / (float(half_life_hours) * 3600.0)
+    max_score = float(settings.recommendations_online_learning_max_score)
+
+    def _decayed_norm(score: float, last_seen_at: datetime | None) -> float:
+        if max_score <= 0:
+            return 0.0
+        last_seen = last_seen_at or now
+        if last_seen.tzinfo is None:
+            last_seen = last_seen.replace(tzinfo=timezone.utc)
+        delta_seconds = (now - last_seen).total_seconds()
+        if delta_seconds > 0:
+            score = float(score) * math.exp(-decay_lambda * float(delta_seconds))
+        score = max(0.0, min(max_score, float(score)))
+        return score / max_score
 
     with SessionLocal() as db:
         students_query = db.query(models.User).filter(models.User.role == models.UserRole.student)
@@ -291,8 +326,8 @@ def main() -> int:
             event_id = int(ev.id)
             events[event_id] = _EventFeatures(
                 tags=tags_by_event_id.get(event_id, set()),
-                category=(ev.category or None),
-                city=(ev.city or None),
+                category=_normalize_category(ev.category),
+                city=_normalize_city(ev.city),
                 owner_id=int(ev.owner_id),
                 start_time=ev.start_time,
                 seats_taken=int(seats_taken_by_event.get(event_id, 0)),
@@ -313,24 +348,77 @@ def main() -> int:
         if args.user_id is not None:
             interest_tag_query = interest_tag_query.filter(models.user_interest_tags.c.user_id == int(args.user_id))
         interest_tag_rows = interest_tag_query.all()
-        interest_tags_by_user: dict[int, set[str]] = {}
+        interest_tag_weights_by_user: dict[int, dict[str, float]] = {}
         for user_id, tag_name in interest_tag_rows:
             normalized = _normalize_tag(str(tag_name))
             if not normalized:
                 continue
-            interest_tags_by_user.setdefault(int(user_id), set()).add(normalized)
+            interest_tag_weights_by_user.setdefault(int(user_id), {})[normalized] = 1.0
 
         implicit_tag_query = (
-            db.query(models.UserImplicitInterestTag.user_id, models.Tag.name)
+            db.query(
+                models.UserImplicitInterestTag.user_id,
+                models.Tag.name,
+                models.UserImplicitInterestTag.score,
+                models.UserImplicitInterestTag.last_seen_at,
+            )
             .join(models.Tag, models.Tag.id == models.UserImplicitInterestTag.tag_id)
         )
         if args.user_id is not None:
             implicit_tag_query = implicit_tag_query.filter(models.UserImplicitInterestTag.user_id == int(args.user_id))
-        for user_id, tag_name in implicit_tag_query.all():
+        for user_id, tag_name, score, last_seen_at in implicit_tag_query.all():
             normalized = _normalize_tag(str(tag_name))
             if not normalized:
                 continue
-            interest_tags_by_user.setdefault(int(user_id), set()).add(normalized)
+            weight = _decayed_norm(float(score or 0.0), last_seen_at)
+            if weight <= 0:
+                continue
+            bucket = interest_tag_weights_by_user.setdefault(int(user_id), {})
+            bucket[normalized] = max(float(bucket.get(normalized, 0.0)), float(weight))
+
+        category_weights_by_user: dict[int, dict[str, float]] = {}
+        try:
+            category_query = db.query(
+                models.UserImplicitInterestCategory.user_id,
+                models.UserImplicitInterestCategory.category,
+                models.UserImplicitInterestCategory.score,
+                models.UserImplicitInterestCategory.last_seen_at,
+            )
+            if args.user_id is not None:
+                category_query = category_query.filter(models.UserImplicitInterestCategory.user_id == int(args.user_id))
+            for user_id, category, score, last_seen_at in category_query.all():
+                key = _normalize_category(str(category))
+                if not key:
+                    continue
+                weight = _decayed_norm(float(score or 0.0), last_seen_at)
+                if weight <= 0:
+                    continue
+                bucket = category_weights_by_user.setdefault(int(user_id), {})
+                bucket[key] = max(float(bucket.get(key, 0.0)), float(weight))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] could not load user_implicit_interest_categories ({exc}); continuing without category weights")
+
+        city_weights_by_user: dict[int, dict[str, float]] = {}
+        try:
+            city_query = db.query(
+                models.UserImplicitInterestCity.user_id,
+                models.UserImplicitInterestCity.city,
+                models.UserImplicitInterestCity.score,
+                models.UserImplicitInterestCity.last_seen_at,
+            )
+            if args.user_id is not None:
+                city_query = city_query.filter(models.UserImplicitInterestCity.user_id == int(args.user_id))
+            for user_id, city, score, last_seen_at in city_query.all():
+                key = _normalize_city(str(city))
+                if not key:
+                    continue
+                weight = _decayed_norm(float(score or 0.0), last_seen_at)
+                if weight <= 0:
+                    continue
+                bucket = city_weights_by_user.setdefault(int(user_id), {})
+                bucket[key] = max(float(bucket.get(key, 0.0)), float(weight))
+        except Exception as exc:  # noqa: BLE001
+            print(f"[warn] could not load user_implicit_interest_cities ({exc}); continuing without city weights")
 
         reg_query = (
             db.query(models.Registration.user_id, models.Registration.event_id, models.Registration.attended)
@@ -393,7 +481,9 @@ def main() -> int:
 
                 category_value = meta.get("category")
                 if isinstance(category_value, str) and category_value.strip():
-                    implicit_categories_by_user.setdefault(user_id_int, set()).add(category_value.strip())
+                    normalized_category = _normalize_category(category_value)
+                    if normalized_category:
+                        implicit_categories_by_user.setdefault(user_id_int, set()).add(normalized_category)
 
                 city_value = meta.get("city")
                 if isinstance(city_value, str):
@@ -489,6 +579,10 @@ def main() -> int:
         for student in students:
             user_id = int(student.id)
             city = _normalize_city(student.city) or implicit_city_by_user.get(user_id)
+            if not city:
+                city_prefs = city_weights_by_user.get(user_id, {})
+                if city_prefs:
+                    city = max(city_prefs.items(), key=lambda item: item[1])[0]
             pref_lang = (student.language_preference or "system").strip().lower()
             if pref_lang == "en":
                 user_lang[user_id] = "en"
@@ -516,12 +610,15 @@ def main() -> int:
                 history_organizers.add(ev.owner_id)
 
             history_categories |= implicit_categories_by_user.get(user_id, set())
+            category_weights = category_weights_by_user.get(user_id, {})
             users[user_id] = _UserFeatures(
                 city=city,
-                interest_tags=interest_tags_by_user.get(user_id, set()) | implicit_interest_tags_by_user.get(user_id, set()),
+                interest_tag_weights=interest_tag_weights_by_user.get(user_id, {}),
                 history_tags=history_tags,
                 history_categories=history_categories,
                 history_organizer_ids=history_organizers,
+                category_weights=category_weights,
+                city_weights=city_weights_by_user.get(user_id, {}),
             )
 
         model_version: str
