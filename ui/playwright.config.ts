@@ -4,8 +4,8 @@ const baseURL = process.env.PLAYWRIGHT_BASE_URL ?? process.env.E2E_BASE_URL ?? '
 
 export default defineConfig({
   testDir: './e2e',
-  timeout: 60_000,
-  expect: { timeout: 15_000 },
+  timeout: 120_000,
+  expect: { timeout: 20_000 },
   fullyParallel: false,
   retries: process.env.CI ? 1 : 0,
   workers: process.env.CI ? 1 : undefined,
@@ -14,6 +14,7 @@ export default defineConfig({
     : [['list'], ['html', { outputFolder: 'playwright-report', open: 'never' }]],
   use: {
     baseURL,
+    navigationTimeout: 45_000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
   },
@@ -24,4 +25,3 @@ export default defineConfig({
     },
   ],
 });
-

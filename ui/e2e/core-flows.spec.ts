@@ -47,7 +47,9 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   const baseTitle = `E2E Workshop ${Date.now()}`;
   const updatedTitle = `${baseTitle} (edited)`;
 
-  await page.goto('/organizer/events/new');
+  await expect(page.getByRole('link', { name: 'New Event' })).toBeVisible();
+  await page.getByRole('link', { name: 'New Event' }).click();
+  await expect(page).toHaveURL(/\/organizer\/events\/new$/);
   await page.locator('#title').fill(baseTitle);
   await page.locator('#description').fill('Playwright end-to-end test event.');
 
@@ -81,20 +83,27 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await expect(page).toHaveURL(/\/organizer($|\?)/);
 
   // Verify the updated title is visible on the event page
-  await page.goto(`/events/${createdEventId}`);
+  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
+  await page.getByRole('link', { name: updatedTitle }).click();
   await expect(page.getByRole('heading', { name: updatedTitle })).toBeVisible();
 
   // Student registers for the event
   await clearAuth(page);
   await login(page, STUDENT.email, STUDENT.password);
-  await page.goto(`/events/${createdEventId}`);
+  await page.getByPlaceholder('Search events...').fill(updatedTitle);
+  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
+  await page.getByRole('link', { name: updatedTitle }).click();
   await page.getByRole('button', { name: 'Register for event' }).click();
   await expect(page.getByRole('button', { name: 'Unregister' })).toBeVisible();
 
   // Organizer marks attendance for the student
   await clearAuth(page);
   await login(page, ORGANIZER.email, ORGANIZER.password);
-  await page.goto(`/organizer/events/${createdEventId}/participants`);
+  await page.getByPlaceholder('Search events...').fill(updatedTitle);
+  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
+  await page.getByRole('link', { name: updatedTitle }).click();
+  await page.getByRole('link', { name: 'View participants' }).click();
+  await expect(page).toHaveURL(new RegExp(`/organizer/events/${createdEventId}/participants$`));
   await expect(page.getByRole('link', { name: STUDENT.email })).toBeVisible();
 
   const participantRow = page.locator('tr', { hasText: STUDENT.email });
@@ -107,7 +116,9 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   // Student unregisters
   await clearAuth(page);
   await login(page, STUDENT.email, STUDENT.password);
-  await page.goto(`/events/${createdEventId}`);
+  await page.getByPlaceholder('Search events...').fill(updatedTitle);
+  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
+  await page.getByRole('link', { name: updatedTitle }).click();
   await page.getByRole('button', { name: 'Unregister' }).click();
   await expect(page.getByRole('button', { name: 'Register for event' })).toBeVisible();
 });
