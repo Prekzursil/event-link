@@ -63,19 +63,19 @@
 /* Override default styles to match app theme */
 
 .rdp-root {
-  --rdp-accent-color: hsl(221.2 83.2% 53.3%);
-  --rdp-accent-background-color: hsl(221.2 83.2% 53.3%);
-  --rdp-range_start-color: #fff;
-  --rdp-range_start-background: hsl(221.2 83.2% 53.3%);
-  --rdp-range_end-color: #fff;
-  --rdp-range_end-background: hsl(221.2 83.2% 53.3%);
-  --rdp-range_middle-color: hsl(221.2 83.2% 25%);
-  --rdp-range_middle-background: hsl(221.2 83.2% 92%);
-  --rdp-selected-color: #fff;
-  --rdp-selected-background: hsl(221.2 83.2% 53.3%);
+  --rdp-accent-color: var(--color-primary);
+  --rdp-accent-background-color: var(--color-primary);
+  --rdp-range_start-color: var(--color-primary-foreground);
+  --rdp-range_start-background: var(--color-primary);
+  --rdp-range_end-color: var(--color-primary-foreground);
+  --rdp-range_end-background: var(--color-primary);
+  --rdp-range_middle-color: var(--color-secondary-foreground);
+  --rdp-range_middle-background: var(--color-secondary);
+  --rdp-selected-color: var(--color-primary-foreground);
+  --rdp-selected-background: var(--color-primary);
   --rdp-day-height: 2.25rem;
   --rdp-day-width: 2.25rem;
-  --rdp-today-color: hsl(221.2 83.2% 53.3%);
+  --rdp-today-color: var(--color-primary);
 }
 
 /* Day cell base */
@@ -91,14 +91,14 @@
 
 /* Hover state */
 .rdp-day:not(.rdp-selected):not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle):not(.rdp-disabled) button:hover {
-  background-color: hsl(210 40% 96.1%);
+  background-color: var(--color-muted);
 }
 
 /* Selected single day */
 .rdp-selected:not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button,
 .rdp-selected:not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button:hover {
-  background-color: hsl(221.2 83.2% 53.3%) !important;
-  color: white !important;
+  background-color: var(--rdp-selected-background) !important;
+  color: var(--rdp-selected-color) !important;
   font-weight: 500;
   border-radius: 0.375rem;
 }
@@ -106,8 +106,8 @@
 /* Range start */
 .rdp-range_start button,
 .rdp-range_start button:hover {
-  background-color: hsl(221.2 83.2% 53.3%) !important;
-  color: white !important;
+  background-color: var(--rdp-range_start-background) !important;
+  color: var(--rdp-range_start-color) !important;
   font-weight: 500;
   border-radius: 0.375rem 0 0 0.375rem !important;
 }
@@ -115,8 +115,8 @@
 /* Range end */
 .rdp-range_end button,
 .rdp-range_end button:hover {
-  background-color: hsl(221.2 83.2% 53.3%) !important;
-  color: white !important;
+  background-color: var(--rdp-range_end-background) !important;
+  color: var(--rdp-range_end-color) !important;
   font-weight: 500;
   border-radius: 0 0.375rem 0.375rem 0 !important;
 }
@@ -129,34 +129,34 @@
 /* Range middle */
 .rdp-range_middle button,
 .rdp-range_middle button:hover {
-  background-color: hsl(221.2 83.2% 92%) !important;
-  color: hsl(221.2 83.2% 25%) !important;
+  background-color: var(--rdp-range_middle-background) !important;
+  color: var(--rdp-range_middle-color) !important;
   border-radius: 0 !important;
 }
 
 /* Today */
 .rdp-today:not(.rdp-selected):not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button {
-  background-color: hsl(210 40% 96.1%);
-  color: hsl(221.2 83.2% 53.3%);
+  background-color: var(--color-muted);
+  color: var(--rdp-today-color);
   font-weight: 600;
 }
 
 /* Outside days */
 .rdp-outside button {
-  color: hsl(215.4 16.3% 46.9%);
+  color: var(--color-muted-foreground);
   opacity: 0.5;
 }
 
 /* Disabled days */
 .rdp-disabled button {
-  color: hsl(215.4 16.3% 46.9%);
+  color: var(--color-muted-foreground);
   opacity: 0.4;
   cursor: not-allowed;
 }
 
 /* Weekday headers */
 .rdp-weekday {
-  color: hsl(215.4 16.3% 46.9%);
+  color: var(--color-muted-foreground);
   font-size: 0.8rem;
   font-weight: 500;
 }
@@ -164,5 +164,5 @@
 /* Month caption */
 .rdp-month_caption {
   font-weight: 600;
-  color: hsl(222.2 84% 4.9%);
+  color: var(--color-foreground);
 }

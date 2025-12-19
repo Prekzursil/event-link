@@ -5,7 +5,6 @@ Revises: 0001_add_cover_attended
 Create Date: 2025-11-26
 """
 from alembic import op
-import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = '0002_add_event_indexes'

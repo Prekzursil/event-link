@@ -6,6 +6,7 @@ import { EventCard } from '@/components/events/EventCard';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/contexts/LanguageContext';
 import { Heart, Search } from 'lucide-react';
 
 export function FavoritesPage() {
@@ -13,6 +14,7 @@ export function FavoritesPage() {
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
+  const { t } = useI18n();
 
   const loadFavorites = useCallback(async () => {
     setIsLoading(true);
@@ -22,14 +24,14 @@ export function FavoritesPage() {
       setFavorites(new Set(response.items.map((e) => e.id)));
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut încărca favoritele',
+        title: t.favorites.loadErrorTitle,
+        description: t.favorites.loadErrorDescription,
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [toast]);
+  }, [toast, t]);
 
   useEffect(() => {
     loadFavorites();
@@ -52,37 +54,37 @@ export function FavoritesPage() {
       }
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza favoritele',
+        title: t.favorites.updateErrorTitle,
+        description: t.favorites.updateErrorDescription,
         variant: 'destructive',
       });
     }
   };
 
   if (isLoading) {
-    return <LoadingPage message="Se încarcă favoritele..." />;
+    return <LoadingPage message={t.favorites.loading} />;
   }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold">Favorite</h1>
+        <h1 className="text-3xl font-bold">{t.favorites.title}</h1>
         <p className="mt-2 text-muted-foreground">
-          Evenimentele salvate în lista ta de favorite
+          {t.favorites.subtitle}
         </p>
       </div>
 
       {events.length === 0 ? (
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Heart className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">Nu ai evenimente favorite</h3>
+          <h3 className="text-lg font-semibold">{t.favorites.emptyTitle}</h3>
           <p className="mt-2 text-muted-foreground">
-            Adaugă evenimente la favorite pentru a le accesa mai ușor
+            {t.favorites.emptyDescription}
           </p>
           <Button asChild className="mt-4">
             <Link to="/">
               <Search className="mr-2 h-4 w-4" />
-              Explorează evenimente
+              {t.favorites.exploreEvents}
             </Link>
           </Button>
         </div>

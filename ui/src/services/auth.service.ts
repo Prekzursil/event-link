@@ -1,5 +1,5 @@
 import api from './api';
-import type { AuthToken, User } from '../types';
+import type { AuthToken, User, ThemePreference, LanguagePreference } from '../types';
 
 export interface RegisterData {
   email: string;
@@ -31,8 +31,13 @@ export const authService = {
     return response.data;
   },
 
-  async upgradeToOrganizer(inviteCode: string): Promise<{ status: string }> {
-    const response = await api.post('/organizer/upgrade', { invite_code: inviteCode });
+  async updateThemePreference(themePreference: ThemePreference): Promise<User> {
+    const response = await api.put<User>('/api/me/theme', { theme_preference: themePreference });
+    return response.data;
+  },
+
+  async updateLanguagePreference(languagePreference: LanguagePreference): Promise<User> {
+    const response = await api.put<User>('/api/me/language', { language_preference: languagePreference });
     return response.data;
   },
 
@@ -76,7 +81,7 @@ export const authService = {
 
   isOrganizer(): boolean {
     const user = this.getStoredUser();
-    return user?.role === 'organizator';
+    return user?.role === 'organizator' || user?.role === 'admin';
   },
 };
 

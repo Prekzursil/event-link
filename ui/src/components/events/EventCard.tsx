@@ -5,6 +5,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Calendar, Clock, MapPin, Users, Heart, Sparkles, Pencil } from 'lucide-react';
 import { formatDate, formatTime, cn } from '@/lib/utils';
+import { useI18n } from '@/contexts/LanguageContext';
+import { getEventCategoryLabel } from '@/lib/eventCategories';
 
 export interface EventCardProps {
   event: Event;
@@ -13,6 +15,7 @@ export interface EventCardProps {
   showRecommendation?: boolean;
   isPast?: boolean;
   showEditButton?: boolean;
+  onEventClick?: (eventId: number) => void;
 }
 
 export function EventCard({
@@ -22,7 +25,9 @@ export function EventCard({
   showRecommendation = false,
   isPast = false,
   showEditButton = false,
+  onEventClick,
 }: EventCardProps) {
+  const { language, t } = useI18n();
   const availableSeats = event.max_seats ? event.max_seats - event.seats_taken : null;
   const isFull = availableSeats !== null && availableSeats <= 0;
 
@@ -37,7 +42,7 @@ export function EventCard({
       "group overflow-hidden transition-all hover:shadow-lg",
       isPast && "opacity-75"
     )}>
-      <Link to={`/events/${event.id}`}>
+      <Link to={`/events/${event.id}`} onClick={() => onEventClick?.(event.id)}>
         {/* Cover Image */}
         <div className="relative aspect-video overflow-hidden bg-muted">
           {event.cover_url ? (
@@ -62,13 +67,13 @@ export function EventCard({
           {/* Status Badges */}
           <div className="absolute left-2 top-2 flex flex-wrap gap-1">
             {isPast && (
-              <Badge variant="secondary">Încheiat</Badge>
+              <Badge variant="secondary">{t.eventCard.ended}</Badge>
             )}
             {event.status === 'draft' && (
-              <Badge variant="secondary">Draft</Badge>
+              <Badge variant="secondary">{t.eventCard.draft}</Badge>
             )}
             {isFull && !isPast && (
-              <Badge variant="destructive">Complet</Badge>
+              <Badge variant="destructive">{t.eventCard.full}</Badge>
             )}
           </div>
 
@@ -108,7 +113,7 @@ export function EventCard({
           {/* Category */}
           {event.category && (
             <Badge variant="outline" className="w-fit">
-              {event.category}
+              {getEventCategoryLabel(event.category, language)}
             </Badge>
           )}
           <h3 className="line-clamp-2 text-lg font-semibold leading-tight">
@@ -120,16 +125,18 @@ export function EventCard({
           {/* Date & Time */}
           <div className="flex items-center gap-2 text-sm text-muted-foreground">
             <Calendar className="h-4 w-4" />
-            <span>{formatDate(event.start_time)}</span>
+            <span>{formatDate(event.start_time, language)}</span>
             <Clock className="ml-2 h-4 w-4" />
-            <span>{formatTime(event.start_time)}</span>
+            <span>{formatTime(event.start_time, language)}</span>
           </div>
 
-          {/* Location */}
-          {event.location && (
+          {/* City / Location */}
+          {(event.city || event.location) && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <MapPin className="h-4 w-4" />
-              <span className="line-clamp-1">{event.location}</span>
+              <span className="line-clamp-1">
+                {[event.city, event.location].filter(Boolean).join(' • ')}
+              </span>
             </div>
           )}
 
@@ -138,7 +145,7 @@ export function EventCard({
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
               <Users className="h-4 w-4" />
               <span>
-                {event.seats_taken} / {event.max_seats} locuri ocupate
+                {event.seats_taken} / {event.max_seats} {t.eventCard.seatsTakenSuffix}
               </span>
             </div>
           )}

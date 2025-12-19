@@ -1,5 +1,7 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
+import { ThemeProvider } from '@/contexts/ThemeContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
 import { Toaster } from '@/components/ui/toaster';
 import { Layout } from '@/components/layout/Layout';
 import { LoadingPage } from '@/components/ui/loading';
@@ -15,6 +17,11 @@ import { EventsPage, EventDetailPage } from '@/pages/events';
 import { MyEventsPage } from '@/pages/MyEventsPage';
 import { FavoritesPage } from '@/pages/FavoritesPage';
 import { StudentProfilePage } from '@/pages/profile';
+import { ForbiddenPage } from '@/pages/ForbiddenPage';
+import { NotFoundPage } from '@/pages/NotFoundPage';
+
+// Admin pages
+import { AdminDashboardPage } from '@/pages/admin';
 
 // Organizer pages
 import {
@@ -52,7 +59,26 @@ function OrganizerRoute({ children }: { children: React.ReactNode }) {
   }
 
   if (!isOrganizer) {
-    return <Navigate to="/" replace />;
+    return <Navigate to="/forbidden" replace />;
+  }
+
+  return <>{children}</>;
+}
+
+// Admin route wrapper
+function AdminRoute({ children }: { children: React.ReactNode }) {
+  const { isAuthenticated, isAdmin, isLoading } = useAuth();
+
+  if (isLoading) {
+    return <LoadingPage />;
+  }
+
+  if (!isAuthenticated) {
+    return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/forbidden" replace />;
   }
 
   return <>{children}</>;
@@ -81,6 +107,7 @@ function AppRoutes() {
         <Route path="/" element={<EventsPage />} />
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/organizers/:id" element={<OrganizerProfilePage />} />
+        <Route path="/forbidden" element={<ForbiddenPage />} />
         
         {/* Protected routes */}
         <Route
@@ -141,6 +168,19 @@ function AppRoutes() {
             </OrganizerRoute>
           }
         />
+
+        {/* Admin routes */}
+        <Route
+          path="/admin"
+          element={
+            <AdminRoute>
+              <AdminDashboardPage />
+            </AdminRoute>
+          }
+        />
+
+        {/* Catch all - 404 */}
+        <Route path="*" element={<NotFoundPage />} />
       </Route>
 
       {/* Auth routes (without main layout) */}
@@ -162,9 +202,6 @@ function AppRoutes() {
       />
       <Route path="/forgot-password" element={<ForgotPasswordPage />} />
       <Route path="/reset-password" element={<ResetPasswordPage />} />
-
-      {/* Catch all - redirect to home */}
-      <Route path="*" element={<Navigate to="/" replace />} />
     </Routes>
   );
 }
@@ -172,10 +209,14 @@ function AppRoutes() {
 function App() {
   return (
     <BrowserRouter>
-      <AuthProvider>
-        <AppRoutes />
-        <Toaster />
-      </AuthProvider>
+      <ThemeProvider>
+        <LanguageProvider>
+          <AuthProvider>
+            <AppRoutes />
+            <Toaster />
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
     </BrowserRouter>
   );
 }

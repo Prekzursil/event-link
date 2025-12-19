@@ -1,4 +1,5 @@
 import axios, { type AxiosError, type InternalAxiosRequestConfig } from 'axios';
+import { getStoredLanguagePreference, resolveLanguage } from '@/lib/language';
 
 const API_BASE_URL = import.meta.env.VITE_API_URL || 'http://localhost:8000';
 
@@ -17,7 +18,7 @@ api.interceptors.request.use(
       config.headers.Authorization = `Bearer ${token}`;
     }
     // Add language header
-    config.headers['Accept-Language'] = localStorage.getItem('language') || 'ro';
+    config.headers['Accept-Language'] = resolveLanguage(getStoredLanguagePreference());
     return config;
   },
   (error) => Promise.reject(error)

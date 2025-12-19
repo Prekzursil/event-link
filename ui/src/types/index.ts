@@ -1,10 +1,15 @@
-export type UserRole = 'student' | 'organizator';
+export type UserRole = 'student' | 'organizator' | 'admin';
+export type ThemePreference = 'system' | 'light' | 'dark';
+export type LanguagePreference = 'system' | 'ro' | 'en';
+export type StudyLevel = 'bachelor' | 'master' | 'phd' | 'medicine';
 
 export interface User {
   id: number;
   email: string;
   role: UserRole;
   full_name?: string;
+  theme_preference?: ThemePreference;
+  language_preference?: LanguagePreference;
 }
 
 export interface Tag {
@@ -19,6 +24,7 @@ export interface Event {
   category?: string;
   start_time: string;
   end_time?: string;
+  city?: string;
   location?: string;
   max_seats?: number;
   cover_url?: string;
@@ -34,7 +40,7 @@ export interface Event {
 export interface EventDetail extends Event {
   is_registered: boolean;
   is_owner: boolean;
-  available_seats?: number;
+  available_seats?: number | null;
   is_favorite: boolean;
 }
 
@@ -59,6 +65,7 @@ export interface ParticipantList {
   cover_url?: string;
   seats_taken: number;
   max_seats?: number;
+  city?: string | null;
   participants: Participant[];
   total: number;
   page: number;
@@ -76,15 +83,74 @@ export interface OrganizerProfile {
   events: Event[];
 }
 
+export interface OrganizerSummary {
+  id: number;
+  email: string;
+  full_name?: string | null;
+  org_name?: string | null;
+}
+
+export interface PersonalizationSettings {
+  hidden_tags: Tag[];
+  blocked_organizers: OrganizerSummary[];
+}
+
+export interface NotificationPreferences {
+  email_digest_enabled: boolean;
+  email_filling_fast_enabled: boolean;
+}
+
+export interface NotificationPreferencesUpdate {
+  email_digest_enabled?: boolean;
+  email_filling_fast_enabled?: boolean;
+}
+
+export interface EventDuplicateCandidate {
+  id: number;
+  title: string;
+  start_time: string;
+  city?: string | null;
+  similarity: number;
+}
+
+export interface EventSuggestRequest {
+  title: string;
+  description?: string;
+  category?: string;
+  city?: string;
+  location?: string;
+  start_time?: string;
+}
+
+export interface EventSuggestResponse {
+  suggested_category?: string | null;
+  suggested_city?: string | null;
+  suggested_tags: string[];
+  duplicates: EventDuplicateCandidate[];
+  moderation_score: number;
+  moderation_flags: string[];
+  moderation_status: string;
+}
+
 export interface StudentProfile {
   user_id: number;
   email: string;
   full_name?: string;
+  city?: string | null;
+  university?: string | null;
+  faculty?: string | null;
+  study_level?: StudyLevel | null;
+  study_year?: number | null;
   interest_tags: Tag[];
 }
 
 export interface StudentProfileUpdate {
   full_name?: string;
+  city?: string;
+  university?: string;
+  faculty?: string;
+  study_level?: StudyLevel;
+  study_year?: number;
   interest_tag_ids?: number[];
 }
 
@@ -102,8 +168,10 @@ export interface EventFilters {
   start_date?: string;
   end_date?: string;
   tags?: string[];
+  city?: string;
   location?: string;
   include_past?: boolean;
+  sort?: 'time' | 'recommended';
   page?: number;
   page_size?: number;
 }
@@ -114,10 +182,124 @@ export interface EventFormData {
   category?: string;
   start_time: string;
   end_time?: string;
+  city?: string;
   location?: string;
   max_seats?: number;
   cover_url?: string;
   tags?: string[];
   status?: 'draft' | 'published';
   publish_at?: string;
+}
+
+export interface UniversityCatalogItem {
+  name: string;
+  city?: string | null;
+  faculties: string[];
+  aliases?: string[];
+}
+
+export interface RegistrationDayStat {
+  date: string;
+  registrations: number;
+}
+
+export interface TagPopularityStat {
+  name: string;
+  registrations: number;
+  events: number;
+}
+
+export interface AdminStats {
+  total_users: number;
+  total_events: number;
+  total_registrations: number;
+  registrations_by_day: RegistrationDayStat[];
+  top_tags: TagPopularityStat[];
+}
+
+export interface AdminUser {
+  id: number;
+  email: string;
+  role: UserRole;
+  full_name?: string | null;
+  org_name?: string | null;
+  created_at: string;
+  last_seen_at?: string | null;
+  is_active: boolean;
+  registrations_count: number;
+  attended_count: number;
+  events_created_count: number;
+}
+
+export interface PaginatedAdminUsers {
+  items: AdminUser[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface AdminUserUpdate {
+  role?: UserRole;
+  is_active?: boolean;
+}
+
+export interface AdminEvent {
+  id: number;
+  title: string;
+  description?: string | null;
+  category?: string | null;
+  start_time: string;
+  end_time?: string | null;
+  city?: string | null;
+  location?: string | null;
+  max_seats?: number | null;
+  cover_url?: string | null;
+  owner_id: number;
+  owner_email: string;
+  owner_name?: string | null;
+  tags: Tag[];
+  seats_taken: number;
+  status?: string | null;
+  publish_at?: string | null;
+  moderation_score?: number | null;
+  moderation_status?: string | null;
+  moderation_flags?: string[] | null;
+  moderation_reviewed_at?: string | null;
+  moderation_reviewed_by_user_id?: number | null;
+  deleted_at?: string | null;
+}
+
+export interface PaginatedAdminEvents {
+  items: AdminEvent[];
+  total: number;
+  page: number;
+  page_size: number;
+}
+
+export interface PersonalizationMetricsDay {
+  date: string;
+  impressions: number;
+  clicks: number;
+  registrations: number;
+  ctr: number;
+  registration_conversion: number;
+}
+
+export interface PersonalizationMetricsTotals {
+  impressions: number;
+  clicks: number;
+  registrations: number;
+  ctr: number;
+  registration_conversion: number;
+}
+
+export interface PersonalizationMetricsResponse {
+  items: PersonalizationMetricsDay[];
+  totals: PersonalizationMetricsTotals;
+}
+
+export interface EnqueuedJobResponse {
+  job_id: number;
+  job_type: string;
+  status: string;
 }

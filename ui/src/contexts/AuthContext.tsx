@@ -1,11 +1,14 @@
-import { createContext, useContext, useState, useEffect, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
 import type { User } from '@/types';
 import authService from '@/services/auth.service';
+import { useTheme } from '@/contexts/ThemeContext';
+import { useI18n } from '@/contexts/LanguageContext';
 
 interface AuthContextType {
   user: User | null;
   isAuthenticated: boolean;
   isOrganizer: boolean;
+  isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (email: string, password: string, confirmPassword: string, fullName?: string) => Promise<void>;
@@ -18,18 +21,26 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const { setPreference: setThemePreference } = useTheme();
+  const { setPreference: setLanguagePreference } = useI18n();
 
-  const refreshUser = async () => {
+  const refreshUser = useCallback(async () => {
     try {
       if (authService.isAuthenticated()) {
         const userData = await authService.getMe();
         setUser(userData);
+        if (userData.theme_preference) {
+          setThemePreference(userData.theme_preference);
+        }
+        if (userData.language_preference) {
+          setLanguagePreference(userData.language_preference);
+        }
       }
     } catch {
       authService.logout();
       setUser(null);
     }
-  };
+  }, [setLanguagePreference, setThemePreference]);
 
   useEffect(() => {
     const initAuth = async () => {
@@ -37,7 +48,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setIsLoading(false);
     };
     initAuth();
-  }, []);
+  }, [refreshUser]);
 
   const login = async (email: string, password: string) => {
     await authService.login({ email, password });
@@ -64,7 +75,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       value={{
         user,
         isAuthenticated: !!user,
-        isOrganizer: user?.role === 'organizator',
+        isOrganizer: user?.role === 'organizator' || user?.role === 'admin',
+        isAdmin: user?.role === 'admin',
         isLoading,
         login,
         register,

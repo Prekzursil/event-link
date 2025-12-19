@@ -1,7 +1,15 @@
 # TODO (Event Link)
 
 ## High
+- [x] DX: align docs/scripts with React+Vite UI (remove stale legacy tooling references; fix `start.bat`).
+- [x] Docker: add `ui/Dockerfile` + `ui/.dockerignore` + SPA nginx config so `docker compose up --build` works again.
+- [x] React UI: add organizer upgrade flow (invite code) wired to `POST /organizer/upgrade`.
+- [x] React UI: add “Resend registration email” action wired to `POST /api/events/{id}/register/resend`.
+- [x] React UI: add “My calendar (.ics)” download wired to `GET /api/me/calendar` (auth required).
+- [x] Fix Student Profile interest tag toggling (avoid double-toggle when clicking the checkbox).
 - [x] Localization (RO/EN) for UI labels and outbound emails with Accept-Language support.
+- [x] UI: add language switcher (RO/EN/System) + persist language preference in profile.
+- [x] Backend: localize recommendation reasons (`recommendation_reason`) based on language preference/Accept-Language.
 - [x] [EL-3] Student signup: allow students to create an account with email + password so they can register for events.
 - [x] [EL-4] User login: allow both students and organizers to log into their account securely to use the platform.
 - [x] [EL-6] Organizer create event form: provide a form for organizers to create and publish new events.
@@ -21,10 +29,48 @@
 - [x] Event validation: max length constraints, cover_url validation, password complexity; return structured errors.
 - [x] Recommendations: exclude past events and respect capacity/full state.
 - [x] Event pagination: add controls for page size selection and display total pages; update backend tests for page_size.
-- [x] Add 403/404 routing guards coverage in Angular tests.
-- [x] CI pipeline (GitHub Actions): install deps, run backend tests, run Angular tests.
-- [x] CI: run Angular tests headless (ChromeHeadless) to avoid display errors in Actions.
+- [x] UI: add unit tests for 403/404 routing + auth guards.
+- [x] CI pipeline (GitHub Actions): install deps, run backend tests, run UI checks.
+- [x] CI: run Docker Compose build + smoke test (backend health + frontend).
 - [x] Make sure emailing actually works, and configure it otherwise so that mails are being sent.
+- [x] Fix frontend CI for the Vite/React UI (`npm test` script + Actions workflow step).
+- [x] UI/UX: add light/dark/system theme support with a global toggle and persisted user preference.
+- [x] Backend: persist `theme_preference` on `User` and add `PUT /api/me/theme`.
+- [x] UI: audit and fix hard-coded colors so pages remain readable in dark mode.
+- [x] Student profile: add academic info (city, university, faculty, study level, year).
+- [x] Data: add Romania universities list + seeded faculties catalog (partial coverage) for dropdowns.
+- [x] Events: add explicit `city` field (separate from `location`) across API + UI.
+- [x] Events: add city filter in event list UI + API.
+- [x] Recommendations: boost events in the user’s city (still include national events).
+- [x] Admin: add DB-backed `admin` role + auth guards (UI + backend).
+- [x] Admin API: event moderation endpoints (list/update/delete/restore any event).
+- [x] Admin API: user management endpoints (list users + stats; change role; deactivate/delete).
+- [x] Admin UI: dashboard for stats + event/user management.
+- [x] Analytics: registrations over time + popular tags (admin dashboard).
+- [x] Remove organizer invite-code upgrade flow (UI + backend); manage organizer role via admin.
+- [x] Data: expand faculties catalog coverage across all Romanian universities (keep fallback manual input).
+- [x] Data: fill the remaining missing faculty lists (private/specialized institutions) or remove obsolete entries.
+- [x] Data: normalize/alias university names (fix typos like `Transilvany`, `Oil- Gas`, and handle legacy values).
+- [x] Events: expand category options in UI (align with seeded categories; add Music and more).
+- [x] Music: add genre tags (rock/pop/etc) to seed data and surface them in profile interests.
+- [x] Recommendations: include profile interest tags (cold-start) when building suggestions.
+- [x] Recommendations ML v1: add `user_recommendations` cache table + use it in `GET /api/recommendations` when fresh.
+- [x] Recommendations ML v1: add offline trainer script + docs for batch recompute.
+- [x] Recommendations ML: schedule periodic retraining (cron/CronJob) and monitor quality metrics (CTR, register conversion).
+- [x] Personalization: use ML ranking as a unified "For You" sort across event lists/search/filters (not only `/api/recommendations`).
+- [x] Analytics: add interaction tracking (impressions/clicks/dwell/search/filter/share) and feed signals into ML training.
+- [x] Personalization: near-real-time refresh of `user_recommendations` on meaningful interactions (config-gated).
+- [x] Personalization ML v2: DB-level job dedupe (avoid duplicate queued/running jobs without scanning).
+- [x] Personalization ML v2: online learning (continuous implicit interest tags from interactions; affects realtime re-scoring without retraining).
+- [x] Personalization ML v2: position-bias-aware impression learning and stronger search/filter label usage.
+- [x] Personalization ML v2: quality guardrails (auto-stop/rollback on CTR/conversion drops) + admin controls.
+- [x] Ops: add clear runtime status endpoint/docs for worker + realtime refresh + active model requirements.
+- [x] Personalization ML v3: weighted per-user interest signals (tag/category/city decay) beyond implicit tag sets.
+- [x] Experiments: add A/B assignment + feature flags for personalization rollouts (control vs ML ranking).
+- [x] Personalization: "Why am I seeing this?" explanations + user controls (hide tags/organizers, show less like this, personalization settings).
+- [x] Notifications: personalized digests + "filling fast" alerts with opt-in/out preferences.
+- [x] Organizer assist: suggest tags/category/city from title/description and detect near-duplicate events.
+- [x] Trust & safety: spam/phishing detection and suspicious organizer/event scoring + admin review tooling.
 
 ## Medium
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).
@@ -50,17 +96,25 @@
 - [x] Background cleanup job for expired invites/tokens and past event registrations.
 - [x] Role-based permission matrix documentation and tests ensuring unauthorized calls are blocked.
 - [x] Database indexes for common query fields (event start_time, category, owner_id, tags).
-- [x] Timezone-aware date handling end-to-end (backend, Angular date pipes, database).
+- [x] Timezone-aware date handling end-to-end (backend, UI, database).
 - [x] ICS calendar export for events and calendar subscription per user.
 - [x] Configuration sanity checks at startup (fail fast if essential env vars are missing).
 - [x] Full mobile/phone compatibility across core pages (nav, event lists/details/forms).
-- [x] Backend pytest migration + coverage thresholds for core flows (auth, events, register, recommendations, reset).
-- [x] Frontend Angular unit test fixes (ActivatedRoute providers) + coverage thresholds; stabilize CI headless runs.
+- [x] Mobile UX: make Events filter controls full-width and easier to tap on small screens.
+- [x] Mobile UX: make tab navigation wrap/scroll on small screens (My Events, Organizer Profile, Admin).
+- [x] Backend pytest migration + coverage reporting for core flows (auth, events, register, recommendations, reset).
 - [x] End-to-end tests (Playwright) for auth, event browse, register/unregister, and organizer edit flows.
+- [x] E2E (Playwright): password reset flow (request + reset) coverage.
+- [x] E2E (Playwright): student profile flows (interest tags + academic profile fields).
+- [x] E2E (Playwright): organizer participants tools (attendance toggle, CSV export, email participants).
+- [x] E2E (Playwright): organizer clone event + soft-delete/restore flows.
+- [x] E2E (Playwright): admin dashboard flows (user management + event moderation).
+- [x] E2E (Playwright): personalization controls (hide tags/blocked organizers) + “Why am I seeing this?” drawer.
+- [x] E2E (Playwright): notifications preferences + admin-triggered digest/filling-fast job enqueue.
 - [x] Stress/load tests for critical endpoints (event list, registration, recommendations).
 - [x] Pagination and sorting for all list endpoints (registrations, users).
-- [ ] Task queue for background jobs (emails/heavy processing).
-- [ ] Account deletion / data export flows for privacy regulations.
+- [x] Task queue for background jobs (emails/heavy processing).
+- [x] Account deletion / data export flows for privacy regulations.
 - [x] CI caching for npm/pip to speed up pipelines and document cache keys.
 
 ## Low
@@ -68,30 +122,35 @@
 - [x] [EL-18] Filter events by category: allow students to filter events by category (e.g., technical, cultural, sports) to see only relevant events.
 - [x] [EL-19] Registration confirmation email: send an email notification to students when they successfully register for an event.
 - [x] [EL-20] Filter events by date/interval: allow students to filter events by a date range to find events that fit their schedule.
-- [ ] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
-- [ ] Seed data/scripts for local dev (sample users/events with tags/covers).
-- [ ] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
-- [ ] Convert backend tests to pytest and expand fixtures for speed.
-- [ ] Document Node/Angular version guidance (avoid odd Node versions).
-- [ ] Add staging/prod Angular environment files with feature flags (e.g., recommendations toggle).
-- [ ] Soft-delete support for events and registrations with an audit history.
-- [ ] Admin dashboards for monitoring event stats (registrations over time, popular tags).
-- [ ] Public read-only events API with stricter rate limiting for third-party integrations.
+- [x] Add Prettier/ESLint config and `npm run lint` hook; backend ruff/black + make lint.
+- [x] Ignore Windows `:Zone.Identifier` artifacts in git (prevent dirty working tree on Linux/macOS).
+- [x] Document GitHub auth for Codex/MCP + git (`GITHUB_MCP_PAT` / `GH_TOKEN`) and add a local env template.
+- [x] Add a repo script to delete `*:Zone.Identifier` artifacts from a checkout.
+- [x] Seed data/scripts for local dev (sample users/events with tags/covers).
+- [x] Add API docs updates for new endpoints (unregister, attendance toggle, organizer upgrade).
+- [x] Convert backend tests to pytest.
+- [x] Backend tests: expand fixtures for speed.
+- [x] Document Node version guidance (avoid odd Node versions).
+- [x] UI: add `ui/.env.example` for `VITE_API_URL` and document usage.
+- [x] UI: tune Vite chunk warning threshold (keep build output clean).
+- [x] Add staging/prod Vite env files with feature flags (e.g., recommendations toggle).
+- [x] Soft-delete support for events and registrations with an audit history.
+- [x] Public read-only events API with stricter rate limiting for third-party integrations.
 - [x] Searchable filter bar on event list (tags, category, date range, location).
-- [ ] Skeleton loaders and optimistic updates for event registration and attendance toggles.
+- [x] Skeleton loaders and optimistic updates for event registration and attendance toggles.
 - [x] Notifications center in UI (toasts/snackbars) for API success/error messages.
-- [ ] Organization profile pages with logo, description, and links to their events.
-- [ ] Duplicate/clone event action for organizers.
+- [x] Seed script: document usage in root README and add docker-compose helper (optional).
 - [x] Recommendation explanation in UI ("Because you attended X" / "Similar tags: Y").
-- [ ] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for Angular).
-- [ ] Coverage reporting for backend/frontend with minimum thresholds in CI.
-- [ ] Integration tests hitting a real test database (not just unit tests).
-- [ ] Contract tests around API schema to keep UI and backend in sync.
-- [ ] Bulk operations for organizers (bulk email registrants, bulk close events, bulk tag edits).
+- [x] Add restore endpoints for soft-deleted events/registrations (organizer/admin).
+- [x] Pre-commit hooks for formatting (black/ruff for Python, prettier/eslint for UI).
+- [x] Coverage reporting for backend/frontend with minimum thresholds in CI.
+- [x] Integration tests hitting a real test database (not just unit tests).
+- [x] Contract tests around API schema to keep UI and backend in sync.
+- [x] Bulk operations for organizers (bulk email registrants, bulk close events, bulk tag edits).
 - [x] "Favorite events" / "watchlist" feature for students.
-- [ ] Maintenance mode flag to temporarily disable registrations during deployments.
+- [x] Maintenance mode flag to temporarily disable registrations during deployments.
 - [x] Draft vs published events with scheduled publishing.
-- [ ] DB backup/restore scripts and disaster-recovery documentation.
-- [ ] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
+- [x] DB backup/restore scripts and disaster-recovery documentation.
+- [x] Database migration to backfill/normalize existing event data (e.g., cover_url, tags).
 - [x] Organization profile pages with logo, description, and links to their events.
 - [x] Duplicate/clone event action for organizers.

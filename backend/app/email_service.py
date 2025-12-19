@@ -5,15 +5,17 @@ from email.message import EmailMessage
 from typing import Any, Dict, Optional
 
 from fastapi import BackgroundTasks
+from sqlalchemy.orm import Session
 
 from .config import settings
 from .logging_utils import log_event, log_warning
+from .task_queue import JOB_TYPE_SEND_EMAIL, enqueue_job
 
 emails_sent_ok = 0
 emails_send_failed = 0
 
 
-def _send_email(
+def send_email_now(
     to_email: str,
     subject: str,
     body_text: str,
@@ -74,13 +76,34 @@ def _send_email(
     )
 
 
-def send_registration_email(
-    background_tasks: BackgroundTasks,
+def send_email_async(
+    background_tasks: BackgroundTasks | None,
+    db: Session | None,
     to_email: str,
     subject: str,
     body_text: str,
     body_html: Optional[str] = None,
     context: Dict[str, Any] | None = None,
 ) -> None:
-    # Run email sending outside the request/response flow
-    background_tasks.add_task(_send_email, to_email, subject, body_text, body_html, context or {})
+    # Enqueue to persistent DB-backed task queue when enabled; otherwise run as FastAPI BackgroundTask.
+    if getattr(settings, "task_queue_enabled", False):
+        if db is None:
+            raise RuntimeError("task_queue_enabled is true but no DB session was provided")
+        enqueue_job(
+            db,
+            JOB_TYPE_SEND_EMAIL,
+            {
+                "to_email": to_email,
+                "subject": subject,
+                "body_text": body_text,
+                "body_html": body_html,
+                "context": context or {},
+            },
+        )
+        return
+
+    if background_tasks is None:
+        send_email_now(to_email, subject, body_text, body_html, context or {})
+        return
+
+    background_tasks.add_task(send_email_now, to_email, subject, body_text, body_html, context or {})

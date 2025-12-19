@@ -5,11 +5,17 @@ import type {
   PaginatedEvents, 
   EventFilters, 
   EventFormData,
+  EventSuggestRequest,
+  EventSuggestResponse,
+  NotificationPreferences,
+  NotificationPreferencesUpdate,
   ParticipantList,
   OrganizerProfile,
+  PersonalizationSettings,
   Tag,
   StudentProfile,
   StudentProfileUpdate,
+  UniversityCatalogItem,
 } from '../types';
 
 export const eventService = {
@@ -21,8 +27,10 @@ export const eventService = {
     if (filters.category) params.append('category', filters.category);
     if (filters.start_date) params.append('start_date', filters.start_date);
     if (filters.end_date) params.append('end_date', filters.end_date);
+    if (filters.city) params.append('city', filters.city);
     if (filters.location) params.append('location', filters.location);
     if (filters.include_past) params.append('include_past', 'true');
+    if (filters.sort) params.append('sort', filters.sort);
     if (filters.page) params.append('page', filters.page.toString());
     if (filters.page_size) params.append('page_size', filters.page_size.toString());
     if (filters.tags?.length) {
@@ -39,8 +47,8 @@ export const eventService = {
   },
 
   async getEventIcs(id: number): Promise<string> {
-    const response = await api.get<string>(`/api/events/${id}/ics`);
-    return response.data;
+    const response = await api.get(`/api/events/${id}/ics`, { responseType: 'text' });
+    return response.data as string;
   },
 
   // Registration endpoints
@@ -77,8 +85,18 @@ export const eventService = {
   },
 
   async getMyCalendar(): Promise<string> {
-    const response = await api.get<string>('/api/me/calendar');
-    return response.data;
+    const response = await api.get('/api/me/calendar', { responseType: 'text' });
+    return response.data as string;
+  },
+
+  // Account privacy
+  async exportMyData(): Promise<Blob> {
+    const response = await api.get('/api/me/export', { responseType: 'blob' });
+    return response.data as Blob;
+  },
+
+  async deleteMyAccount(password: string): Promise<void> {
+    await api.delete('/api/me', { data: { password } });
   },
 
   // Recommendations
@@ -100,6 +118,11 @@ export const eventService = {
 
   async deleteEvent(id: number): Promise<void> {
     await api.delete(`/api/events/${id}`);
+  },
+
+  async restoreEvent(id: number): Promise<{ status: string; restored_registrations?: number }> {
+    const response = await api.post(`/api/events/${id}/restore`);
+    return response.data as { status: string; restored_registrations?: number };
   },
 
   async cloneEvent(id: number): Promise<Event> {
@@ -141,6 +164,37 @@ export const eventService = {
     );
   },
 
+  async bulkUpdateEventStatus(
+    eventIds: number[],
+    status: 'draft' | 'published'
+  ): Promise<{ updated: number }> {
+    const response = await api.post<{ updated: number }>('/api/organizer/events/bulk/status', {
+      event_ids: eventIds,
+      status,
+    });
+    return response.data;
+  },
+
+  async bulkUpdateEventTags(eventIds: number[], tags: string[]): Promise<{ updated: number }> {
+    const response = await api.post<{ updated: number }>('/api/organizer/events/bulk/tags', {
+      event_ids: eventIds,
+      tags,
+    });
+    return response.data;
+  },
+
+  async emailEventParticipants(
+    eventId: number,
+    subject: string,
+    message: string
+  ): Promise<{ recipients: number }> {
+    const response = await api.post<{ recipients: number }>(
+      `/api/organizer/events/${eventId}/participants/email`,
+      { subject, message }
+    );
+    return response.data;
+  },
+
   // Organizer profile
   async getOrganizerProfile(id: number): Promise<OrganizerProfile> {
     const response = await api.get<OrganizerProfile>(`/api/organizers/${id}`);
@@ -158,6 +212,12 @@ export const eventService = {
     return response.data.items;
   },
 
+  // Metadata
+  async getUniversityCatalog(): Promise<UniversityCatalogItem[]> {
+    const response = await api.get<{ items: UniversityCatalogItem[] }>('/api/metadata/universities');
+    return response.data.items;
+  },
+
   // Student profile
   async getStudentProfile(): Promise<StudentProfile> {
     const response = await api.get<StudentProfile>('/api/me/profile');
@@ -166,6 +226,47 @@ export const eventService = {
 
   async updateStudentProfile(data: StudentProfileUpdate): Promise<StudentProfile> {
     const response = await api.put<StudentProfile>('/api/me/profile', data);
+    return response.data;
+  },
+
+  // Personalization controls (students)
+  async getPersonalizationSettings(): Promise<PersonalizationSettings> {
+    const response = await api.get<PersonalizationSettings>('/api/me/personalization');
+    return response.data;
+  },
+
+  async hideTag(tagId: number): Promise<void> {
+    await api.post(`/api/me/personalization/hidden-tags/${tagId}`);
+  },
+
+  async unhideTag(tagId: number): Promise<void> {
+    await api.delete(`/api/me/personalization/hidden-tags/${tagId}`);
+  },
+
+  async blockOrganizer(organizerId: number): Promise<void> {
+    await api.post(`/api/me/personalization/blocked-organizers/${organizerId}`);
+  },
+
+  async unblockOrganizer(organizerId: number): Promise<void> {
+    await api.delete(`/api/me/personalization/blocked-organizers/${organizerId}`);
+  },
+
+  // Notification preferences (students)
+  async getNotificationPreferences(): Promise<NotificationPreferences> {
+    const response = await api.get<NotificationPreferences>('/api/me/notifications');
+    return response.data;
+  },
+
+  async updateNotificationPreferences(
+    payload: NotificationPreferencesUpdate,
+  ): Promise<NotificationPreferences> {
+    const response = await api.put<NotificationPreferences>('/api/me/notifications', payload);
+    return response.data;
+  },
+
+  // Organizer assist
+  async suggestEvent(payload: EventSuggestRequest): Promise<EventSuggestResponse> {
+    const response = await api.post<EventSuggestResponse>('/api/organizer/events/suggest', payload);
     return response.data;
   },
 };

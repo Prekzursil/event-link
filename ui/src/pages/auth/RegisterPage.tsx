@@ -16,6 +16,7 @@ import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { Calendar, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import type { AxiosError } from 'axios';
+import { useI18n } from '@/contexts/LanguageContext';
 
 interface ApiError {
   detail?: string;
@@ -25,6 +26,7 @@ interface ApiError {
 }
 
 export function RegisterPage() {
+  const { t } = useI18n();
   const [formData, setFormData] = useState({
     fullName: '',
     email: '',
@@ -38,9 +40,9 @@ export function RegisterPage() {
   const { toast } = useToast();
 
   const passwordRequirements = [
-    { label: 'Cel puțin 8 caractere', met: formData.password.length >= 8 },
-    { label: 'Conține litere', met: /[a-zA-Z]/.test(formData.password) },
-    { label: 'Conține cifre', met: /\d/.test(formData.password) },
+    { label: t.auth.register.passwordRequirementMin, met: formData.password.length >= 8 },
+    { label: t.auth.register.passwordRequirementLetters, met: /[a-zA-Z]/.test(formData.password) },
+    { label: t.auth.register.passwordRequirementNumbers, met: /\d/.test(formData.password) },
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -52,8 +54,8 @@ export function RegisterPage() {
 
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: 'Eroare',
-        description: 'Parolele nu se potrivesc',
+        title: t.auth.register.passwordMismatchTitle,
+        description: t.auth.register.passwordMismatchDescription,
         variant: 'destructive',
       });
       return;
@@ -61,8 +63,8 @@ export function RegisterPage() {
 
     if (!passwordRequirements.every((req) => req.met)) {
       toast({
-        title: 'Eroare',
-        description: 'Parola nu îndeplinește cerințele',
+        title: t.auth.register.passwordInvalidTitle,
+        description: t.auth.register.passwordInvalidDescription,
         variant: 'destructive',
       });
       return;
@@ -78,19 +80,19 @@ export function RegisterPage() {
         formData.fullName || undefined
       );
       toast({
-        title: 'Cont creat cu succes!',
-        description: 'Bine ai venit pe EventLink!',
+        title: t.auth.register.successTitle,
+        description: t.auth.register.successDescription,
         variant: 'success' as const,
       });
       navigate('/');
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
       toast({
-        title: 'Eroare la înregistrare',
+        title: t.auth.register.errorTitle,
         description:
           axiosError.response?.data?.detail ||
           axiosError.response?.data?.error?.message ||
-          'A apărut o eroare. Încearcă din nou.',
+          t.auth.register.errorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -105,32 +107,32 @@ export function RegisterPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Creează un cont</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.register.title}</CardTitle>
           <CardDescription>
-            Înregistrează-te pentru a descoperi și participa la evenimente
+            {t.auth.register.description}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="fullName">Nume complet (opțional)</Label>
+              <Label htmlFor="fullName">{t.auth.register.fullNameLabel}</Label>
               <Input
                 id="fullName"
                 name="fullName"
                 type="text"
-                placeholder="Ion Popescu"
+                placeholder={t.auth.register.fullNamePlaceholder}
                 value={formData.fullName}
                 onChange={handleChange}
                 disabled={isLoading}
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.auth.register.emailLabel}</Label>
               <Input
                 id="email"
                 name="email"
                 type="email"
-                placeholder="email@exemplu.com"
+                placeholder={t.auth.register.emailPlaceholder}
                 value={formData.email}
                 onChange={handleChange}
                 required
@@ -138,7 +140,7 @@ export function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">Parolă</Label>
+              <Label htmlFor="password">{t.auth.register.passwordLabel}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -182,7 +184,7 @@ export function RegisterPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">Confirmă parola</Label>
+              <Label htmlFor="confirmPassword">{t.auth.register.confirmPasswordLabel}</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -194,7 +196,7 @@ export function RegisterPage() {
                 disabled={isLoading}
               />
               {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                <p className="text-xs text-destructive">Parolele nu se potrivesc</p>
+                <p className="text-xs text-destructive">{t.auth.register.passwordMismatchInline}</p>
               )}
             </div>
           </CardContent>
@@ -203,16 +205,16 @@ export function RegisterPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Se creează contul...
+                  {t.auth.register.submitting}
                 </>
               ) : (
-                'Înregistrare'
+                t.auth.register.submit
               )}
             </Button>
             <p className="text-center text-sm text-muted-foreground">
-              Ai deja cont?{' '}
+              {t.auth.register.haveAccount}{' '}
               <Link to="/login" className="text-primary hover:underline">
-                Autentifică-te
+                {t.auth.register.loginLink}
               </Link>
             </p>
           </CardFooter>

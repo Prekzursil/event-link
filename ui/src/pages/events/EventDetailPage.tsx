@@ -1,13 +1,17 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import eventService from '@/services/event.service';
+import { recordInteractions } from '@/services/analytics.service';
 import type { EventDetail } from '@/types';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { LoadingPage } from '@/components/ui/loading';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Label } from '@/components/ui/label';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
+import { useI18n } from '@/contexts/LanguageContext';
 import {
   Calendar,
   Clock,
@@ -20,8 +24,12 @@ import {
   User,
   ExternalLink,
   Copy,
+  SlidersHorizontal,
+  EyeOff,
+  UserX,
 } from 'lucide-react';
-import { formatDate, cn } from '@/lib/utils';
+import { formatDate, formatTime, cn } from '@/lib/utils';
+import { getEventCategoryLabel } from '@/lib/eventCategories';
 
 export function EventDetailPage() {
   const { id } = useParams<{ id: string }>();
@@ -29,10 +37,16 @@ export function EventDetailPage() {
   const [event, setEvent] = useState<EventDetail | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRegistering, setIsRegistering] = useState(false);
+  const [isResendingEmail, setIsResendingEmail] = useState(false);
   const [isFavoriting, setIsFavoriting] = useState(false);
   const [isCloning, setIsCloning] = useState(false);
+  const [hideTagId, setHideTagId] = useState<string>('');
+  const [isHidingTag, setIsHidingTag] = useState(false);
+  const [isBlockingOrganizer, setIsBlockingOrganizer] = useState(false);
   const { toast } = useToast();
-  const { isAuthenticated } = useAuth();
+  const { isAuthenticated, user } = useAuth();
+  const { language, t } = useI18n();
+  const isStudent = isAuthenticated && user?.role === 'student';
 
   useEffect(() => {
     const loadEvent = async () => {
@@ -43,8 +57,8 @@ export function EventDetailPage() {
         setEvent(data);
       } catch {
         toast({
-          title: 'Eroare',
-          description: 'Evenimentul nu a fost găsit',
+          title: t.eventDetail.notFoundTitle,
+          description: t.eventDetail.notFoundDescription,
           variant: 'destructive',
         });
         navigate('/');
@@ -53,7 +67,18 @@ export function EventDetailPage() {
       }
     };
     loadEvent();
-  }, [id, navigate, toast]);
+  }, [id, navigate, toast, t]);
+
+  const eventId = event?.id;
+  useEffect(() => {
+    if (!eventId) return;
+    const startedAt = Date.now();
+    void recordInteractions([{ interaction_type: 'view', event_id: eventId, meta: { source: 'event_detail' } }]);
+    return () => {
+      const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+      void recordInteractions([{ interaction_type: 'dwell', event_id: eventId, meta: { source: 'event_detail', seconds } }]);
+    };
+  }, [eventId]);
 
   const handleRegister = async () => {
     if (!isAuthenticated) {
@@ -63,28 +88,28 @@ export function EventDetailPage() {
     if (!event) return;
 
     setIsRegistering(true);
+    const previous = event;
+    setEvent({
+      ...event,
+      is_registered: true,
+      seats_taken: event.seats_taken + 1,
+      available_seats:
+        typeof event.available_seats === 'number' ? event.available_seats - 1 : event.available_seats,
+    });
     try {
       await eventService.registerForEvent(event.id);
-      setEvent((prev) =>
-        prev
-          ? {
-              ...prev,
-              is_registered: true,
-              seats_taken: prev.seats_taken + 1,
-              available_seats: prev.available_seats !== undefined ? prev.available_seats - 1 : undefined,
-            }
-          : null
-      );
+      void recordInteractions([{ interaction_type: 'register', event_id: event.id, meta: { source: 'event_detail' } }]);
       toast({
-        title: 'Înscriere reușită!',
-        description: 'Te-ai înscris cu succes la acest eveniment.',
+        title: t.eventDetail.registerSuccessTitle,
+        description: t.eventDetail.registerSuccessDescription,
         variant: 'success' as const,
       });
     } catch (error: unknown) {
+      setEvent(previous);
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut finaliza înscrierea',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.registerErrorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -96,31 +121,54 @@ export function EventDetailPage() {
     if (!event) return;
 
     setIsRegistering(true);
+    const previous = event;
+    setEvent({
+      ...event,
+      is_registered: false,
+      seats_taken: Math.max(0, event.seats_taken - 1),
+      available_seats:
+        typeof event.available_seats === 'number' ? event.available_seats + 1 : event.available_seats,
+    });
     try {
       await eventService.unregisterFromEvent(event.id);
-      setEvent((prev) =>
-        prev
-          ? {
-              ...prev,
-              is_registered: false,
-              seats_taken: prev.seats_taken - 1,
-              available_seats: prev.available_seats !== undefined ? prev.available_seats + 1 : undefined,
-            }
-          : null
-      );
+      void recordInteractions([{ interaction_type: 'unregister', event_id: event.id, meta: { source: 'event_detail' } }]);
       toast({
-        title: 'Dezabonare reușită',
-        description: 'Te-ai dezabonat de la acest eveniment.',
+        title: t.eventDetail.unregisterSuccessTitle,
+        description: t.eventDetail.unregisterSuccessDescription,
       });
     } catch (error: unknown) {
+      setEvent(previous);
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut finaliza dezabonarea',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.unregisterErrorFallback,
         variant: 'destructive',
       });
     } finally {
       setIsRegistering(false);
+    }
+  };
+
+  const handleResendRegistrationEmail = async () => {
+    if (!event) return;
+
+    setIsResendingEmail(true);
+    try {
+      await eventService.resendRegistrationEmail(event.id);
+      toast({
+        title: t.eventDetail.resendSuccessTitle,
+        description: t.eventDetail.resendSuccessDescription,
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.resendErrorFallback,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsResendingEmail(false);
     }
   };
 
@@ -135,14 +183,16 @@ export function EventDetailPage() {
     try {
       if (event.is_favorite) {
         await eventService.removeFromFavorites(event.id);
+        void recordInteractions([{ interaction_type: 'favorite', event_id: event.id, meta: { action: 'remove' } }]);
       } else {
         await eventService.addToFavorites(event.id);
+        void recordInteractions([{ interaction_type: 'favorite', event_id: event.id, meta: { action: 'add' } }]);
       }
       setEvent((prev) => (prev ? { ...prev, is_favorite: !prev.is_favorite } : null));
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza favoritele',
+        title: t.eventDetail.favoritesErrorTitle,
+        description: t.eventDetail.favoritesErrorDescription,
         variant: 'destructive',
       });
     } finally {
@@ -159,15 +209,21 @@ export function EventDetailPage() {
           text: event?.description,
           url,
         });
+        if (event) {
+          void recordInteractions([{ interaction_type: 'share', event_id: event.id, meta: { channel: 'native' } }]);
+        }
       } catch {
         // User cancelled
       }
     } else {
       await navigator.clipboard.writeText(url);
       toast({
-        title: 'Link copiat!',
-        description: 'Link-ul a fost copiat în clipboard.',
+        title: t.eventDetail.shareCopiedTitle,
+        description: t.eventDetail.shareCopiedDescription,
       });
+      if (event) {
+        void recordInteractions([{ interaction_type: 'share', event_id: event.id, meta: { channel: 'copy' } }]);
+      }
     }
   };
 
@@ -183,8 +239,8 @@ export function EventDetailPage() {
     try {
       const clonedEvent = await eventService.cloneEvent(event.id);
       toast({
-        title: 'Eveniment duplicat!',
-        description: 'Vei fi redirecționat către pagina de editare.',
+        title: t.eventDetail.cloneSuccessTitle,
+        description: t.eventDetail.cloneSuccessDescription,
         variant: 'success' as const,
       });
       // Navigate to edit the cloned event
@@ -192,8 +248,8 @@ export function EventDetailPage() {
     } catch (error: unknown) {
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({
-        title: 'Eroare',
-        description: axiosError.response?.data?.detail || 'Nu am putut duplica evenimentul',
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.eventDetail.cloneErrorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -201,8 +257,93 @@ export function EventDetailPage() {
     }
   };
 
+  const handleHideTag = async () => {
+    if (!isStudent) return;
+    const tagId = parseInt(hideTagId);
+    if (!tagId || !event) return;
+
+    setIsHidingTag(true);
+    try {
+      await eventService.hideTag(tagId);
+      setHideTagId('');
+      toast({
+        title: t.personalization.tagHiddenTitle,
+        description: t.personalization.tagHiddenDescription,
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.personalization.tagHiddenErrorFallback,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsHidingTag(false);
+    }
+  };
+
+  const handleBlockOrganizer = async () => {
+    if (!isStudent || !event) return;
+    setIsBlockingOrganizer(true);
+    try {
+      await eventService.blockOrganizer(event.owner_id);
+      toast({
+        title: t.personalization.organizerBlockedTitle,
+        description: t.personalization.organizerBlockedDescription,
+        variant: 'success' as const,
+      });
+    } catch (error: unknown) {
+      const axiosError = error as { response?: { data?: { detail?: string } } };
+      toast({
+        title: t.common.error,
+        description: axiosError.response?.data?.detail || t.personalization.organizerBlockedErrorFallback,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsBlockingOrganizer(false);
+    }
+  };
+
   if (isLoading) {
-    return <LoadingPage message="Se încarcă evenimentul..." />;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="mb-6 h-10 w-24" />
+
+        <div className="grid gap-8 lg:grid-cols-3">
+          <div className="lg:col-span-2">
+            <Skeleton className="mb-6 aspect-video w-full rounded-xl" />
+
+            <div className="mb-6 space-y-2">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-10 w-3/4" />
+            </div>
+
+            <div className="mb-6 grid gap-4 sm:grid-cols-2">
+              <Skeleton className="h-[88px] rounded-lg" />
+              <Skeleton className="h-[88px] rounded-lg" />
+              <Skeleton className="h-[88px] rounded-lg" />
+              <Skeleton className="h-[88px] rounded-lg" />
+            </div>
+
+            <Separator className="my-6" />
+
+            <div className="space-y-3">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-full" />
+              <Skeleton className="h-4 w-5/6" />
+              <Skeleton className="h-4 w-2/3" />
+            </div>
+          </div>
+
+          <div className="space-y-6">
+            <Skeleton className="h-[320px] w-full rounded-xl" />
+            <Skeleton className="h-[56px] w-full rounded-xl" />
+            <Skeleton className="h-[120px] w-full rounded-xl" />
+          </div>
+        </div>
+      </div>
+    );
   }
 
   if (!event) {
@@ -210,14 +351,14 @@ export function EventDetailPage() {
   }
 
   const isPast = new Date(event.start_time) < new Date();
-  const isFull = event.available_seats !== undefined && event.available_seats <= 0;
+  const isFull = typeof event.available_seats === 'number' && event.available_seats <= 0;
 
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Back Button */}
       <Button variant="ghost" className="mb-6" onClick={() => navigate(-1)}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Înapoi
+        {t.eventDetail.back}
       </Button>
 
       <div className="grid gap-8 lg:grid-cols-3">
@@ -243,9 +384,9 @@ export function EventDetailPage() {
 
             {/* Status Badges */}
             <div className="absolute left-4 top-4 flex flex-wrap gap-2">
-              {event.status === 'draft' && <Badge variant="secondary">Draft</Badge>}
-              {isPast && <Badge variant="secondary">Încheiat</Badge>}
-              {isFull && !isPast && <Badge variant="destructive">Complet</Badge>}
+              {event.status === 'draft' && <Badge variant="secondary">{t.eventDetail.draft}</Badge>}
+              {isPast && <Badge variant="secondary">{t.eventDetail.ended}</Badge>}
+              {isFull && !isPast && <Badge variant="destructive">{t.eventDetail.full}</Badge>}
             </div>
           </div>
 
@@ -253,7 +394,7 @@ export function EventDetailPage() {
           <div className="mb-6">
             {event.category && (
               <Badge variant="outline" className="mb-2">
-                {event.category}
+                {getEventCategoryLabel(event.category, language)}
               </Badge>
             )}
             <h1 className="text-3xl font-bold">{event.title}</h1>
@@ -264,43 +405,38 @@ export function EventDetailPage() {
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Calendar className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Data</p>
-                <p className="font-medium">{formatDate(event.start_time)}</p>
+                <p className="text-sm text-muted-foreground">{t.eventDetail.dateLabel}</p>
+                <p className="font-medium">{formatDate(event.start_time, language)}</p>
               </div>
             </div>
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Clock className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Ora</p>
+                <p className="text-sm text-muted-foreground">{t.eventDetail.timeLabel}</p>
                 <p className="font-medium">
-                  {new Date(event.start_time).toLocaleTimeString('ro-RO', {
-                    hour: '2-digit',
-                    minute: '2-digit',
-                  })}
-                  {event.end_time &&
-                    ` - ${new Date(event.end_time).toLocaleTimeString('ro-RO', {
-                      hour: '2-digit',
-                      minute: '2-digit',
-                    })}`}
+                  {formatTime(event.start_time, language)}
+                  {event.end_time && ` - ${formatTime(event.end_time, language)}`}
                 </p>
               </div>
             </div>
-            {event.location && (
+            {(event.city || event.location) && (
               <div className="flex items-center gap-3 rounded-lg border p-4">
                 <MapPin className="h-5 w-5 text-primary" />
                 <div>
-                  <p className="text-sm text-muted-foreground">Locație</p>
-                  <p className="font-medium">{event.location}</p>
+                  <p className="text-sm text-muted-foreground">{t.eventDetail.locationLabel}</p>
+                  <p className="font-medium">
+                    {[event.city, event.location].filter(Boolean).join(' • ')}
+                  </p>
                 </div>
               </div>
             )}
             <div className="flex items-center gap-3 rounded-lg border p-4">
               <Users className="h-5 w-5 text-primary" />
               <div>
-                <p className="text-sm text-muted-foreground">Participanți</p>
+                <p className="text-sm text-muted-foreground">{t.eventDetail.participantsLabel}</p>
                 <p className="font-medium">
                   {event.seats_taken}
-                  {event.max_seats && ` / ${event.max_seats}`} locuri ocupate
+                  {event.max_seats && ` / ${event.max_seats}`} {t.eventDetail.seatsTakenSuffix}
                 </p>
               </div>
             </div>
@@ -310,13 +446,13 @@ export function EventDetailPage() {
 
           {/* Description */}
           <div className="mb-6">
-            <h2 className="mb-4 text-xl font-semibold">Descriere</h2>
+            <h2 className="mb-4 text-xl font-semibold">{t.eventDetail.descriptionTitle}</h2>
             <div className="prose prose-neutral dark:prose-invert max-w-none">
               {event.description ? (
                 <p className="whitespace-pre-wrap">{event.description}</p>
               ) : (
                 <p className="text-muted-foreground">
-                  Nu există o descriere pentru acest eveniment.
+                  {t.eventDetail.descriptionEmpty}
                 </p>
               )}
             </div>
@@ -325,7 +461,7 @@ export function EventDetailPage() {
           {/* Tags */}
           {event.tags.length > 0 && (
             <div className="mb-6">
-              <h2 className="mb-4 text-xl font-semibold">Etichete</h2>
+              <h2 className="mb-4 text-xl font-semibold">{t.eventDetail.tagsTitle}</h2>
               <div className="flex flex-wrap gap-2">
                 {event.tags.map((tag) => (
                   <Badge key={tag.id} variant="secondary">
@@ -342,21 +478,21 @@ export function EventDetailPage() {
           <div className="sticky top-24 space-y-6">
             {/* Registration Card */}
             <div className="rounded-xl border p-6">
-              <h3 className="mb-4 text-lg font-semibold">Înregistrare</h3>
+              <h3 className="mb-4 text-lg font-semibold">{t.eventDetail.registrationTitle}</h3>
 
               {event.is_owner ? (
                 <div className="space-y-4">
                   <p className="text-sm text-muted-foreground">
-                    Ești organizatorul acestui eveniment.
+                    {t.eventDetail.ownerNote}
                   </p>
                   <Button asChild className="w-full">
                     <Link to={`/organizer/events/${event.id}/edit`}>
-                      Editează evenimentul
+                      {t.eventDetail.editEvent}
                     </Link>
                   </Button>
                   <Button asChild variant="outline" className="w-full">
                     <Link to={`/organizer/events/${event.id}/participants`}>
-                      Vezi participanții
+                      {t.eventDetail.viewParticipants}
                     </Link>
                   </Button>
                   <Button 
@@ -366,7 +502,7 @@ export function EventDetailPage() {
                     disabled={isCloning}
                   >
                     <Copy className="mr-2 h-4 w-4" />
-                    {isCloning ? 'Se duplică...' : 'Duplică evenimentul'}
+                    {isCloning ? t.eventDetail.cloning : t.eventDetail.cloneEvent}
                   </Button>
                 </div>
               ) : (
@@ -375,9 +511,17 @@ export function EventDetailPage() {
                     <>
                       <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
                         <p className="font-medium text-green-700 dark:text-green-400">
-                          ✓ Ești înscris la acest eveniment
+                          {t.eventDetail.registeredOk}
                         </p>
                       </div>
+                      <Button
+                        variant="secondary"
+                        className="w-full"
+                        onClick={handleResendRegistrationEmail}
+                        disabled={isResendingEmail}
+                      >
+                        {isResendingEmail ? t.eventDetail.resendingEmail : t.eventDetail.resendEmail}
+                      </Button>
                       {!isPast && (
                         <Button
                           variant="outline"
@@ -385,17 +529,17 @@ export function EventDetailPage() {
                           onClick={handleUnregister}
                           disabled={isRegistering}
                         >
-                          Dezabonare
+                          {t.eventDetail.unregister}
                         </Button>
                       )}
                     </>
                   ) : isPast ? (
                     <p className="text-center text-muted-foreground">
-                      Acest eveniment s-a încheiat
+                      {t.eventDetail.eventEndedText}
                     </p>
                   ) : isFull ? (
                     <p className="text-center text-destructive">
-                      Nu mai sunt locuri disponibile
+                      {t.eventDetail.eventFullText}
                     </p>
                   ) : (
                     <Button
@@ -403,14 +547,14 @@ export function EventDetailPage() {
                       onClick={handleRegister}
                       disabled={isRegistering}
                     >
-                      {isRegistering ? 'Se înscrie...' : 'Înscrie-te la eveniment'}
+                      {isRegistering ? t.eventDetail.registering : t.eventDetail.register}
                     </Button>
                   )}
 
                   {/* Available Seats */}
-                  {event.available_seats !== null && !isPast && (
+                  {typeof event.available_seats === 'number' && !isPast && (
                     <p className="text-center text-sm text-muted-foreground">
-                      {event.available_seats} locuri disponibile
+                      {event.available_seats} {t.eventDetail.seatsAvailableSuffix}
                     </p>
                   )}
                 </div>
@@ -433,13 +577,13 @@ export function EventDetailPage() {
               </Button>
               <Button variant="outline" className="flex-1" onClick={handleExportCalendar}>
                 <CalendarPlus className="mr-2 h-4 w-4" />
-                Adaugă în calendar
+                {t.eventDetail.addToCalendar}
               </Button>
             </div>
 
             {/* Organizer Info */}
             <div className="rounded-xl border p-6">
-              <h3 className="mb-4 text-lg font-semibold">Organizator</h3>
+              <h3 className="mb-4 text-lg font-semibold">{t.eventDetail.organizerTitle}</h3>
               <Link
                 to={`/organizers/${event.owner_id}`}
                 className="flex items-center gap-3 hover:underline"
@@ -448,12 +592,76 @@ export function EventDetailPage() {
                   <User className="h-5 w-5 text-primary" />
                 </div>
                 <div>
-                  <p className="font-medium">{event.owner_name || 'Organizator'}</p>
-                  <p className="text-sm text-muted-foreground">Vezi profilul</p>
+                  <p className="font-medium">{event.owner_name || t.eventDetail.organizerFallback}</p>
+                  <p className="text-sm text-muted-foreground">{t.eventDetail.viewProfile}</p>
                 </div>
                 <ExternalLink className="ml-auto h-4 w-4 text-muted-foreground" />
               </Link>
             </div>
+
+            {/* Personalization */}
+            {isStudent && (event.recommendation_reason || event.tags.length > 0) && (
+              <div className="rounded-xl border p-6">
+                <h3 className="mb-4 flex items-center gap-2 text-lg font-semibold">
+                  <SlidersHorizontal className="h-5 w-5" />
+                  {t.personalization.title}
+                </h3>
+
+                {event.recommendation_reason ? (
+                  <p className="text-sm text-muted-foreground">{event.recommendation_reason}</p>
+                ) : (
+                  <p className="text-sm text-muted-foreground">{t.personalization.genericReason}</p>
+                )}
+
+                <Separator className="my-4" />
+
+                <div className="space-y-4">
+                  {event.tags.length > 0 && (
+                    <div className="space-y-2">
+                      <Label>{t.personalization.hideTagLabel}</Label>
+                      <div className="flex gap-2">
+                        <Select value={hideTagId} onValueChange={setHideTagId} disabled={isHidingTag}>
+                          <SelectTrigger className="w-auto flex-1">
+                            <SelectValue placeholder={t.personalization.hideTagPlaceholder} />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {event.tags.map((tag) => (
+                              <SelectItem key={tag.id} value={String(tag.id)}>
+                                {tag.name}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <Button
+                          type="button"
+                          variant="outline"
+                          onClick={handleHideTag}
+                          disabled={!hideTagId || isHidingTag}
+                        >
+                          <EyeOff className="mr-2 h-4 w-4" />
+                          {isHidingTag ? t.personalization.hiding : t.personalization.hideTagAction}
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+
+                  <Button
+                    type="button"
+                    variant="outline"
+                    onClick={handleBlockOrganizer}
+                    disabled={isBlockingOrganizer}
+                    className="w-full justify-start"
+                  >
+                    <UserX className="mr-2 h-4 w-4" />
+                    {isBlockingOrganizer ? t.personalization.blockingOrganizer : t.personalization.blockOrganizerAction}
+                  </Button>
+
+                  <Link to="/profile" className="text-sm text-primary hover:underline">
+                    {t.personalization.manageLink}
+                  </Link>
+                </div>
+              </div>
+            )}
           </div>
         </div>
       </div>

@@ -1,7 +1,9 @@
 import { Link } from 'react-router-dom';
 import { Calendar, Github, Mail } from 'lucide-react';
+import { useI18n } from '@/contexts/LanguageContext';
 
 export function Footer() {
+  const { t } = useI18n();
   return (
     <footer className="border-t bg-background">
       <div className="container mx-auto px-4 py-8">
@@ -10,24 +12,23 @@ export function Footer() {
           <div className="space-y-4">
             <Link to="/" className="flex items-center gap-2">
               <Calendar className="h-6 w-6 text-primary" />
-              <span className="text-xl font-bold">EventLink</span>
+              <span className="text-xl font-bold">{t.common.appName}</span>
             </Link>
             <p className="text-sm text-muted-foreground">
-              Platformă centralizată pentru descoperirea, înregistrarea și
-              managementul evenimentelor universitare.
+              {t.footer.description}
             </p>
           </div>
 
           {/* Quick Links */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Link-uri Rapide</h3>
+            <h3 className="font-semibold">{t.footer.quickLinks}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <Link
                   to="/"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Evenimente
+                  {t.nav.events}
                 </Link>
               </li>
               <li>
@@ -35,7 +36,7 @@ export function Footer() {
                   to="/login"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Autentificare
+                  {t.nav.login}
                 </Link>
               </li>
               <li>
@@ -43,7 +44,7 @@ export function Footer() {
                   to="/register"
                   className="text-muted-foreground hover:text-foreground"
                 >
-                  Înregistrare
+                  {t.nav.register}
                 </Link>
               </li>
             </ul>
@@ -51,7 +52,7 @@ export function Footer() {
 
           {/* Contact */}
           <div className="space-y-4">
-            <h3 className="font-semibold">Contact</h3>
+            <h3 className="font-semibold">{t.footer.contact}</h3>
             <ul className="space-y-2 text-sm">
               <li>
                 <a
@@ -64,7 +65,7 @@ export function Footer() {
               </li>
               <li>
                 <a
-                  href="https://github.com/victormura/event-link"
+                  href="https://github.com/Prekzursil/event-link"
                   target="_blank"
                   rel="noopener noreferrer"
                   className="flex items-center gap-2 text-muted-foreground hover:text-foreground"
@@ -78,7 +79,9 @@ export function Footer() {
         </div>
 
         <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-          <p>© {new Date().getFullYear()} EventLink. Toate drepturile rezervate.</p>
+          <p>
+            © {new Date().getFullYear()} {t.common.appName}. {t.footer.allRightsReserved}
+          </p>
         </div>
       </div>
     </footer>

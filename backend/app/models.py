@@ -11,6 +11,8 @@ from sqlalchemy import (
     UniqueConstraint,
     func,
     Boolean,
+    JSON,
+    Float,
 )
 from sqlalchemy.orm import relationship
 from .database import Base
@@ -19,6 +21,7 @@ from .database import Base
 class UserRole(str, enum.Enum):
     student = "student"
     organizator = "organizator"
+    admin = "admin"
 
 
 class User(Base):
@@ -28,14 +31,31 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    last_seen_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="true")
     full_name = Column(String(255))
     org_name = Column(String(255))
     org_description = Column(Text)
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
+    theme_preference = Column(String(10), nullable=False, server_default="system", default="system")
+    language_preference = Column(String(10), nullable=False, server_default="system", default="system")
+    city = Column(String(100))
+    university = Column(String(255))
+    faculty = Column(String(255))
+    study_level = Column(String(20))
+    study_year = Column(Integer)
+    email_digest_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
+    email_filling_fast_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
 
-    events = relationship("Event", back_populates="owner")
-    registrations = relationship("Registration", back_populates="user", cascade="all, delete-orphan")
+    events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
+    registrations = relationship(
+        "Registration",
+        back_populates="user",
+        cascade="all, delete-orphan",
+        foreign_keys="Registration.user_id",
+    )
     favorites = relationship("FavoriteEvent", back_populates="user", cascade="all, delete-orphan")
     interest_tags = relationship("Tag", secondary="user_interest_tags")
 
@@ -59,17 +79,27 @@ class Event(Base):
     start_time = Column(TIMESTAMP(timezone=True), nullable=False)
     end_time = Column(TIMESTAMP(timezone=True), nullable=True)
     location = Column(String(255))
+    city = Column(String(100), index=True)
     max_seats = Column(Integer)
     cover_url = Column(String(500))
     owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     status = Column(String(20), nullable=False, server_default="published")
     publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    moderation_score = Column(Float, nullable=False, server_default="0", default=0.0)
+    moderation_flags = Column(JSON, nullable=True)
+    moderation_status = Column(String(20), nullable=False, server_default="clean", default="clean")
+    moderation_reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    moderation_reviewed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    owner = relationship("User", back_populates="events")
+    owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
     registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
     tags = relationship("Tag", secondary="event_tags", back_populates="events")
     favorites = relationship("FavoriteEvent", back_populates="event", cascade="all, delete-orphan")
+    deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
+    moderation_reviewed_by = relationship("User", foreign_keys=[moderation_reviewed_by_user_id])
 
 
 class Registration(Base):
@@ -81,9 +111,12 @@ class Registration(Base):
     event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
     registration_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     attended = Column(Boolean, server_default="false", nullable=False)
+    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
+    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
 
-    user = relationship("User", back_populates="registrations")
+    user = relationship("User", back_populates="registrations", foreign_keys=[user_id])
     event = relationship("Event", back_populates="registrations")
+    deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
 
 
 class FavoriteEvent(Base):
@@ -112,6 +145,139 @@ class PasswordResetToken(Base):
     user = relationship("User")
 
 
+class BackgroundJob(Base):
+    __tablename__ = "background_jobs"
+    __table_args__ = (UniqueConstraint("job_type", "dedupe_key", name="uq_background_job_dedupe_key"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    job_type = Column(String(50), nullable=False, index=True)
+    dedupe_key = Column(String(200), nullable=True, index=True)
+    payload = Column(JSON, nullable=False)
+    status = Column(String(20), nullable=False, index=True, server_default="queued")
+    attempts = Column(Integer, nullable=False, server_default="0")
+    max_attempts = Column(Integer, nullable=False, server_default="3")
+    run_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+    locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    locked_by = Column(String(100), nullable=True)
+    last_error = Column(Text, nullable=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    finished_at = Column(TIMESTAMP(timezone=True), nullable=True)
+
+
+class NotificationDelivery(Base):
+    __tablename__ = "notification_deliveries"
+    __table_args__ = (UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    dedupe_key = Column(String(200), nullable=False)
+    notification_type = Column(String(50), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=True, index=True)
+    sent_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    meta = Column(JSON, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    event = relationship("Event", foreign_keys=[event_id])
+
+
+class AuditLog(Base):
+    __tablename__ = "audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    entity_type = Column(String(50), nullable=False, index=True)
+    entity_id = Column(Integer, nullable=False, index=True)
+    action = Column(String(50), nullable=False, index=True)
+    actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    meta = Column(JSON, nullable=True)
+
+    actor = relationship("User", foreign_keys=[actor_user_id])
+
+
+class UserRecommendation(Base):
+    __tablename__ = "user_recommendations"
+    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=False, index=True)
+    score = Column(Float, nullable=False)
+    rank = Column(Integer, nullable=False)
+    model_version = Column(String(50), nullable=True)
+    generated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    reason = Column(Text, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    event = relationship("Event", foreign_keys=[event_id])
+
+
+class RecommenderModel(Base):
+    __tablename__ = "recommender_models"
+    __table_args__ = (UniqueConstraint("model_version", name="uq_recommender_models_model_version"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    model_version = Column(String(100), nullable=False, index=True)
+    feature_names = Column(JSON, nullable=False)
+    weights = Column(JSON, nullable=False)
+    meta = Column(JSON, nullable=True)
+    is_active = Column(Boolean, nullable=False, server_default="false")
+    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+
+
+class EventInteraction(Base):
+    __tablename__ = "event_interactions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    event_id = Column(Integer, ForeignKey("events.id"), nullable=True, index=True)
+    interaction_type = Column(String(50), nullable=False, index=True)
+    occurred_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+    meta = Column(JSON, nullable=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    event = relationship("Event", foreign_keys=[event_id])
+
+
+class UserImplicitInterestTag(Base):
+    __tablename__ = "user_implicit_interest_tags"
+    __table_args__ = (UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False, index=True)
+    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
+    last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    tag = relationship("Tag", foreign_keys=[tag_id])
+
+
+class UserImplicitInterestCategory(Base):
+    __tablename__ = "user_implicit_interest_categories"
+    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_implicit_interest_category"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    category = Column(String(100), nullable=False, index=True)
+    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
+    last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
+class UserImplicitInterestCity(Base):
+    __tablename__ = "user_implicit_interest_cities"
+    __table_args__ = (UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    city = Column(String(100), nullable=False, index=True)
+    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
+    last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+
+
 event_tags = Table(
     "event_tags",
     Base.metadata,
@@ -126,4 +292,22 @@ user_interest_tags = Table(
     Base.metadata,
     Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
     Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
+
+
+# User hidden tags - tags that students want to hide from feeds/recommendations
+user_hidden_tags = Table(
+    "user_hidden_tags",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+)
+
+
+# User blocked organizers - organizer/user IDs that students want to mute from feeds/recommendations
+user_blocked_organizers = Table(
+    "user_blocked_organizers",
+    Base.metadata,
+    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("organizer_id", Integer, ForeignKey("users.id"), primary_key=True),
 )

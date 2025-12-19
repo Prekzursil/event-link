@@ -12,8 +12,8 @@ import random
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from sqlalchemy import text
-from app.database import SessionLocal, engine
-from app.models import Base, User, UserRole, Event, Tag, Registration, FavoriteEvent
+from app.database import SessionLocal
+from app.models import User, UserRole, Event, Tag, Registration, FavoriteEvent
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
@@ -23,12 +23,14 @@ TAGS = [
     "AI & ML", "Web Development", "Mobile", "Cloud", "DevOps",
     "Data Science", "Cybersecurity", "Gaming", "Blockchain",
     "Career", "Networking", "Workshop", "Hackathon", "Conference",
-    "Social", "Sport", "Muzică", "Artă", "Voluntariat"
+    "Social", "Sport", "Muzică", "Rock", "Pop", "Hip-Hop", "EDM", "Jazz", "Clasică", "Folk", "Metal",
+    "Artă", "Voluntariat"
 ]
 
 CATEGORIES = [
     "Workshop", "Seminar", "Conference", "Hackathon", "Networking",
-    "Career Fair", "Presentation", "Cultural", "Sports", "Social"
+    "Career Fair", "Presentation", "Music", "Cultural", "Sports", "Social",
+    "Volunteering", "Party", "Festival", "Technical", "Academic"
 ]
 
 LOCATIONS = [
@@ -220,9 +222,33 @@ Intrare liberă!
 Bar cu băuturi și snacks disponibil.
 
 Dress code: smart casual 🎷""",
-        "category": "Cultural",
-        "tags": ["Muzică", "Social", "Artă"],
+        "category": "Music",
+        "tags": ["Muzică", "Jazz", "Social", "Artă"],
         "max_seats": 120
+    },
+    {
+        "title": "Concert: Rock Night în campus",
+        "description": """O seară cu rock live, energie și bună dispoziție!
+
+Line-up:
+- Trupa A (alternative rock)
+- Trupa B (classic rock covers)
+
+Intrare liberă. Vino devreme pentru locuri bune! 🤘""",
+        "category": "Music",
+        "tags": ["Muzică", "Rock", "Social"],
+        "max_seats": 200
+    },
+    {
+        "title": "Festival: Pop & EDM Student Fest",
+        "description": """Festival studențesc cu DJ sets și artiști locali.
+
+Genuri: pop, EDM, dance
+
+Acces pe bază de bilet (reducere studenți). 🎧""",
+        "category": "Festival",
+        "tags": ["Muzică", "Pop", "EDM", "Social"],
+        "max_seats": 800
     },
     {
         "title": "Curs: Web Development Full Stack",
@@ -304,6 +330,10 @@ ORGANIZERS = [
         "org_website": "https://sport.uni.ro",
         "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=CSU&backgroundColor=ef4444"
     }
+]
+
+ADMINS = [
+    {"email": "admin@test.com", "full_name": "EventLink Admin", "password": "test123"},
 ]
 
 
@@ -391,6 +421,21 @@ def seed_database():
             organizer_objects.append(organizer)
         session.flush()
         print(f"   Created {len(ORGANIZERS)} organizers")
+
+        # Create admins
+        print("🛡️ Creating admins...")
+        admin_objects = []
+        for admin_data in ADMINS:
+            admin = User(
+                email=admin_data["email"],
+                password_hash=pwd_context.hash(admin_data["password"]),
+                role=UserRole.admin,
+                full_name=admin_data["full_name"],
+            )
+            session.add(admin)
+            admin_objects.append(admin)
+        session.flush()
+        print(f"   Created {len(ADMINS)} admins")
         
         # Create events
         print("📅 Creating events...")
@@ -494,6 +539,9 @@ def seed_database():
         print("   Organizers:")
         for o in ORGANIZERS:
             print(f"      - {o['email']} / {o['password']}")
+        print("   Admins:")
+        for a in ADMINS:
+            print(f"      - {a['email']} / {a['password']}")
         
     except Exception as e:
         session.rollback()

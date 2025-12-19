@@ -1,7 +1,12 @@
 from datetime import datetime
-from typing import List, Optional
-from pydantic import BaseModel, EmailStr, Field, HttpUrl, field_validator
+from typing import Any, List, Optional, Literal
+from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 from .models import UserRole
+
+
+ThemePreference = Literal["system", "light", "dark"]
+LanguagePreference = Literal["system", "ro", "en"]
+StudyLevel = Literal["bachelor", "master", "phd", "medicine"]
 
 
 class UserBase(BaseModel):
@@ -44,13 +49,16 @@ class UserLogin(BaseModel):
 
 class UserResponse(UserBase):
     id: int
+    theme_preference: ThemePreference = "system"
+    language_preference: LanguagePreference = "system"
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
+class ThemePreferenceUpdate(BaseModel):
+    theme_preference: ThemePreference
 
-class OrganizerUpgradeRequest(BaseModel):
-    invite_code: str
+class LanguagePreferenceUpdate(BaseModel):
+    language_preference: LanguagePreference
 
 
 class Token(BaseModel):
@@ -71,8 +79,7 @@ class TagResponse(BaseModel):
     id: int
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventBase(BaseModel):
@@ -81,6 +88,7 @@ class EventBase(BaseModel):
     category: str = Field(..., min_length=2, max_length=100)
     start_time: datetime
     end_time: Optional[datetime] = None
+    city: str = Field(..., min_length=2, max_length=100)
     location: str = Field(..., min_length=2, max_length=255)
     max_seats: int
     cover_url: Optional[HttpUrl] = None
@@ -99,6 +107,7 @@ class EventUpdate(BaseModel):
     category: Optional[str] = None
     start_time: Optional[datetime] = None
     end_time: Optional[datetime] = None
+    city: Optional[str] = Field(default=None, min_length=2, max_length=100)
     location: Optional[str] = None
     max_seats: Optional[int] = None
     cover_url: Optional[str] = None
@@ -114,6 +123,7 @@ class EventResponse(BaseModel):
     category: Optional[str]
     start_time: datetime
     end_time: Optional[datetime]
+    city: Optional[str]
     location: Optional[str]
     max_seats: Optional[int]
     cover_url: Optional[str]
@@ -125,8 +135,7 @@ class EventResponse(BaseModel):
     status: Optional[str] = None
     publish_at: Optional[datetime] = None
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class EventDetailResponse(EventResponse):
@@ -134,6 +143,33 @@ class EventDetailResponse(EventResponse):
     is_owner: bool = False
     available_seats: Optional[int] = None
     is_favorite: bool = False
+
+
+class PublicEventResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str]
+    category: Optional[str]
+    start_time: datetime
+    end_time: Optional[datetime]
+    city: Optional[str]
+    location: Optional[str]
+    max_seats: Optional[int]
+    cover_url: Optional[str]
+    organizer_name: Optional[str]
+    tags: List[TagResponse]
+    seats_taken: int
+
+
+class PublicEventDetailResponse(PublicEventResponse):
+    available_seats: Optional[int] = None
+
+
+class PaginatedPublicEvents(BaseModel):
+    items: List[PublicEventResponse]
+    total: int
+    page: int
+    page_size: int
 
 
 class ParticipantResponse(BaseModel):
@@ -150,6 +186,7 @@ class ParticipantListResponse(BaseModel):
     cover_url: Optional[str]
     seats_taken: int
     max_seats: Optional[int]
+    city: Optional[str] = None
     participants: list[ParticipantResponse]
     total: int
     page: int
@@ -189,24 +226,221 @@ class TagResponse(BaseModel):
     id: int
     name: str
 
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
 
 
 class TagListResponse(BaseModel):
     items: List[TagResponse]
 
 
+class UniversityCatalogItem(BaseModel):
+    name: str
+    city: Optional[str] = None
+    faculties: List[str] = Field(default_factory=list)
+    aliases: List[str] = Field(default_factory=list)
+
+
+class UniversityCatalogResponse(BaseModel):
+    items: List[UniversityCatalogItem]
+
+
 class StudentProfileResponse(BaseModel):
     user_id: int
     email: EmailStr
     full_name: Optional[str] = None
+    city: Optional[str] = None
+    university: Optional[str] = None
+    faculty: Optional[str] = None
+    study_level: Optional[StudyLevel] = None
+    study_year: Optional[int] = None
     interest_tags: List[TagResponse] = []
 
 
 class StudentProfileUpdate(BaseModel):
     full_name: Optional[str] = Field(None, max_length=255)
+    city: Optional[str] = Field(default=None, max_length=100)
+    university: Optional[str] = Field(default=None, max_length=255)
+    faculty: Optional[str] = Field(default=None, max_length=255)
+    study_level: Optional[StudyLevel] = None
+    study_year: Optional[int] = Field(default=None, ge=1, le=10)
     interest_tag_ids: Optional[List[int]] = None
+
+
+class OrganizerSummaryResponse(BaseModel):
+    id: int
+    email: EmailStr
+    full_name: Optional[str] = None
+    org_name: Optional[str] = None
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class PersonalizationSettingsResponse(BaseModel):
+    hidden_tags: List[TagResponse] = []
+    blocked_organizers: List[OrganizerSummaryResponse] = []
+
+
+class NotificationPreferencesResponse(BaseModel):
+    email_digest_enabled: bool
+    email_filling_fast_enabled: bool
+
+
+class NotificationPreferencesUpdate(BaseModel):
+    email_digest_enabled: Optional[bool] = None
+    email_filling_fast_enabled: Optional[bool] = None
+
+
+class AdminUserUpdate(BaseModel):
+    role: Optional[UserRole] = None
+    is_active: Optional[bool] = None
+
+
+class AdminUserResponse(BaseModel):
+    id: int
+    email: EmailStr
+    role: UserRole
+    full_name: Optional[str] = None
+    org_name: Optional[str] = None
+    created_at: datetime
+    last_seen_at: Optional[datetime] = None
+    is_active: bool
+    registrations_count: int = 0
+    attended_count: int = 0
+    events_created_count: int = 0
+
+
+class PaginatedAdminUsers(BaseModel):
+    items: List[AdminUserResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class AdminEventResponse(BaseModel):
+    id: int
+    title: str
+    description: Optional[str] = None
+    category: Optional[str] = None
+    start_time: datetime
+    end_time: Optional[datetime] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    max_seats: Optional[int] = None
+    cover_url: Optional[str] = None
+    owner_id: int
+    owner_email: EmailStr
+    owner_name: Optional[str] = None
+    tags: List[TagResponse] = []
+    seats_taken: int = 0
+    status: Optional[str] = None
+    publish_at: Optional[datetime] = None
+    moderation_score: float = 0.0
+    moderation_status: Optional[str] = None
+    moderation_flags: Optional[list[str]] = None
+    moderation_reviewed_at: Optional[datetime] = None
+    moderation_reviewed_by_user_id: Optional[int] = None
+    deleted_at: Optional[datetime] = None
+
+
+class PaginatedAdminEvents(BaseModel):
+    items: List[AdminEventResponse]
+    total: int
+    page: int
+    page_size: int
+
+
+class RegistrationDayStat(BaseModel):
+    date: str
+    registrations: int
+
+
+class TagPopularityStat(BaseModel):
+    name: str
+    registrations: int
+    events: int
+
+
+class AdminStatsResponse(BaseModel):
+    total_users: int
+    total_events: int
+    total_registrations: int
+    registrations_by_day: List[RegistrationDayStat]
+    top_tags: List[TagPopularityStat]
+
+
+class PersonalizationMetricsDay(BaseModel):
+    date: str
+    impressions: int
+    clicks: int
+    registrations: int
+    ctr: float
+    registration_conversion: float
+
+
+class PersonalizationMetricsTotals(BaseModel):
+    impressions: int
+    clicks: int
+    registrations: int
+    ctr: float
+    registration_conversion: float
+
+
+class PersonalizationMetricsResponse(BaseModel):
+    items: List[PersonalizationMetricsDay]
+    totals: PersonalizationMetricsTotals
+
+
+class AdminPersonalizationStatusResponse(BaseModel):
+    task_queue_enabled: bool
+    recommendations_realtime_refresh_enabled: bool
+    recommendations_online_learning_enabled: bool
+    active_model_version: Optional[str] = None
+    active_model_created_at: Optional[datetime] = None
+
+
+class EnqueuedJobResponse(BaseModel):
+    job_id: int
+    job_type: str
+    status: str
+
+
+class AdminRetrainRecommendationsRequest(BaseModel):
+    top_n: Optional[int] = Field(default=50, ge=1, le=200)
+    epochs: Optional[int] = Field(default=None, ge=1, le=50)
+    lr: Optional[float] = Field(default=None, gt=0)
+    l2: Optional[float] = Field(default=None, ge=0)
+    seed: Optional[int] = None
+    model_version: Optional[str] = Field(default=None, max_length=100)
+    timeout_seconds: Optional[int] = Field(default=None, ge=30, le=60 * 60)
+
+
+class AdminEvaluateGuardrailsRequest(BaseModel):
+    days: Optional[int] = Field(default=None, ge=1, le=365)
+    min_impressions: Optional[int] = Field(default=None, ge=1, le=1000000)
+    ctr_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
+    conversion_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
+    click_to_register_window_hours: Optional[int] = Field(default=None, ge=1, le=24 * 30)
+
+
+class AdminActivatePersonalizationModelRequest(BaseModel):
+    model_version: str = Field(..., min_length=1, max_length=100)
+    recompute: bool = True
+    top_n: int = Field(default=50, ge=1, le=200)
+
+
+class AdminActivatePersonalizationModelResponse(BaseModel):
+    active_model_version: str
+    recompute_job: Optional[EnqueuedJobResponse] = None
+
+
+class AdminWeeklyDigestRequest(BaseModel):
+    top_n: Optional[int] = Field(default=8, ge=1, le=20)
+
+
+class AdminFillingFastRequest(BaseModel):
+    threshold_abs: Optional[int] = Field(default=5, ge=1, le=100)
+    threshold_ratio: Optional[float] = Field(default=0.2, ge=0, le=1)
+    max_per_user: Optional[int] = Field(default=3, ge=1, le=20)
 
 
 class PasswordResetRequest(BaseModel):
@@ -229,3 +463,78 @@ class PasswordResetConfirm(BaseModel):
 
 class RefreshRequest(BaseModel):
     refresh_token: str
+
+
+class AccountDeleteRequest(BaseModel):
+    password: str = Field(..., min_length=1, max_length=255)
+
+
+class OrganizerBulkStatusUpdate(BaseModel):
+    event_ids: List[int] = Field(..., min_length=1)
+    status: Literal["draft", "published"]
+
+
+class OrganizerBulkTagsUpdate(BaseModel):
+    event_ids: List[int] = Field(..., min_length=1)
+    tags: List[str] = Field(default_factory=list)
+
+
+class OrganizerEmailParticipantsRequest(BaseModel):
+    subject: str = Field(..., min_length=1, max_length=200)
+    message: str = Field(..., min_length=1, max_length=10000)
+
+
+class OrganizerEmailParticipantsResponse(BaseModel):
+    recipients: int
+
+
+class EventDuplicateCandidate(BaseModel):
+    id: int
+    title: str
+    start_time: datetime
+    city: Optional[str] = None
+    similarity: float
+
+
+class EventSuggestRequest(BaseModel):
+    title: str = Field(..., min_length=3, max_length=255)
+    description: Optional[str] = None
+    category: Optional[str] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    start_time: Optional[datetime] = None
+
+
+class EventSuggestResponse(BaseModel):
+    suggested_category: Optional[str] = None
+    suggested_city: Optional[str] = None
+    suggested_tags: List[str] = []
+    duplicates: List[EventDuplicateCandidate] = []
+    moderation_score: float = 0.0
+    moderation_flags: List[str] = []
+    moderation_status: str = "clean"
+
+
+InteractionType = Literal[
+    "impression",
+    "click",
+    "view",
+    "dwell",
+    "share",
+    "search",
+    "filter",
+    "favorite",
+    "register",
+    "unregister",
+]
+
+
+class InteractionEventIn(BaseModel):
+    interaction_type: InteractionType
+    event_id: Optional[int] = None
+    occurred_at: Optional[datetime] = None
+    meta: Optional[dict[str, Any]] = None
+
+
+class InteractionBatchIn(BaseModel):
+    events: List[InteractionEventIn] = Field(..., min_length=1, max_length=100)

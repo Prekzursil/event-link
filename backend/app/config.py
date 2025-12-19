@@ -21,9 +21,9 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = 30
     refresh_token_expire_minutes: int = 60 * 24 * 30
     allowed_origins: list[str] = DEFAULT_ALLOWED_ORIGINS
+    admin_emails: list[str] = []
     auto_create_tables: bool = False
     auto_run_migrations: bool = False
-    organizer_invite_code: str | None = None
     email_enabled: bool = True
     smtp_host: str | None = None
     smtp_port: int | None = None
@@ -31,8 +31,49 @@ class Settings(BaseSettings):
     smtp_password: str | None = None
     smtp_sender: str | None = None
     smtp_use_tls: bool = True
+
+    task_queue_enabled: bool = False
+    task_queue_poll_interval_seconds: float = 1.0
+    task_queue_max_attempts: int = 3
+    task_queue_stale_after_seconds: int = 300
+
+    public_api_rate_limit: int = 60
+    public_api_rate_window_seconds: int = 60
+
+    maintenance_mode_registrations_disabled: bool = False
+
+    recommendations_use_ml_cache: bool = True
+    recommendations_cache_max_age_seconds: int = 60 * 60 * 24
+    recommendations_realtime_refresh_enabled: bool = False
+    recommendations_realtime_refresh_min_interval_seconds: int = 300
+    recommendations_realtime_refresh_top_n: int = 50
+    recommendations_online_learning_enabled: bool = False
+    recommendations_online_learning_dwell_threshold_seconds: int = 10
+    recommendations_online_learning_decay_half_life_hours: int = 72
+    recommendations_online_learning_max_score: float = 10.0
+
+    personalization_guardrails_enabled: bool = False
+    personalization_guardrails_days: int = 7
+    personalization_guardrails_min_impressions: int = 200
+    personalization_guardrails_ctr_drop_ratio: float = 0.5
+    personalization_guardrails_conversion_drop_ratio: float = 0.5
+    personalization_guardrails_click_to_register_window_hours: int = 72
+
+    analytics_enabled: bool = True
+    analytics_rate_limit: int = 120
+    analytics_rate_window_seconds: int = 60
+
+    experiments_personalization_ml_percent: int = 0
     
-    model_config = SettingsConfigDict(env_file=".topsecret", extra="ignore", case_sensitive=False)
+    # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
+    # so our validator can handle both formats.
+    model_config = SettingsConfigDict(
+        env_file=".topsecret",
+        extra="ignore",
+        case_sensitive=False,
+        enable_decoding=False,
+        env_ignore_empty=True,
+    )
 
     @field_validator("allowed_origins", mode="before")
     @classmethod
@@ -55,6 +96,28 @@ class Settings(BaseSettings):
             return [origin for origin in value if origin]
 
         raise ValueError("allowed_origins must be a list or comma-separated string")
+
+    @field_validator("admin_emails", mode="before")
+    @classmethod
+    def parse_admin_emails(cls, value):
+        if value is None or value == "":
+            return []
+
+        if isinstance(value, str):
+            try:
+                parsed = json.loads(value)
+                if isinstance(parsed, list):
+                    return [str(email).strip().lower() for email in parsed if str(email).strip()]
+            except json.JSONDecodeError:
+                pass
+
+            parsed = [email.strip().lower() for email in value.split(",")]
+            return [email for email in parsed if email]
+
+        if isinstance(value, (list, tuple)):
+            return [str(email).strip().lower() for email in value if str(email).strip()]
+
+        raise ValueError("admin_emails must be a list or comma-separated string")
 
 
 settings = Settings()

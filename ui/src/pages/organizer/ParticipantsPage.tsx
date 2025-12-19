@@ -6,6 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
   Table,
   TableBody,
@@ -21,8 +23,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { LoadingPage } from '@/components/ui/loading';
+import { LoadingSpinner } from '@/components/ui/loading';
+import { Skeleton } from '@/components/ui/skeleton';
+import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
+import { useI18n } from '@/contexts/LanguageContext';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
 import {
   ArrowLeft,
   Users,
@@ -32,8 +45,7 @@ import {
   ChevronRight,
   ArrowUpDown,
 } from 'lucide-react';
-import { format } from 'date-fns';
-import { ro } from 'date-fns/locale';
+import { formatDateTime } from '@/lib/utils';
 
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
@@ -44,7 +56,13 @@ export function ParticipantsPage() {
   const [pageSize, setPageSize] = useState(20);
   const [sortBy, setSortBy] = useState('registration_time');
   const [sortDir, setSortDir] = useState<'asc' | 'desc'>('asc');
+  const [updatingAttendance, setUpdatingAttendance] = useState<Set<number>>(() => new Set());
+  const [emailDialogOpen, setEmailDialogOpen] = useState(false);
+  const [emailSubject, setEmailSubject] = useState('');
+  const [emailMessage, setEmailMessage] = useState('');
+  const [isEmailing, setIsEmailing] = useState(false);
   const { toast } = useToast();
+  const { language, t } = useI18n();
 
   const loadParticipants = useCallback(async () => {
     if (!id) return;
@@ -60,14 +78,14 @@ export function ParticipantsPage() {
       setData(response);
     } catch {
       toast({
-        title: 'Eroare',
-        description: 'Nu am putut încărca participanții',
+        title: t.common.error,
+        description: t.participants.loadErrorDescription,
         variant: 'destructive',
       });
     } finally {
       setIsLoading(false);
     }
-  }, [id, page, pageSize, sortBy, sortDir, toast]);
+  }, [id, page, pageSize, sortBy, sortDir, t, toast]);
 
   useEffect(() => {
     loadParticipants();
@@ -75,27 +93,49 @@ export function ParticipantsPage() {
 
   const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
     if (!id) return;
+    if (updatingAttendance.has(participant.id)) return;
+    const previous = participant.attended;
+
+    setUpdatingAttendance((prev) => {
+      const next = new Set(prev);
+      next.add(participant.id);
+      return next;
+    });
+    setData((prev) =>
+      prev
+        ? {
+            ...prev,
+            participants: prev.participants.map((p) => (p.id === participant.id ? { ...p, attended } : p)),
+          }
+        : null
+    );
     try {
       await eventService.updateParticipantAttendance(parseInt(id), participant.id, attended);
+      toast({
+        title: t.common.success,
+        description: attended ? t.participants.attendanceConfirmed : t.participants.attendanceCleared,
+      });
+    } catch {
       setData((prev) =>
         prev
           ? {
               ...prev,
               participants: prev.participants.map((p) =>
-                p.id === participant.id ? { ...p, attended } : p
+                p.id === participant.id ? { ...p, attended: previous } : p
               ),
             }
           : null
       );
       toast({
-        title: 'Succes',
-        description: attended ? 'Participare confirmată' : 'Participare anulată',
-      });
-    } catch {
-      toast({
-        title: 'Eroare',
-        description: 'Nu am putut actualiza prezența',
+        title: t.common.error,
+        description: t.participants.attendanceUpdateErrorDescription,
         variant: 'destructive',
+      });
+    } finally {
+      setUpdatingAttendance((prev) => {
+        const next = new Set(prev);
+        next.delete(participant.id);
+        return next;
       });
     }
   };
@@ -112,24 +152,104 @@ export function ParticipantsPage() {
   const exportToCSV = () => {
     if (!data) return;
 
-    const headers = ['Email', 'Nume', 'Data înregistrării', 'Prezent'];
+    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+
+    const headers = [
+      t.participants.csvHeaders.email,
+      t.participants.csvHeaders.name,
+      t.participants.csvHeaders.registrationDate,
+      t.participants.csvHeaders.attended,
+    ];
     const rows = data.participants.map((p) => [
       p.email,
       p.full_name || '',
-      format(new Date(p.registration_time), 'dd.MM.yyyy HH:mm'),
-      p.attended ? 'Da' : 'Nu',
+      formatDateTime(p.registration_time, language),
+      p.attended ? t.participants.csvYes : t.participants.csvNo,
     ]);
 
-    const csv = [headers, ...rows].map((row) => row.join(',')).join('\n');
+    const csv = [headers, ...rows]
+      .map((row) => row.map((cell) => escapeCsv(String(cell))).join(','))
+      .join('\n');
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `participanti-${data.title.replace(/\s+/g, '-')}.csv`;
+    link.download = `${t.participants.csvFilePrefix}-${data.title.replace(/\s+/g, '-')}.csv`;
     link.click();
   };
 
+  const sendEmailToParticipants = async () => {
+    if (!id) return;
+    const subject = emailSubject.trim();
+    const message = emailMessage.trim();
+    if (!subject) {
+      toast({
+        title: t.common.error,
+        description: t.participants.emailMissingSubject,
+        variant: 'destructive',
+      });
+      return;
+    }
+    if (!message) {
+      toast({
+        title: t.common.error,
+        description: t.participants.emailMissingMessage,
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    setIsEmailing(true);
+    try {
+      const res = await eventService.emailEventParticipants(parseInt(id), subject, message);
+      toast({
+        title: t.common.success,
+        description: t.participants.emailSuccess.replace('{count}', String(res.recipients)),
+      });
+      setEmailDialogOpen(false);
+      setEmailSubject('');
+      setEmailMessage('');
+    } catch {
+      toast({
+        title: t.common.error,
+        description: t.participants.emailError,
+        variant: 'destructive',
+      });
+    } finally {
+      setIsEmailing(false);
+    }
+  };
+
   if (isLoading && !data) {
-    return <LoadingPage message="Se încarcă participanții..." />;
+    return (
+      <div className="container mx-auto px-4 py-8">
+        <Skeleton className="mb-6 h-10 w-48" />
+
+        <Card>
+          <CardHeader>
+            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="space-y-2">
+                <Skeleton className="h-6 w-40" />
+                <Skeleton className="h-4 w-56" />
+              </div>
+              <div className="flex items-center gap-4">
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-6 w-24" />
+                <Skeleton className="h-10 w-32" />
+              </div>
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3">
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+              <Skeleton className="h-10 w-full" />
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
   }
 
   if (!data) {
@@ -141,9 +261,47 @@ export function ParticipantsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
+      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>{t.participants.emailDialogTitle}</DialogTitle>
+            <DialogDescription>{t.participants.emailDialogDescription}</DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-2">
+            <Label htmlFor="email-subject">{t.participants.emailSubjectLabel}</Label>
+            <Input
+              id="email-subject"
+              value={emailSubject}
+              onChange={(e) => setEmailSubject(e.target.value)}
+              placeholder={t.participants.emailSubjectPlaceholder}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email-message">{t.participants.emailMessageLabel}</Label>
+            <Textarea
+              id="email-message"
+              value={emailMessage}
+              onChange={(e) => setEmailMessage(e.target.value)}
+              placeholder={t.participants.emailMessagePlaceholder}
+              rows={6}
+            />
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isEmailing}>
+              {t.common.cancel}
+            </Button>
+            <Button onClick={sendEmailToParticipants} disabled={isEmailing}>
+              {t.participants.emailSend}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Button variant="ghost" className="mb-6" onClick={() => navigate('/organizer')}>
         <ArrowLeft className="mr-2 h-4 w-4" />
-        Înapoi la dashboard
+        {t.participants.backToDashboard}
       </Button>
 
       <Card>
@@ -152,19 +310,30 @@ export function ParticipantsPage() {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <Users className="h-5 w-5" />
-                Participanți
+                {t.participants.title}
+                {isLoading && <LoadingSpinner size="sm" className="ml-2" />}
               </CardTitle>
               <CardDescription className="mt-1">{data.title}</CardDescription>
             </div>
             <div className="flex items-center gap-4">
               <Badge variant="outline">
                 {data.seats_taken}
-                {data.max_seats && ` / ${data.max_seats}`} înscriși
+                {data.max_seats && ` / ${data.max_seats}`} {t.participants.registeredSuffix}
               </Badge>
-              <Badge variant="secondary">{attendedCount} prezenți</Badge>
+              <Badge variant="secondary">
+                {attendedCount} {t.participants.attendedSuffix}
+              </Badge>
+              <Button
+                variant="outline"
+                disabled={data.total === 0}
+                onClick={() => setEmailDialogOpen(true)}
+              >
+                <Mail className="mr-2 h-4 w-4" />
+                {t.participants.emailParticipants}
+              </Button>
               <Button variant="outline" onClick={exportToCSV}>
                 <Download className="mr-2 h-4 w-4" />
-                Export CSV
+                {t.participants.exportCsv}
               </Button>
             </div>
           </div>
@@ -173,9 +342,9 @@ export function ParticipantsPage() {
           {data.participants.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-center">
               <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">Nu există participanți</h3>
+              <h3 className="text-lg font-semibold">{t.participants.emptyTitle}</h3>
               <p className="mt-2 text-muted-foreground">
-                Nimeni nu s-a înscris încă la acest eveniment
+                {t.participants.emptyDescription}
               </p>
             </div>
           ) : (
@@ -190,7 +359,7 @@ export function ParticipantsPage() {
                         className="p-0 font-medium"
                         onClick={() => toggleSort('email')}
                       >
-                        Email
+                        {t.participants.table.email}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -201,7 +370,7 @@ export function ParticipantsPage() {
                         className="p-0 font-medium"
                         onClick={() => toggleSort('full_name')}
                       >
-                        Nume
+                        {t.participants.table.name}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
@@ -212,43 +381,60 @@ export function ParticipantsPage() {
                         className="p-0 font-medium"
                         onClick={() => toggleSort('registration_time')}
                       >
-                        Data înregistrării
+                        {t.participants.table.registrationDate}
                         <ArrowUpDown className="ml-2 h-4 w-4" />
                       </Button>
                     </TableHead>
-                    <TableHead className="w-[100px]">Prezent</TableHead>
+                    <TableHead className="w-[100px]">{t.participants.table.attended}</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {data.participants.map((participant) => (
-                    <TableRow key={participant.id}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-4 w-4 text-muted-foreground" />
-                          <a
-                            href={`mailto:${participant.email}`}
-                            className="hover:underline"
-                          >
-                            {participant.email}
-                          </a>
-                        </div>
-                      </TableCell>
-                      <TableCell>{participant.full_name || '-'}</TableCell>
-                      <TableCell>
-                        {format(new Date(participant.registration_time), 'd MMM yyyy, HH:mm', {
-                          locale: ro,
-                        })}
-                      </TableCell>
-                      <TableCell>
-                        <Checkbox
-                          checked={participant.attended}
-                          onCheckedChange={(checked) =>
-                            handleAttendanceChange(participant, checked === true)
-                          }
-                        />
-                      </TableCell>
-                    </TableRow>
-                  ))}
+                  {isLoading
+                    ? Array.from({ length: Math.min(pageSize, 10) }).map((_, index) => (
+                        <TableRow key={`skeleton-${index}`}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Skeleton className="h-4 w-4 rounded" />
+                              <Skeleton className="h-4 w-48" />
+                            </div>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-32" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-4 w-40" />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton className="h-5 w-5 rounded" />
+                          </TableCell>
+                        </TableRow>
+                      ))
+                    : data.participants.map((participant) => (
+                        <TableRow key={participant.id}>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Mail className="h-4 w-4 text-muted-foreground" />
+                              <a href={`mailto:${participant.email}`} className="hover:underline">
+                                {participant.email}
+                              </a>
+                            </div>
+                          </TableCell>
+                          <TableCell>{participant.full_name || '-'}</TableCell>
+                          <TableCell>{formatDateTime(participant.registration_time, language)}</TableCell>
+                          <TableCell>
+                            <div className="flex items-center gap-2">
+                              <Checkbox
+                                checked={participant.attended}
+                                disabled={updatingAttendance.has(participant.id)}
+                                onCheckedChange={(checked) =>
+                                  handleAttendanceChange(participant, checked === true)
+                                }
+                              />
+                              {updatingAttendance.has(participant.id) && <LoadingSpinner size="sm" />}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                 </TableBody>
               </Table>
 
@@ -256,7 +442,7 @@ export function ParticipantsPage() {
               {totalPages > 1 && (
                 <div className="mt-4 flex items-center justify-between">
                   <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">Pe pagină:</span>
+                    <span className="text-sm text-muted-foreground">{t.participants.perPage}</span>
                     <Select
                       value={String(pageSize)}
                       onValueChange={(value) => {
@@ -286,7 +472,7 @@ export function ParticipantsPage() {
                       <ChevronLeft className="h-4 w-4" />
                     </Button>
                     <span className="text-sm">
-                      Pagina {page} din {totalPages}
+                      {t.participants.paginationPage} {page} {t.participants.paginationOf} {totalPages}
                     </span>
                     <Button
                       variant="outline"

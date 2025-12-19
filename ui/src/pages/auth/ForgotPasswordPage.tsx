@@ -14,8 +14,10 @@ import {
 } from '@/components/ui/card';
 import { LoadingSpinner } from '@/components/ui/loading';
 import { Calendar, ArrowLeft, CheckCircle } from 'lucide-react';
+import { useI18n } from '@/contexts/LanguageContext';
 
 export function ForgotPasswordPage() {
+  const { t } = useI18n();
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [isSubmitted, setIsSubmitted] = useState(false);
@@ -43,17 +45,17 @@ export function ForgotPasswordPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="text-2xl">Verifică-ți email-ul</CardTitle>
+            <CardTitle className="text-2xl">{t.auth.forgotPassword.submittedTitle}</CardTitle>
             <CardDescription>
-              Dacă există un cont cu adresa <strong>{email}</strong>, vei primi
-              un email cu instrucțiuni pentru resetarea parolei.
+              {t.auth.forgotPassword.submittedDescriptionPrefix} <strong>{email}</strong>,{' '}
+              {t.auth.forgotPassword.submittedDescriptionSuffix}
             </CardDescription>
           </CardHeader>
           <CardFooter className="flex flex-col gap-4">
             <Button asChild variant="outline" className="w-full">
               <Link to="/login">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                Înapoi la autentificare
+                {t.auth.forgotPassword.backToLogin}
               </Link>
             </Button>
           </CardFooter>
@@ -69,20 +71,19 @@ export function ForgotPasswordPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">Resetare parolă</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.forgotPassword.title}</CardTitle>
           <CardDescription>
-            Introdu adresa de email și îți vom trimite un link pentru resetarea
-            parolei
+            {t.auth.forgotPassword.description}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">Email</Label>
+              <Label htmlFor="email">{t.auth.forgotPassword.emailLabel}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder="email@exemplu.com"
+                placeholder={t.auth.forgotPassword.emailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -95,10 +96,10 @@ export function ForgotPasswordPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  Se trimite...
+                  {t.auth.forgotPassword.submitting}
                 </>
               ) : (
-                'Trimite link de resetare'
+                t.auth.forgotPassword.submit
               )}
             </Button>
             <Link
@@ -106,7 +107,7 @@ export function ForgotPasswordPage() {
               className="flex items-center justify-center text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              Înapoi la autentificare
+              {t.auth.forgotPassword.backToLogin}
             </Link>
           </CardFooter>
         </form>
