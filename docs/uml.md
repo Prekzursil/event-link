@@ -203,24 +203,24 @@ Event "0..1" --> User : moderation_reviewed_by
 ## Communication diagram (core components + key messages)
 
 ```mermaid
-flowchart LR
+graph LR
   Student([Student])
   Organizer([Organizer])
   Admin([Admin])
 
-  UI[UI (React/Vite)]
-  API[Backend API (FastAPI)]
+  UI[UI - React Vite]
+  API[Backend API - FastAPI]
   DB[(Postgres)]
-  Worker[Worker (task queue)]
-  SMTP[(SMTP provider)]
+  Worker[Worker - task queue]
+  SMTP[SMTP provider]
 
-  Student -->|1. Browse / register / personalize| UI
-  Organizer -->|2. Create events / manage participants| UI
-  Admin -->|3. Moderate + manage users| UI
+  Student -->|1. Browse, register, personalize| UI
+  Organizer -->|2. Create events, manage participants| UI
+  Admin -->|3. Moderate events, manage users| UI
 
   UI -->|4. REST calls (JWT)| API
   API -->|5. Query / write| DB
-  API -->|6. Enqueue BackgroundJob (send_email, digests, alerts)| DB
+  API -->|6. Enqueue BackgroundJob: send_email, digests, alerts| DB
 
   Worker -->|7. Poll + lock queued jobs| DB
   Worker -->|8. Deliver outbound email| SMTP
@@ -230,18 +230,18 @@ flowchart LR
 ## Interaction overview diagram (student discovery + registration + personalization)
 
 ```mermaid
-flowchart TB
+graph TB
   Start([Start]) --> Browse[Browse events list]
   Browse --> Open[Open event details]
 
   Open --> Decide{Choose action}
 
-  Decide -->|Hide tag| HideTag[POST /api/me/personalization/hidden-tags/{tag_id}]
-  Decide -->|Block organizer| BlockOrg[POST /api/me/personalization/blocked-organizers/{organizer_id}]
-  HideTag --> Refresh[Reload events list (filters applied)]
+  Decide -->|Hide tag| HideTag[POST /api/me/personalization/hidden-tags/:tag_id]
+  Decide -->|Block organizer| BlockOrg[POST /api/me/personalization/blocked-organizers/:organizer_id]
+  HideTag --> Refresh[Reload events list - filters applied]
   BlockOrg --> Refresh
 
-  Decide -->|Register| Register[POST /api/events/{event_id}/register]
+  Decide -->|Register| Register[POST /api/events/:event_id/register]
   Register --> Enqueue[Enqueue send_email BackgroundJob]
   Enqueue --> Async[Worker delivers email (async)]
 
@@ -258,7 +258,7 @@ dateFormat  YYYY-MM-DD
 axisFormat  %Y-%m-%d
 
 section Student
-Click "Register"                   :a1, 2025-01-01, 1d
+Press "Register"                   :a1, 2025-01-01, 1d
 
 section UI
 POST /api/events/{id}/register      :a2, after a1, 1d
