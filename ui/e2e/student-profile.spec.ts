@@ -27,7 +27,10 @@ test('student profile: interests + academic fields', async ({ page }) => {
 
   // Interests
   const tagCheckbox = page.getByLabel('AI & ML');
-  await tagCheckbox.click();
+  await expect(tagCheckbox).toBeVisible();
+  if ((await tagCheckbox.getAttribute('aria-checked')) !== 'true') {
+    await tagCheckbox.click();
+  }
   await expect(tagCheckbox).toHaveAttribute('aria-checked', 'true');
 
   await page.getByRole('button', { name: 'Save changes' }).click();
