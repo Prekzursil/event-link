@@ -652,6 +652,72 @@ def test_events_list_filters_by_city(helpers):
     assert filtered["items"][0]["id"] == c1["id"]
 
 
+def test_events_list_filters_by_tags_without_duplicates(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]()
+    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+
+    base_payload = {
+        "description": "Desc",
+        "category": "Tech",
+        "city": "București",
+        "location": "Loc",
+        "max_seats": 10,
+        "start_time": helpers["future_time"](days=2),
+    }
+    e1 = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Python + AI", "tags": ["python", "ai"]},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    e2 = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Python only", "tags": ["python"]},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    resp = client.get("/api/events", params=[("tags", "python"), ("tags", "ai")])
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 2
+    ids = [e["id"] for e in body["items"]]
+    assert ids.count(e1["id"]) == 1
+    assert ids.count(e2["id"]) == 1
+
+
+def test_public_events_filters_by_tags_without_duplicates(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("public-tags-org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("public-tags-org@test.ro", "organizer123")
+
+    base_payload = {
+        "description": "Desc",
+        "category": "Tech",
+        "city": "București",
+        "location": "Loc",
+        "max_seats": 10,
+        "start_time": helpers["future_time"](days=2),
+    }
+    e1 = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Public Python + AI", "tags": ["python", "ai"]},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+    e2 = client.post(
+        "/api/events",
+        json={**base_payload, "title": "Public Python only", "tags": ["python"]},
+        headers=helpers["auth_header"](organizer_token),
+    ).json()
+
+    resp = client.get("/api/public/events", params=[("tags", "python"), ("tags", "ai")])
+    assert resp.status_code == 200
+    body = resp.json()
+    assert body["total"] == 2
+    ids = [e["id"] for e in body["items"]]
+    assert ids.count(e1["id"]) == 1
+    assert ids.count(e2["id"]) == 1
+
+
 def test_public_events_api_exposes_published_only(helpers):
     client = helpers["client"]
     helpers["make_organizer"]("public-org@test.ro", "organizer123")
