@@ -200,72 +200,45 @@ Registration "0..1" --> User : deleted_by
 Event "0..1" --> User : moderation_reviewed_by
 ```
 
-## Sequence: student registers for an event (email via background worker)
+## State machines
+
+### Registration + confirmation email job
 
 ```mermaid
-sequenceDiagram
-autonumber
-actor Student
-participant UI as UI (React/Vite)
-participant API as Backend API (FastAPI)
-participant DB as Postgres
-participant Worker as Worker (task queue)
-participant SMTP as SMTP provider
+stateDiagram-v2
+direction LR
 
-Student->>UI: Click "Register for event"
-UI->>API: POST /api/events/{event_id}/register (JWT)
-API->>DB: SELECT event + seat availability
-DB-->>API: event row
-API->>DB: INSERT registrations (user_id,event_id)
-DB-->>API: registration created
-API->>DB: INSERT background_jobs (job_type=send_email, payload)
-DB-->>API: job queued
-API-->>UI: 201 Created
-UI-->>Student: Show "Unregister" + success toast
+[*] --> NotRegistered
 
-loop poll
-  Worker->>DB: SELECT next queued background_jobs
-  DB-->>Worker: job
-  Worker->>DB: UPDATE job status=running (lock)
-  Worker->>SMTP: Send confirmation email
-  SMTP-->>Worker: accepted (or disabled in env)
-  Worker->>DB: UPDATE job status=succeeded/failed
-end
+NotRegistered --> Registered : POST /api/events/{event_id}/register
+Registered --> Unregistered : DELETE /api/events/{event_id}/register
+Unregistered --> Registered : POST /api/events/{event_id}/register
+
+state Registered {
+  [*] --> EmailJobQueued : enqueue send_email
+  EmailJobQueued --> EmailJobRunning : worker locks job
+  EmailJobRunning --> EmailJobSucceeded : SMTP ok / email_disabled
+  EmailJobRunning --> EmailJobFailed : transient error
+  EmailJobFailed --> EmailJobQueued : retry (attempts < max_attempts)
+  EmailJobFailed --> EmailJobDead : attempts >= max_attempts
+}
 ```
 
-## Sequence: personalization controls (hide tag + block organizer)
+### Personalization controls (hidden tags + blocked organizers)
 
 ```mermaid
-sequenceDiagram
-autonumber
-actor Student
-participant UI as UI (React/Vite)
-participant API as Backend API (FastAPI)
-participant DB as Postgres
+stateDiagram-v2
+direction LR
 
-Student->>UI: Open Event details
-UI->>API: GET /api/events/{event_id} (optional JWT)
-API->>DB: SELECT events + tags + organizer
-DB-->>API: event detail payload
-API-->>UI: 200 OK (EventDetailResponse)
-UI-->>Student: Render event + "Personalization" section
+state "Hidden tag (user_id, tag_id)" as HiddenTag {
+  [*] --> Visible
+  Visible --> Hidden : POST /api/me/personalization/hidden-tags/{tag_id}
+  Hidden --> Visible : DELETE /api/me/personalization/hidden-tags/{tag_id}
+}
 
-Student->>UI: Hide tag "AI & ML"
-UI->>API: POST /api/me/personalization/hidden-tags/{tag_id} (JWT)
-API->>DB: INSERT user_hidden_tags (user_id, tag_id)
-DB-->>API: OK
-API-->>UI: 201 Created
-
-Student->>UI: Block organizer
-UI->>API: POST /api/me/personalization/blocked-organizers/{organizer_id} (JWT)
-API->>DB: INSERT user_blocked_organizers (user_id, organizer_id)
-DB-->>API: OK
-API-->>UI: 201 Created
-
-Student->>UI: Return to Events list
-UI->>API: GET /api/events (JWT)
-API->>DB: SELECT events excluding hidden tags/blocked organizers
-DB-->>API: filtered events
-API-->>UI: 200 OK (PaginatedEvents)
-UI-->>Student: List updated (or "No events found")
+state "Blocked organizer (user_id, organizer_id)" as BlockedOrganizer {
+  [*] --> Unblocked
+  Unblocked --> Blocked : POST /api/me/personalization/blocked-organizers/{organizer_id}
+  Blocked --> Unblocked : DELETE /api/me/personalization/blocked-organizers/{organizer_id}
+}
 ```
