@@ -763,7 +763,7 @@ def get_events(
         tag_filters.extend([t.strip() for t in tags_csv.split(",") if t.strip()])
     if tag_filters:
         lowered = [t.lower() for t in tag_filters]
-        query = query.join(models.Event.tags).filter(func.lower(models.Tag.name).in_(lowered))
+        query = query.filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered)))
     if city:
         query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
     if location:
@@ -782,7 +782,6 @@ def get_events(
             hidden_tag_ids=hidden_tag_ids,
             blocked_organizer_ids=blocked_organizer_ids,
         )
-    query = query.distinct()
     total = query.count()
     sort_value = (sort or "").strip().lower()
     if sort_value not in {"recommended", "time"}:
@@ -1224,7 +1223,7 @@ def get_public_events(
         tag_filters.extend([t.strip() for t in tags_csv.split(",") if t.strip()])
     if tag_filters:
         lowered = [t.lower() for t in tag_filters]
-        query = query.join(models.Event.tags).filter(func.lower(models.Tag.name).in_(lowered))
+        query = query.filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered)))
     if city:
         query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
     if location:
@@ -1235,7 +1234,6 @@ def get_public_events(
     if end_date:
         end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time <= end_dt)
-    query = query.distinct()
     total = query.count()
     query = query.order_by(models.Event.id, models.Event.start_time)
     query, seats_subquery = _events_with_counts_query(db, query)
@@ -3311,10 +3309,10 @@ def recommended_events(
 
         events: List[tuple[models.Event, int, Optional[str]]] = []
         if match_tag_names:
+            lowered_match_tags = [name.lower() for name in match_tag_names]
             base_query = (
                 db.query(models.Event)
-                .join(models.Event.tags)
-                .filter(func.lower(models.Tag.name).in_([name.lower() for name in match_tag_names]))
+                .filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered_match_tags)))
                 .filter(models.Event.deleted_at.is_(None))
                 .filter(models.Event.start_time >= now)
                 .filter(models.Event.status == "published")
@@ -3327,7 +3325,7 @@ def recommended_events(
                 hidden_tag_ids=hidden_tag_ids,
                 blocked_organizer_ids=blocked_organizer_ids,
             )
-            base_query = base_query.distinct().order_by(models.Event.start_time)
+            base_query = base_query.order_by(models.Event.start_time, models.Event.id)
             query, seats_subquery = _events_with_counts_query(db, base_query)
             reason_parts: list[str] = []
             if history_tag_names:

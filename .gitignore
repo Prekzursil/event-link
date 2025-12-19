@@ -93,6 +93,10 @@ pids/
 coverage/
 .nyc_output/
 
+# Playwright
+ui/playwright-report/
+ui/test-results/
+
 # Grunt intermediate storage
 .grunt/
 

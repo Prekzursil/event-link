@@ -150,3 +150,80 @@ jobs:
         if: always()
         run: |
           docker compose down -v
+
+  e2e:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - name: Cache npm
+        uses: actions/cache@v4
+        with:
+          path: ~/.npm
+          key: npm-${{ hashFiles('ui/package-lock.json') }}
+          restore-keys: |
+            npm-
+      - name: Prepare env
+        run: |
+          # docker-compose.yml loads .env into the backend container
+          cp .env.example .env
+      - name: Compose up
+        run: |
+          docker compose up -d --build
+
+          echo "Waiting for backend health..."
+          for i in {1..90}; do
+            if curl -fsS "http://localhost:8000/api/health" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS "http://localhost:8000/api/health"
+
+          echo "Waiting for frontend..."
+          for i in {1..90}; do
+            if curl -fsS "http://localhost:4200/" >/dev/null; then
+              break
+            fi
+            sleep 2
+          done
+          curl -fsS "http://localhost:4200/" >/dev/null
+      - name: Seed database
+        run: |
+          docker compose exec -T backend python seed_data.py
+      - name: Install UI deps
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
+        run: |
+          cd ui
+          npm ci
+      - name: Install Playwright (Chromium)
+        run: |
+          cd ui
+          npx playwright install --with-deps chromium
+      - name: Run Playwright E2E
+        env:
+          PLAYWRIGHT_BASE_URL: http://localhost:4200
+        run: |
+          cd ui
+          npm run test:e2e
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: |
+            ui/playwright-report
+            ui/test-results
+          if-no-files-found: ignore
+      - name: Dump docker logs
+        if: failure()
+        run: |
+          docker compose ps
+          docker compose logs --no-color
+      - name: Compose down
+        if: always()
+        run: |
+          docker compose down -v
