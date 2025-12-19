@@ -534,8 +534,9 @@ export function StudentProfilePage() {
                     setFaculty('');
                   }
                   const match = universityCatalog.find((item) => item.name.toLowerCase() === next.trim().toLowerCase());
-                  if (match?.city && !city.trim()) {
-                    setCity(match.city);
+                  const matchCity = match?.city;
+                  if (matchCity) {
+                    setCity((previousCity) => (previousCity.trim() ? previousCity : matchCity));
                   }
                 }}
                 placeholder={t.profile.universityPlaceholder}
@@ -593,7 +594,7 @@ export function StudentProfilePage() {
                   }
                 }}
               >
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs" data-testid="study-level-trigger">
                   <SelectValue placeholder={t.profile.studyLevelPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
@@ -612,7 +613,7 @@ export function StudentProfilePage() {
                 onValueChange={(value) => setStudyYear(parseInt(value))}
                 disabled={!studyLevel}
               >
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs" data-testid="study-year-trigger">
                   <SelectValue
                     placeholder={studyLevel ? t.profile.studyYearPlaceholder : t.profile.studyYearSelectLevelFirst}
                   />
