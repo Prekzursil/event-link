@@ -147,9 +147,11 @@ class PasswordResetToken(Base):
 
 class BackgroundJob(Base):
     __tablename__ = "background_jobs"
+    __table_args__ = (UniqueConstraint("job_type", "dedupe_key", name="uq_background_job_dedupe_key"),)
 
     id = Column(Integer, primary_key=True, index=True)
     job_type = Column(String(50), nullable=False, index=True)
+    dedupe_key = Column(String(200), nullable=True, index=True)
     payload = Column(JSON, nullable=False)
     status = Column(String(20), nullable=False, index=True, server_default="queued")
     attempts = Column(Integer, nullable=False, server_default="0")
@@ -234,6 +236,19 @@ class EventInteraction(Base):
 
     user = relationship("User", foreign_keys=[user_id])
     event = relationship("Event", foreign_keys=[event_id])
+
+
+class UserImplicitInterestTag(Base):
+    __tablename__ = "user_implicit_interest_tags"
+    __table_args__ = (UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),)
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False, index=True)
+    last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
+
+    user = relationship("User", foreign_keys=[user_id])
+    tag = relationship("Tag", foreign_keys=[tag_id])
 
 
 event_tags = Table(

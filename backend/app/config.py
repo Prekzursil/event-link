@@ -47,6 +47,15 @@ class Settings(BaseSettings):
     recommendations_realtime_refresh_enabled: bool = False
     recommendations_realtime_refresh_min_interval_seconds: int = 300
     recommendations_realtime_refresh_top_n: int = 50
+    recommendations_online_learning_enabled: bool = False
+    recommendations_online_learning_dwell_threshold_seconds: int = 10
+
+    personalization_guardrails_enabled: bool = False
+    personalization_guardrails_days: int = 7
+    personalization_guardrails_min_impressions: int = 200
+    personalization_guardrails_ctr_drop_ratio: float = 0.5
+    personalization_guardrails_conversion_drop_ratio: float = 0.5
+    personalization_guardrails_click_to_register_window_hours: int = 72
 
     analytics_enabled: bool = True
     analytics_rate_limit: int = 120

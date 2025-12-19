@@ -906,6 +906,82 @@ def record_interactions(
     if (
         current_user is not None
         and getattr(current_user, "role", None) == models.UserRole.student
+        and settings.recommendations_online_learning_enabled
+    ):
+        positive_event_ids: set[int] = set()
+        explicit_tag_names: set[str] = set()
+
+        for event in payload.events:
+            if event.interaction_type in {"click", "view", "share", "favorite", "register"} and event.event_id is not None:
+                positive_event_ids.add(int(event.event_id))
+            elif event.interaction_type == "dwell" and event.event_id is not None:
+                seconds = None
+                if isinstance(event.meta, dict):
+                    seconds = event.meta.get("seconds")
+                if isinstance(seconds, (int, float)) and float(seconds) >= float(settings.recommendations_online_learning_dwell_threshold_seconds):
+                    positive_event_ids.add(int(event.event_id))
+            elif event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
+                tags_value = event.meta.get("tags")
+                if isinstance(tags_value, list):
+                    for name in tags_value:
+                        s = str(name or "").strip()
+                        if s:
+                            explicit_tag_names.add(s)
+
+        if positive_event_ids or explicit_tag_names:
+            hidden_tag_ids, _blocked = _load_personalization_exclusions(db=db, user_id=int(current_user.id))
+            tag_ids: set[int] = set()
+
+            if positive_event_ids:
+                tag_ids |= {
+                    int(row[0])
+                    for row in (
+                        db.query(models.Tag.id)
+                        .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
+                        .filter(models.event_tags.c.event_id.in_(sorted(positive_event_ids)))
+                        .all()
+                    )
+                }
+
+            if explicit_tag_names:
+                lowered = [t.lower() for t in explicit_tag_names]
+                tag_ids |= {
+                    int(row[0])
+                    for row in db.query(models.Tag.id).filter(func.lower(models.Tag.name).in_(lowered)).all()
+                }
+
+            tag_ids = {tag_id for tag_id in tag_ids if tag_id not in hidden_tag_ids}
+            if tag_ids:
+                existing = {
+                    int(row[0])
+                    for row in (
+                        db.query(models.UserImplicitInterestTag.tag_id)
+                        .filter(
+                            models.UserImplicitInterestTag.user_id == current_user.id,
+                            models.UserImplicitInterestTag.tag_id.in_(sorted(tag_ids)),
+                        )
+                        .all()
+                    )
+                }
+
+                if existing:
+                    (
+                        db.query(models.UserImplicitInterestTag)
+                        .filter(
+                            models.UserImplicitInterestTag.user_id == current_user.id,
+                            models.UserImplicitInterestTag.tag_id.in_(sorted(existing)),
+                        )
+                        .update({"last_seen_at": now}, synchronize_session=False)
+                    )
+
+                for tag_id in tag_ids - existing:
+                    db.add(models.UserImplicitInterestTag(user_id=current_user.id, tag_id=int(tag_id), last_seen_at=now))
+
+                db.commit()
+
+    if (
+        current_user is not None
+        and getattr(current_user, "role", None) == models.UserRole.student
         and settings.task_queue_enabled
         and settings.recommendations_use_ml_cache
         and settings.recommendations_realtime_refresh_enabled
@@ -925,20 +1001,6 @@ def record_interactions(
 
         if should_refresh:
             from .task_queue import enqueue_job, JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML  # noqa: PLC0415
-
-            existing_jobs = (
-                db.query(models.BackgroundJob)
-                .filter(
-                    models.BackgroundJob.job_type == JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
-                    models.BackgroundJob.status.in_(["queued", "running"]),
-                )
-                .order_by(models.BackgroundJob.id.desc())
-                .limit(200)
-                .all()
-            )
-            for job in existing_jobs:
-                if (job.payload or {}).get("user_id") == current_user.id:
-                    return
 
             latest_generated_at = (
                 db.query(func.max(models.UserRecommendation.generated_at))
@@ -960,6 +1022,7 @@ def record_interactions(
                     "top_n": int(settings.recommendations_realtime_refresh_top_n),
                     "skip_training": True,
                 },
+                dedupe_key=str(int(current_user.id)),
             )
     return
 
@@ -2600,6 +2663,84 @@ def admin_personalization_metrics(
     }
 
 
+@app.get("/api/admin/personalization/status", response_model=schemas.AdminPersonalizationStatusResponse)
+def admin_personalization_status(
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    active = (
+        db.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.is_active.is_(True))
+        .order_by(models.RecommenderModel.id.desc())
+        .first()
+    )
+    return {
+        "task_queue_enabled": bool(settings.task_queue_enabled),
+        "recommendations_realtime_refresh_enabled": bool(settings.recommendations_realtime_refresh_enabled),
+        "recommendations_online_learning_enabled": bool(settings.recommendations_online_learning_enabled),
+        "active_model_version": str(active.model_version) if active else None,
+        "active_model_created_at": active.created_at if active else None,
+    }
+
+
+@app.post(
+    "/api/admin/personalization/guardrails/evaluate",
+    response_model=schemas.EnqueuedJobResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def admin_enqueue_guardrails_evaluate(
+    payload: schemas.AdminEvaluateGuardrailsRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    from .task_queue import enqueue_job, JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS  # noqa: PLC0415
+
+    job = enqueue_job(
+        db,
+        JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS,
+        payload.model_dump(exclude_none=True),
+        dedupe_key="global",
+    )
+    return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
+
+
+@app.post(
+    "/api/admin/personalization/models/activate",
+    response_model=schemas.AdminActivatePersonalizationModelResponse,
+)
+def admin_activate_personalization_model(
+    payload: schemas.AdminActivatePersonalizationModelRequest,
+    db: Session = Depends(get_db),
+    current_user: models.User = Depends(auth.require_admin),
+):
+    model = (
+        db.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.model_version == payload.model_version)
+        .first()
+    )
+    if not model:
+        raise HTTPException(status_code=404, detail="Modelul nu există.")
+
+    db.query(models.RecommenderModel).update({"is_active": False}, synchronize_session=False)
+    model.is_active = True
+    db.add(model)
+    db.commit()
+
+    recompute_job = None
+    if payload.recompute:
+        from .task_queue import enqueue_job, JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML  # noqa: PLC0415
+
+        job = enqueue_job(
+            db,
+            JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
+            {"top_n": int(payload.top_n), "skip_training": True},
+            dedupe_key="global",
+        )
+        recompute_job = {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
+
+    return {"active_model_version": str(model.model_version), "recompute_job": recompute_job}
+
+
 @app.post("/api/admin/personalization/retrain", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED)
 def admin_enqueue_retrain_recommendations(
     payload: schemas.AdminRetrainRecommendationsRequest,
@@ -2612,6 +2753,7 @@ def admin_enqueue_retrain_recommendations(
         db,
         JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
         payload.model_dump(exclude_none=True),
+        dedupe_key="global",
     )
     return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
 
@@ -2624,7 +2766,7 @@ def admin_enqueue_weekly_digest(
 ):
     from .task_queue import enqueue_job, JOB_TYPE_SEND_WEEKLY_DIGEST  # noqa: PLC0415
 
-    job = enqueue_job(db, JOB_TYPE_SEND_WEEKLY_DIGEST, payload.model_dump(exclude_none=True))
+    job = enqueue_job(db, JOB_TYPE_SEND_WEEKLY_DIGEST, payload.model_dump(exclude_none=True), dedupe_key="global")
     return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
 
 
@@ -2636,7 +2778,7 @@ def admin_enqueue_filling_fast(
 ):
     from .task_queue import enqueue_job, JOB_TYPE_SEND_FILLING_FAST_ALERTS  # noqa: PLC0415
 
-    job = enqueue_job(db, JOB_TYPE_SEND_FILLING_FAST_ALERTS, payload.model_dump(exclude_none=True))
+    job = enqueue_job(db, JOB_TYPE_SEND_FILLING_FAST_ALERTS, payload.model_dump(exclude_none=True), dedupe_key="global")
     return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
 
 
