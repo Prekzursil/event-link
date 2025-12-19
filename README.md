@@ -26,6 +26,10 @@ event-link/
 If you use Codex GitHub MCP tooling or want `git push` to work without interactive prompts, see
 `docs/github-auth.md`.
 
+## Architecture diagrams
+
+Mermaid UML diagrams (domain + core flows): `docs/uml.md`.
+
 ## Backend configuration
 
 Environment is read from `.topsecret` in `backend/` (or standard env vars). Minimum settings:
