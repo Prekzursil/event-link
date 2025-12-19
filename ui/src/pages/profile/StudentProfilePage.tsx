@@ -593,7 +593,7 @@ export function StudentProfilePage() {
                   }
                 }}
               >
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs" data-testid="study-level-trigger">
                   <SelectValue placeholder={t.profile.studyLevelPlaceholder} />
                 </SelectTrigger>
                 <SelectContent>
@@ -612,7 +612,7 @@ export function StudentProfilePage() {
                 onValueChange={(value) => setStudyYear(parseInt(value))}
                 disabled={!studyLevel}
               >
-                <SelectTrigger className="max-w-xs">
+                <SelectTrigger className="max-w-xs" data-testid="study-year-trigger">
                   <SelectValue
                     placeholder={studyLevel ? t.profile.studyYearPlaceholder : t.profile.studyYearSelectLevelFirst}
                   />

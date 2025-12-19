@@ -17,6 +17,7 @@ export default defineConfig({
     navigationTimeout: 45_000,
     trace: 'on-first-retry',
     screenshot: 'only-on-failure',
+    acceptDownloads: true,
   },
   projects: [
     {
