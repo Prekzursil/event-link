@@ -49,7 +49,7 @@ test('personalization controls: hide tag + block organizer', async ({ page }) =>
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto(`/events/${eventId}`);
-  await expect(page.getByRole('heading', { name: 'Personalization' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Personalization', exact: true })).toBeVisible();
 
   const hideTagSelect = page.getByRole('combobox').filter({ hasText: 'Pick a tag' }).first();
   await hideTagSelect.click();
@@ -84,7 +84,7 @@ test('personalization controls: hide tag + block organizer', async ({ page }) =>
 
   // Block the organizer from the event detail page.
   await page.goto(`/events/${eventId}`);
-  await expect(page.getByRole('heading', { name: 'Personalization' })).toBeVisible();
+  await expect(page.getByRole('heading', { name: 'Personalization', exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Block organizer' }).click();
   await expect(page.getByText('Organizer blocked').first()).toBeVisible();
 
@@ -100,4 +100,3 @@ test('personalization controls: hide tag + block organizer', async ({ page }) =>
   await page.getByPlaceholder('Search events...').fill(title);
   await expect(page.getByRole('heading', { name: title })).toHaveCount(0);
 });
-
