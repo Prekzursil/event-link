@@ -108,7 +108,7 @@
 - [x] E2E (Playwright): student profile flows (interest tags + academic profile fields).
 - [x] E2E (Playwright): organizer participants tools (attendance toggle, CSV export, email participants).
 - [ ] E2E (Playwright): organizer clone event + soft-delete/restore flows.
-- [ ] E2E (Playwright): admin dashboard flows (user management + event moderation) once admin seed exists.
+- [ ] E2E (Playwright): admin dashboard flows (user management + event moderation).
 - [ ] E2E (Playwright): personalization controls (hide tags/blocked organizers) + “Why am I seeing this?” drawer.
 - [ ] E2E (Playwright): notifications preferences + admin-triggered digest/filling-fast job enqueue.
 - [x] Stress/load tests for critical endpoints (event list, registration, recommendations).
