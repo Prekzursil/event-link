@@ -390,6 +390,14 @@ class PersonalizationMetricsResponse(BaseModel):
     totals: PersonalizationMetricsTotals
 
 
+class AdminPersonalizationStatusResponse(BaseModel):
+    task_queue_enabled: bool
+    recommendations_realtime_refresh_enabled: bool
+    recommendations_online_learning_enabled: bool
+    active_model_version: Optional[str] = None
+    active_model_created_at: Optional[datetime] = None
+
+
 class EnqueuedJobResponse(BaseModel):
     job_id: int
     job_type: str
@@ -404,6 +412,25 @@ class AdminRetrainRecommendationsRequest(BaseModel):
     seed: Optional[int] = None
     model_version: Optional[str] = Field(default=None, max_length=100)
     timeout_seconds: Optional[int] = Field(default=None, ge=30, le=60 * 60)
+
+
+class AdminEvaluateGuardrailsRequest(BaseModel):
+    days: Optional[int] = Field(default=None, ge=1, le=365)
+    min_impressions: Optional[int] = Field(default=None, ge=1, le=1000000)
+    ctr_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
+    conversion_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
+    click_to_register_window_hours: Optional[int] = Field(default=None, ge=1, le=24 * 30)
+
+
+class AdminActivatePersonalizationModelRequest(BaseModel):
+    model_version: str = Field(..., min_length=1, max_length=100)
+    recompute: bool = True
+    top_n: int = Field(default=50, ge=1, le=200)
+
+
+class AdminActivatePersonalizationModelResponse(BaseModel):
+    active_model_version: str
+    recompute_job: Optional[EnqueuedJobResponse] = None
 
 
 class AdminWeeklyDigestRequest(BaseModel):

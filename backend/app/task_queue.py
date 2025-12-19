@@ -8,6 +8,7 @@ from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import models
@@ -18,6 +19,7 @@ from .logging_utils import log_event, log_warning
 JOB_TYPE_SEND_EMAIL = "send_email"
 JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML = "recompute_recommendations_ml"
 JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML = "refresh_user_recommendations_ml"
+JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS = "evaluate_personalization_guardrails"
 JOB_TYPE_SEND_WEEKLY_DIGEST = "send_weekly_digest"
 JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
 
@@ -27,11 +29,13 @@ def enqueue_job(
     job_type: str,
     payload: dict[str, Any],
     *,
+    dedupe_key: str | None = None,
     run_at: datetime | None = None,
     max_attempts: int | None = None,
 ) -> models.BackgroundJob:
     job = models.BackgroundJob(
         job_type=job_type,
+        dedupe_key=dedupe_key,
         payload=payload,
         status="queued",
         attempts=0,
@@ -39,7 +43,26 @@ def enqueue_job(
         run_at=run_at or datetime.now(timezone.utc),
     )
     db.add(job)
-    db.commit()
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        if dedupe_key is None:
+            raise
+        existing = (
+            db.query(models.BackgroundJob)
+            .filter(
+                models.BackgroundJob.job_type == job_type,
+                models.BackgroundJob.dedupe_key == dedupe_key,
+                models.BackgroundJob.status.in_(["queued", "running"]),
+            )
+            .order_by(models.BackgroundJob.id.desc())
+            .first()
+        )
+        if existing is None:
+            raise
+        setattr(existing, "_deduped", True)
+        return existing
     db.refresh(job)
     log_event("job_enqueued", job_id=job.id, job_type=job.job_type)
     return job
@@ -94,6 +117,7 @@ def claim_next_job(db: Session, *, worker_id: str) -> models.BackgroundJob | Non
 def mark_job_succeeded(db: Session, job: models.BackgroundJob) -> None:
     job.status = "succeeded"
     job.finished_at = _now_utc()
+    job.dedupe_key = None
     db.add(job)
     db.commit()
     log_event("job_succeeded", job_id=job.id, job_type=job.job_type, attempts=job.attempts)
@@ -123,6 +147,7 @@ def mark_job_failed(db: Session, job: models.BackgroundJob, error: str) -> None:
 
     job.status = "failed"
     job.finished_at = _now_utc()
+    job.dedupe_key = None
     db.add(job)
     db.commit()
     log_warning(
@@ -410,6 +435,193 @@ def _send_filling_fast_alerts(*, db: Session, payload: dict[str, Any]) -> dict[s
     return {"pairs": total_pairs, "emails": enqueued_emails}
 
 
+def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]) -> dict[str, Any]:
+    if not settings.personalization_guardrails_enabled:
+        return {"enabled": False}
+
+    days = int(payload.get("days") or settings.personalization_guardrails_days)
+    if days < 1 or days > 365:
+        days = int(settings.personalization_guardrails_days)
+
+    min_impressions = int(payload.get("min_impressions") or settings.personalization_guardrails_min_impressions)
+    ctr_drop_ratio = float(payload.get("ctr_drop_ratio") or settings.personalization_guardrails_ctr_drop_ratio)
+    conversion_drop_ratio = float(
+        payload.get("conversion_drop_ratio") or settings.personalization_guardrails_conversion_drop_ratio
+    )
+    click_to_register_hours = int(
+        payload.get("click_to_register_window_hours") or settings.personalization_guardrails_click_to_register_window_hours
+    )
+    click_to_register_window = timedelta(hours=max(1, click_to_register_hours))
+
+    now = datetime.now(timezone.utc)
+    start = now - timedelta(days=days)
+
+    def _meta_value(meta: object, key: str) -> str | None:
+        if isinstance(meta, dict):
+            value = meta.get(key)
+            if value is None:
+                return None
+            return str(value)
+        return None
+
+    impressions: dict[str, int] = {"recommended": 0, "time": 0}
+    clicks: dict[str, int] = {"recommended": 0, "time": 0}
+    conversions: dict[str, int] = {"recommended": 0, "time": 0}
+
+    click_by_user_event: dict[tuple[int, int], tuple[str, datetime]] = {}
+
+    impression_rows = (
+        db.query(
+            models.EventInteraction.user_id,
+            models.EventInteraction.event_id,
+            models.EventInteraction.occurred_at,
+            models.EventInteraction.meta,
+        )
+        .filter(models.EventInteraction.occurred_at >= start)
+        .filter(models.EventInteraction.user_id.isnot(None))
+        .filter(models.EventInteraction.event_id.isnot(None))
+        .filter(models.EventInteraction.interaction_type == "impression")
+        .all()
+    )
+    for user_id, event_id, occurred_at, meta in impression_rows:
+        source = (_meta_value(meta, "source") or "").strip().lower()
+        sort = (_meta_value(meta, "sort") or "").strip().lower()
+        if source != "events_list":
+            continue
+        if sort not in impressions:
+            continue
+        impressions[sort] += 1
+
+    click_rows = (
+        db.query(
+            models.EventInteraction.user_id,
+            models.EventInteraction.event_id,
+            models.EventInteraction.occurred_at,
+            models.EventInteraction.meta,
+        )
+        .filter(models.EventInteraction.occurred_at >= start)
+        .filter(models.EventInteraction.user_id.isnot(None))
+        .filter(models.EventInteraction.event_id.isnot(None))
+        .filter(models.EventInteraction.interaction_type == "click")
+        .all()
+    )
+    for user_id, event_id, occurred_at, meta in click_rows:
+        source = (_meta_value(meta, "source") or "").strip().lower()
+        sort = (_meta_value(meta, "sort") or "").strip().lower()
+        if source != "events_list":
+            continue
+        if sort not in clicks:
+            continue
+        clicks[sort] += 1
+        key = (int(user_id), int(event_id))
+        prev = click_by_user_event.get(key)
+        if prev is None or occurred_at > prev[1]:
+            click_by_user_event[key] = (sort, occurred_at)
+
+    register_rows = (
+        db.query(
+            models.EventInteraction.user_id,
+            models.EventInteraction.event_id,
+            models.EventInteraction.occurred_at,
+        )
+        .filter(models.EventInteraction.occurred_at >= start)
+        .filter(models.EventInteraction.user_id.isnot(None))
+        .filter(models.EventInteraction.event_id.isnot(None))
+        .filter(models.EventInteraction.interaction_type == "register")
+        .all()
+    )
+    for user_id, event_id, occurred_at in register_rows:
+        key = (int(user_id), int(event_id))
+        click = click_by_user_event.get(key)
+        if not click:
+            continue
+        sort, click_time = click
+        if occurred_at < click_time or occurred_at > (click_time + click_to_register_window):
+            continue
+        if sort in conversions:
+            conversions[sort] += 1
+
+    def _safe_ratio(num: int, den: int) -> float:
+        return float(num) / float(den) if den else 0.0
+
+    ctr = {key: _safe_ratio(clicks[key], impressions[key]) for key in impressions}
+    conversion = {key: _safe_ratio(conversions[key], clicks[key]) for key in clicks}
+
+    result: dict[str, Any] = {
+        "enabled": True,
+        "days": days,
+        "impressions": impressions,
+        "clicks": clicks,
+        "conversions": conversions,
+        "ctr": ctr,
+        "conversion": conversion,
+    }
+
+    if impressions["recommended"] < min_impressions or impressions["time"] < min_impressions:
+        log_event("personalization_guardrails_skip_low_volume", **result)
+        result["action"] = "skip_low_volume"
+        return result
+
+    recommended_ctr = ctr["recommended"]
+    time_ctr = ctr["time"]
+    recommended_conv = conversion["recommended"]
+    time_conv = conversion["time"]
+
+    ctr_ok = True if time_ctr == 0 else (recommended_ctr >= time_ctr * (1.0 - ctr_drop_ratio))
+    conv_ok = True if time_conv == 0 else (recommended_conv >= time_conv * (1.0 - conversion_drop_ratio))
+    result["ctr_ok"] = ctr_ok
+    result["conversion_ok"] = conv_ok
+
+    if ctr_ok and conv_ok:
+        log_event("personalization_guardrails_ok", **result)
+        result["action"] = "ok"
+        return result
+
+    active = (
+        db.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.is_active.is_(True))
+        .order_by(models.RecommenderModel.id.desc())
+        .first()
+    )
+    if not active:
+        log_warning("personalization_guardrails_no_active_model", **result)
+        result["action"] = "no_active_model"
+        return result
+
+    previous = (
+        db.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.id < active.id)
+        .order_by(models.RecommenderModel.id.desc())
+        .first()
+    )
+    if not previous:
+        log_warning("personalization_guardrails_no_previous_model", active_model_version=active.model_version, **result)
+        result["action"] = "no_previous_model"
+        return result
+
+    active.is_active = False
+    previous.is_active = True
+    db.add_all([active, previous])
+    db.commit()
+    log_warning(
+        "personalization_guardrails_rollback",
+        from_model_version=active.model_version,
+        to_model_version=previous.model_version,
+        **result,
+    )
+
+    enqueue_job(
+        db,
+        JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
+        {"top_n": int(settings.recommendations_realtime_refresh_top_n), "skip_training": True},
+        dedupe_key="global",
+    )
+    result["action"] = "rollback"
+    result["rolled_back_from"] = str(active.model_version)
+    result["rolled_back_to"] = str(previous.model_version)
+    return result
+
+
 def process_job(db: Session, job: models.BackgroundJob) -> None:
     payload = job.payload or {}
     try:
@@ -445,6 +657,12 @@ def process_job(db: Session, job: models.BackgroundJob) -> None:
         if job.job_type == JOB_TYPE_SEND_FILLING_FAST_ALERTS:
             result = _send_filling_fast_alerts(db=db, payload=payload)
             log_event("filling_fast_alerts_enqueued", **result)
+            mark_job_succeeded(db, job)
+            return
+
+        if job.job_type == JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS:
+            result = _evaluate_personalization_guardrails(db=db, payload=payload)
+            log_event("personalization_guardrails_evaluated", **(result or {}))
             mark_job_succeeded(db, job)
             return
 

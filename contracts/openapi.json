@@ -16,6 +16,127 @@
         "title": "AccountDeleteRequest",
         "type": "object"
       },
+      "AdminActivatePersonalizationModelRequest": {
+        "properties": {
+          "model_version": {
+            "maxLength": 100,
+            "minLength": 1,
+            "title": "Model Version",
+            "type": "string"
+          },
+          "recompute": {
+            "default": true,
+            "title": "Recompute",
+            "type": "boolean"
+          },
+          "top_n": {
+            "default": 50,
+            "maximum": 200.0,
+            "minimum": 1.0,
+            "title": "Top N",
+            "type": "integer"
+          }
+        },
+        "required": [
+          "model_version"
+        ],
+        "title": "AdminActivatePersonalizationModelRequest",
+        "type": "object"
+      },
+      "AdminActivatePersonalizationModelResponse": {
+        "properties": {
+          "active_model_version": {
+            "title": "Active Model Version",
+            "type": "string"
+          },
+          "recompute_job": {
+            "anyOf": [
+              {
+                "$ref": "#/components/schemas/EnqueuedJobResponse"
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        },
+        "required": [
+          "active_model_version"
+        ],
+        "title": "AdminActivatePersonalizationModelResponse",
+        "type": "object"
+      },
+      "AdminEvaluateGuardrailsRequest": {
+        "properties": {
+          "click_to_register_window_hours": {
+            "anyOf": [
+              {
+                "maximum": 720.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Click To Register Window Hours"
+          },
+          "conversion_drop_ratio": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Conversion Drop Ratio"
+          },
+          "ctr_drop_ratio": {
+            "anyOf": [
+              {
+                "maximum": 1.0,
+                "minimum": 0.0,
+                "type": "number"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Ctr Drop Ratio"
+          },
+          "days": {
+            "anyOf": [
+              {
+                "maximum": 365.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Days"
+          },
+          "min_impressions": {
+            "anyOf": [
+              {
+                "maximum": 1000000.0,
+                "minimum": 1.0,
+                "type": "integer"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Min Impressions"
+          }
+        },
+        "title": "AdminEvaluateGuardrailsRequest",
+        "type": "object"
+      },
       "AdminEventResponse": {
         "properties": {
           "category": {
@@ -287,6 +408,52 @@
           }
         },
         "title": "AdminFillingFastRequest",
+        "type": "object"
+      },
+      "AdminPersonalizationStatusResponse": {
+        "properties": {
+          "active_model_created_at": {
+            "anyOf": [
+              {
+                "format": "date-time",
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Model Created At"
+          },
+          "active_model_version": {
+            "anyOf": [
+              {
+                "type": "string"
+              },
+              {
+                "type": "null"
+              }
+            ],
+            "title": "Active Model Version"
+          },
+          "recommendations_online_learning_enabled": {
+            "title": "Recommendations Online Learning Enabled",
+            "type": "boolean"
+          },
+          "recommendations_realtime_refresh_enabled": {
+            "title": "Recommendations Realtime Refresh Enabled",
+            "type": "boolean"
+          },
+          "task_queue_enabled": {
+            "title": "Task Queue Enabled",
+            "type": "boolean"
+          }
+        },
+        "required": [
+          "task_queue_enabled",
+          "recommendations_realtime_refresh_enabled",
+          "recommendations_online_learning_enabled"
+        ],
+        "title": "AdminPersonalizationStatusResponse",
         "type": "object"
       },
       "AdminRetrainRecommendationsRequest": {
@@ -3396,6 +3563,49 @@
         "summary": "Admin Enqueue Weekly Digest"
       }
     },
+    "/api/admin/personalization/guardrails/evaluate": {
+      "post": {
+        "operationId": "admin_enqueue_guardrails_evaluate_api_admin_personalization_guardrails_evaluate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminEvaluateGuardrailsRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "201": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/EnqueuedJobResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Enqueue Guardrails Evaluate"
+      }
+    },
     "/api/admin/personalization/metrics": {
       "get": {
         "operationId": "admin_personalization_metrics_api_admin_personalization_metrics_get",
@@ -3441,6 +3651,49 @@
         "summary": "Admin Personalization Metrics"
       }
     },
+    "/api/admin/personalization/models/activate": {
+      "post": {
+        "operationId": "admin_activate_personalization_model_api_admin_personalization_models_activate_post",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AdminActivatePersonalizationModelRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminActivatePersonalizationModelResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          },
+          "422": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/HTTPValidationError"
+                }
+              }
+            },
+            "description": "Validation Error"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Activate Personalization Model"
+      }
+    },
     "/api/admin/personalization/retrain": {
       "post": {
         "operationId": "admin_enqueue_retrain_recommendations_api_admin_personalization_retrain_post",
@@ -3482,6 +3735,29 @@
           }
         ],
         "summary": "Admin Enqueue Retrain Recommendations"
+      }
+    },
+    "/api/admin/personalization/status": {
+      "get": {
+        "operationId": "admin_personalization_status_api_admin_personalization_status_get",
+        "responses": {
+          "200": {
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AdminPersonalizationStatusResponse"
+                }
+              }
+            },
+            "description": "Successful Response"
+          }
+        },
+        "security": [
+          {
+            "OAuth2PasswordBearer": []
+          }
+        ],
+        "summary": "Admin Personalization Status"
       }
     },
     "/api/admin/stats": {

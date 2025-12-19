@@ -1,4 +1,4 @@
-# ML recommendations (v1)
+# ML recommendations
 
 This project supports an **offline-trained** (batch) ML recommender that writes a per-user cached ranking to the DB.
 At request time, `GET /api/recommendations` prefers this cache (if present + fresh) and falls back to the existing
@@ -66,7 +66,9 @@ run the ML trainer:
 - `recompute_recommendations_ml`
 - `refresh_user_recommendations_ml` (used for near-real-time per-user refresh)
 
-To enqueue the retraining job (idempotent: won’t enqueue if one is queued/running):
+To enqueue the retraining job (idempotent: won’t enqueue if one is queued/running). Deduplication is enforced at the DB
+level via `background_jobs.dedupe_key` (unique on `(job_type, dedupe_key)`), and `enqueue_job()` returns the existing
+queued/running job on conflict.
 
 ```bash
 export DATABASE_URL="postgresql://..."
@@ -96,6 +98,42 @@ cache fresh after meaningful interactions (click/view/share/register/search/filt
 - `task_queue_enabled=true` (worker running)
 - `recommendations_realtime_refresh_enabled=true`
 - `recommendations_realtime_refresh_min_interval_seconds` (throttle)
+
+## Online learning (lightweight user embedding)
+
+When enabled, `POST /api/analytics/interactions` also updates a student's implicit interest tags based on interactions
+and search/filter usage:
+
+- table: `user_implicit_interest_tags`
+- gated by `recommendations_online_learning_enabled=true`
+- uses `recommendations_online_learning_dwell_threshold_seconds` to treat long dwell as a positive signal
+
+This does **not** update the global model weights continuously; it updates per-user implicit interests so near-real-time
+re-scoring can react without a full retrain.
+
+## Quality guardrails (CTR/conversion rollback)
+
+Guardrails evaluate recent personalization quality using tracked interactions and automatically roll back the active
+model if it underperforms the baseline.
+
+- job type: `evaluate_personalization_guardrails`
+- enable via `personalization_guardrails_enabled=true`
+- enqueue via `python backend/scripts/enqueue_scheduled_jobs.py --guardrails` (or `--all`)
+
+The evaluator compares `events_list` interactions where `meta.sort` is `recommended` vs `time` (CTR and click→register
+conversion within a time window). On failure it activates the previous model and triggers a cache recompute.
+
+## Admin controls
+
+- `GET /api/admin/personalization/status` (queue/flags + active model version)
+- `POST /api/admin/personalization/guardrails/evaluate` (enqueue guardrails evaluation)
+- `POST /api/admin/personalization/models/activate` (activate a specific model version; optional recompute)
+
+## Ops checklist
+
+- Run a worker (`task_queue_enabled=true`) if you expect scheduled jobs / realtime refresh / guardrails to run.
+- Run at least one retrain to persist an active model (`recommender_models.is_active=true`).
+- Enable `recommendations_realtime_refresh_enabled=true` for near-real-time per-user refresh.
 
 ## Monitoring
 
