@@ -91,8 +91,9 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await clearAuth(page);
   await login(page, STUDENT.email, STUDENT.password);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
-  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
-  await page.getByRole('link', { name: updatedTitle }).click();
+  const studentEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
+  await expect(studentEventHeading).toBeVisible();
+  await studentEventHeading.click();
   await page.getByRole('button', { name: 'Register for event' }).click();
   await expect(page.getByRole('button', { name: 'Unregister' })).toBeVisible();
 
@@ -100,8 +101,9 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await clearAuth(page);
   await login(page, ORGANIZER.email, ORGANIZER.password);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
-  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
-  await page.getByRole('link', { name: updatedTitle }).click();
+  const organizerEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
+  await expect(organizerEventHeading).toBeVisible();
+  await organizerEventHeading.click();
   await page.getByRole('link', { name: 'View participants' }).click();
   await expect(page).toHaveURL(new RegExp(`/organizer/events/${createdEventId}/participants$`));
   await expect(page.getByRole('link', { name: STUDENT.email })).toBeVisible();
@@ -117,8 +119,9 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await clearAuth(page);
   await login(page, STUDENT.email, STUDENT.password);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
-  await expect(page.getByRole('link', { name: updatedTitle })).toBeVisible();
-  await page.getByRole('link', { name: updatedTitle }).click();
+  const unregisterHeading = page.getByRole('heading', { name: updatedTitle }).first();
+  await expect(unregisterHeading).toBeVisible();
+  await unregisterHeading.click();
   await page.getByRole('button', { name: 'Unregister' }).click();
   await expect(page.getByRole('button', { name: 'Register for event' })).toBeVisible();
 });
