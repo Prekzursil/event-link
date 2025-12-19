@@ -62,9 +62,10 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   const userRow = usersPanel.locator('tbody tr', { hasText: managedUserEmail });
   await expect(userRow).toBeVisible();
 
-  await userRow.getByRole('combobox').click();
+  const roleSelect = userRow.getByRole('combobox');
+  await roleSelect.click();
   await page.getByRole('option', { name: 'Organizer' }).click();
-  await expect(userRow.getByText('Organizer')).toBeVisible();
+  await expect(roleSelect).toHaveText(/Organizer/);
 
   const activeCheckbox = userRow.getByRole('checkbox').first();
   if ((await activeCheckbox.getAttribute('aria-checked')) !== 'false') {
@@ -88,4 +89,3 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await expect(eventRow.getByText('Reviewed')).toBeVisible();
   await expect(eventRow.getByRole('button', { name: 'Mark reviewed' })).toHaveCount(0);
 });
-
