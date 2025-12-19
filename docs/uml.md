@@ -200,72 +200,77 @@ Registration "0..1" --> User : deleted_by
 Event "0..1" --> User : moderation_reviewed_by
 ```
 
-## Sequence: student registers for an event (email via background worker)
+## Communication diagram (core components + key messages)
 
 ```mermaid
-sequenceDiagram
-autonumber
-actor Student
-participant UI as UI (React/Vite)
-participant API as Backend API (FastAPI)
-participant DB as Postgres
-participant Worker as Worker (task queue)
-participant SMTP as SMTP provider
+flowchart LR
+  Student([Student])
+  Organizer([Organizer])
+  Admin([Admin])
 
-Student->>UI: Click "Register for event"
-UI->>API: POST /api/events/{event_id}/register (JWT)
-API->>DB: SELECT event + seat availability
-DB-->>API: event row
-API->>DB: INSERT registrations (user_id,event_id)
-DB-->>API: registration created
-API->>DB: INSERT background_jobs (job_type=send_email, payload)
-DB-->>API: job queued
-API-->>UI: 201 Created
-UI-->>Student: Show "Unregister" + success toast
+  UI[UI (React/Vite)]
+  API[Backend API (FastAPI)]
+  DB[(Postgres)]
+  Worker[Worker (task queue)]
+  SMTP[(SMTP provider)]
 
-loop poll
-  Worker->>DB: SELECT next queued background_jobs
-  DB-->>Worker: job
-  Worker->>DB: UPDATE job status=running (lock)
-  Worker->>SMTP: Send confirmation email
-  SMTP-->>Worker: accepted (or disabled in env)
-  Worker->>DB: UPDATE job status=succeeded/failed
-end
+  Student -->|1. Browse / register / personalize| UI
+  Organizer -->|2. Create events / manage participants| UI
+  Admin -->|3. Moderate + manage users| UI
+
+  UI -->|4. REST calls (JWT)| API
+  API -->|5. Query / write| DB
+  API -->|6. Enqueue BackgroundJob (send_email, digests, alerts)| DB
+
+  Worker -->|7. Poll + lock queued jobs| DB
+  Worker -->|8. Deliver outbound email| SMTP
+  Worker -->|9. Persist delivery result| DB
 ```
 
-## Sequence: personalization controls (hide tag + block organizer)
+## Interaction overview diagram (student discovery + registration + personalization)
 
 ```mermaid
-sequenceDiagram
-autonumber
-actor Student
-participant UI as UI (React/Vite)
-participant API as Backend API (FastAPI)
-participant DB as Postgres
+flowchart TB
+  Start([Start]) --> Browse[Browse events list]
+  Browse --> Open[Open event details]
 
-Student->>UI: Open Event details
-UI->>API: GET /api/events/{event_id} (optional JWT)
-API->>DB: SELECT events + tags + organizer
-DB-->>API: event detail payload
-API-->>UI: 200 OK (EventDetailResponse)
-UI-->>Student: Render event + "Personalization" section
+  Open --> Decide{Choose action}
 
-Student->>UI: Hide tag "AI & ML"
-UI->>API: POST /api/me/personalization/hidden-tags/{tag_id} (JWT)
-API->>DB: INSERT user_hidden_tags (user_id, tag_id)
-DB-->>API: OK
-API-->>UI: 201 Created
+  Decide -->|Hide tag| HideTag[POST /api/me/personalization/hidden-tags/{tag_id}]
+  Decide -->|Block organizer| BlockOrg[POST /api/me/personalization/blocked-organizers/{organizer_id}]
+  HideTag --> Refresh[Reload events list (filters applied)]
+  BlockOrg --> Refresh
 
-Student->>UI: Block organizer
-UI->>API: POST /api/me/personalization/blocked-organizers/{organizer_id} (JWT)
-API->>DB: INSERT user_blocked_organizers (user_id, organizer_id)
-DB-->>API: OK
-API-->>UI: 201 Created
+  Decide -->|Register| Register[POST /api/events/{event_id}/register]
+  Register --> Enqueue[Enqueue send_email BackgroundJob]
+  Enqueue --> Async[Worker delivers email (async)]
 
-Student->>UI: Return to Events list
-UI->>API: GET /api/events (JWT)
-API->>DB: SELECT events excluding hidden tags/blocked organizers
-DB-->>API: filtered events
-API-->>UI: 200 OK (PaginatedEvents)
-UI-->>Student: List updated (or "No events found")
+  Refresh --> Done([Done])
+  Async --> Done
+```
+
+## Timing diagram (registration + background email confirmation)
+
+```mermaid
+gantt
+title Registration + email confirmation (relative timing)
+dateFormat  YYYY-MM-DD
+axisFormat  %Y-%m-%d
+
+section Student
+Click "Register"                   :a1, 2025-01-01, 1d
+
+section UI
+POST /api/events/{id}/register      :a2, after a1, 1d
+Render success + button state       :a3, after a2, 1d
+
+section API
+Validate + seat availability        :a4, after a2, 1d
+Insert registration                 :a5, after a4, 1d
+Insert background_jobs(send_email)  :a6, after a5, 1d
+
+section Worker
+Poll background_jobs queue          :a7, after a6, 1d
+Send confirmation email             :a8, after a7, 1d
+Mark job succeeded/failed           :a9, after a8, 1d
 ```
