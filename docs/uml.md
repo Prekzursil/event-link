@@ -200,45 +200,77 @@ Registration "0..1" --> User : deleted_by
 Event "0..1" --> User : moderation_reviewed_by
 ```
 
-## State machines
-
-### Registration + confirmation email job
+## Communication diagram (core components + key messages)
 
 ```mermaid
-stateDiagram-v2
-direction LR
+graph LR
+  Student([Student])
+  Organizer([Organizer])
+  Admin([Admin])
 
-[*] --> NotRegistered
+  UI[UI - React Vite]
+  API[Backend API - FastAPI]
+  DB[(Postgres)]
+  Worker[Worker - task queue]
+  SMTP[SMTP provider]
 
-NotRegistered --> Registered : POST /api/events/{event_id}/register
-Registered --> Unregistered : DELETE /api/events/{event_id}/register
-Unregistered --> Registered : POST /api/events/{event_id}/register
+  Student -->|1. Browse, register, personalize| UI
+  Organizer -->|2. Create events, manage participants| UI
+  Admin -->|3. Moderate events, manage users| UI
 
-state Registered {
-  [*] --> EmailJobQueued : enqueue send_email
-  EmailJobQueued --> EmailJobRunning : worker locks job
-  EmailJobRunning --> EmailJobSucceeded : SMTP ok / email_disabled
-  EmailJobRunning --> EmailJobFailed : transient error
-  EmailJobFailed --> EmailJobQueued : retry (attempts < max_attempts)
-  EmailJobFailed --> EmailJobDead : attempts >= max_attempts
-}
+  UI -->|4. REST calls (JWT)| API
+  API -->|5. Query / write| DB
+  API -->|6. Enqueue BackgroundJob: send_email, digests, alerts| DB
+
+  Worker -->|7. Poll + lock queued jobs| DB
+  Worker -->|8. Deliver outbound email| SMTP
+  Worker -->|9. Persist delivery result| DB
 ```
 
-### Personalization controls (hidden tags + blocked organizers)
+## Interaction overview diagram (student discovery + registration + personalization)
 
 ```mermaid
-stateDiagram-v2
-direction LR
+graph TB
+  Start([Start]) --> Browse[Browse events list]
+  Browse --> Open[Open event details]
 
-state "Hidden tag (user_id, tag_id)" as HiddenTag {
-  [*] --> Visible
-  Visible --> Hidden : POST /api/me/personalization/hidden-tags/{tag_id}
-  Hidden --> Visible : DELETE /api/me/personalization/hidden-tags/{tag_id}
-}
+  Open --> Decide{Choose action}
 
-state "Blocked organizer (user_id, organizer_id)" as BlockedOrganizer {
-  [*] --> Unblocked
-  Unblocked --> Blocked : POST /api/me/personalization/blocked-organizers/{organizer_id}
-  Blocked --> Unblocked : DELETE /api/me/personalization/blocked-organizers/{organizer_id}
-}
+  Decide -->|Hide tag| HideTag[POST /api/me/personalization/hidden-tags/:tag_id]
+  Decide -->|Block organizer| BlockOrg[POST /api/me/personalization/blocked-organizers/:organizer_id]
+  HideTag --> Refresh[Reload events list - filters applied]
+  BlockOrg --> Refresh
+
+  Decide -->|Register| Register[POST /api/events/:event_id/register]
+  Register --> Enqueue[Enqueue send_email BackgroundJob]
+  Enqueue --> Async[Worker delivers email (async)]
+
+  Refresh --> Done([Done])
+  Async --> Done
+```
+
+## Timing diagram (registration + background email confirmation)
+
+```mermaid
+gantt
+title Registration + email confirmation (relative timing)
+dateFormat  YYYY-MM-DD
+axisFormat  %Y-%m-%d
+
+section Student
+Press "Register"                   :a1, 2025-01-01, 1d
+
+section UI
+POST /api/events/{id}/register      :a2, after a1, 1d
+Render success + button state       :a3, after a2, 1d
+
+section API
+Validate + seat availability        :a4, after a2, 1d
+Insert registration                 :a5, after a4, 1d
+Insert background_jobs(send_email)  :a6, after a5, 1d
+
+section Worker
+Poll background_jobs queue          :a7, after a6, 1d
+Send confirmation email             :a8, after a7, 1d
+Mark job succeeded/failed           :a9, after a8, 1d
 ```
