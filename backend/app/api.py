@@ -7,6 +7,7 @@ import logging
 import asyncio
 import secrets
 import hashlib
+import math
 from pathlib import Path
 
 from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request, Query
@@ -908,76 +909,228 @@ def record_interactions(
         and getattr(current_user, "role", None) == models.UserRole.student
         and settings.recommendations_online_learning_enabled
     ):
-        positive_event_ids: set[int] = set()
-        explicit_tag_names: set[str] = set()
+        half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
+        half_life_seconds = float(half_life_hours) * 3600.0
+        decay_lambda = math.log(2.0) / half_life_seconds
+        max_score = float(settings.recommendations_online_learning_max_score)
+
+        def _normalize_city(value: str | None) -> str | None:
+            if not value:
+                return None
+            s = value.strip().lower()
+            return s or None
+
+        def _normalize_category(value: str | None) -> str | None:
+            if not value:
+                return None
+            s = value.strip().lower()
+            return s or None
+
+        def _decay(score: float, last_seen_at: datetime) -> float:
+            delta_seconds = (now - last_seen_at).total_seconds()
+            if delta_seconds <= 0:
+                return float(score)
+            return float(score) * math.exp(-decay_lambda * float(delta_seconds))
+
+        def _event_delta(*, interaction_type: str, meta: object) -> float:
+            itype = (interaction_type or "").strip().lower()
+            if itype == "click":
+                return 1.0
+            if itype == "view":
+                return 0.6
+            if itype == "share":
+                return 1.3
+            if itype == "favorite":
+                return 2.0
+            if itype == "register":
+                return 2.5
+            if itype == "dwell":
+                seconds = None
+                if isinstance(meta, dict):
+                    seconds = meta.get("seconds")
+                if isinstance(seconds, (int, float)) and float(seconds) >= float(
+                    settings.recommendations_online_learning_dwell_threshold_seconds
+                ):
+                    return 0.8 + min(1.0, float(seconds) / 60.0) * 0.4
+            return 0.0
+
+        event_deltas: dict[int, float] = {}
+        tag_name_deltas: dict[str, float] = {}
+        category_deltas: dict[str, float] = {}
+        city_deltas: dict[str, float] = {}
 
         for event in payload.events:
-            if event.interaction_type in {"click", "view", "share", "favorite", "register"} and event.event_id is not None:
-                positive_event_ids.add(int(event.event_id))
-            elif event.interaction_type == "dwell" and event.event_id is not None:
-                seconds = None
-                if isinstance(event.meta, dict):
-                    seconds = event.meta.get("seconds")
-                if isinstance(seconds, (int, float)) and float(seconds) >= float(settings.recommendations_online_learning_dwell_threshold_seconds):
-                    positive_event_ids.add(int(event.event_id))
-            elif event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
+            if event.event_id is not None:
+                delta = _event_delta(interaction_type=str(event.interaction_type), meta=event.meta)
+                if delta > 0:
+                    event_id = int(event.event_id)
+                    event_deltas[event_id] = max(event_deltas.get(event_id, 0.0), float(delta))
+
+            if event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
                 tags_value = event.meta.get("tags")
                 if isinstance(tags_value, list):
                     for name in tags_value:
                         s = str(name or "").strip()
-                        if s:
-                            explicit_tag_names.add(s)
+                        if not s:
+                            continue
+                        key = s.lower()
+                        tag_name_deltas[key] = max(tag_name_deltas.get(key, 0.0), 0.2)
 
-        if positive_event_ids or explicit_tag_names:
+                cat_value = _normalize_category(event.meta.get("category"))
+                if cat_value:
+                    category_deltas[cat_value] = max(category_deltas.get(cat_value, 0.0), 0.2)
+
+                city_value = _normalize_city(event.meta.get("city"))
+                if city_value:
+                    city_deltas[city_value] = max(city_deltas.get(city_value, 0.0), 0.2)
+
+        if event_deltas or tag_name_deltas or category_deltas or city_deltas:
             hidden_tag_ids, _blocked = _load_personalization_exclusions(db=db, user_id=int(current_user.id))
-            tag_ids: set[int] = set()
 
-            if positive_event_ids:
-                tag_ids |= {
-                    int(row[0])
-                    for row in (
-                        db.query(models.Tag.id)
-                        .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
-                        .filter(models.event_tags.c.event_id.in_(sorted(positive_event_ids)))
-                        .all()
+            tag_delta_by_id: dict[int, float] = {}
+            if event_deltas:
+                event_ids = sorted(event_deltas.keys())
+                event_rows = (
+                    db.query(models.Event.id, models.Event.category, models.Event.city)
+                    .filter(models.Event.id.in_(event_ids))
+                    .all()
+                )
+                event_category_by_id: dict[int, str | None] = {}
+                event_city_by_id: dict[int, str | None] = {}
+                for event_id, category, city in event_rows:
+                    event_category_by_id[int(event_id)] = _normalize_category(category)
+                    event_city_by_id[int(event_id)] = _normalize_city(city)
+
+                tag_rows = (
+                    db.query(models.event_tags.c.event_id, models.event_tags.c.tag_id)
+                    .filter(models.event_tags.c.event_id.in_(event_ids))
+                    .all()
+                )
+                tag_ids_by_event: dict[int, list[int]] = {}
+                for event_id, tag_id in tag_rows:
+                    tag_ids_by_event.setdefault(int(event_id), []).append(int(tag_id))
+
+                for event_id, delta in event_deltas.items():
+                    cat_key = event_category_by_id.get(int(event_id))
+                    if cat_key:
+                        category_deltas[cat_key] = category_deltas.get(cat_key, 0.0) + float(delta)
+                    city_key = event_city_by_id.get(int(event_id))
+                    if city_key:
+                        city_deltas[city_key] = city_deltas.get(city_key, 0.0) + float(delta)
+
+                    tag_ids = tag_ids_by_event.get(int(event_id), [])
+                    per_tag = float(delta) / float(max(1, len(tag_ids)))
+                    for tag_id in tag_ids:
+                        if tag_id in hidden_tag_ids:
+                            continue
+                        tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + per_tag
+
+            if tag_name_deltas:
+                tag_name_rows = (
+                    db.query(models.Tag.id, func.lower(models.Tag.name))
+                    .filter(func.lower(models.Tag.name).in_(sorted(tag_name_deltas.keys())))
+                    .all()
+                )
+                for tag_id, tag_name_lower in tag_name_rows:
+                    if tag_id in hidden_tag_ids:
+                        continue
+                    key = str(tag_name_lower or "").strip().lower()
+                    delta = float(tag_name_deltas.get(key, 0.0))
+                    if delta > 0:
+                        tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + delta
+
+            if tag_delta_by_id:
+                existing_rows = (
+                    db.query(models.UserImplicitInterestTag)
+                    .filter(
+                        models.UserImplicitInterestTag.user_id == current_user.id,
+                        models.UserImplicitInterestTag.tag_id.in_(sorted(tag_delta_by_id.keys())),
                     )
-                }
+                    .all()
+                )
+                existing_by_tag_id = {int(row.tag_id): row for row in existing_rows}
+                for tag_id, row in existing_by_tag_id.items():
+                    last_seen_at = row.last_seen_at or now
+                    if last_seen_at.tzinfo is None:
+                        last_seen_at = last_seen_at.replace(tzinfo=timezone.utc)
+                    delta = float(tag_delta_by_id.get(tag_id, 0.0))
+                    row.score = min(max_score, _decay(float(row.score or 0.0), last_seen_at) + delta)
+                    row.last_seen_at = now
+                    db.add(row)
 
-            if explicit_tag_names:
-                lowered = [t.lower() for t in explicit_tag_names]
-                tag_ids |= {
-                    int(row[0])
-                    for row in db.query(models.Tag.id).filter(func.lower(models.Tag.name).in_(lowered)).all()
-                }
-
-            tag_ids = {tag_id for tag_id in tag_ids if tag_id not in hidden_tag_ids}
-            if tag_ids:
-                existing = {
-                    int(row[0])
-                    for row in (
-                        db.query(models.UserImplicitInterestTag.tag_id)
-                        .filter(
-                            models.UserImplicitInterestTag.user_id == current_user.id,
-                            models.UserImplicitInterestTag.tag_id.in_(sorted(tag_ids)),
+                for tag_id, delta in tag_delta_by_id.items():
+                    if tag_id in existing_by_tag_id:
+                        continue
+                    db.add(
+                        models.UserImplicitInterestTag(
+                            user_id=current_user.id,
+                            tag_id=int(tag_id),
+                            score=min(max_score, float(delta)),
+                            last_seen_at=now,
                         )
-                        .all()
                     )
-                }
 
-                if existing:
-                    (
-                        db.query(models.UserImplicitInterestTag)
-                        .filter(
-                            models.UserImplicitInterestTag.user_id == current_user.id,
-                            models.UserImplicitInterestTag.tag_id.in_(sorted(existing)),
+            if category_deltas:
+                existing_rows = (
+                    db.query(models.UserImplicitInterestCategory)
+                    .filter(
+                        models.UserImplicitInterestCategory.user_id == current_user.id,
+                        models.UserImplicitInterestCategory.category.in_(sorted(category_deltas.keys())),
+                    )
+                    .all()
+                )
+                existing_by_key = {str(row.category): row for row in existing_rows}
+                for key, row in existing_by_key.items():
+                    last_seen_at = row.last_seen_at or now
+                    if last_seen_at.tzinfo is None:
+                        last_seen_at = last_seen_at.replace(tzinfo=timezone.utc)
+                    delta = float(category_deltas.get(str(key), 0.0))
+                    row.score = min(max_score, _decay(float(row.score or 0.0), last_seen_at) + delta)
+                    row.last_seen_at = now
+                    db.add(row)
+                for key, delta in category_deltas.items():
+                    if str(key) in existing_by_key:
+                        continue
+                    db.add(
+                        models.UserImplicitInterestCategory(
+                            user_id=current_user.id,
+                            category=str(key),
+                            score=min(max_score, float(delta)),
+                            last_seen_at=now,
                         )
-                        .update({"last_seen_at": now}, synchronize_session=False)
                     )
 
-                for tag_id in tag_ids - existing:
-                    db.add(models.UserImplicitInterestTag(user_id=current_user.id, tag_id=int(tag_id), last_seen_at=now))
+            if city_deltas:
+                existing_rows = (
+                    db.query(models.UserImplicitInterestCity)
+                    .filter(
+                        models.UserImplicitInterestCity.user_id == current_user.id,
+                        models.UserImplicitInterestCity.city.in_(sorted(city_deltas.keys())),
+                    )
+                    .all()
+                )
+                existing_by_key = {str(row.city): row for row in existing_rows}
+                for key, row in existing_by_key.items():
+                    last_seen_at = row.last_seen_at or now
+                    if last_seen_at.tzinfo is None:
+                        last_seen_at = last_seen_at.replace(tzinfo=timezone.utc)
+                    delta = float(city_deltas.get(str(key), 0.0))
+                    row.score = min(max_score, _decay(float(row.score or 0.0), last_seen_at) + delta)
+                    row.last_seen_at = now
+                    db.add(row)
+                for key, delta in city_deltas.items():
+                    if str(key) in existing_by_key:
+                        continue
+                    db.add(
+                        models.UserImplicitInterestCity(
+                            user_id=current_user.id,
+                            city=str(key),
+                            score=min(max_score, float(delta)),
+                            last_seen_at=now,
+                        )
+                    )
 
-                db.commit()
+            db.commit()
 
     if (
         current_user is not None

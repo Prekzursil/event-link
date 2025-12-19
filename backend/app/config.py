@@ -49,6 +49,8 @@ class Settings(BaseSettings):
     recommendations_realtime_refresh_top_n: int = 50
     recommendations_online_learning_enabled: bool = False
     recommendations_online_learning_dwell_threshold_seconds: int = 10
+    recommendations_online_learning_decay_half_life_hours: int = 72
+    recommendations_online_learning_max_score: float = 10.0
 
     personalization_guardrails_enabled: bool = False
     personalization_guardrails_days: int = 7
