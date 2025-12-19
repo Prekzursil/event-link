@@ -155,6 +155,18 @@ def _train_log_regression_sgd(
     return weights
 
 
+def _impression_negative_weight(position: int | None) -> float:
+    if position is None or position < 0:
+        return 0.05
+    if position <= 2:
+        return 0.25
+    if position <= 5:
+        return 0.15
+    if position <= 10:
+        return 0.1
+    return 0.05
+
+
 def _evaluate_hitrate_at_k(
     *,
     weights: list[float],
@@ -308,6 +320,18 @@ def main() -> int:
                 continue
             interest_tags_by_user.setdefault(int(user_id), set()).add(normalized)
 
+        implicit_tag_query = (
+            db.query(models.UserImplicitInterestTag.user_id, models.Tag.name)
+            .join(models.Tag, models.Tag.id == models.UserImplicitInterestTag.tag_id)
+        )
+        if args.user_id is not None:
+            implicit_tag_query = implicit_tag_query.filter(models.UserImplicitInterestTag.user_id == int(args.user_id))
+        for user_id, tag_name in implicit_tag_query.all():
+            normalized = _normalize_tag(str(tag_name))
+            if not normalized:
+                continue
+            interest_tags_by_user.setdefault(int(user_id), set()).add(normalized)
+
         reg_query = (
             db.query(models.Registration.user_id, models.Registration.event_id, models.Registration.attended)
             .filter(models.Registration.deleted_at.is_(None))
@@ -336,6 +360,7 @@ def main() -> int:
 
         negative_weights: dict[tuple[int, int], float] = {}
         seen_by_user: dict[int, set[int]] = {}
+        impression_position_by_user_event: dict[tuple[int, int], int] = {}
         implicit_interest_tags_by_user: dict[int, set[str]] = {}
         implicit_categories_by_user: dict[int, set[str]] = {}
         implicit_city_by_user: dict[int, str] = {}
@@ -409,6 +434,16 @@ def main() -> int:
                 itype = str(interaction_type or "").strip().lower()
                 if itype == "impression":
                     seen_by_user.setdefault(user_id_int, set()).add(event_id_int)
+                    position = None
+                    if isinstance(meta, dict):
+                        pos_val = meta.get("position")
+                        if isinstance(pos_val, (int, float)):
+                            position = int(pos_val)
+                    if position is not None:
+                        key = (user_id_int, event_id_int)
+                        existing = impression_position_by_user_event.get(key)
+                        if existing is None or position < existing:
+                            impression_position_by_user_event[key] = position
                     continue
                 if itype == "unregister":
                     key = (user_id_int, event_id_int)
@@ -531,7 +566,12 @@ def main() -> int:
                 if not user:
                     continue
                 user_positive_ids = set(positives.keys()) | ({holdout[user_id]} if user_id in holdout else set())
-                impression_negatives = list(seen_by_user.get(user_id, set()) - user_positive_ids)
+                impression_candidates = [
+                    (event_id, impression_position_by_user_event.get((user_id, event_id), 999))
+                    for event_id in (seen_by_user.get(user_id, set()) - user_positive_ids)
+                ]
+                impression_candidates.sort(key=lambda item: item[1])
+                impression_negatives = [event_id for event_id, _pos in impression_candidates[:50]]
 
                 for event_id, weight in positives.items():
                     ev = events.get(event_id)
@@ -542,8 +582,12 @@ def main() -> int:
 
                     neg_added = 0
                     while neg_added < args.negatives_per_positive and neg_added < len(all_event_ids):
+                        neg_weight = 1.0
                         if impression_negatives:
                             neg_event_id = rng.choice(impression_negatives)
+                            neg_weight = _impression_negative_weight(
+                                impression_position_by_user_event.get((user_id, neg_event_id))
+                            )
                         else:
                             neg_event_id = rng.choice(all_event_ids)
                         if neg_event_id in user_positive_ids:
@@ -552,8 +596,36 @@ def main() -> int:
                         if not neg_ev:
                             continue
                         x_neg = _build_feature_vector(user=user, event=neg_ev, now=now)
-                        examples.append((x_neg, 0, 1.0))
+                        examples.append((x_neg, 0, float(neg_weight)))
                         neg_added += 1
+
+                weak_tags = implicit_interest_tags_by_user.get(user_id, set())
+                weak_categories = implicit_categories_by_user.get(user_id, set())
+                weak_city = implicit_city_by_user.get(user_id)
+                if weak_tags or weak_categories or weak_city:
+                    added = 0
+                    attempts = 0
+                    while added < 3 and attempts < 200 and attempts < len(all_event_ids):
+                        attempts += 1
+                        cand_id = rng.choice(all_event_ids)
+                        if cand_id in user_positive_ids:
+                            continue
+                        cand_ev = events.get(cand_id)
+                        if not cand_ev:
+                            continue
+                        match = False
+                        if weak_city and cand_ev.city and _normalize_city(cand_ev.city) == weak_city:
+                            match = True
+                        if not match and cand_ev.category and cand_ev.category in weak_categories:
+                            match = True
+                        if not match and weak_tags and (cand_ev.tags & weak_tags):
+                            match = True
+                        if not match:
+                            continue
+                        x_weak = _build_feature_vector(user=user, event=cand_ev, now=now)
+                        examples.append((x_weak, 1, 0.15))
+                        user_positive_ids.add(cand_id)
+                        added += 1
 
             for (user_id, event_id), weight in negative_weights.items():
                 user = users.get(user_id)

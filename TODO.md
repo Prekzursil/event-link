@@ -60,6 +60,12 @@
 - [x] Personalization: use ML ranking as a unified "For You" sort across event lists/search/filters (not only `/api/recommendations`).
 - [x] Analytics: add interaction tracking (impressions/clicks/dwell/search/filter/share) and feed signals into ML training.
 - [x] Personalization: near-real-time refresh of `user_recommendations` on meaningful interactions (config-gated).
+- [x] Personalization ML v2: DB-level job dedupe (avoid duplicate queued/running jobs without scanning).
+- [x] Personalization ML v2: online learning (continuous implicit interest tags from interactions; affects realtime re-scoring without retraining).
+- [x] Personalization ML v2: position-bias-aware impression learning and stronger search/filter label usage.
+- [x] Personalization ML v2: quality guardrails (auto-stop/rollback on CTR/conversion drops) + admin controls.
+- [x] Ops: add clear runtime status endpoint/docs for worker + realtime refresh + active model requirements.
+- [ ] Personalization ML v3: weighted per-user interest signals (tag/category/city decay) beyond implicit tag sets.
 - [x] Experiments: add A/B assignment + feature flags for personalization rollouts (control vs ML ranking).
 - [x] Personalization: "Why am I seeing this?" explanations + user controls (hide tags/organizers, show less like this, personalization settings).
 - [x] Notifications: personalized digests + "filling fast" alerts with opt-in/out preferences.
