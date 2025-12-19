@@ -10,7 +10,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   // Organizer creates an event
   await clearAuth(page);
   await login(page, ORGANIZER.email, ORGANIZER.password);
-  await expect(page).toHaveURL(/\/($|\\?)/);
+  await expect(page).toHaveURL(/\/($|\?)/);
 
   const title = `E2E Participants ${Date.now()}`;
 
@@ -42,7 +42,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   // Student registers
   await clearAuth(page);
   await login(page, STUDENT.email, STUDENT.password);
-  await expect(page).toHaveURL(/\/($|\\?)/);
+  await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.getByPlaceholder('Search events...').fill(title);
   const studentHeading = page.getByRole('heading', { name: title }).first();
@@ -54,7 +54,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   // Organizer checks participants tools
   await clearAuth(page);
   await login(page, ORGANIZER.email, ORGANIZER.password);
-  await expect(page).toHaveURL(/\/($|\\?)/);
+  await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.getByPlaceholder('Search events...').fill(title);
   const organizerHeading = page.getByRole('heading', { name: title }).first();
@@ -75,7 +75,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   const downloadPromise = page.waitForEvent('download');
   await page.getByRole('button', { name: 'Export CSV' }).click();
   const download = await downloadPromise;
-  expect(download.suggestedFilename()).toMatch(/participants-.*\\.csv$/);
+  expect(download.suggestedFilename()).toMatch(/^participants-.*\.csv$/);
 
   await page.getByRole('button', { name: 'Email participants' }).click();
   await page.locator('#email-subject').fill('E2E Participants email');
@@ -83,4 +83,3 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('Email sent to 1 participants.')).toBeVisible();
 });
-

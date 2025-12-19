@@ -8,10 +8,10 @@ test('student profile: interests + academic fields', async ({ page }) => {
 
   await clearAuth(page);
   await login(page, STUDENT.email, STUDENT.password);
-  await expect(page).toHaveURL(/\/($|\\?)/);
+  await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto('/profile');
-  await expect(page).toHaveURL(/\/profile($|\\?)/);
+  await expect(page).toHaveURL(/\/profile($|\?)/);
 
   // Academic fields
   await page.locator('#city').fill('');
@@ -41,4 +41,3 @@ test('student profile: interests + academic fields', async ({ page }) => {
   const tagCheckboxAfter = page.getByLabel('AI & ML');
   await expect(tagCheckboxAfter).toHaveAttribute('aria-checked', 'true');
 });
-

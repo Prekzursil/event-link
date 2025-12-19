@@ -1,9 +1,11 @@
 import { execFileSync } from 'node:child_process';
 import path from 'node:path';
-import type { Page } from '@playwright/test';
+import { fileURLToPath } from 'node:url';
+import { expect, type Page } from '@playwright/test';
 
 export function repoRoot(): string {
-  return path.resolve(__dirname, '..', '..');
+  const currentDir = path.dirname(fileURLToPath(import.meta.url));
+  return path.resolve(currentDir, '..', '..');
 }
 
 export async function setLanguagePreference(page: Page, preference: 'en' | 'ro' | 'system' = 'en') {
@@ -27,7 +29,13 @@ export async function login(page: Page, email: string, password: string) {
   await page.goto('/login');
   await page.locator('#email').fill(email);
   await page.locator('#password').fill(password);
-  await page.locator('button[type="submit"]').click();
+  await Promise.all([
+    page.waitForURL(/\/($|\?)/),
+    page.locator('button[type="submit"]').click(),
+  ]);
+
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('access_token'))).not.toBeNull();
+  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('user'))).not.toBeNull();
 }
 
 export async function registerStudent(page: Page, email: string, password: string, fullName = 'E2E Student') {
