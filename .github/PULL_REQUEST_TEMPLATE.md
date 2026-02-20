@@ -12,7 +12,7 @@
 ## Evidence
 
 - Deterministic verification command: `bash scripts/verify`
-- Command output summary:
+- Verified output (paste summary or link):
 - Any justified skips:
 
 ## Rollback

@@ -7,6 +7,11 @@ on:
 permissions:
   contents: read
   issues: write
+  pull-requests: none
+
+concurrency:
+  group: agent-queue-${{ github.event.issue.number }}
+  cancel-in-progress: false
 
 jobs:
   queue:
@@ -45,6 +50,13 @@ jobs:
               c.body?.includes("### Execution Contract") &&
               c.body?.includes(`- #${issue_number}:`)
             );
+
+            // Idempotency guard: labels already transitioned and contract already posted –
+            // this is a duplicate trigger (e.g. concurrent workflow runs or re-fire).
+            if (existingContract && hadInProgress && !hadReady) {
+              core.info("Idempotency guard: issue already queued with contract present; skipping duplicate trigger.");
+              return;
+            }
 
             let addedInProgress = false;
             let removedReady = false;
@@ -104,7 +116,7 @@ jobs:
                 body: lines.join("\n"),
               });
             } catch (error) {
-              core.warning(`Queue transition failed: ${error.message}`);
+              core.error(`Queue transition failed: ${error.message}`);
 
               if (addedInProgress && !hadInProgress) {
                 try {

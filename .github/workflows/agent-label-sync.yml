@@ -5,10 +5,12 @@ on:
   push:
     paths:
       - '.github/workflows/agent-label-sync.yml'
+      - '.github/ISSUE_TEMPLATE/agent_task.yml'
 
 permissions:
   contents: read
   issues: write
+  pull-requests: none
 
 jobs:
   sync:

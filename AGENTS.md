@@ -27,4 +27,8 @@ bash scripts/verify
 - Queue workflow will post a task packet and notify `@copilot`.
 
 ## Queue Trigger Warning
-Applying label `agent:ready` triggers the queue workflow immediately.
+Applying label `agent:ready` triggers the queue workflow **immediately and non-interactively**.
+Label mutations (`agent:ready` → `agent:in-progress`) begin within seconds; ensure the issue
+is fully specified before adding the label.
+The workflow uses a per-issue concurrency group to prevent duplicate runs, and the idempotency
+guard will no-op re-triggers when the issue is already `agent:in-progress` with a contract comment.
