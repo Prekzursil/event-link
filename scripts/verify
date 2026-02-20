@@ -1,0 +1,89 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+POSTGRES_PORT="${POSTGRES_PORT:-55432}"
+INTEGRATION_POSTGRES_PORT="${INTEGRATION_POSTGRES_PORT:-55433}"
+BACKEND_PORT="${BACKEND_PORT:-18000}"
+FRONTEND_PORT="${FRONTEND_PORT:-14200}"
+COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-event_link_verify}"
+INTEGRATION_DB_CONTAINER="${INTEGRATION_DB_CONTAINER:-event_link_verify_db}"
+ENV_BACKUP=""
+
+if [[ -f .env ]]; then
+  ENV_BACKUP="$(mktemp)"
+  cp .env "$ENV_BACKUP"
+fi
+
+cleanup() {
+  COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+  POSTGRES_PORT="$POSTGRES_PORT" \
+  BACKEND_PORT="$BACKEND_PORT" \
+  FRONTEND_PORT="$FRONTEND_PORT" \
+  docker compose down -v --remove-orphans >/dev/null 2>&1 || true
+
+  docker rm -f "$INTEGRATION_DB_CONTAINER" >/dev/null 2>&1 || true
+
+  if [[ -n "$ENV_BACKUP" && -f "$ENV_BACKUP" ]]; then
+    mv "$ENV_BACKUP" .env
+  else
+    rm -f .env
+  fi
+}
+trap cleanup EXIT
+
+python -m pip install --upgrade pip setuptools wheel
+pip install -r backend/requirements.txt ruff black
+(cd ui && npm ci)
+(cd backend && pytest -q)
+
+docker rm -f "$INTEGRATION_DB_CONTAINER" >/dev/null 2>&1 || true
+docker run -d \
+  --name "$INTEGRATION_DB_CONTAINER" \
+  -e POSTGRES_USER=postgres \
+  -e POSTGRES_PASSWORD=postgres \
+  -e POSTGRES_DB=eventlink_test \
+  -p "${INTEGRATION_POSTGRES_PORT}:5432" \
+  postgres:15-alpine >/dev/null
+
+for i in {1..60}; do
+  if docker exec "$INTEGRATION_DB_CONTAINER" pg_isready -U postgres -d eventlink_test >/dev/null 2>&1; then
+    break
+  fi
+  sleep 2
+done
+
+docker exec "$INTEGRATION_DB_CONTAINER" pg_isready -U postgres -d eventlink_test >/dev/null
+
+(
+  cd backend
+  DATABASE_URL="postgresql+psycopg2://postgres:postgres@localhost:${INTEGRATION_POSTGRES_PORT}/eventlink_test" \
+  SECRET_KEY=integration-test-secret \
+  EMAIL_ENABLED=false \
+  RUN_INTEGRATION_TESTS=1 \
+  pytest -q integration_tests
+)
+
+cp .env.example .env
+COMPOSE_PROJECT_NAME="$COMPOSE_PROJECT_NAME" \
+POSTGRES_PORT="$POSTGRES_PORT" \
+BACKEND_PORT="$BACKEND_PORT" \
+FRONTEND_PORT="$FRONTEND_PORT" \
+docker compose up -d --build
+
+for i in {1..90}; do
+  if curl -fsS "http://localhost:${BACKEND_PORT}/api/health" >/dev/null; then
+    break
+  fi
+  sleep 2
+done
+curl -fsS "http://localhost:${BACKEND_PORT}/api/health" >/dev/null
+
+for i in {1..90}; do
+  if curl -fsS "http://localhost:${FRONTEND_PORT}/" >/dev/null; then
+    break
+  fi
+  sleep 2
+done
+curl -fsS "http://localhost:${FRONTEND_PORT}/" >/dev/null
+
+(cd ui && npm test -- --watch=false --passWithNoTests)
