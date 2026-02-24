@@ -535,13 +535,14 @@ def seed_database():
         print("\n📋 Test accounts:")
         print("   Students:")
         for s in STUDENTS:
-            print(f"      - {s['email']} / {s['password']}")
+            print(f"      - {s['email']}")
         print("   Organizers:")
         for o in ORGANIZERS:
-            print(f"      - {o['email']} / {o['password']}")
+            print(f"      - {o['email']}")
         print("   Admins:")
         for a in ADMINS:
-            print(f"      - {a['email']} / {a['password']}")
+            print(f"      - {a['email']}")
+        print("   Passwords are intentionally omitted from logs.")
         
     except Exception as e:
         session.rollback()
