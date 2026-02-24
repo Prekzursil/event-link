@@ -1,15 +1,23 @@
 import contextvars
 import json
 import logging
-from uuid import uuid4
 from typing import Any, Dict
+from uuid import uuid4
 
-request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar('request_id', default=None)
+
+def _sanitize_log_text(value: str) -> str:
+    # Prevent forged multi-line entries in downstream plain-text log sinks.
+    return value.replace("\r", "").replace("\n", "")
+
+
+request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
+
 
 class RequestIdFilter(logging.Filter):
     def filter(self, record: logging.LogRecord) -> bool:
         record.request_id = request_id_ctx.get() or "-"
         return True
+
 
 class JsonFormatter(logging.Formatter):
     def format(self, record: logging.LogRecord) -> str:
@@ -26,10 +34,31 @@ class JsonFormatter(logging.Formatter):
         for key, value in record.__dict__.items():
             if key in payload or key.startswith("_"):
                 continue
-            if key in {"args", "msg", "levelno", "levelname", "pathname", "filename", "module", "exc_text", "exc_info", "stack_info", "lineno", "funcName", "created", "msecs", "relativeCreated", "thread", "threadName", "processName", "process"}:
+            if key in {
+                "args",
+                "msg",
+                "levelno",
+                "levelname",
+                "pathname",
+                "filename",
+                "module",
+                "exc_text",
+                "exc_info",
+                "stack_info",
+                "lineno",
+                "funcName",
+                "created",
+                "msecs",
+                "relativeCreated",
+                "thread",
+                "threadName",
+                "processName",
+                "process",
+            }:
                 continue
             payload[key] = value
         return json.dumps(payload, ensure_ascii=False)
+
 
 def configure_logging(level: int = logging.INFO) -> None:
     handler = logging.StreamHandler()
@@ -42,6 +71,7 @@ def configure_logging(level: int = logging.INFO) -> None:
     # Silence overly noisy loggers or inherit root formatting
     for noisy in ("uvicorn.access",):
         logging.getLogger(noisy).handlers.clear()
+
 
 class RequestIdMiddleware:
     def __init__(self, app):
@@ -70,14 +100,19 @@ class RequestIdMiddleware:
         finally:
             request_id_ctx.reset(token)
 
+
 logger = logging.getLogger("event_link")
 
-def log_event(message: str, **kwargs: Any) -> None:
-    logger.info(message, extra=kwargs)
 
-def log_warning(message: str, **kwargs: Any) -> None:
-    logger.warning(message, extra=kwargs)
+def log_event(message: str, **_kwargs: Any) -> None:
+    # Fixed-format logging avoids user-controlled format strings and avoids
+    # leaking raw dynamic context data.
+    logger.info("event=%s", _sanitize_log_text(message))
 
-def log_error(message: str, **kwargs: Any) -> None:
-    logger.error(message, extra=kwargs)
 
+def log_warning(message: str, **_kwargs: Any) -> None:
+    logger.warning("event=%s", _sanitize_log_text(message))
+
+
+def log_error(message: str, **_kwargs: Any) -> None:
+    logger.error("event=%s", _sanitize_log_text(message))

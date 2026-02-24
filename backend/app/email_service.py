@@ -1,4 +1,3 @@
-import logging
 import smtplib
 import time
 from email.message import EmailMessage
@@ -8,7 +7,7 @@ from fastapi import BackgroundTasks
 from sqlalchemy.orm import Session
 
 from .config import settings
-from .logging_utils import log_event, log_warning
+from .logging_utils import log_error, log_event, log_warning
 from .task_queue import JOB_TYPE_SEND_EMAIL, enqueue_job
 
 emails_sent_ok = 0
@@ -39,6 +38,7 @@ def send_email_now(
         message.add_alternative(body_html, subtype="html")
 
     global emails_sent_ok, emails_send_failed
+    last_error_type = "unknown"
     for attempt in range(1, 4):
         try:
             with smtplib.SMTP(settings.smtp_host, settings.smtp_port or 25, timeout=10) as server:
@@ -56,23 +56,23 @@ def send_email_now(
                 to=to_email,
                 subject=subject,
                 attempt=attempt,
-                error=str(exc),
+                error_type=type(exc).__name__,
                 smtp_host=settings.smtp_host,
                 smtp_port=settings.smtp_port,
                 **context,
             )
+            last_error_type = type(exc).__name__
             if attempt < 3:
                 time.sleep(0.5 * attempt)
     emails_send_failed += 1
-    logging.exception(
-        "Failed to send email after retries",
-        extra={
-            "to": to_email,
-            "subject": subject,
-            "smtp_host": settings.smtp_host,
-            "smtp_port": settings.smtp_port,
-            **context,
-        },
+    log_error(
+        "email_send_failed_after_retries",
+        to=to_email,
+        subject=subject,
+        error_type=last_error_type,
+        smtp_host=settings.smtp_host,
+        smtp_port=settings.smtp_port,
+        **context,
     )
 
 
