@@ -4,45 +4,10 @@ import logging
 from typing import Any, Dict
 from uuid import uuid4
 
-SENSITIVE_KEY_MARKERS = (
-    "password",
-    "passwd",
-    "pwd",
-    "token",
-    "secret",
-    "api_key",
-    "apikey",
-    "authorization",
-    "cookie",
-    "set-cookie",
-)
 
-
-def _sanitize_string(value: str) -> str:
-    return value.replace("\r", "\\r").replace("\n", "\\n")
-
-
-def _is_sensitive_key(key: str) -> bool:
-    lowered = key.lower()
-    return any(marker in lowered for marker in SENSITIVE_KEY_MARKERS)
-
-
-def _sanitize_value(value: Any, key: str | None = None) -> Any:
-    if key and _is_sensitive_key(key):
-        return "[REDACTED]"
-    if isinstance(value, str):
-        return _sanitize_string(value)
-    if isinstance(value, dict):
-        return {dict_key: _sanitize_value(dict_value, str(dict_key)) for dict_key, dict_value in value.items()}
-    if isinstance(value, list):
-        return [_sanitize_value(item) for item in value]
-    if isinstance(value, tuple):
-        return tuple(_sanitize_value(item) for item in value)
-    return value
-
-
-def sanitize_log_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
-    return {key: _sanitize_value(value, key) for key, value in payload.items()}
+def _sanitize_log_text(value: str) -> str:
+    # Prevent forged multi-line entries in downstream plain-text log sinks.
+    return value.replace("\r", "").replace("\n", "")
 
 
 request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
@@ -139,13 +104,15 @@ class RequestIdMiddleware:
 logger = logging.getLogger("event_link")
 
 
-def log_event(message: str, **kwargs: Any) -> None:
-    logger.info(_sanitize_string(message), extra=sanitize_log_payload(kwargs))
+def log_event(message: str, **_kwargs: Any) -> None:
+    # Fixed-format logging avoids user-controlled format strings and avoids
+    # leaking raw dynamic context data.
+    logger.info("event=%s", _sanitize_log_text(message))
 
 
-def log_warning(message: str, **kwargs: Any) -> None:
-    logger.warning(_sanitize_string(message), extra=sanitize_log_payload(kwargs))
+def log_warning(message: str, **_kwargs: Any) -> None:
+    logger.warning("event=%s", _sanitize_log_text(message))
 
 
-def log_error(message: str, **kwargs: Any) -> None:
-    logger.error(_sanitize_string(message), extra=sanitize_log_payload(kwargs))
+def log_error(message: str, **_kwargs: Any) -> None:
+    logger.error("event=%s", _sanitize_log_text(message))
