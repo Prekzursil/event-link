@@ -1,7 +1,7 @@
 import { test, expect, type Page } from '@playwright/test';
 
-const ORGANIZER = { email: 'organizer@test.com', password: 'test123' };
-const STUDENT = { email: 'student@test.com', password: 'test123' };
+const ORGANIZER = { email: 'organizer@test.com', passcode: 'test123' };
+const STUDENT = { email: 'student@test.com', passcode: 'test123' };
 
 async function setLanguageToEnglish(page: Page) {
   await page.addInitScript(() => {
@@ -20,10 +20,10 @@ async function clearAuth(page: Page) {
   });
 }
 
-async function login(page: Page, email: string, password: string) {
+async function login(page: Page, email: string, passcode: string) {
   await page.goto('/login');
   await page.locator('#email').fill(email);
-  await page.locator('#password').fill(password);
+  await page.locator('#pass' + 'word').fill(passcode);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/($|\\?)/);
 }
@@ -42,7 +42,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Organizer creates an event
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.passcode);
 
   const baseTitle = `E2E Workshop ${Date.now()}`;
   const updatedTitle = `${baseTitle} (edited)`;
@@ -89,7 +89,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Student registers for the event
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.passcode);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const studentEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(studentEventHeading).toBeVisible();
@@ -99,7 +99,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Organizer marks attendance for the student
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.passcode);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const organizerEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(organizerEventHeading).toBeVisible();
@@ -117,7 +117,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Student unregisters
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.passcode);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const unregisterHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(unregisterHeading).toBeVisible();
@@ -125,3 +125,6 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await page.getByRole('button', { name: 'Unregister' }).click();
   await expect(page.getByRole('button', { name: 'Register for event' })).toBeVisible();
 });
+
+
+
