@@ -226,3 +226,4 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
     fill_ro = email_templates.render_filling_fast_email(user, event, available_seats=None, lang="ro")
     assert "Filling fast" in fill_en[0]
     assert "Se ocupă rapid" in fill_ro[0]
+
