@@ -1,0 +1,52 @@
+name: Coverage 100
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  coverage-100:
+    name: Coverage 100 Gate
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Backend coverage
+        run: |
+          mkdir -p coverage
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest pytest-cov
+          python -m pytest backend/tests --cov=backend --cov-report=xml:backend/coverage.xml
+      - name: UI coverage
+        run: |
+          npm --prefix ui ci
+          npm --prefix ui test -- --coverage --watch=false
+
+      - name: Enforce 100% coverage
+        run: |
+          python3 scripts/quality/assert_coverage_100.py \
+            --xml "backend=backend/coverage.xml" \
+            --lcov "ui=ui/coverage/lcov.info" \
+            --out-json "coverage-100/coverage.json" \
+            --out-md "coverage-100/coverage.md"
+      - name: Upload coverage artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: coverage-100
+          path: |
+            coverage
+            **/coverage
+            **/TestResults

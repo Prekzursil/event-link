@@ -1,0 +1,47 @@
+name: Codecov Analytics
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  codecov-analytics:
+    name: Codecov Analytics
+    runs-on: ubuntu-latest
+    env:
+      CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+    steps:
+      - uses: actions/checkout@v6
+      - uses: actions/setup-python@v6
+        with:
+          python-version: '3.12'
+      - uses: actions/setup-node@v6
+        with:
+          node-version: '20'
+
+      - name: Backend coverage
+        continue-on-error: true
+        run: |
+          mkdir -p coverage
+          python -m pip install --upgrade pip
+          python -m pip install -r backend/requirements.txt pytest pytest-cov
+          python -m pytest backend/tests --cov=backend --cov-report=xml:backend/coverage.xml
+      - name: UI coverage
+        continue-on-error: true
+        run: |
+          npm --prefix ui ci
+          npm --prefix ui test -- --coverage --watch=false
+      - name: Upload coverage to Codecov
+        if: ${{ always() }}
+        uses: codecov/codecov-action@v5
+        with:
+          files: backend/coverage.xml,ui/coverage/lcov.info
+          flags: backend,ui
+          fail_ci_if_error: true
+          verbose: true
