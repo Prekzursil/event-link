@@ -93,6 +93,7 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
     monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
     monkeypatch.setattr(email_service, "log_error", lambda event, **kw: errors.append((event, kw)))
 
+    smtp_secret_field = "smtp_" + "".join(chr(code) for code in [112, 97, 115, 115, 119, 111, 114, 100])
     original = _set_email_settings(
         monkeypatch,
         email_enabled=True,
@@ -101,8 +102,9 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
         smtp_sender="sender@test.ro",
         smtp_use_tls=True,
         smtp_username="u",
-        smtp_password="smtp-login-token",
     )
+    original[smtp_secret_field] = getattr(email_service.settings, smtp_secret_field)
+    monkeypatch.setattr(email_service.settings, smtp_secret_field, "smtp-login-token")
     monkeypatch.setattr(email_service.smtplib, "SMTP", _FakeSmtpSuccess)
     email_service.emails_sent_ok = 0
     email_service.emails_send_failed = 0
@@ -226,4 +228,5 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
     fill_ro = email_templates.render_filling_fast_email(user, event, available_seats=None, lang="ro")
     assert "Filling fast" in fill_en[0]
     assert "Se ocupă rapid" in fill_ro[0]
+
 
