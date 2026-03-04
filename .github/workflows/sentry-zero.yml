@@ -18,12 +18,27 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SENTRY_PROJECT_BACKEND: ${{ vars.SENTRY_PROJECT_BACKEND }}
+      SENTRY_PROJECT_WEB: ${{ vars.SENTRY_PROJECT_WEB }}
     steps:
       - uses: actions/checkout@v6
       - name: Assert Sentry unresolved issues are zero
+        shell: bash
         run: |
+          set -euo pipefail
+          project_args=()
+          if [ -n "${SENTRY_PROJECT_BACKEND}" ]; then
+            project_args+=(--project "${SENTRY_PROJECT_BACKEND}")
+          fi
+          if [ -n "${SENTRY_PROJECT_WEB}" ]; then
+            project_args+=(--project "${SENTRY_PROJECT_WEB}")
+          fi
+          if [ ${#project_args[@]} -eq 0 ] && [ -n "${SENTRY_PROJECT}" ]; then
+            project_args+=(--project "${SENTRY_PROJECT}")
+          fi
+
           python3 scripts/quality/check_sentry_zero.py \
-            --project "${SENTRY_PROJECT}" \
+            "${project_args[@]}" \
             --out-json "sentry-zero/sentry.json" \
             --out-md "sentry-zero/sentry.md"
       - name: Upload Sentry artifacts

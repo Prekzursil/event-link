@@ -14,18 +14,24 @@ jobs:
   sonar-zero:
     name: Sonar Zero
     runs-on: ubuntu-latest
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
       - uses: actions/checkout@v6
-      - name: Run Sonar scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       - name: Assert Sonar zero-open gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: bash
         run: |
+          set -euo pipefail
+          scope_args=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            scope_args+=(--pull-request "${{ github.event.pull_request.number }}")
+          else
+            scope_args+=(--branch "${{ github.ref_name }}")
+          fi
+
           python3 scripts/quality/check_sonar_zero.py \
             --project-key "Prekzursil_event-link" \
+            "${scope_args[@]}" \
             --out-json "sonar-zero/sonar.json" \
             --out-md "sonar-zero/sonar.md"
       - name: Upload Sonar artifacts
