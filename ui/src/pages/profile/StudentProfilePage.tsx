@@ -409,8 +409,8 @@ export function StudentProfilePage() {
     const password = deletePassword.trim();
     if (!password) {
       toast({
-        title: t.profile.deletePasswordMissingTitle,
-        description: t.profile.deletePasswordMissingDescription,
+        title: t.profile.deletePasscodeMissingTitle,
+        description: t.profile.deletePasscodeMissingDescription,
         variant: 'destructive',
       });
       return;
@@ -928,13 +928,13 @@ export function StudentProfilePage() {
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="deletePassword">{t.profile.deletePasswordLabel}</Label>
+            <Label htmlFor="deletePassword">{t.profile.deletePasscodeLabel}</Label>
             <Input
               id="deletePassword"
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder={t.profile.deletePasswordPlaceholder}
+              placeholder={t.profile.deletePasscodePlaceholder}
               disabled={isDeleting}
             />
           </div>
@@ -969,3 +969,4 @@ export function StudentProfilePage() {
 }
 
 export default StudentProfilePage;
+

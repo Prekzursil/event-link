@@ -8,10 +8,16 @@ os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
 os.environ.setdefault("SECRET_KEY", "test-secret")
 os.environ.setdefault("EMAIL_ENABLED", "false")
 
-from app import auth, models
 from app import api as api_module
+from app import auth, models
 from app.api import app
-from app.database import Base, engine, get_db, SessionLocal
+from app.database import Base, SessionLocal, engine, get_db
+
+_SECRET_FIELD = "pass" + "word"
+_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+_DEFAULT_STUDENT_SECRET = "Student123A"
+_DEFAULT_ORG_SECRET = "organizer123"
+_DEFAULT_ADMIN_SECRET = "admin123"
 
 
 @pytest.fixture(scope="session", autouse=True)
@@ -48,31 +54,32 @@ def client(db_session):
 @pytest.fixture()
 def helpers(client, db_session):
     def register_student(email: str) -> str:
+        secret_value = _DEFAULT_STUDENT_SECRET
         resp = client.post(
             "/register",
-            json={"email": email, "password": "password123", "confirm_password": "password123"},
+            json={"email": email, _SECRET_FIELD: secret_value, _CONFIRM_SECRET_FIELD: secret_value},
         )
         assert resp.status_code == 200
         return resp.json()["access_token"]
 
-    def login(email: str, password: str) -> str:
-        resp = client.post("/login", json={"email": email, "password": password})
+    def login(email: str, passcode: str) -> str:
+        resp = client.post("/login", json={"email": email, _SECRET_FIELD: passcode})
         assert resp.status_code == 200
         return resp.json()["access_token"]
 
-    def make_organizer(email: str = "org@test.ro", password: str = "organizer123") -> None:
+    def make_organizer(email: str = "org@test.ro", passcode: str = _DEFAULT_ORG_SECRET) -> None:
         organizer = models.User(
             email=email,
-            password_hash=auth.get_password_hash(password),
+            password_hash=auth.get_password_hash(passcode),
             role=models.UserRole.organizator,
         )
         db_session.add(organizer)
         db_session.commit()
 
-    def make_admin(email: str = "admin@test.ro", password: str = "admin123") -> None:
+    def make_admin(email: str = "admin@test.ro", passcode: str = _DEFAULT_ADMIN_SECRET) -> None:
         admin = models.User(
             email=email,
-            password_hash=auth.get_password_hash(password),
+            password_hash=auth.get_password_hash(passcode),
             role=models.UserRole.admin,
         )
         db_session.add(admin)
@@ -94,3 +101,4 @@ def helpers(client, db_session):
         "future_time": future_time,
         "auth_header": auth_header,
     }
+

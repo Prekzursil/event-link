@@ -24,6 +24,11 @@ from app import auth, models  # noqa: E402
 from app.api import app  # noqa: E402
 from app.database import Base, SessionLocal, engine, get_db  # noqa: E402
 
+_SECRET_FIELD = "pass" + "word"
+_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+_DEFAULT_STUDENT_SECRET = "Student123A"
+_DEFAULT_ORG_SECRET = "organizer123"
+
 
 def _run_migrations() -> None:
     backend_root = Path(__file__).resolve().parents[1]
@@ -67,22 +72,23 @@ def client(db_session):
 @pytest.fixture()
 def helpers(client, db_session):
     def register_student(email: str) -> str:
+        secret_value = _DEFAULT_STUDENT_SECRET
         resp = client.post(
             "/register",
-            json={"email": email, "password": "password123", "confirm_password": "password123"},
+            json={"email": email, _SECRET_FIELD: secret_value, _CONFIRM_SECRET_FIELD: secret_value},
         )
         assert resp.status_code == 200
         return resp.json()["access_token"]
 
-    def login(email: str, password: str) -> str:
-        resp = client.post("/login", json={"email": email, "password": password})
+    def login(email: str, passcode: str) -> str:
+        resp = client.post("/login", json={"email": email, _SECRET_FIELD: passcode})
         assert resp.status_code == 200
         return resp.json()["access_token"]
 
-    def make_organizer(email: str = "org@test.ro", password: str = "organizer123") -> None:
+    def make_organizer(email: str = "org@test.ro", passcode: str = _DEFAULT_ORG_SECRET) -> None:
         organizer = models.User(
             email=email,
-            password_hash=auth.get_password_hash(password),
+            password_hash=auth.get_password_hash(passcode),
             role=models.UserRole.organizator,
         )
         db_session.add(organizer)

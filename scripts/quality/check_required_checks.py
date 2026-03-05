@@ -12,6 +12,13 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
+from _security_import import load_security_helpers
+
+_security_helpers = load_security_helpers(__file__)
+resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
+validate_commit_sha = _security_helpers.validate_commit_sha
+validate_repo_full_name = _security_helpers.validate_repo_full_name
+
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Wait for required GitHub check contexts and assert they are successful.")
@@ -25,15 +32,20 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _api_get(repo: str, path: str, token: str) -> dict[str, Any]:
-    url = f"https://api.github.com/repos/{repo}/{path.lstrip('/')}"
+def _api_get(owner: str, repo: str, *, endpoint: str, query: dict[str, str], token: str) -> dict[str, Any]:
+    base_path = f"/repos/{owner}/{repo}/{endpoint.lstrip('/')}"
+    query_str = urllib.parse.urlencode(query)
+    url = f"https://api.github.com{base_path}"
+    if query_str:
+        url = f"{url}?{query_str}"
+
     req = urllib.request.Request(
         url,
         headers={
             "Accept": "application/vnd.github+json",
             "Authorization": f"Bearer {token}",
             "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "reframe-quality-zero-gate",
+            "User-Agent": "event-link-quality-zero-gate",
         },
         method="GET",
     )
@@ -121,17 +133,8 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
+def _safe_output_path(raw: str, fallback: str) -> Path:
+    return resolve_workspace_relative_path(raw, fallback=fallback)
 
 
 def main() -> int:
@@ -144,19 +147,34 @@ def main() -> int:
     if not token:
         raise SystemExit("GITHUB_TOKEN or GH_TOKEN is required")
 
+    owner, repo = validate_repo_full_name(args.repo)
+    sha = validate_commit_sha(args.sha)
+
     deadline = time.time() + max(args.timeout_seconds, 1)
 
     final_payload: dict[str, Any] | None = None
     while time.time() <= deadline:
-        check_runs = _api_get(args.repo, f"commits/{args.sha}/check-runs?per_page=100", token)
-        statuses = _api_get(args.repo, f"commits/{args.sha}/status", token)
+        check_runs = _api_get(
+            owner,
+            repo,
+            endpoint=f"commits/{sha}/check-runs",
+            query={"per_page": "100"},
+            token=token,
+        )
+        statuses = _api_get(
+            owner,
+            repo,
+            endpoint=f"commits/{sha}/status",
+            query={},
+            token=token,
+        )
         contexts = _collect_contexts(check_runs, statuses)
         status, missing, failed = _evaluate(required, contexts)
 
         final_payload = {
             "status": status,
-            "repo": args.repo,
-            "sha": args.sha,
+            "repo": f"{owner}/{repo}",
+            "sha": sha,
             "required": required,
             "missing": missing,
             "failed": failed,
@@ -167,7 +185,6 @@ def main() -> int:
         if status == "pass":
             break
 
-        # wait only while there are missing contexts or in-progress check-runs
         in_progress = any(v.get("state") != "completed" for v in contexts.values() if v.get("source") == "check_run")
         if not missing and not in_progress:
             break
@@ -194,3 +211,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

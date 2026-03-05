@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test';
 import { clearAuth, login, setLanguagePreference } from './utils';
 
-const STUDENT = { email: 'student@test.com', password: 'test123' };
-const ADMIN = { email: 'admin@test.com', password: 'test123' };
+const STUDENT = { email: 'student@test.com', passcode: 'test123' };
+const ADMIN = { email: 'admin@test.com', passcode: 'test123' };
 
 test('notifications preferences + admin enqueue (digest + filling-fast)', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Student enables notification preferences.
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.passcode);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto('/profile');
@@ -42,7 +42,7 @@ test('notifications preferences + admin enqueue (digest + filling-fast)', async 
 
   // Admin triggers digest + filling-fast enqueue actions.
   await clearAuth(page);
-  await login(page, ADMIN.email, ADMIN.password);
+  await login(page, ADMIN.email, ADMIN.passcode);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto('/admin');
@@ -54,4 +54,6 @@ test('notifications preferences + admin enqueue (digest + filling-fast)', async 
   await page.getByRole('button', { name: 'Filling-fast' }).click();
   await expect(page.getByText('Alerts queued').first()).toBeVisible();
 });
+
+
 

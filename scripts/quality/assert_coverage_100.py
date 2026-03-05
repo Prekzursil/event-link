@@ -9,6 +9,11 @@ from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
 
+from _security_import import load_security_helpers
+
+_security_helpers = load_security_helpers(__file__)
+resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
+
 
 @dataclass
 class CoverageStats:
@@ -43,7 +48,19 @@ def parse_named_path(value: str) -> tuple[str, Path]:
     match = _PAIR_RE.match(value.strip())
     if not match:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
-    return match.group("name").strip(), Path(match.group("path").strip())
+
+    name = match.group("name").strip()
+    raw_path = match.group("path").strip()
+    if not name:
+        raise ValueError(f"Invalid input '{value}'. Name cannot be empty")
+
+    validated = resolve_workspace_relative_path(
+        raw_path,
+        fallback=raw_path,
+        must_exist=True,
+        must_be_file=True,
+    )
+    return name, validated
 
 
 def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
@@ -128,17 +145,8 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
+def _safe_output_path(raw: str, fallback: str) -> Path:
+    return resolve_workspace_relative_path(raw, fallback=fallback, must_exist=False, must_be_file=False)
 
 
 def main() -> int:
@@ -190,3 +198,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

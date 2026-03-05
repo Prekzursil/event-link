@@ -1,22 +1,22 @@
 import { test, expect } from '@playwright/test';
 import { clearAuth, formatDateTimeLocal, login, registerStudent, setLanguagePreference } from './utils';
 
-const ADMIN = { email: 'admin@test.com', password: 'test123' };
-const ORGANIZER = { email: 'organizer@test.com', password: 'test123' };
+const ADMIN = { email: 'admin@test.com', passcode: 'test123' };
+const ORGANIZER = { email: 'organizer@test.com', passcode: 'test123' };
 
 test('admin dashboard: user management + event moderation', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Create a user for admin management tests (avoid mutating shared seed accounts).
   const managedUserEmail = `e2e-admin-mgmt-${Date.now()}@test.com`;
-  const managedUserPassword = 'Managed123';
+  const managedUserPasscode = 'Managed123';
   await clearAuth(page);
-  await registerStudent(page, managedUserEmail, managedUserPassword, 'E2E Managed User');
+  await registerStudent(page, managedUserEmail, managedUserPasscode, 'E2E Managed User');
   await expect(page).toHaveURL(/\/($|\?)/);
 
   // Create a flagged event (deterministic moderation flags).
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.passcode);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   const flaggedTitle = `E2E Moderation ${Date.now()}`;
@@ -26,7 +26,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await page.locator('#title').fill(flaggedTitle);
   await page
     .locator('#description')
-    .fill('Please confirm your password at https://bit.ly/eventlink before joining.');
+    .fill('Please confirm your Passcode at https://bit.ly/eventlink before joining.');
   await page.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Workshop' }).click();
 
@@ -47,7 +47,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
 
   // Admin updates the user's role + active status.
   await clearAuth(page);
-  await login(page, ADMIN.email, ADMIN.password);
+  await login(page, ADMIN.email, ADMIN.passcode);
 
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/admin($|\?)/);
@@ -89,3 +89,6 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await expect(eventRow.getByText('Reviewed')).toBeVisible();
   await expect(eventRow.getByRole('button', { name: 'Mark reviewed' })).toHaveCount(0);
 });
+
+
+

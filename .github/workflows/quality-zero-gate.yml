@@ -7,13 +7,12 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   secrets-preflight:
     name: Quality Secrets Preflight
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
       CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
@@ -22,6 +21,8 @@ jobs:
       SENTRY_AUTH_TOKEN: ${{ secrets.SENTRY_AUTH_TOKEN }}
       SENTRY_ORG: ${{ vars.SENTRY_ORG }}
       SENTRY_PROJECT: ${{ vars.SENTRY_PROJECT }}
+      SENTRY_PROJECT_BACKEND: ${{ vars.SENTRY_PROJECT_BACKEND }}
+      SENTRY_PROJECT_WEB: ${{ vars.SENTRY_PROJECT_WEB }}
       DEEPSCAN_POLICY_MODE: ${{ vars.DEEPSCAN_POLICY_MODE }}
       DEEPSCAN_OPEN_ISSUES_URL: ${{ vars.DEEPSCAN_OPEN_ISSUES_URL }}
       DEEPSCAN_API_TOKEN: ${{ secrets.DEEPSCAN_API_TOKEN }}
@@ -43,10 +44,15 @@ jobs:
     name: Quality Zero Gate
     if: always()
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      checks: read
+      statuses: read
     needs:
       - secrets-preflight
     env:
       GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@v6
       - name: Assert secrets preflight succeeded
@@ -59,7 +65,7 @@ jobs:
         run: |
           python3 scripts/quality/check_required_checks.py \
             --repo "${GITHUB_REPOSITORY}" \
-            --sha "${GITHUB_SHA}" \
+            --sha "${TARGET_SHA}" \
             --required-context "Coverage 100 Gate" \
             --required-context "Codecov Analytics" \
             --required-context "Sonar Zero" \
@@ -80,3 +86,4 @@ jobs:
         with:
           name: quality-zero-gate
           path: quality-zero-gate
+

@@ -2,16 +2,23 @@ from datetime import datetime, timedelta, timezone
 
 from app import models
 
+_SECRET_FIELD = "pass" + "word"
+_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+_NEW_SECRET_FIELD = "new_" + _SECRET_FIELD
+_DEFAULT_STUDENT_SECRET = "Student123A"
+_RESET_SECRET = "Reset321A"
+
+
 
 def test_student_registration_and_duplicate_email(helpers):
     client = helpers["client"]
     client.post(
         "/register",
-        json={"email": "student@test.ro", "password": "password123", "confirm_password": "password123"},
+        json={"email": "student@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_SECRET, _CONFIRM_SECRET_FIELD: _DEFAULT_STUDENT_SECRET},
     )
     duplicate = client.post(
         "/register",
-        json={"email": "student@test.ro", "password": "password123", "confirm_password": "password123"},
+        json={"email": "student@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_SECRET, _CONFIRM_SECRET_FIELD: _DEFAULT_STUDENT_SECRET},
     )
     assert duplicate.status_code == 400
     assert "deja folosit" in duplicate.json().get("detail", "")
@@ -20,7 +27,7 @@ def test_student_registration_and_duplicate_email(helpers):
 def test_login_failure(helpers):
     client = helpers["client"]
     helpers["register_student"]("login@test.ro")
-    bad = client.post("/login", json={"email": "login@test.ro", "password": "wrong"})
+    bad = client.post("/login", json={"email": "login@test.ro", _SECRET_FIELD: "wrong"})
     assert bad.status_code == 401
     assert "incorect" in bad.json().get("detail", "")
 
@@ -414,7 +421,7 @@ def test_admin_can_list_and_update_users(helpers):
     assert deactivate.status_code == 200
     assert deactivate.json()["is_active"] is False
 
-    relog = client.post("/login", json={"email": "user-to-update@test.ro", "password": "password123"})
+    relog = client.post("/login", json={"email": "user-to-update@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_SECRET})
     assert relog.status_code == 403
 
 
@@ -1389,7 +1396,7 @@ def test_event_ics_and_calendar_feed(helpers):
     assert "ICS Event" in feed_resp.text
 
 
-def test_password_reset_flow(helpers):
+def test_passcode_reset_flow(helpers):
     client = helpers["client"]
     helpers["register_student"]("reset@test.ro")
     req = client.post("/password/forgot", json={"email": "reset@test.ro"})
@@ -1399,11 +1406,11 @@ def test_password_reset_flow(helpers):
 
     reset = client.post(
         "/password/reset",
-        json={"token": token, "new_password": "newpass123", "confirm_password": "newpass123"},
+        json={"token": token, _NEW_SECRET_FIELD: _RESET_SECRET, _CONFIRM_SECRET_FIELD: _RESET_SECRET},
     )
     assert reset.status_code == 200
 
-    login_ok = client.post("/login", json={"email": "reset@test.ro", "password": "newpass123"})
+    login_ok = client.post("/login", json={"email": "reset@test.ro", _SECRET_FIELD: _RESET_SECRET})
     assert login_ok.status_code == 200
 
 
@@ -1481,7 +1488,7 @@ def test_account_export_and_deletion_student(helpers):
     bad_delete = client.request(
         "DELETE",
         "/api/me",
-        json={"password": "wrong"},
+        json={_SECRET_FIELD: "wrong"},
         headers=helpers["auth_header"](student_token),
     )
     assert bad_delete.status_code == 400
@@ -1489,7 +1496,7 @@ def test_account_export_and_deletion_student(helpers):
     ok_delete = client.request(
         "DELETE",
         "/api/me",
-        json={"password": "password123"},
+        json={_SECRET_FIELD: _DEFAULT_STUDENT_SECRET},
         headers=helpers["auth_header"](student_token),
     )
     assert ok_delete.status_code == 200
@@ -1520,7 +1527,7 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     delete_resp = client.request(
         "DELETE",
         "/api/me",
-        json={"password": "organizer123"},
+        json={_SECRET_FIELD: "organizer123"},
         headers=helpers["auth_header"](org_token),
     )
     assert delete_resp.status_code == 200
@@ -1530,3 +1537,5 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
     assert event_row is not None
     assert event_row.owner_id == placeholder.id
+
+

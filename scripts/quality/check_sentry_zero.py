@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.parse
 import urllib.request
@@ -10,12 +11,12 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
+from _security_import import load_security_helpers
 
-from security_helpers import normalize_https_url
+_security_helpers = load_security_helpers(__file__)
+normalize_https_url = _security_helpers.normalize_https_url
+resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
+validate_slug = _security_helpers.validate_slug
 
 SENTRY_API_BASE = "https://sentry.io/api/0"
 
@@ -42,7 +43,7 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
         headers={
             "Accept": "application/json",
             "Authorization": f"Bearer {token}",
-            "User-Agent": "reframe-sentry-zero-gate",
+            "User-Agent": "event-link-sentry-zero-gate",
         },
         method="GET",
     )
@@ -91,30 +92,19 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
+def _safe_output_path(raw: str, fallback: str) -> Path:
+    return resolve_workspace_relative_path(raw, fallback=fallback)
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
-    org = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
+    org_input = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
     api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={"sentry.io"}).rstrip("/")
 
     projects = [p for p in args.project if p]
     if not projects:
-        for env_name in ("SENTRY_PROJECT_BACKEND", "SENTRY_PROJECT_WEB"):
+        for env_name in ("SENTRY_PROJECT_BACKEND", "SENTRY_PROJECT_WEB", "SENTRY_PROJECT"):
             value = str(os.environ.get(env_name, "")).strip()
             if value:
                 projects.append(value)
@@ -124,15 +114,30 @@ def main() -> int:
 
     if not token:
         findings.append("SENTRY_AUTH_TOKEN is missing.")
-    if not org:
+
+    org = ""
+    if not org_input:
         findings.append("SENTRY_ORG is missing.")
+    else:
+        try:
+            org = validate_slug(org_input, field_name="sentry org")
+        except ValueError as exc:
+            findings.append(str(exc))
+
+    safe_projects: list[str] = []
     if not projects:
-        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB).")
+        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT).")
+    else:
+        for project in projects:
+            try:
+                safe_projects.append(validate_slug(project, field_name="sentry project"))
+            except ValueError as exc:
+                findings.append(str(exc))
 
     status = "fail"
     if not findings:
         try:
-            for project in projects:
+            for project in safe_projects:
                 query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
                 org_slug = urllib.parse.quote(org, safe="")
                 project_slug = urllib.parse.quote(project, safe="")
@@ -179,3 +184,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
