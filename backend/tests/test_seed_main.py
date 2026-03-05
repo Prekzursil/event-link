@@ -62,7 +62,8 @@ class _FakeSession:
 def _load_seed_data_module(monkeypatch):
     class _FakeCryptContext:
         def __init__(self, *args, **kwargs):
-            pass
+            # Intentional empty fake context for seed-data import tests.
+            return None
 
         def hash(self, value):
             return f"hash:{value}"
@@ -155,7 +156,8 @@ def test_backend_main_entrypoint_invokes_uvicorn(monkeypatch):
 def test_seed_data_module_main_guard_executes(monkeypatch):
     class _FakeCryptContext:
         def __init__(self, *args, **kwargs):
-            pass
+            # Intentional empty fake context for module __main__ path coverage.
+            return None
 
         def hash(self, value):
             return f"hash:{value}"

@@ -37,7 +37,8 @@ class _FakeSmtpSuccess:
 
 class _FakeSmtpFail:
     def __init__(self, *_args, **_kwargs):
-        pass
+        # Intentional no-op fake used to exercise SMTP failure branches.
+        return None
 
     def __enter__(self):
         return self
@@ -230,3 +231,13 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
     assert "Se ocupă rapid" in fill_ro[0]
 
 
+
+def test_frontend_hint_and_ro_digest_with_events(monkeypatch, db_session):
+    user, event = _mk_user_event(db_session)
+
+    monkeypatch.setattr(email_templates.settings, "allowed_origins", [])
+    assert email_templates._frontend_hint() == ""
+
+    digest_ro = email_templates.render_weekly_digest_email(user, [event], lang="ro")
+    assert "Template Event" in digest_ro[1]
+    assert "Iată câteva evenimente" in digest_ro[1]

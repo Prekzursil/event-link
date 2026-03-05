@@ -3,10 +3,10 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page } from '@playwright/test';
 
-const secretWord = `pass${'word'}`;
-const secretInputSelector = `#${secretWord}`;
-const confirmSecretInputSelector = `#confirm${`Pass${'word'}`}`;
-const resetTableName = `${secretWord}_reset_tokens`;
+const secretWord = 'password';
+const secretInputSelector = '#password';
+const confirmSecretInputSelector = '#confirmPassword';
+const resetTableName = 'password_reset_tokens';
 
 export function repoRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -108,4 +108,3 @@ LIMIT 1;
 
   throw new Error(`No reset token found for ${email}`);
 }
-

@@ -1,11 +1,11 @@
 import { test, expect } from '@playwright/test';
 import { clearAuth, fetchLatestResetToken, login, registerStudent, setLanguagePreference } from './utils';
 
-const secretWord = `pass${'word'}`;
-const secretSelector = `#${secretWord}`;
-const confirmSecretSelector = `#confirm${`Pass${'word'}`}`;
-const forgotRoute = `/forgot-${secretWord}`;
-const resetRoute = `/reset-${secretWord}`;
+const secretWord = 'password';
+const secretSelector = '#password';
+const confirmSecretSelector = '#confirmPassword';
+const forgotRoute = '/forgot-password';
+const resetRoute = '/reset-password';
 
 test('Passcode reset flow: request + reset', async ({ page }) => {
   await setLanguagePreference(page, 'en');
@@ -36,4 +36,3 @@ test('Passcode reset flow: request + reset', async ({ page }) => {
   await login(page, email, newPasscode);
   await expect(page).toHaveURL(/\/($|\?)/);
 });
-
