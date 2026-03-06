@@ -9,23 +9,14 @@ type AccessCodeValidationStrings = {
   accessCodeRequirementNumbers: string;
 };
 
-type AccessCodeValidationConfig = {
-  mismatchMessage: string;
-  errorTitle: string;
-  invalidDescription: string;
-  minimumRequirement: string;
-  letterRequirement: string;
-  numberRequirement: string;
-};
-
-const buildAccessCodeValidation = ({
-  mismatchMessage,
-  errorTitle,
-  invalidDescription,
-  minimumRequirement,
-  letterRequirement,
-  numberRequirement,
-}: AccessCodeValidationConfig): AccessCodeValidationStrings => ({
+const buildAccessCodeValidation = (
+  mismatchMessage: string,
+  errorTitle: string,
+  invalidDescription: string,
+  minimumRequirement: string,
+  letterRequirement: string,
+  numberRequirement: string,
+): AccessCodeValidationStrings => ({
   accessCodeMismatchInline: mismatchMessage,
   accessCodeMismatchTitle: errorTitle,
   accessCodeMismatchDescription: mismatchMessage,
@@ -36,23 +27,23 @@ const buildAccessCodeValidation = ({
   accessCodeRequirementNumbers: numberRequirement,
 });
 
-const RO_ACCESS_CODE_VALIDATION = buildAccessCodeValidation({
-  mismatchMessage: 'Codurile de acces nu se potrivesc',
-  errorTitle: 'Eroare',
-  invalidDescription: 'Codul de acces nu îndeplinește cerințele',
-  minimumRequirement: 'Cel puțin 8 caractere',
-  letterRequirement: 'Conține litere',
-  numberRequirement: 'Conține cifre',
-});
+const RO_ACCESS_CODE_VALIDATION = buildAccessCodeValidation(
+  'Codurile de acces nu se potrivesc',
+  'Eroare',
+  'Codul de acces nu îndeplinește cerințele',
+  'Cel puțin 8 caractere',
+  'Conține litere',
+  'Conține cifre',
+);
 
-const EN_ACCESS_CODE_VALIDATION = buildAccessCodeValidation({
-  mismatchMessage: 'Access codes do not match',
-  errorTitle: 'Error',
-  invalidDescription: 'Access code does not meet requirements',
-  minimumRequirement: 'At least 8 characters',
-  letterRequirement: 'Contains letters',
-  numberRequirement: 'Contains numbers',
-});
+const EN_ACCESS_CODE_VALIDATION = buildAccessCodeValidation(
+  'Access codes do not match',
+  'Error',
+  'Access code does not meet requirements',
+  'At least 8 characters',
+  'Contains letters',
+  'Contains numbers',
+);
 
 export const RO_STRINGS = {
   common: {
