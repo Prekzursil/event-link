@@ -412,6 +412,7 @@ describe('high-impact page coverage', () => {
   it('covers StudentProfilePage success handlers and guarded branches', async () => {
     renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
+    await screen.findByLabelText(/Full name/i);
 
     fireEvent.change(screen.getByLabelText(/Full name/i), { target: { value: 'New Name' } });
 

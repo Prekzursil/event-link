@@ -146,7 +146,7 @@ describe('contexts and toast hook', () => {
 
     renderProviders();
 
-    expect(await screen.findByTestId('auth-state')).toHaveTextContent('true');
+    await waitFor(() => expect(screen.getByTestId('auth-state')).toHaveTextContent('true'));
     expect(screen.getByTestId('role-state')).toHaveTextContent('true|true');
     expect(screen.getByTestId('language')).toHaveTextContent('en');
 

@@ -28,7 +28,7 @@ jobs:
         run: |
           mkdir -p coverage
           python -m pip install --upgrade pip
-          python -m pip install -r backend/requirements.txt pytest pytest-cov
+          python -m pip install -r backend/requirements.txt pytest pytest-cov lizard
           python -m pytest backend/tests --cov=backend --cov-report=xml:backend/coverage.xml
       - name: UI coverage
         run: |

@@ -188,3 +188,33 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts():
         'ESLint: managed by Codacy standard; skipping disable request',
     ]
 
+
+
+def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None:
+    module = _load_module()
+
+    def fake_reanalyze_commit(**_kwargs):
+        raise RuntimeError(
+            'Codacy reanalyze failed for 0123456789abcdef0123456789abcdef01234567: '
+            'HTTP 403 {"actions": [], "error": "Forbidden", "message": "Operation is not authorized"}'
+        )
+
+    module._reanalyze_commit = fake_reanalyze_commit
+
+    notes: list[str] = []
+    failures: list[str] = []
+
+    module._apply_reanalysis_if_clean(
+        provider='gh',
+        owner='Prekzursil',
+        repo='event-link',
+        token='token',
+        commit_sha='0123456789abcdef0123456789abcdef01234567',
+        dry_run=False,
+        notes=notes,
+        failures=failures,
+    )
+
+    assert failures == []
+    assert notes == ['Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis']
+

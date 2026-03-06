@@ -45,3 +45,12 @@ def test_codacy_tool_sync_workflow_dispatch_has_no_inputs() -> None:
 
     assert 'workflow_dispatch:' in content
     assert 'inputs:' not in content
+
+
+
+def test_ci_and_coverage_workflows_install_lizard_for_backend_quality_checks() -> None:
+    ci_content = (REPO_ROOT / '.github' / 'workflows' / 'ci.yml').read_text(encoding='utf-8')
+    coverage_content = (REPO_ROOT / '.github' / 'workflows' / 'coverage-100.yml').read_text(encoding='utf-8')
+
+    assert 'lizard' in ci_content
+    assert 'lizard' in coverage_content

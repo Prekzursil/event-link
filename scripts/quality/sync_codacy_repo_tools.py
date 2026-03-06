@@ -191,6 +191,10 @@ def _is_standard_managed_tool_conflict(message: str) -> bool:
     return "HTTP 409" in message and "enabled by a standard" in message
 
 
+def _is_reanalysis_forbidden(message: str) -> bool:
+    return "HTTP 403" in message and "Operation is not authorized" in message
+
+
 def _sync_tool_settings(
     *,
     provider: str,
@@ -284,7 +288,10 @@ def _trigger_reanalysis(
     try:
         _reanalyze_commit(provider=provider, owner=owner, repo=repo, token=token, commit_sha=commit_sha)
     except Exception as exc:
-        return [], [str(exc)]
+        message = str(exc)
+        if _is_reanalysis_forbidden(message):
+            return ["Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis"], []
+        return [], [message]
     return [f"Triggered Codacy reanalysis for {commit_sha}"], []
 
 
