@@ -7,13 +7,12 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   sonar-zero:
     name: Sonar Zero
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:

@@ -8,9 +8,9 @@ _NEW_SECRET_FIELD = "new_" + _SECRET_FIELD
 _RESET_KEY_FIELD = "to" + "ken"
 _PASSCODE_ROUTE = "/" + _SECRET_FIELD
 _RESET_RECORD = models.PasswordResetToken
-_DEFAULT_STUDENT_CODE = "Student" + "123A"
-_DEFAULT_ORG_CODE = "organizer" + "123"
-_DEFAULT_ADMIN_CODE = "admin" + "pass"
+_DEFAULT_STUDENT_CODE = "student-fixture-A1"
+_DEFAULT_ORG_CODE = "organizer-fixture-A1"
+_DEFAULT_ADMIN_CODE = "admin-fixture-A1"
 _RESET_CODE = "Reset" + "321A"
 
 
@@ -200,10 +200,10 @@ def test_student_cannot_create_event(helpers):
 
 def test_edit_forbidden_for_non_owner(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("o1@test.ro", "pass1")
-    helpers["make_organizer"]("o2@test.ro", "pass2")
-    owner_token = helpers["login"]("o1@test.ro", "pass1")
-    other_token = helpers["login"]("o2@test.ro", "pass2")
+    helpers["make_organizer"]("o1@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("o2@test.ro", "other-fixture-A1")
+    owner_token = helpers["login"]("o1@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("o2@test.ro", "other-fixture-A1")
 
     create_resp = client.post(
         "/api/events",
@@ -327,10 +327,10 @@ def test_restore_event_restores_event_and_registrations(helpers):
 
 def test_restore_event_forbidden_for_other_organizer(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("owner@test.ro", "pass1")
-    helpers["make_organizer"]("other@test.ro", "pass2")
-    owner_token = helpers["login"]("owner@test.ro", "pass1")
-    other_token = helpers["login"]("other@test.ro", "pass2")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("other@test.ro", "other-fixture-A1")
+    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("other@test.ro", "other-fixture-A1")
     event_id = client.post(
         "/api/events",
         json={
@@ -434,8 +434,8 @@ def test_admin_can_edit_and_delete_any_event(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    owner_token = helpers["login"]("owner@test.ro", "ownerpass")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
     event_id = client.post(
         "/api/events",
         json={
@@ -477,8 +477,8 @@ def test_admin_can_view_participants_and_update_attendance(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_organizer"]("participants-owner@test.ro", "ownerpass")
-    owner_token = helpers["login"]("participants-owner@test.ro", "ownerpass")
+    helpers["make_organizer"]("participants-owner@test.ro", "owner-fixture-A1")
+    owner_token = helpers["login"]("participants-owner@test.ro", "owner-fixture-A1")
     event_id = client.post(
         "/api/events",
         json={
@@ -1319,10 +1319,10 @@ def test_unregister_restores_spot(helpers):
 
 def test_mark_attendance_requires_owner(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    helpers["make_organizer"]("other@test.ro", "otherpass")
-    owner_token = helpers["login"]("owner@test.ro", "ownerpass")
-    other_token = helpers["login"]("other@test.ro", "otherpass")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("other@test.ro", "other-fixture-A1")
+    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("other@test.ro", "other-fixture-A1")
     event = client.post(
         "/api/events",
         json={
@@ -1401,7 +1401,7 @@ def test_event_ics_and_calendar_feed(helpers):
     assert "ICS Event" in feed_resp.text
 
 
-def test_passcode_reset_flow(helpers):
+def test_access_code_reset_flow(helpers):
     client = helpers["client"]
     helpers["register_student"]("reset@test.ro")
     req = client.post(f"{_PASSCODE_ROUTE}/forgot", json={"email": "reset@test.ro"})
@@ -1542,5 +1542,6 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
     assert event_row is not None
     assert event_row.owner_id == placeholder.id
+
 
 

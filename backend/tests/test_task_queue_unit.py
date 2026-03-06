@@ -188,12 +188,12 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
 def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
     user = models.User(
         email="fill@test.ro",
-        password_hash=auth.get_password_hash("pass123"),
+        password_hash=auth.get_password_hash("fixture-access-A1"),
         role=models.UserRole.student,
         email_filling_fast_enabled=True,
         language_preference="en",
     )
-    org = models.User(email="fill-org@test.ro", password_hash=auth.get_password_hash("org123"), role=models.UserRole.organizator)
+    org = models.User(email="fill-org@test.ro", password_hash=auth.get_password_hash("organizer-fixture-A1"), role=models.UserRole.organizator)
     event = models.Event(
         title="Filling Event",
         description="desc",
@@ -293,7 +293,7 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
     now = datetime.now(timezone.utc)
     active = models.User(
         email="digest-active@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_digest_enabled=True,
@@ -301,7 +301,7 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
     )
     inactive = models.User(
         email="digest-inactive@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=False,
         email_digest_enabled=True,
@@ -309,7 +309,7 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
     )
     disabled = models.User(
         email="digest-disabled@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_digest_enabled=False,
@@ -317,7 +317,7 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
     )
     organizer = models.User(
         email="digest-org@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     event = models.Event(
@@ -401,7 +401,7 @@ def test_run_recompute_recommendations_ml_missing_script_path(monkeypatch, tmp_p
 def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db_session):
     user = models.User(
         email="digest-no-events@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_digest_enabled=True,
@@ -419,12 +419,12 @@ def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db
 def _seed_guardrail_user_event(db_session):
     user = models.User(
         email="guardrail-branches@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
     )
     organizer = models.User(
         email="guardrail-org@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     event = models.Event(
@@ -588,7 +588,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
 
     organizer = models.User(
         email="branch-org@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     hidden_tag = models.Tag(name="hidden-branch")
@@ -618,7 +618,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
 
     inactive = models.User(
         email="inactive@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=False,
         email_filling_fast_enabled=True,
@@ -626,7 +626,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     disabled = models.User(
         email="disabled@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=False,
@@ -634,7 +634,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     limited = models.User(
         email="limited@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=True,
@@ -642,7 +642,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     blocked = models.User(
         email="blocked@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=True,
@@ -650,7 +650,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     hidden = models.User(
         email="hidden@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=True,
@@ -658,7 +658,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     full = models.User(
         email="full@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=True,
@@ -666,7 +666,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     abundant = models.User(
         email="abundant@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=True,
@@ -674,7 +674,7 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     )
     system_lang = models.User(
         email="system@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
         is_active=True,
         email_filling_fast_enabled=True,

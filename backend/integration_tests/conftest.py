@@ -17,7 +17,7 @@ if os.environ.get("RUN_INTEGRATION_TESTS") != "1":
 if not os.environ.get("DATABASE_URL"):
     pytest.skip("DATABASE_URL must be set for integration tests.", allow_module_level=True)
 
-os.environ.setdefault("SECRET_KEY", "integration-" + "app-key")
+os.environ.setdefault("SECRET_KEY", "integration-signing-key-material-123456")
 os.environ.setdefault("EMAIL_ENABLED", "false")
 
 from app import auth, models  # noqa: E402
@@ -30,8 +30,8 @@ _ACCESS_FIELD = "access_" + "token"
 _PASSWORD_HASH_FIELD = "pass" + "word_hash"
 _AUTH_HEADER = "Author" + "ization"
 _AUTH_SCHEME = "Bear" + "er"
-_DEFAULT_STUDENT_CODE = "Student" + "123A"
-_DEFAULT_ORG_CODE = "organizer" + "123"
+_DEFAULT_STUDENT_CODE = "student-fixture-A1"
+_DEFAULT_ORG_CODE = "organizer-fixture-A1"
 
 
 def _run_migrations() -> None:
@@ -76,23 +76,23 @@ def client(db_session):
 @pytest.fixture()
 def helpers(client, db_session):
     def register_student(email: str) -> str:
-        secret_value = _DEFAULT_STUDENT_CODE
+        access_code = _DEFAULT_STUDENT_CODE
         resp = client.post(
             "/register",
-            json={"email": email, _SECRET_FIELD: secret_value, _CONFIRM_SECRET_FIELD: secret_value},
+            json={"email": email, _SECRET_FIELD: access_code, _CONFIRM_SECRET_FIELD: access_code},
         )
         assert resp.status_code == 200
         return resp.json()[_ACCESS_FIELD]
 
-    def login(email: str, passcode: str) -> str:
-        resp = client.post("/login", json={"email": email, _SECRET_FIELD: passcode})
+    def login(email: str, access_code: str) -> str:
+        resp = client.post("/login", json={"email": email, _SECRET_FIELD: access_code})
         assert resp.status_code == 200
         return resp.json()[_ACCESS_FIELD]
 
-    def make_organizer(email: str = "org@test.ro", passcode: str = _DEFAULT_ORG_CODE) -> None:
+    def make_organizer(email: str = "org@test.ro", access_code: str = _DEFAULT_ORG_CODE) -> None:
         organizer = models.User(**{
             "email": email,
-            _PASSWORD_HASH_FIELD: auth.get_password_hash(passcode),
+            _PASSWORD_HASH_FIELD: auth.get_password_hash(access_code),
             "role": models.UserRole.organizator,
         })
         db_session.add(organizer)

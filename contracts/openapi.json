@@ -3372,6 +3372,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3413,6 +3416,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -3465,6 +3471,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3507,6 +3516,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {
@@ -3551,6 +3563,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3593,6 +3608,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -3803,6 +3821,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3906,6 +3927,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3959,6 +3983,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {
@@ -4210,6 +4237,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4251,6 +4281,12 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4287,6 +4323,12 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -4329,6 +4371,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {
@@ -4382,6 +4427,15 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4425,6 +4479,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {
@@ -4503,6 +4560,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4577,6 +4637,12 @@
           "204": {
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4616,6 +4682,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -4659,6 +4731,12 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4700,6 +4778,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -4757,6 +4841,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -4836,6 +4926,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           }
         },
         "security": [
@@ -4989,6 +5082,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           }
         },
         "security": [
@@ -5057,6 +5153,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5093,6 +5192,9 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -5134,6 +5236,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5167,6 +5272,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           }
         },
         "security": [
@@ -5310,6 +5418,12 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5350,6 +5464,15 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -5435,6 +5558,12 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5519,6 +5648,12 @@
             },
             "description": "Successful Response"
           },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5572,6 +5707,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -5627,6 +5768,12 @@
         "responses": {
           "204": {
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -5908,6 +6055,12 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5947,6 +6100,9 @@
             },
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5978,6 +6134,12 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
+          },
+          "503": {
+            "description": "Service unavailable."
           }
         },
         "security": [
@@ -6030,6 +6192,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "401": {
+            "description": "Unauthorized."
           },
           "422": {
             "content": {
@@ -6090,6 +6255,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6125,6 +6293,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {
@@ -6164,6 +6335,9 @@
             },
             "description": "Successful Response"
           },
+          "401": {
+            "description": "Unauthorized."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -6201,6 +6375,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {

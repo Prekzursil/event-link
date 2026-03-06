@@ -84,7 +84,7 @@ vi.mock('@/pages/auth/ResetPasswordPage', () => ({
 import App from '@/App';
 
 beforeEach(() => {
-  window.localStorage.setItem('language_preference', 'en');
+  globalThis.localStorage.setItem('language_preference', 'en');
   authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
 });
 

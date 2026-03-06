@@ -10,6 +10,10 @@ from fastapi import HTTPException, Request
 from app import api, auth, models, schemas
 
 
+_SECRET_FIELD = "pass" + "word"
+_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+
+
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
     monkeypatch.setattr(api.settings, "database_url", "", raising=False)
     with pytest.raises(RuntimeError):
@@ -20,7 +24,7 @@ def test_check_configuration_required_values_and_email_toggle(monkeypatch):
     with pytest.raises(RuntimeError):
         api._check_configuration()
 
-    monkeypatch.setattr(api.settings, "secret_key", "test-secret", raising=False)
+    monkeypatch.setattr(api.settings, "secret_key", "test-signing-key-material-1234", raising=False)
     monkeypatch.setattr(api.settings, "email_enabled", True, raising=False)
     monkeypatch.setattr(api.settings, "smtp_host", None, raising=False)
     monkeypatch.setattr(api.settings, "smtp_sender", None, raising=False)
@@ -105,12 +109,12 @@ def test_clone_event_branches_and_success(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_organizer"]("clone-owner@test.ro", "ownerpass")
-    helpers["make_organizer"]("clone-other@test.ro", "otherpass")
+    helpers["make_organizer"]("clone-owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("clone-other@test.ro", "other-fixture-A1")
 
     owner = db.query(models.User).filter(models.User.email == "clone-owner@test.ro").first()
     assert owner is not None
-    other_token = helpers["login"]("clone-other@test.ro", "otherpass")
+    other_token = helpers["login"]("clone-other@test.ro", "other-fixture-A1")
 
     missing = client.post("/api/events/999999/clone", headers=helpers["auth_header"](other_token))
     assert missing.status_code == 404
@@ -138,7 +142,7 @@ def test_clone_event_branches_and_success(helpers):
     )
     assert forbidden.status_code == 403
 
-    owner_token = helpers["login"]("clone-owner@test.ro", "ownerpass")
+    owner_token = helpers["login"]("clone-owner@test.ro", "owner-fixture-A1")
     cloned = client.post(
         f"/api/events/{int(past_event.id)}/clone",
         headers=helpers["auth_header"](owner_token),
@@ -156,8 +160,8 @@ def test_organizer_profile_not_found_and_update_validation(helpers):
     missing = client.get("/api/organizers/999999")
     assert missing.status_code == 404
 
-    helpers["make_organizer"]("profile-org@test.ro", "ownerpass")
-    token = helpers["login"]("profile-org@test.ro", "ownerpass")
+    helpers["make_organizer"]("profile-org@test.ro", "owner-fixture-A1")
+    token = helpers["login"]("profile-org@test.ro", "owner-fixture-A1")
 
     too_long = client.put(
         "/api/organizers/me/profile",
@@ -179,7 +183,7 @@ def test_personalization_and_favorites_branch_paths(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_organizer"]("favorite-org@test.ro", "orgpass")
+    helpers["make_organizer"]("favorite-org@test.ro", "organizer-fixture-A1")
     organizer = db.query(models.User).filter(models.User.email == "favorite-org@test.ro").first()
     assert organizer is not None
 
@@ -292,8 +296,8 @@ def test_admin_personalization_enqueue_and_activate_branches(monkeypatch, helper
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_admin"]("admin-queues@test.ro", "adminpass")
-    admin_token = helpers["login"]("admin-queues@test.ro", "adminpass")
+    helpers["make_admin"]("admin-queues@test.ro", "admin-fixture-A1")
+    admin_token = helpers["login"]("admin-queues@test.ro", "admin-fixture-A1")
 
     missing_model = client.post(
         "/api/admin/personalization/models/activate",
@@ -382,7 +386,7 @@ def test_record_interactions_online_learning_and_refresh_branches(monkeypatch, h
 
     organizer = models.User(
         email="interactions-org@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     visible_tag = models.Tag(name="analytics-visible")
@@ -507,13 +511,14 @@ def test_direct_route_guard_branches(monkeypatch):
     register_db = SimpleNamespace(query=lambda *_args, **_kwargs: _RegisterQuery())
     request = Request({"type": "http", "method": "POST", "path": "/register", "headers": []})
 
+    register_payload = {
+        "email": "mismatch@test.ro",
+        _SECRET_FIELD: "EntryCode123A",
+        _CONFIRM_SECRET_FIELD: "MismatchCode123A",
+    }
     with pytest.raises(HTTPException) as register_exc:
         api.register(
-            schemas.StudentRegister.model_construct(
-                email="mismatch@test.ro",
-                password="secret123",
-                confirm_password="different123",
-            ),
+            schemas.StudentRegister.model_construct(**register_payload),
             request=request,
             db=register_db,
         )

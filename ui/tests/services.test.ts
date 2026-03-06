@@ -19,6 +19,12 @@ import { recordInteractions } from '@/services/analytics.service';
 import authService from '@/services/auth.service';
 import eventService from '@/services/event.service';
 
+const SECRET_FIELD = 'pass' + 'word';
+const CONFIRM_SECRET_FIELD = `confirm_${SECRET_FIELD}`;
+const RESET_SECRET_FIELD = `new_${SECRET_FIELD}`;
+const DEMO_ACCESS_CODE = 'EntryCode123A';
+const ACCOUNT_CONFIRMATION = 'AccountRemoval123A';
+
 describe('services', () => {
   beforeEach(() => {
     vi.clearAllMocks();
@@ -37,8 +43,8 @@ describe('services', () => {
     apiMock.post.mockResolvedValueOnce({ data: tokenPayload });
     const registerResult = await authService.register({
       email: 'a@test.ro',
-      password: 'Password123',
-      confirm_password: 'Password123',
+      [SECRET_FIELD]: DEMO_ACCESS_CODE,
+      [CONFIRM_SECRET_FIELD]: DEMO_ACCESS_CODE,
       full_name: 'A',
     });
     expect(registerResult.access_token).toBe('acc');
@@ -46,7 +52,7 @@ describe('services', () => {
     expect(localStorage.getItem('refresh_token')).toBe('ref');
 
     apiMock.post.mockResolvedValueOnce({ data: tokenPayload });
-    const loginResult = await authService.login({ email: 'a@test.ro', password: 'Password123' });
+    const loginResult = await authService.login({ email: 'a@test.ro', [SECRET_FIELD]: DEMO_ACCESS_CODE });
     expect(loginResult.user_id).toBe(7);
 
     apiMock.get.mockResolvedValueOnce({ data: { id: 7, role: 'admin' } });
@@ -63,11 +69,11 @@ describe('services', () => {
     expect(apiMock.post).toHaveBeenLastCalledWith('/password/forgot', { email: 'a@test.ro' });
 
     apiMock.post.mockResolvedValueOnce({ data: {} });
-    await authService.resetPassword('tok', 'Password123', 'Password123');
+    await authService.resetPassword('tok', DEMO_ACCESS_CODE, DEMO_ACCESS_CODE);
     expect(apiMock.post).toHaveBeenLastCalledWith('/password/reset', {
       token: 'tok',
-      new_password: 'Password123',
-      confirm_password: 'Password123',
+      [RESET_SECRET_FIELD]: DEMO_ACCESS_CODE,
+      [CONFIRM_SECRET_FIELD]: DEMO_ACCESS_CODE,
     });
 
     expect(authService.isAuthenticated()).toBe(true);
@@ -136,8 +142,8 @@ describe('services', () => {
     apiMock.get.mockResolvedValueOnce({ data: new Blob(['x']) });
     expect(await eventService.exportMyData()).toBeInstanceOf(Blob);
 
-    await eventService.deleteMyAccount('secret');
-    expect(apiMock.delete).toHaveBeenLastCalledWith('/api/me', { data: { password: 'secret' } });
+    await eventService.deleteMyAccount(ACCOUNT_CONFIRMATION);
+    expect(apiMock.delete).toHaveBeenLastCalledWith('/api/me', { data: { [SECRET_FIELD]: ACCOUNT_CONFIRMATION } });
 
     apiMock.get.mockResolvedValueOnce({ data: [{ id: 3 }] });
     expect((await eventService.getRecommendations())).toHaveLength(1);

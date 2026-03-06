@@ -7,13 +7,12 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
-
 jobs:
   snyk-zero:
     name: Snyk Zero
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       SNYK_TOKEN: ${{ secrets.SNYK_TOKEN }}
       REPO_NAME: ${{ github.event.repository.name }}

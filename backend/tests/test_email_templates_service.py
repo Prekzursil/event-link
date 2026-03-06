@@ -105,7 +105,7 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
         smtp_username="u",
     )
     original[smtp_secret_field] = getattr(email_service.settings, smtp_secret_field)
-    monkeypatch.setattr(email_service.settings, smtp_secret_field, "smtp-login-token")
+    monkeypatch.setattr(email_service.settings, smtp_secret_field, "smtp-login-marker-A1")
     monkeypatch.setattr(email_service.smtplib, "SMTP", _FakeSmtpSuccess)
     email_service.emails_sent_ok = 0
     email_service.emails_send_failed = 0
@@ -173,14 +173,14 @@ def test_send_email_async_branches(monkeypatch, db_session):
 def _mk_user_event(db_session):
     user = models.User(
         email="templ-user@test.ro",
-        password_hash=auth.get_password_hash("templ-user-token"),
+        password_hash=auth.get_password_hash("templ-user-marker-A1"),
         role=models.UserRole.student,
         full_name="Template User",
         language_preference="en",
     )
     org = models.User(
         email="templ-org@test.ro",
-        password_hash=auth.get_password_hash("templ-org-token"),
+        password_hash=auth.get_password_hash("templ-org-marker-A1"),
         role=models.UserRole.organizator,
     )
     event = models.Event(

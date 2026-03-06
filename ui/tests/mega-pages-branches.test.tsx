@@ -782,9 +782,9 @@ describe('mega pages branch matrix', () => {
     fireEvent.click(destructiveButtons[0]);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    fireEvent.change(screen.getByLabelText(/Passcode/i), { target: { value: 'secret-passcode' } });
+    fireEvent.change(screen.getByLabelText(/Access code/i), { target: { value: 'secret-access-code' } });
     fireEvent.click(destructiveButtons[0]);
-    await waitFor(() => expect(eventServiceMock.deleteMyAccount).toHaveBeenCalledWith('secret-passcode'));
+    await waitFor(() => expect(eventServiceMock.deleteMyAccount).toHaveBeenCalledWith('secret-access-code'));
     expect(authState.logout).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalledWith('/');
   });

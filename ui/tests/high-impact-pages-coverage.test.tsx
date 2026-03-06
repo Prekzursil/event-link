@@ -442,7 +442,7 @@ describe('high-impact page coverage', () => {
     authServiceMock.updateLanguagePreference.mockRejectedValueOnce(new Error('language-fail'));
     eventServiceMock.updateNotificationPreferences.mockRejectedValueOnce(new Error('notification-save-fail'));
     eventServiceMock.deleteMyAccount.mockRejectedValueOnce({
-      response: { data: { detail: 'bad-passcode' } },
+      response: { data: { detail: 'bad-access-code' } },
     });
 
     renderRoute('/profile', '/profile', <StudentProfilePage />);
@@ -476,9 +476,9 @@ describe('high-impact page coverage', () => {
     const deleteButtons = within(dialog).getAllByRole('button', { name: /Delete account|Șterge contul/i });
     fireEvent.click(deleteButtons[0]);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
-    fireEvent.change(screen.getByLabelText(/Passcode/i), { target: { value: 'wrong-pass' } });
+    fireEvent.change(screen.getByLabelText(/Access code/i), { target: { value: 'wrong-access-code' } });
     fireEvent.click(deleteButtons[0]);
-    await waitFor(() => expect(eventServiceMock.deleteMyAccount).toHaveBeenCalledWith('wrong-pass'));
+    await waitFor(() => expect(eventServiceMock.deleteMyAccount).toHaveBeenCalledWith('wrong-access-code'));
   }, 20000);
 
 
@@ -553,15 +553,15 @@ describe('high-impact page coverage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Delete account|Șterge contul/i }));
     const dialog = await screen.findByRole('dialog');
-    const passcodeField = within(dialog).getByLabelText(/Passcode|Cod de acces/i) as HTMLInputElement;
-    fireEvent.change(passcodeField, { target: { value: 'temporary-code' } });
+    const accessCodeField = within(dialog).getByLabelText(/Access code|Cod de acces/i) as HTMLInputElement;
+    fireEvent.change(accessCodeField, { target: { value: 'temporary-access-code' } });
     fireEvent.click(within(dialog).getByRole('button', { name: /Cancel|Anulează/i }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /Delete account|Șterge contul/i }));
     const reopenedDialog = await screen.findByRole('dialog');
-    const reopenedPasscode = within(reopenedDialog).getByLabelText(/Passcode|Cod de acces/i) as HTMLInputElement;
-    expect(reopenedPasscode.value).toBe('');
+    const reopenedAccessCode = within(reopenedDialog).getByLabelText(/Access code|Cod de acces/i) as HTMLInputElement;
+    expect(reopenedAccessCode.value).toBe('');
     fireEvent.click(within(reopenedDialog).getByRole('button', { name: /Cancel|Anulează/i }));
   }, 20000);
 

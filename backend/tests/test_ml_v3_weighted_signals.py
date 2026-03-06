@@ -22,7 +22,7 @@ def test_online_learning_updates_weighted_tag_category_city_with_decay(helpers):
 
     organizer = models.User(
         email="org-weighted@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     tag = models.Tag(name="rock")

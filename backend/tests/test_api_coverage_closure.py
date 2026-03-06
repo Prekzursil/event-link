@@ -57,7 +57,7 @@ def test_helper_branches_and_root_handler_paths(monkeypatch, helpers):
     assert api._in_experiment_treatment("exp", 50, "identity") is (bucket < 50)
 
     assert api._is_admin(None) is False
-    user = models.User(email="ADMIN@Test.ro", password_hash=auth.get_password_hash("Password123"), role=models.UserRole.student)
+    user = models.User(email="ADMIN@Test.ro", password_hash=auth.get_password_hash("fixture-access-A1"), role=models.UserRole.student)
     monkeypatch.setattr(api.settings, "admin_emails", ["admin@test.ro"], raising=False)
     assert api._is_admin(user) is True
 
@@ -97,7 +97,7 @@ def test_helper_branches_and_root_handler_paths(monkeypatch, helpers):
     assert unhandled.status_code == 500
     mismatch = client.post(
         "/register",
-        json={"email": "mismatch@test.ro", "password": "Password123", "confirm_password": "Password124"},
+        json={"email": "mismatch@test.ro", "password": "fixture-access-A1", "confirm_password": "fixture-access-B1"},
     )
     assert mismatch.status_code == 422
 
@@ -158,7 +158,7 @@ def test_events_filters_and_cached_recommendations_branches(monkeypatch, helpers
     assert client.get("/api/events", params={"page": 0}).status_code == 400
     assert client.get("/api/events", params={"page_size": 0}).status_code == 400
 
-    helpers["make_organizer"]("events-owner@test.ro", "ownerpass")
+    helpers["make_organizer"]("events-owner@test.ro", "owner-fixture-A1")
     owner = db.query(models.User).filter(models.User.email == "events-owner@test.ro").first()
     assert owner is not None
 
@@ -222,7 +222,7 @@ def test_events_filters_and_cached_recommendations_branches(monkeypatch, helpers
 
     fresh_user = models.User(
         email="fresh-user@test.ro",
-        password_hash=auth.get_password_hash("Password123"),
+        password_hash=auth.get_password_hash("fixture-access-A1"),
         role=models.UserRole.student,
     )
     db.add(fresh_user)
@@ -264,10 +264,10 @@ def test_event_mutation_bulk_and_suggest_branches(monkeypatch, helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_organizer"]("mut-owner@test.ro", "ownerpass")
-    helpers["make_organizer"]("mut-other@test.ro", "otherpass")
-    owner_token = helpers["login"]("mut-owner@test.ro", "ownerpass")
-    other_token = helpers["login"]("mut-other@test.ro", "otherpass")
+    helpers["make_organizer"]("mut-owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("mut-other@test.ro", "other-fixture-A1")
+    owner_token = helpers["login"]("mut-owner@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("mut-other@test.ro", "other-fixture-A1")
     student_token = helpers["register_student"]("mut-student@test.ro")
     owner_user = db.query(models.User).filter(models.User.email == "mut-owner@test.ro").first()
     assert owner_user is not None
@@ -387,13 +387,13 @@ def test_admin_registration_export_and_recommendation_branches(monkeypatch, help
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_admin"]("adm@test.ro", "adminpass")
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    helpers["make_organizer"]("other-owner@test.ro", "ownerpass")
+    helpers["make_admin"]("adm@test.ro", "admin-fixture-A1")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("other-owner@test.ro", "owner-fixture-A1")
 
-    admin_token = helpers["login"]("adm@test.ro", "adminpass")
-    owner_token = helpers["login"]("owner@test.ro", "ownerpass")
-    other_token = helpers["login"]("other-owner@test.ro", "ownerpass")
+    admin_token = helpers["login"]("adm@test.ro", "admin-fixture-A1")
+    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("other-owner@test.ro", "owner-fixture-A1")
 
     student_token = helpers["register_student"]("student@test.ro")
     student2_token = helpers["register_student"]("student2@test.ro")
@@ -550,7 +550,7 @@ def test_interactions_dwell_refresh_and_hidden_tag_continue(monkeypatch, helpers
 
     organizer = models.User(
         email="ix-owner@test.ro",
-        password_hash=auth.get_password_hash("Password123"),
+        password_hash=auth.get_password_hash("fixture-access-A1"),
         role=models.UserRole.organizator,
     )
     hidden_tag = models.Tag(name="hidden-delta")

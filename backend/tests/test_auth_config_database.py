@@ -41,7 +41,7 @@ def test_get_current_user_requires_token(db_session) -> None:
 def test_get_current_user_rejects_inactive_user(db_session) -> None:
     user = models.User(
         email="inactive-auth@test.ro",
-        password_hash=auth.get_password_hash("fixture-token-123"),
+        password_hash=auth.get_password_hash("fixture-marker-A1"),
         role=models.UserRole.student,
         is_active=False,
     )
@@ -60,9 +60,9 @@ def test_get_optional_user_returns_none_for_invalid_token(db_session) -> None:
 
 
 def test_role_guards_and_is_admin_paths() -> None:
-    student = models.User(email="student-role@test.ro", password_hash=auth.get_password_hash("student-token"), role=models.UserRole.student)
-    organizer = models.User(email="org-role@test.ro", password_hash=auth.get_password_hash("organizer-token"), role=models.UserRole.organizator)
-    admin = models.User(email="admin-role@test.ro", password_hash=auth.get_password_hash("admin-token"), role=models.UserRole.admin)
+    student = models.User(email="student-role@test.ro", password_hash=auth.get_password_hash("student-marker-A1"), role=models.UserRole.student)
+    organizer = models.User(email="org-role@test.ro", password_hash=auth.get_password_hash("organizer-marker-A1"), role=models.UserRole.organizator)
+    admin = models.User(email="admin-role@test.ro", password_hash=auth.get_password_hash("admin-marker-A1"), role=models.UserRole.admin)
 
     assert auth.require_student(student) is student
     assert auth.require_organizer(organizer) is organizer
@@ -77,7 +77,7 @@ def test_role_guards_and_is_admin_paths() -> None:
 
 
 def test_is_admin_accepts_whitelisted_email(monkeypatch) -> None:
-    user = models.User(email="special-admin@test.ro", password_hash=auth.get_password_hash("student-token"), role=models.UserRole.student)
+    user = models.User(email="special-admin@test.ro", password_hash=auth.get_password_hash("student-marker-A1"), role=models.UserRole.student)
     old = list(config.settings.admin_emails)
     monkeypatch.setattr(config.settings, "admin_emails", ["special-admin@test.ro", "other@test.ro"])
     try:
@@ -116,7 +116,7 @@ def test_get_db_closes_session(monkeypatch) -> None:
 def test_get_current_user_rejects_missing_role_in_token(db_session) -> None:
     user = models.User(
         email="missing-role@test.ro",
-        password_hash=auth.get_password_hash("Student123A"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
     )
     db_session.add(user)

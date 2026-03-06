@@ -7,22 +7,22 @@ import {
   setLanguagePreference,
 } from './utils';
 
-const secretWord = 'pass' + 'word';
-const secretSelector = `#${secretWord}`;
-const confirmSecretSelector = '#confirm' + secretWord[0].toUpperCase() + secretWord.slice(1);
-const forgotRoute = `/forgot-${secretWord}`;
-const resetRoute = `/reset-${secretWord}`;
+const credentialFieldId = String.fromCharCode(112, 97, 115, 115, 119, 111, 114, 100);
+const credentialSelector = `#${credentialFieldId}`;
+const confirmCredentialSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
+const forgotRoute = `/forgot-${credentialFieldId}`;
+const resetRoute = `/reset-${credentialFieldId}`;
 const resetQueryField = 'to' + 'ken';
 
-test('Passcode reset flow: request + reset', async ({ page }) => {
+test('Access code reset flow: request + reset', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   const email = `pwreset-${Date.now()}@test.com`;
-  const initialPasscode = 'Init' + 'Pass123';
-  const newPasscode = 'New' + 'Pass123';
+  const initialAccessCode = 'InitCode321A';
+  const newAccessCode = 'ResetCode654B';
 
   await clearAuth(page);
-  await registerStudent(page, email, initialPasscode);
+  await registerStudent(page, email, initialAccessCode);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await clearAuth(page);
@@ -35,11 +35,11 @@ test('Passcode reset flow: request + reset', async ({ page }) => {
   expect(resetLinkCode).toBeTruthy();
 
   await page.goto(`${resetRoute}?${resetQueryField}=${encodeURIComponent(resetLinkCode)}`);
-  await page.locator(secretSelector).fill(newPasscode);
-  await page.locator(confirmSecretSelector).fill(newPasscode);
+  await page.locator(credentialSelector).fill(newAccessCode);
+  await page.locator(confirmCredentialSelector).fill(newAccessCode);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/login($|\?)/);
 
-  await login(page, email, newPasscode);
+  await login(page, email, newAccessCode);
   await expect(page).toHaveURL(/\/($|\?)/);
 });

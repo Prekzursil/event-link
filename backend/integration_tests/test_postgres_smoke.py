@@ -5,7 +5,7 @@ def test_postgres_end_to_end_flow(helpers):
     client = helpers["client"]
 
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
     event_payload = {
         "title": "Integration Event",

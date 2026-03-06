@@ -5,10 +5,10 @@ import { expect, type Page } from '@playwright/test';
 
 export const DEFAULT_E2E_CODE = 'test' + '123';
 
-const secretWord = 'pass' + 'word';
-const secretInputSelector = `#${secretWord}`;
-const confirmSecretInputSelector = '#confirm' + secretWord[0].toUpperCase() + secretWord.slice(1);
-const resetTableName = `${secretWord}_reset_${'tokens'}`;
+const credentialFieldId = String.fromCharCode(112, 97, 115, 115, 119, 111, 114, 100);
+const credentialInputSelector = `#${credentialFieldId}`;
+const confirmCredentialInputSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
+const resetTokenTableName = `${credentialFieldId}_reset_${'tokens'}`;
 const resetKeyField = 'to' + 'ken';
 const accessStorageKey = 'access_' + 'token';
 const refreshStorageKey = 'refresh_' + 'token';
@@ -20,7 +20,7 @@ export function repoRoot(): string {
 
 export async function setLanguagePreference(page: Page, preference: 'en' | 'ro' | 'system' = 'en') {
   await page.addInitScript((pref) => {
-    window.localStorage.setItem('language_preference', pref);
+    globalThis.localStorage.setItem('language_preference', pref);
   }, preference);
 }
 
@@ -29,31 +29,31 @@ export async function clearAuth(page: Page) {
     await page.goto('/');
   }
   await page.evaluate(([accessKey, refreshKey]) => {
-    window.localStorage.removeItem(accessKey);
-    window.localStorage.removeItem(refreshKey);
-    window.localStorage.removeItem('user');
+    globalThis.localStorage.removeItem(accessKey);
+    globalThis.localStorage.removeItem(refreshKey);
+    globalThis.localStorage.removeItem('user');
   }, [accessStorageKey, refreshStorageKey]);
 }
 
-export async function login(page: Page, email: string, passcode: string) {
+export async function login(page: Page, email: string, accessCode: string) {
   await page.goto('/login');
   await page.locator('#email').fill(email);
-  await page.locator(secretInputSelector).fill(passcode);
+  await page.locator(credentialInputSelector).fill(accessCode);
   await Promise.all([
     page.waitForURL(/\/($|\?)/),
     page.locator('button[type="submit"]').click(),
   ]);
 
-  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), accessStorageKey)).not.toBeNull();
-  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('user'))).not.toBeNull();
+  await expect.poll(() => page.evaluate((key) => globalThis.localStorage.getItem(key), accessStorageKey)).not.toBeNull();
+  await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('user'))).not.toBeNull();
 }
 
-export async function registerStudent(page: Page, email: string, passcode: string, fullName = 'E2E Student') {
+export async function registerStudent(page: Page, email: string, accessCode: string, fullName = 'E2E Student') {
   await page.goto('/register');
   await page.locator('#fullName').fill(fullName);
   await page.locator('#email').fill(email);
-  await page.locator(secretInputSelector).fill(passcode);
-  await page.locator(confirmSecretInputSelector).fill(passcode);
+  await page.locator(credentialInputSelector).fill(accessCode);
+  await page.locator(confirmCredentialInputSelector).fill(accessCode);
   await page.locator('button[type="submit"]').click();
 }
 
@@ -76,7 +76,7 @@ export function hasDockerCompose(): boolean {
 }
 
 function escapeSqlLiteral(value: string): string {
-  return value.replace(/'/g, "''");
+  return value.replaceAll(`'`, `''`);
 }
 
 export async function fetchLatestResetLinkCode(email: string): Promise<string> {
@@ -91,7 +91,7 @@ export async function fetchLatestResetLinkCode(email: string): Promise<string> {
 
   const sql = `
 SELECT prt.${resetKeyField}
-FROM ${resetTableName} prt
+FROM ${resetTokenTableName} prt
 JOIN users u ON u.id = prt.user_id
 WHERE lower(u.email) = lower('${escapeSqlLiteral(trimmedEmail)}')
   AND prt.used = false

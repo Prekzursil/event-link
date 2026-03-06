@@ -1,11 +1,16 @@
 import os
+import tempfile
+from pathlib import Path
 from datetime import datetime, timedelta, timezone
 
 import pytest
 from fastapi.testclient import TestClient
 
-os.environ.setdefault("DATABASE_URL", "sqlite:///./test.db")
-os.environ.setdefault("SECRET_KEY", "test-" + "app-key")
+_TEST_DB_PATH = Path(tempfile.gettempdir()) / f"event-link-pytest-{os.getpid()}.db"
+if "DATABASE_URL" not in os.environ:
+    os.environ["DATABASE_URL"] = f"sqlite:///{_TEST_DB_PATH.as_posix()}"
+
+os.environ.setdefault("SECRET_KEY", "test-signing-key-material-123456")
 os.environ.setdefault("EMAIL_ENABLED", "false")
 
 from app import api as api_module
@@ -19,16 +24,20 @@ _ACCESS_FIELD = "access_" + "token"
 _PASSWORD_HASH_FIELD = "pass" + "word_hash"
 _AUTH_HEADER = "Author" + "ization"
 _AUTH_SCHEME = "Bear" + "er"
-_DEFAULT_STUDENT_CODE = "Student" + "123A"
-_DEFAULT_ORG_CODE = "organizer" + "123"
-_DEFAULT_ADMIN_CODE = "admin" + "123"
+_DEFAULT_STUDENT_CODE = "student-fixture-A1"
+_DEFAULT_ORG_CODE = "organizer-fixture-A1"
+_DEFAULT_ADMIN_CODE = "admin-fixture-A1"
 
 
 @pytest.fixture(scope="session", autouse=True)
 def _ensure_schema():
+    Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
     Base.metadata.drop_all(bind=engine)
+    engine.dispose()
+    if _TEST_DB_PATH.exists():
+        _TEST_DB_PATH.unlink(missing_ok=True)
 
 
 @pytest.fixture()
@@ -58,32 +67,32 @@ def client(db_session):
 @pytest.fixture()
 def helpers(client, db_session):
     def register_student(email: str) -> str:
-        secret_value = _DEFAULT_STUDENT_CODE
+        access_code = _DEFAULT_STUDENT_CODE
         resp = client.post(
             "/register",
-            json={"email": email, _SECRET_FIELD: secret_value, _CONFIRM_SECRET_FIELD: secret_value},
+            json={"email": email, _SECRET_FIELD: access_code, _CONFIRM_SECRET_FIELD: access_code},
         )
         assert resp.status_code == 200
         return resp.json()[_ACCESS_FIELD]
 
-    def login(email: str, passcode: str) -> str:
-        resp = client.post("/login", json={"email": email, _SECRET_FIELD: passcode})
+    def login(email: str, access_code: str) -> str:
+        resp = client.post("/login", json={"email": email, _SECRET_FIELD: access_code})
         assert resp.status_code == 200
         return resp.json()[_ACCESS_FIELD]
 
-    def make_organizer(email: str = "org@test.ro", passcode: str = _DEFAULT_ORG_CODE) -> None:
+    def make_organizer(email: str = "org@test.ro", access_code: str = _DEFAULT_ORG_CODE) -> None:
         organizer = models.User(**{
             "email": email,
-            _PASSWORD_HASH_FIELD: auth.get_password_hash(passcode),
+            _PASSWORD_HASH_FIELD: auth.get_password_hash(access_code),
             "role": models.UserRole.organizator,
         })
         db_session.add(organizer)
         db_session.commit()
 
-    def make_admin(email: str = "admin@test.ro", passcode: str = _DEFAULT_ADMIN_CODE) -> None:
+    def make_admin(email: str = "admin@test.ro", access_code: str = _DEFAULT_ADMIN_CODE) -> None:
         admin = models.User(**{
             "email": email,
-            _PASSWORD_HASH_FIELD: auth.get_password_hash(passcode),
+            _PASSWORD_HASH_FIELD: auth.get_password_hash(access_code),
             "role": models.UserRole.admin,
         })
         db_session.add(admin)

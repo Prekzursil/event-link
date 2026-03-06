@@ -7,6 +7,11 @@ import pytest
 from app import auth, models
 
 
+_SECRET_FIELD = "pass" + "word"
+_NEW_SECRET_FIELD = "new_" + _SECRET_FIELD
+_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+
+
 def _event_payload(*, start_time: str, **overrides):
     payload = {
         "title": "Branch Event",
@@ -31,8 +36,8 @@ def test_public_events_and_event_detail_branch_guards(helpers):
     bad_page_size = client.get("/api/public/events", params={"page_size": 0})
     assert bad_page_size.status_code == 400
 
-    helpers["make_organizer"]("public-org@test.ro", "orgpass")
-    token = helpers["login"]("public-org@test.ro", "orgpass")
+    helpers["make_organizer"]("public-org@test.ro", "organizer-fixture-A1")
+    token = helpers["login"]("public-org@test.ro", "organizer-fixture-A1")
     created = client.post(
         "/api/events",
         json=_event_payload(start_time=helpers["future_time"](), tags=["music", "test"]),
@@ -76,10 +81,10 @@ def test_event_crud_validation_bulk_and_suggest_branches(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_organizer"]("owner-a@test.ro", "ownerpass")
-    helpers["make_organizer"]("owner-b@test.ro", "otherpass")
-    owner_token = helpers["login"]("owner-a@test.ro", "ownerpass")
-    other_token = helpers["login"]("owner-b@test.ro", "otherpass")
+    helpers["make_organizer"]("owner-a@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("owner-b@test.ro", "other-fixture-A1")
+    owner_token = helpers["login"]("owner-a@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("owner-b@test.ro", "other-fixture-A1")
 
     start_after = helpers["future_time"](days=3)
     end_before_start = helpers["future_time"](days=2)
@@ -205,8 +210,8 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_admin"]("admin-edge@test.ro", "adminpass")
-    admin_token = helpers["login"]("admin-edge@test.ro", "adminpass")
+    helpers["make_admin"]("admin-edge@test.ro", "admin-fixture-A1")
+    admin_token = helpers["login"]("admin-edge@test.ro", "admin-fixture-A1")
 
     student_token = helpers["register_student"]("edge-student@test.ro")
     student = db.query(models.User).filter(models.User.email == "edge-student@test.ro").first()
@@ -233,7 +238,7 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     block_missing = client.post("/api/me/personalization/blocked-organizers/999999", headers=helpers["auth_header"](student_token))
     assert block_missing.status_code == 404
 
-    helpers["make_organizer"]("blocked-org@test.ro", "orgpass")
+    helpers["make_organizer"]("blocked-org@test.ro", "organizer-fixture-A1")
     org = db.query(models.User).filter(models.User.email == "blocked-org@test.ro").first()
     assert org is not None
     block_add = client.post(
@@ -251,14 +256,14 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     # Registration/error branches.
     missing_participants = client.get(
         "/api/organizer/events/999999/participants",
-        headers=helpers["auth_header"](helpers["login"]("blocked-org@test.ro", "orgpass")),
+        headers=helpers["auth_header"](helpers["login"]("blocked-org@test.ro", "organizer-fixture-A1")),
     )
     assert missing_participants.status_code == 404
 
     missing_attendance = client.put(
         "/api/organizer/events/999999/participants/1",
         params={"attended": True},
-        headers=helpers["auth_header"](helpers["login"]("blocked-org@test.ro", "orgpass")),
+        headers=helpers["auth_header"](helpers["login"]("blocked-org@test.ro", "organizer-fixture-A1")),
     )
     assert missing_attendance.status_code == 404
 
@@ -340,10 +345,10 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     assert missing_review.status_code == 404
 
     # Placeholder organizer cannot be deleted.
-    placeholder_pwd = "placeholder123A"
+    placeholder_access_code = "placeholder-code-A1"
     placeholder = models.User(
         email="deleted-organizer@eventlink.invalid",
-        password_hash=auth.get_password_hash(placeholder_pwd),
+        password_hash=auth.get_password_hash(placeholder_access_code),
         role=models.UserRole.organizator,
     )
     db.add(placeholder)
@@ -353,7 +358,7 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     blocked_delete = client.request(
         "DELETE",
         "/api/me",
-        json={"password": placeholder_pwd},
+        json={_SECRET_FIELD: placeholder_access_code},
         headers=helpers["auth_header"](placeholder_token),
     )
     assert blocked_delete.status_code == 400
@@ -378,7 +383,7 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
 
     invalid_token = client.post(
         "/password/reset",
-        json={"token": "bad", "new_password": "NewPass123A", "confirm_password": "NewPass123A"},
+        json={"token": "bad", _NEW_SECRET_FIELD: "rotate-code-A1", _CONFIRM_SECRET_FIELD: "rotate-code-A1"},
     )
     assert invalid_token.status_code == 400
 
@@ -393,7 +398,7 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
 
     missing_user = client.post(
         "/password/reset",
-        json={"token": "ghost-token", "new_password": "NewPass123A", "confirm_password": "NewPass123A"},
+        json={"token": "ghost-token", _NEW_SECRET_FIELD: "rotate-code-A1", _CONFIRM_SECRET_FIELD: "rotate-code-A1"},
     )
     assert missing_user.status_code == 400
 

@@ -40,9 +40,9 @@ export function RegisterPage() {
   const { toast } = useToast();
 
   const passwordRequirements = [
-    { label: t.auth.register.passcodeRequirementMin, met: formData.password.length >= 8 },
-    { label: t.auth.register.passcodeRequirementLetters, met: /[a-zA-Z]/.test(formData.password) },
-    { label: t.auth.register.passcodeRequirementNumbers, met: /\d/.test(formData.password) },
+    { label: t.auth.register.accessCodeRequirementMin, met: formData.password.length >= 8 },
+    { label: t.auth.register.accessCodeRequirementLetters, met: /[a-zA-Z]/.test(formData.password) },
+    { label: t.auth.register.accessCodeRequirementNumbers, met: /\d/.test(formData.password) },
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -54,8 +54,8 @@ export function RegisterPage() {
 
     if (formData.password !== formData.confirmPassword) {
       toast({
-        title: t.auth.register.passcodeMismatchTitle,
-        description: t.auth.register.passcodeMismatchDescription,
+        title: t.auth.register.accessCodeMismatchTitle,
+        description: t.auth.register.accessCodeMismatchDescription,
         variant: 'destructive',
       });
       return;
@@ -63,8 +63,8 @@ export function RegisterPage() {
 
     if (!passwordRequirements.every((req) => req.met)) {
       toast({
-        title: t.auth.register.passcodeInvalidTitle,
-        description: t.auth.register.passcodeInvalidDescription,
+        title: t.auth.register.accessCodeInvalidTitle,
+        description: t.auth.register.accessCodeInvalidDescription,
         variant: 'destructive',
       });
       return;
@@ -140,7 +140,7 @@ export function RegisterPage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="password">{t.auth.register.passcodeLabel}</Label>
+              <Label htmlFor="password">{t.auth.register.accessCodeLabel}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -184,7 +184,7 @@ export function RegisterPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t.auth.register.confirmPasscodeLabel}</Label>
+              <Label htmlFor="confirmPassword">{t.auth.register.confirmAccessCodeLabel}</Label>
               <Input
                 id="confirmPassword"
                 name="confirmPassword"
@@ -196,7 +196,7 @@ export function RegisterPage() {
                 disabled={isLoading}
               />
               {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                <p className="text-xs text-destructive">{t.auth.register.passcodeMismatchInline}</p>
+                <p className="text-xs text-destructive">{t.auth.register.accessCodeMismatchInline}</p>
               )}
             </div>
           </CardContent>

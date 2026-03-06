@@ -30,7 +30,7 @@ def test_notification_preferences_get_and_update(client, helpers):
 
 def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers):
     helpers["make_organizer"]("org@test.ro")
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
     resp = client.post(
         "/api/events",
         headers=helpers["auth_header"](org_token),

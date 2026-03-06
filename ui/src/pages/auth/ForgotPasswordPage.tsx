@@ -45,17 +45,17 @@ export function ForgotPasswordPage() {
             <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
               <CheckCircle className="h-6 w-6 text-green-600" />
             </div>
-            <CardTitle className="text-2xl">{t.auth.forgotPasscode.submittedTitle}</CardTitle>
+            <CardTitle className="text-2xl">{t.auth.forgotAccessCode.submittedTitle}</CardTitle>
             <CardDescription>
-              {t.auth.forgotPasscode.submittedDescriptionPrefix} <strong>{email}</strong>,{' '}
-              {t.auth.forgotPasscode.submittedDescriptionSuffix}
+              {t.auth.forgotAccessCode.submittedDescriptionPrefix} <strong>{email}</strong>,{' '}
+              {t.auth.forgotAccessCode.submittedDescriptionSuffix}
             </CardDescription>
           </CardHeader>
           <CardFooter className="flex flex-col gap-4">
             <Button asChild variant="outline" className="w-full">
               <Link to="/login">
                 <ArrowLeft className="mr-2 h-4 w-4" />
-                {t.auth.forgotPasscode.backToLogin}
+                {t.auth.forgotAccessCode.backToLogin}
               </Link>
             </Button>
           </CardFooter>
@@ -71,19 +71,19 @@ export function ForgotPasswordPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">{t.auth.forgotPasscode.title}</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.forgotAccessCode.title}</CardTitle>
           <CardDescription>
-            {t.auth.forgotPasscode.description}
+            {t.auth.forgotAccessCode.description}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="email">{t.auth.forgotPasscode.emailLabel}</Label>
+              <Label htmlFor="email">{t.auth.forgotAccessCode.emailLabel}</Label>
               <Input
                 id="email"
                 type="email"
-                placeholder={t.auth.forgotPasscode.emailPlaceholder}
+                placeholder={t.auth.forgotAccessCode.emailPlaceholder}
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
                 required
@@ -96,10 +96,10 @@ export function ForgotPasswordPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  {t.auth.forgotPasscode.submitting}
+                  {t.auth.forgotAccessCode.submitting}
                 </>
               ) : (
-                t.auth.forgotPasscode.submit
+                t.auth.forgotAccessCode.submit
               )}
             </Button>
             <Link
@@ -107,7 +107,7 @@ export function ForgotPasswordPage() {
               className="flex items-center justify-center text-sm text-muted-foreground hover:text-foreground"
             >
               <ArrowLeft className="mr-2 h-4 w-4" />
-              {t.auth.forgotPasscode.backToLogin}
+              {t.auth.forgotAccessCode.backToLogin}
             </Link>
           </CardFooter>
         </form>

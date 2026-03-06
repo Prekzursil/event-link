@@ -34,9 +34,9 @@ export function ResetPasswordPage() {
   const { toast } = useToast();
 
   const passwordRequirements = [
-    { label: t.auth.resetPasscode.passcodeRequirementMin, met: password.length >= 8 },
-    { label: t.auth.resetPasscode.passcodeRequirementLetters, met: /[a-zA-Z]/.test(password) },
-    { label: t.auth.resetPasscode.passcodeRequirementNumbers, met: /\d/.test(password) },
+    { label: t.auth.resetAccessCode.accessCodeRequirementMin, met: password.length >= 8 },
+    { label: t.auth.resetAccessCode.accessCodeRequirementLetters, met: /[a-zA-Z]/.test(password) },
+    { label: t.auth.resetAccessCode.accessCodeRequirementNumbers, met: /\d/.test(password) },
   ];
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -44,8 +44,8 @@ export function ResetPasswordPage() {
 
     if (password !== confirmPassword) {
       toast({
-        title: t.auth.resetPasscode.passcodeMismatchTitle,
-        description: t.auth.resetPasscode.passcodeMismatchDescription,
+        title: t.auth.resetAccessCode.accessCodeMismatchTitle,
+        description: t.auth.resetAccessCode.accessCodeMismatchDescription,
         variant: 'destructive',
       });
       return;
@@ -53,8 +53,8 @@ export function ResetPasswordPage() {
 
     if (!passwordRequirements.every((req) => req.met)) {
       toast({
-        title: t.auth.resetPasscode.passcodeInvalidTitle,
-        description: t.auth.resetPasscode.passcodeInvalidDescription,
+        title: t.auth.resetAccessCode.accessCodeInvalidTitle,
+        description: t.auth.resetAccessCode.accessCodeInvalidDescription,
         variant: 'destructive',
       });
       return;
@@ -65,16 +65,16 @@ export function ResetPasswordPage() {
     try {
       await authService.resetPassword(token, password, confirmPassword);
       toast({
-        title: t.auth.resetPasscode.successTitle,
-        description: t.auth.resetPasscode.successDescription,
+        title: t.auth.resetAccessCode.successTitle,
+        description: t.auth.resetAccessCode.successDescription,
         variant: 'success' as const,
       });
       navigate('/login');
     } catch (error) {
       const axiosError = error as AxiosError<ApiError>;
       toast({
-        title: t.auth.resetPasscode.errorTitle,
-        description: axiosError.response?.data?.detail || t.auth.resetPasscode.errorFallback,
+        title: t.auth.resetAccessCode.errorTitle,
+        description: axiosError.response?.data?.detail || t.auth.resetAccessCode.errorFallback,
         variant: 'destructive',
       });
     } finally {
@@ -87,14 +87,14 @@ export function ResetPasswordPage() {
       <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
         <Card className="w-full max-w-md">
           <CardHeader className="space-y-1 text-center">
-            <CardTitle className="text-2xl">{t.auth.resetPasscode.invalidTitle}</CardTitle>
+            <CardTitle className="text-2xl">{t.auth.resetAccessCode.invalidTitle}</CardTitle>
             <CardDescription>
-              {t.auth.resetPasscode.invalidDescription}
+              {t.auth.resetAccessCode.invalidDescription}
             </CardDescription>
           </CardHeader>
           <CardFooter>
             <Button asChild className="w-full">
-              <Link to="/forgot-password">{t.auth.resetPasscode.requestNewLink}</Link>
+              <Link to="/forgot-password">{t.auth.resetAccessCode.requestNewLink}</Link>
             </Button>
           </CardFooter>
         </Card>
@@ -109,15 +109,15 @@ export function ResetPasswordPage() {
           <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
             <Calendar className="h-6 w-6 text-primary" />
           </div>
-          <CardTitle className="text-2xl">{t.auth.resetPasscode.title}</CardTitle>
+          <CardTitle className="text-2xl">{t.auth.resetAccessCode.title}</CardTitle>
           <CardDescription>
-            {t.auth.resetPasscode.description}
+            {t.auth.resetAccessCode.description}
           </CardDescription>
         </CardHeader>
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label htmlFor="password">{t.auth.resetPasscode.newPasscodeLabel}</Label>
+              <Label htmlFor="password">{t.auth.resetAccessCode.newAccessCodeLabel}</Label>
               <div className="relative">
                 <Input
                   id="password"
@@ -159,7 +159,7 @@ export function ResetPasswordPage() {
               </div>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t.auth.resetPasscode.confirmPasscodeLabel}</Label>
+              <Label htmlFor="confirmPassword">{t.auth.resetAccessCode.confirmAccessCodeLabel}</Label>
               <Input
                 id="confirmPassword"
                 type={showPassword ? 'text' : 'password'}
@@ -170,7 +170,7 @@ export function ResetPasswordPage() {
                 disabled={isLoading}
               />
               {confirmPassword && password !== confirmPassword && (
-                <p className="text-xs text-destructive">{t.auth.resetPasscode.passcodeMismatchInline}</p>
+                <p className="text-xs text-destructive">{t.auth.resetAccessCode.accessCodeMismatchInline}</p>
               )}
             </div>
           </CardContent>
@@ -179,10 +179,10 @@ export function ResetPasswordPage() {
               {isLoading ? (
                 <>
                   <LoadingSpinner size="sm" className="mr-2" />
-                  {t.auth.resetPasscode.submitting}
+                  {t.auth.resetAccessCode.submitting}
                 </>
               ) : (
-                t.auth.resetPasscode.submit
+                t.auth.resetAccessCode.submit
               )}
             </Button>
           </CardFooter>

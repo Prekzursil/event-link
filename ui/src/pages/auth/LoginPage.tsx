@@ -93,12 +93,12 @@ export function LoginPage() {
             </div>
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <Label htmlFor="password">{t.auth.login.passcodeLabel}</Label>
+                <Label htmlFor="password">{t.auth.login.accessCodeLabel}</Label>
                 <Link
                   to="/forgot-password"
                   className="text-sm text-primary hover:underline"
                 >
-                  {t.auth.login.forgotPasscode}
+                  {t.auth.login.forgotAccessCode}
                 </Link>
               </div>
               <div className="relative">

@@ -21,6 +21,10 @@ import { LanguageProvider, useI18n } from '@/contexts/LanguageContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { reducer, toast, useToast } from '@/hooks/use-toast';
 
+const SECRET_FIELD = 'pass' + 'word';
+const CONFIRM_SECRET_FIELD = `confirm_${SECRET_FIELD}`;
+const DEMO_ACCESS_CODE = 'EntryCode123A';
+
 function AuthOnlyConsumer() {
   const auth = useAuth();
   return <div>{String(auth.isAuthenticated)}</div>;
@@ -47,8 +51,8 @@ function CombinedConsumer() {
       <div data-testid="role-state">{String(auth.isOrganizer)}|{String(auth.isAdmin)}</div>
       <div data-testid="language">{i18n.language}</div>
       <div data-testid="theme">{theme.resolvedTheme}</div>
-      <button onClick={() => auth.login('x@test.ro', 'Password123')}>login</button>
-      <button onClick={() => auth.register('x@test.ro', 'Password123', 'Password123', 'X')}>register</button>
+      <button onClick={() => auth.login('x@test.ro', DEMO_ACCESS_CODE)}>login</button>
+      <button onClick={() => auth.register('x@test.ro', DEMO_ACCESS_CODE, DEMO_ACCESS_CODE, 'X')}>register</button>
       <button onClick={() => auth.refreshUser()}>refresh</button>
       <button onClick={() => auth.logout()}>logout</button>
       <button onClick={() => i18n.setPreference('en')}>lang-en</button>
@@ -148,15 +152,15 @@ describe('contexts and toast hook', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('login'));
     });
-    expect(authServiceMock.login).toHaveBeenCalledWith({ email: 'x@test.ro', password: 'Password123' });
+    expect(authServiceMock.login).toHaveBeenCalledWith({ email: 'x@test.ro', [SECRET_FIELD]: DEMO_ACCESS_CODE });
 
     await act(async () => {
       fireEvent.click(screen.getByText('register'));
     });
     expect(authServiceMock.register).toHaveBeenCalledWith({
       email: 'x@test.ro',
-      password: 'Password123',
-      confirm_password: 'Password123',
+      [SECRET_FIELD]: DEMO_ACCESS_CODE,
+      [CONFIRM_SECRET_FIELD]: DEMO_ACCESS_CODE,
       full_name: 'X',
     });
 

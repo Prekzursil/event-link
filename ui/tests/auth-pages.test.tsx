@@ -77,13 +77,13 @@ describe('auth pages', () => {
     renderWithProviders(<LoginPage />, '/login');
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
-    fireEvent.change(screen.getByLabelText(/Passcode/i), { target: { value: 'Password123' } });
+    fireEvent.change(screen.getByLabelText(/Access code/i), { target: { value: 'AccessCode123A' } });
     const loginToggle = document.querySelector('button.absolute.right-0.top-0') as HTMLButtonElement;
     expect(loginToggle).not.toBeNull();
     fireEvent.click(loginToggle);
     fireEvent.submit(screen.getByRole('button', { name: /Sign in/i }).closest('form')!);
 
-    await waitFor(() => expect(authState.login).toHaveBeenCalledWith('x@test.ro', 'Password123'));
+    await waitFor(() => expect(authState.login).toHaveBeenCalledWith('x@test.ro', 'AccessCode123A'));
     expect(toastSpy).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalled();
 
@@ -96,21 +96,21 @@ describe('auth pages', () => {
     renderWithProviders(<RegisterPage />, '/register');
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
-    fireEvent.change(screen.getByLabelText(/^Passcode$/i), { target: { value: 'Password123' } });
+    fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'AccessCode123A' } });
     const registerToggle = document.querySelector('button.absolute.right-0.top-0') as HTMLButtonElement;
     expect(registerToggle).not.toBeNull();
     fireEvent.click(registerToggle);
-    fireEvent.change(screen.getByLabelText(/Confirm passcode/i), { target: { value: 'Different123' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'OtherCode123A' } });
     fireEvent.submit(screen.getByRole('button', { name: /Create account/i }).closest('form')!);
     expect(toastSpy).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/^Passcode$/i), { target: { value: 'short' } });
-    fireEvent.change(screen.getByLabelText(/Confirm passcode/i), { target: { value: 'short' } });
+    fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'short' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'short' } });
     fireEvent.submit(screen.getByRole('button', { name: /Create account/i }).closest('form')!);
     expect(toastSpy).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/^Passcode$/i), { target: { value: 'Password123' } });
-    fireEvent.change(screen.getByLabelText(/Confirm passcode/i), { target: { value: 'Password123' } });
+    fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'AccessCode123A' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'AccessCode123A' } });
     fireEvent.submit(screen.getByRole('button', { name: /Create account/i }).closest('form')!);
     await waitFor(() => expect(authState.register).toHaveBeenCalled());
     expect(navigateSpy).toHaveBeenCalledWith('/');
@@ -142,28 +142,28 @@ describe('auth pages', () => {
 
     cleanup();
     renderWithProviders(<ResetPasswordPage />, '/reset-password?token=abc');
-    fireEvent.change(screen.getByLabelText(/New passcode/i), { target: { value: 'Password123' } });
-    fireEvent.change(screen.getByLabelText(/Confirm passcode/i), { target: { value: 'Mismatch123' } });
-    fireEvent.submit(screen.getByRole('button', { name: /Reset passcode/i }).closest('form')!);
+    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'AccessCode123A' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'MismatchCode123A' } });
+    fireEvent.submit(screen.getByRole('button', { name: /Reset access code/i }).closest('form')!);
     expect(toastSpy).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/New passcode/i), { target: { value: 'short' } });
-    fireEvent.change(screen.getByLabelText(/Confirm passcode/i), { target: { value: 'short' } });
-    fireEvent.submit(screen.getByRole('button', { name: /Reset passcode/i }).closest('form')!);
+    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'short' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'short' } });
+    fireEvent.submit(screen.getByRole('button', { name: /Reset access code/i }).closest('form')!);
     expect(toastSpy).toHaveBeenCalled();
 
     const toggleButton = document.querySelector('button.absolute.right-0.top-0') as HTMLButtonElement;
     expect(toggleButton).not.toBeNull();
     fireEvent.click(toggleButton);
 
-    fireEvent.change(screen.getByLabelText(/New passcode/i), { target: { value: 'Password123' } });
-    fireEvent.change(screen.getByLabelText(/Confirm passcode/i), { target: { value: 'Password123' } });
-    fireEvent.submit(screen.getByRole('button', { name: /Reset passcode/i }).closest('form')!);
-    await waitFor(() => expect(authServiceMock.resetPassword).toHaveBeenCalledWith('abc', 'Password123', 'Password123'));
+    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'AccessCode123A' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'AccessCode123A' } });
+    fireEvent.submit(screen.getByRole('button', { name: /Reset access code/i }).closest('form')!);
+    await waitFor(() => expect(authServiceMock.resetPassword).toHaveBeenCalledWith('abc', 'AccessCode123A', 'AccessCode123A'));
     expect(navigateSpy).toHaveBeenCalledWith('/login');
 
     authServiceMock.resetPassword.mockRejectedValueOnce({ response: { data: { detail: 'bad token' } } });
-    fireEvent.submit(screen.getByRole('button', { name: /Reset passcode/i }).closest('form')!);
+    fireEvent.submit(screen.getByRole('button', { name: /Reset access code/i }).closest('form')!);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 });
