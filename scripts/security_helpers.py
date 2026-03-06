@@ -1,7 +1,13 @@
 from __future__ import annotations
 
 import ipaddress
-from urllib.parse import urlparse, urlunparse
+import re
+from pathlib import Path
+from urllib.parse import urlencode, urlparse, urlunparse
+
+_SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
+_SHA_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
+_HOST_RE = re.compile(r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
 
 
 def normalize_https_url(
@@ -17,7 +23,7 @@ def normalize_https_url(
     - https scheme only,
     - no embedded credentials,
     - reject localhost/private/link-local IP targets,
-    - optional hostname allowlist.
+    - optional hostname allowlist,
     - optional hostname suffix allowlist.
     """
 
@@ -58,3 +64,66 @@ def normalize_https_url(
     if strip_query:
         sanitized = sanitized._replace(query="")
     return urlunparse(sanitized)
+
+
+def validate_slug(value: str, *, field_name: str) -> str:
+    slug = (value or "").strip()
+    if not slug or not _SLUG_RE.fullmatch(slug):
+        raise ValueError(f"Invalid {field_name}: {value!r}")
+    return slug
+
+
+def validate_repo_full_name(value: str) -> tuple[str, str]:
+    raw = (value or "").strip()
+    parts = raw.split("/", 1)
+    if len(parts) != 2:
+        raise ValueError(f"Invalid repo format {value!r}; expected owner/repo")
+    owner = validate_slug(parts[0], field_name="repo owner")
+    repo = validate_slug(parts[1], field_name="repo name")
+    return owner, repo
+
+
+def validate_commit_sha(value: str) -> str:
+    sha = (value or "").strip()
+    if not _SHA_RE.fullmatch(sha):
+        raise ValueError(f"Invalid commit SHA: {value!r}")
+    return sha
+
+
+def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None) -> str:
+    safe_host = (host or "").strip().lower().strip(".")
+    if not _HOST_RE.fullmatch(safe_host):
+        raise ValueError(f"Invalid host: {host!r}")
+    normalized_path = "/" + "/".join(segment for segment in (path or "").split("/") if segment)
+    encoded_query = urlencode(query or {})
+    return normalize_https_url(
+        urlunparse(("https", safe_host, normalized_path, "", encoded_query, "")),
+        allowed_hosts={safe_host},
+    )
+
+
+def resolve_workspace_relative_path(
+    raw_path: str,
+    *,
+    fallback: str,
+    base: Path | None = None,
+    must_exist: bool = False,
+    must_be_file: bool = False,
+) -> Path:
+    root = (base or Path.cwd()).resolve()
+    candidate = Path((raw_path or "").strip() or fallback).expanduser()
+    if candidate.is_absolute():
+        raise ValueError(f"Absolute paths are not allowed: {candidate}")
+
+    resolved = (root / candidate).resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes workspace root: {candidate}") from exc
+
+    if must_exist and not resolved.exists():
+        raise ValueError(f"Path does not exist: {candidate}")
+    if must_be_file and resolved.exists() and not resolved.is_file():
+        raise ValueError(f"Path must be a regular file: {candidate}")
+
+    return resolved

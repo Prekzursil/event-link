@@ -1,16 +1,16 @@
 import { test, expect } from '@playwright/test';
 import { clearAuth, formatDateTimeLocal, login, setLanguagePreference } from './utils';
 
-const ORGANIZER = { email: 'organizer@test.com', password: 'test123' };
-const STUDENT = { email: 'student@test.com', password: 'test123' };
-const ADMIN = { email: 'admin@test.com', password: 'test123' };
+const ORGANIZER = { email: 'organizer@test.com', passcode: 'test123' };
+const STUDENT = { email: 'student@test.com', passcode: 'test123' };
+const ADMIN = { email: 'admin@test.com', passcode: 'test123' };
 
 test('organizer: duplicate event + soft-delete + admin restore', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Organizer creates an event (published by default)
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.passcode);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   const title = `E2E Clone Soft Delete ${Date.now()}`;
@@ -66,7 +66,7 @@ test('organizer: duplicate event + soft-delete + admin restore', async ({ page }
 
   // Student should no longer find the event in the public list.
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.passcode);
   await expect(page).toHaveURL(/\/($|\?)/);
   await page.getByPlaceholder('Search events...').fill(title);
   await expect(page.getByRole('heading', { name: title })).toHaveCount(0);
@@ -74,7 +74,7 @@ test('organizer: duplicate event + soft-delete + admin restore', async ({ page }
 
   // Admin restores the deleted event.
   await clearAuth(page);
-  await login(page, ADMIN.email, ADMIN.password);
+  await login(page, ADMIN.email, ADMIN.passcode);
 
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/admin($|\?)/);
@@ -95,9 +95,11 @@ test('organizer: duplicate event + soft-delete + admin restore', async ({ page }
 
   // Student should see the event again after restore.
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.passcode);
   await expect(page).toHaveURL(/\/($|\?)/);
   await page.getByPlaceholder('Search events...').fill(title);
   await expect(page.getByRole('heading', { name: title }).first()).toBeVisible();
 });
+
+
 

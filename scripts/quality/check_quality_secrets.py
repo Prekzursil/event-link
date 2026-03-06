@@ -8,12 +8,16 @@ import sys
 from datetime import datetime, timezone
 from pathlib import Path
 
+from _security_import import load_security_helpers
+
+_security_helpers = load_security_helpers(__file__)
+resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
+
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
     "CODACY_API_TOKEN",
     "SNYK_TOKEN",
     "SENTRY_AUTH_TOKEN",
-    "APPLITOOLS_API_KEY",
 ]
 
 DEFAULT_REQUIRED_VARS = [
@@ -81,17 +85,8 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
+def _safe_output_path(raw: str, fallback: str) -> Path:
+    return resolve_workspace_relative_path(raw, fallback=fallback)
 
 
 def main() -> int:
@@ -128,3 +123,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

@@ -3,6 +3,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import urllib.error
 import urllib.parse
@@ -11,16 +12,15 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
+from _security_import import load_security_helpers
 
-from security_helpers import normalize_https_url
-
+_security_helpers = load_security_helpers(__file__)
+build_https_url = _security_helpers.build_https_url
+resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
+validate_slug = _security_helpers.validate_slug
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
-CODACY_API_BASE = "https://api.codacy.com"
+_CODACY_PROVIDERS = {"gh", "github"}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -34,22 +34,27 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _request_json(url: str, token: str, *, method: str = "GET", data: dict[str, Any] | None = None) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"codacy.com"}).rstrip("/")
-    body = None
-    headers = {
-        "Accept": "application/json",
-        "api-token": token,
-        "User-Agent": "reframe-codacy-zero-gate",
-    }
-    if data is not None:
-        body = json.dumps(data).encode("utf-8")
-        headers["Content-Type"] = "application/json"
+def _request_json(*, provider: str, owner: str, repo: str, token: str) -> dict[str, Any]:
+    query = urllib.parse.urlencode({"limit": "1"})
+    url = build_https_url(
+        host="api.codacy.com",
+        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/issues/search",
+        query={"limit": "1"},
+    )
+    if query:
+        # build_https_url already encoded query; this keeps explicit intent and avoids mutable full URL inputs.
+        pass
+
     req = urllib.request.Request(
-        safe_url,
-        headers=headers,
-        method=method,
-        data=body,
+        url,
+        headers={
+            "Accept": "application/json",
+            "api-token": token,
+            "User-Agent": "reframe-codacy-zero-gate",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+        data=b"{}",
     )
     with urllib.request.urlopen(req, timeout=30) as resp:
         return json.loads(resp.read().decode("utf-8"))
@@ -61,7 +66,6 @@ def extract_total_open(payload: Any) -> int | None:
             if key in TOTAL_KEYS and isinstance(value, (int, float)):
                 return int(value)
 
-        # common pagination structures
         for key in ("pagination", "page", "meta"):
             nested = payload.get(key)
             total = extract_total_open(nested)
@@ -101,27 +105,20 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
+def _safe_output_path(raw: str, fallback: str) -> Path:
+    return resolve_workspace_relative_path(raw, fallback=fallback)
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    api_base = normalize_https_url(CODACY_API_BASE, allowed_hosts={"api.codacy.com"}).rstrip("/")
-    owner = urllib.parse.quote(args.owner.strip(), safe="")
-    repo = urllib.parse.quote(args.repo.strip(), safe="")
+
+    owner = validate_slug(args.owner, field_name="owner")
+    repo = validate_slug(args.repo, field_name="repo")
+    provider = validate_slug(args.provider.lower(), field_name="provider")
+    if provider not in _CODACY_PROVIDERS:
+        print(f"Unsupported Codacy provider: {provider}", file=sys.stderr)
+        return 1
 
     findings: list[str] = []
     open_issues: int | None = None
@@ -130,18 +127,12 @@ def main() -> int:
         findings.append("CODACY_API_TOKEN is missing.")
         status = "fail"
     else:
-        query = urllib.parse.urlencode({"limit": "1"})
-        provider_candidates = [args.provider, "gh", "github"]
-        provider_candidates = list(dict.fromkeys(p for p in provider_candidates if p))
-
         last_exc: Exception | None = None
-        for provider in provider_candidates:
-            url = (
-                f"{api_base}/api/v3/analysis/organizations/{provider}/"
-                f"{owner}/repositories/{repo}/issues/search?{query}"
-            )
+        for candidate in (provider, "gh", "github"):
+            if candidate not in _CODACY_PROVIDERS:
+                continue
             try:
-                payload = _request_json(url, token, method="POST", data={})
+                payload = _request_json(provider=candidate, owner=owner, repo=repo, token=token)
                 open_issues = extract_total_open(payload)
                 if open_issues is None:
                     findings.append("Codacy response did not include a parseable total issue count.")
@@ -162,18 +153,16 @@ def main() -> int:
                 status = "fail"
                 break
         else:
-            findings.append(
-                f"Codacy API endpoint was not found for provider(s): {', '.join(provider_candidates)}."
-            )
+            findings.append(f"Codacy API endpoint was not found for provider(s): {provider}, gh, github.")
             if last_exc is not None:
                 findings.append(f"Last Codacy API error: {last_exc}")
             status = "fail"
 
     payload = {
         "status": status,
-        "owner": args.owner,
-        "repo": args.repo,
-        "provider": args.provider,
+        "owner": owner,
+        "repo": repo,
+        "provider": provider,
         "open_issues": open_issues,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
@@ -196,3 +185,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
