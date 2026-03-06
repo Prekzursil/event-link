@@ -15,7 +15,6 @@ write_workspace_text = _security_helpers.write_workspace_text
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
     "CODACY_API_TOKEN",
-    "SNYK_TOKEN",
     "SENTRY_AUTH_TOKEN",
 ]
 
