@@ -58,6 +58,10 @@ def main() -> None:
     log_event("worker_stopped", worker_id=worker_id)
 
 
-if __name__ == "__main__":
-    main()
+def _maybe_run_main(module_name: str) -> None:
+    if module_name == "__main__":
+        main()
+
+
+_maybe_run_main(__name__)
 

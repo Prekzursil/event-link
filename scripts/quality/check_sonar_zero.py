@@ -9,15 +9,15 @@ import sys
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from _security_import import load_security_helpers
 
 _security_helpers = load_security_helpers(__file__)
 normalize_https_url = _security_helpers.normalize_https_url
-resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
 validate_slug = _security_helpers.validate_slug
+write_workspace_json = _security_helpers.write_workspace_json
+write_workspace_text = _security_helpers.write_workspace_text
 
 SONAR_API_BASE = "https://sonarcloud.io"
 
@@ -71,10 +71,6 @@ def _render_md(payload: dict) -> str:
     else:
         lines.append("- None")
     return "\n".join(lines) + "\n"
-
-
-def _safe_output_path(raw: str, fallback: str) -> Path:
-    return resolve_workspace_relative_path(raw, fallback=fallback)
 
 
 def main() -> int:
@@ -159,16 +155,20 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "sonar-zero/sonar.json")
-        out_md = _safe_output_path(args.out_md, "sonar-zero/sonar.md")
+        write_workspace_json(
+            raw_path=args.out_json,
+            fallback="sonar-zero/sonar.json",
+            payload=payload,
+        )
+        out_md = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="sonar-zero/sonar.md",
+            text=_render_md(payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
 
     return 0 if status == "pass" else 1

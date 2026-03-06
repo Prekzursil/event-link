@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { clearAuth, login, setLanguagePreference } from './utils';
+import { clearAuth, DEFAULT_E2E_CODE, login, setLanguagePreference } from './utils';
 
-const STUDENT = { email: 'student@test.com', passcode: 'test123' };
-const ADMIN = { email: 'admin@test.com', passcode: 'test123' };
+const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
+const ADMIN = { email: 'admin@test.com', code: DEFAULT_E2E_CODE };
 
 test('notifications preferences + admin enqueue (digest + filling-fast)', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Student enables notification preferences.
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.passcode);
+  await login(page, STUDENT.email, STUDENT.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto('/profile');
@@ -42,7 +42,7 @@ test('notifications preferences + admin enqueue (digest + filling-fast)', async 
 
   // Admin triggers digest + filling-fast enqueue actions.
   await clearAuth(page);
-  await login(page, ADMIN.email, ADMIN.passcode);
+  await login(page, ADMIN.email, ADMIN.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto('/admin');

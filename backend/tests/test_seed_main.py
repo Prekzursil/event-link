@@ -153,6 +153,16 @@ def test_backend_main_entrypoint_invokes_uvicorn(monkeypatch):
 
 
 
+def test_backend_main_entrypoint_rejects_wildcard_host(monkeypatch):
+    monkeypatch.setenv("APP_HOST", "0.0.0.0")
+    monkeypatch.setenv("APP_PORT", "9001")
+
+    main_path = Path(__file__).resolve().parents[1] / "main.py"
+    with pytest.raises(RuntimeError, match="must not bind to all network interfaces"):
+        runpy.run_path(str(main_path), run_name="__main__")
+
+
+
 def test_seed_data_module_main_guard_executes(monkeypatch):
     class _FakeCryptContext:
         def __init__(self, *args, **kwargs):

@@ -124,9 +124,17 @@ export function StudentProfilePage() {
         <Checkbox
           id={`tag-${tag.id}`}
           checked={isSelected}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          onCheckedChange={() => handleTagToggle(tag.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTagToggle(tag.id);
+          }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleTagToggle(tag.id);
+            }
+          }}
         />
         <Label htmlFor={`tag-${tag.id}`} className="cursor-pointer flex-1 text-sm">
           {tag.name}
@@ -405,6 +413,16 @@ export function StudentProfilePage() {
     }
   };
 
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+  };
+
+  useEffect(() => {
+    if (!deleteDialogOpen) {
+      setDeletePassword('');
+    }
+  }, [deleteDialogOpen]);
+
   const handleDeleteAccount = async () => {
     const password = deletePassword.trim();
     if (!password) {
@@ -423,8 +441,7 @@ export function StudentProfilePage() {
         title: t.profile.deletedTitle,
         description: t.profile.deletedDescription,
       });
-      setDeleteDialogOpen(false);
-      setDeletePassword('');
+      closeDeleteDialog();
       logout();
       navigate('/');
     } catch (error: unknown) {
@@ -913,12 +930,7 @@ export function StudentProfilePage() {
         </CardContent>
       </Card>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
-        setDeleteDialogOpen(open);
-        if (!open) {
-          setDeletePassword('');
-        }
-      }}>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.profile.deleteDialogTitle}</DialogTitle>
@@ -942,7 +954,7 @@ export function StudentProfilePage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={closeDeleteDialog}
               disabled={isDeleting}
             >
               {t.common.cancel}

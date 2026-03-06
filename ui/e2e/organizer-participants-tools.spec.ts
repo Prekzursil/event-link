@@ -1,15 +1,15 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, formatDateTimeLocal, login, setLanguagePreference } from './utils';
+import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, setLanguagePreference } from './utils';
 
-const ORGANIZER = { email: 'organizer@test.com', passcode: 'test123' };
-const STUDENT = { email: 'student@test.com', passcode: 'test123' };
+const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
+const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
 
 test('organizer participants tools: attendance + CSV export + email', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Organizer creates an event
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.passcode);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   const title = `E2E Participants ${Date.now()}`;
@@ -41,7 +41,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
 
   // Student registers
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.passcode);
+  await login(page, STUDENT.email, STUDENT.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.getByPlaceholder('Search events...').fill(title);
@@ -53,7 +53,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
 
   // Organizer checks participants tools
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.passcode);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.getByPlaceholder('Search events...').fill(title);

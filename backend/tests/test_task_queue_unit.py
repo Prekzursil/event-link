@@ -32,6 +32,10 @@ def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool("off") is False
     assert task_queue._coerce_bool(None) is False
 
+def test_backend_root_points_to_backend_directory() -> None:
+    backend_root = task_queue._backend_root()
+    assert backend_root.name == "backend"
+    assert (backend_root / "app" / "task_queue.py").exists()
 
 def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
     stale_job = _mk_job(
@@ -77,7 +81,9 @@ def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
 
 
 def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
-    with pytest.raises(RuntimeError):
+    missing_backend_root = tmp_path / "missing-backend"
+    monkeypatch.setattr(task_queue, "_backend_root", lambda: missing_backend_root)
+    with pytest.raises(RuntimeError, match="Missing trainer script"):
         task_queue._run_recompute_recommendations_ml(payload={})
 
     backend_root = tmp_path / "backend"
@@ -746,6 +752,79 @@ def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
     assert any(email == "system@test.ro" and lang == "ro" for email, lang, _available, _title in langs)
 
 
+def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
+    user = SimpleNamespace(id=11, is_active=True, email_filling_fast_enabled=True, language_preference="en", email="user@test.ro")
+    event = SimpleNamespace(id=21, owner_id=31, tags=[], max_seats=None, title="No seats")
+
+    class _SeatsQuery:
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def group_by(self, *_args, **_kwargs):
+            return self
+
+        def subquery(self):
+            return SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))
+
+    class _RowsQuery:
+        def select_from(self, *_args, **_kwargs):
+            return self
+
+        def join(self, *_args, **_kwargs):
+            return self
+
+        def outerjoin(self, *_args, **_kwargs):
+            return self
+
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def order_by(self, *_args, **_kwargs):
+            return self
+
+        def all(self):
+            return [(user, event, 0)]
+
+    class _DedupeQuery:
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def first(self):
+            return None
+
+    class _FakeDb:
+        def __init__(self):
+            self.query_calls = 0
+
+        def query(self, *_args, **_kwargs):
+            self.query_calls += 1
+            if self.query_calls == 1:
+                return _SeatsQuery()
+            if self.query_calls == 2:
+                return _RowsQuery()
+            return _DedupeQuery()
+
+    fake_db = _FakeDb()
+    render_calls = []
+
+    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(task_queue, "enqueue_job", lambda *_args, **_kwargs: (_ for _ in ()).throw(AssertionError("enqueue_job should not run")))
+
+    import app.email_templates as tpl
+
+    monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: render_calls.append("rendered"))
+
+    result = task_queue._send_filling_fast_alerts(
+        db=fake_db,
+        payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
+    )
+
+    assert result == {"pairs": 1, "emails": 0}
+    assert render_calls == []
+    assert fake_db.query().filter().first() is None
+
+
+
 def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch, db_session):
     db_session.query(models.EventInteraction).delete()
     db_session.query(models.RecommenderModel).delete()
@@ -810,3 +889,5 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
 
     assert result["days"] == 7
     assert result["enabled"] is True
+
+

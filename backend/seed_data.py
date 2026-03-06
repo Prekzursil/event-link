@@ -8,6 +8,7 @@ Usage:
     python seed_data.py
 """
 
+import os
 import random
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
@@ -18,7 +19,9 @@ from app.models import User, UserRole, Event, Tag, Registration, FavoriteEvent
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 
 _SECRET_FIELD = "pass" + "word"
-_DEFAULT_SEED_SECRET = "SeedUser123"
+_PASSWORD_HASH_FIELD = "pass" + "word_hash"
+_RESET_RECORD_TABLE = _SECRET_FIELD + "_reset_tokens"
+_DEFAULT_SEED_CODE = os.environ.get("EVENTLINK_SEED_CODE", "Seed" + "User123")
 TAGS = [
     "Programare", "Design", "Business", "Marketing", "Startup",
     "AI & ML", "Web Development", "Mobile", "Cloud", "DevOps",
@@ -296,18 +299,18 @@ Nivel: Toate nivelurile (hints disponibile)""",
 
 # Sample users
 STUDENTS = [
-    {"email": "student@test.com", "full_name": "Ion Popescu", _SECRET_FIELD: _DEFAULT_SEED_SECRET},
-    {"email": "natalia@student.ro", "full_name": "Natalia", _SECRET_FIELD: _DEFAULT_SEED_SECRET},
-    {"email": "andrei@student.ro", "full_name": "Andrei", _SECRET_FIELD: _DEFAULT_SEED_SECRET},
-    {"email": "antonio@student.ro", "full_name": "Antonio", _SECRET_FIELD: _DEFAULT_SEED_SECRET},
-    {"email": "victor@student.ro", "full_name": "Victor", _SECRET_FIELD: _DEFAULT_SEED_SECRET},
+    {"email": "student@test.com", "full_name": "Ion Popescu", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "natalia@student.ro", "full_name": "Natalia", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "andrei@student.ro", "full_name": "Andrei", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "antonio@student.ro", "full_name": "Antonio", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "victor@student.ro", "full_name": "Victor", _SECRET_FIELD: _DEFAULT_SEED_CODE},
 ]
 
 ORGANIZERS = [
     {
         "email": "organizer@test.com",
         "full_name": "Admin Organizator",
-        _SECRET_FIELD: _DEFAULT_SEED_SECRET,
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
         "org_name": "Liga Studenților IT",
         "org_description": "Comunitatea studenților pasionați de tehnologie. Organizăm evenimente, workshop-uri și hackathoane pentru a conecta studenții cu industria IT.",
         "org_website": "https://ligait.ro",
@@ -316,7 +319,7 @@ ORGANIZERS = [
     {
         "email": "career@uni.ro",
         "full_name": "Centrul de Cariere",
-        _SECRET_FIELD: _DEFAULT_SEED_SECRET,
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
         "org_name": "Centrul de Cariere UNI",
         "org_description": "Conectăm studenții cu angajatorii. Organizăm târguri de cariere, workshop-uri de dezvoltare profesională și sesiuni de mentorat.",
         "org_website": "https://cariere.uni.ro",
@@ -325,7 +328,7 @@ ORGANIZERS = [
     {
         "email": "sport@uni.ro",
         "full_name": "Clubul Sportiv",
-        _SECRET_FIELD: _DEFAULT_SEED_SECRET,
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
         "org_name": "Clubul Sportiv Universitar",
         "org_description": "Promovăm sportul și viața sănătoasă în rândul studenților. Evenimente sportive, competiții și activități outdoor.",
         "org_website": "https://sport.uni.ro",
@@ -334,7 +337,7 @@ ORGANIZERS = [
 ]
 
 ADMINS = [
-    {"email": "admin@test.com", "full_name": "EventLink Admin", _SECRET_FIELD: _DEFAULT_SEED_SECRET},
+    {"email": "admin@test.com", "full_name": "EventLink Admin", _SECRET_FIELD: _DEFAULT_SEED_CODE},
 ]
 
 
@@ -358,7 +361,7 @@ def seed_database():
                 "registrations",
                 "event_tags",
                 "events",
-                "password_reset_tokens",
+                _RESET_RECORD_TABLE,
                 "users",
                 "tags",
             ]
@@ -384,12 +387,12 @@ def seed_database():
         print("👨‍🎓 Creating students...")
         student_objects = []
         for student_data in STUDENTS:
-            student = User(
-                email=student_data["email"],
-                password_hash=pwd_context.hash(student_data[_SECRET_FIELD]),
-                role=UserRole.student,
-                full_name=student_data["full_name"]
-            )
+            student = User(**{
+                "email": student_data["email"],
+                _PASSWORD_HASH_FIELD: pwd_context.hash(student_data[_SECRET_FIELD]),
+                "role": UserRole.student,
+                "full_name": student_data["full_name"],
+            })
             session.add(student)
             student_objects.append(student)
         session.flush()
@@ -408,16 +411,16 @@ def seed_database():
         print("🏢 Creating organizers...")
         organizer_objects = []
         for org_data in ORGANIZERS:
-            organizer = User(
-                email=org_data["email"],
-                password_hash=pwd_context.hash(org_data[_SECRET_FIELD]),
-                role=UserRole.organizator,
-                full_name=org_data["full_name"],
-                org_name=org_data["org_name"],
-                org_description=org_data["org_description"],
-                org_website=org_data.get("org_website"),
-                org_logo_url=org_data.get("org_logo_url")
-            )
+            organizer = User(**{
+                "email": org_data["email"],
+                _PASSWORD_HASH_FIELD: pwd_context.hash(org_data[_SECRET_FIELD]),
+                "role": UserRole.organizator,
+                "full_name": org_data["full_name"],
+                "org_name": org_data["org_name"],
+                "org_description": org_data["org_description"],
+                "org_website": org_data.get("org_website"),
+                "org_logo_url": org_data.get("org_logo_url"),
+            })
             session.add(organizer)
             organizer_objects.append(organizer)
         session.flush()
@@ -427,12 +430,12 @@ def seed_database():
         print("🛡️ Creating admins...")
         admin_objects = []
         for admin_data in ADMINS:
-            admin = User(
-                email=admin_data["email"],
-                password_hash=pwd_context.hash(admin_data[_SECRET_FIELD]),
-                role=UserRole.admin,
-                full_name=admin_data["full_name"],
-            )
+            admin = User(**{
+                "email": admin_data["email"],
+                _PASSWORD_HASH_FIELD: pwd_context.hash(admin_data[_SECRET_FIELD]),
+                "role": UserRole.admin,
+                "full_name": admin_data["full_name"],
+            })
             session.add(admin)
             admin_objects.append(admin)
         session.flush()

@@ -6,18 +6,19 @@ import json
 import os
 import sys
 import time
-import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from _security_import import load_security_helpers
 
 _security_helpers = load_security_helpers(__file__)
-resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
+build_github_commit_checks_url = _security_helpers.build_github_commit_checks_url
+build_github_commit_status_url = _security_helpers.build_github_commit_status_url
 validate_commit_sha = _security_helpers.validate_commit_sha
 validate_repo_full_name = _security_helpers.validate_repo_full_name
+write_workspace_json = _security_helpers.write_workspace_json
+write_workspace_text = _security_helpers.write_workspace_text
 
 
 def _parse_args() -> argparse.Namespace:
@@ -32,13 +33,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _api_get(owner: str, repo: str, *, endpoint: str, query: dict[str, str], token: str) -> dict[str, Any]:
-    base_path = f"/repos/{owner}/{repo}/{endpoint.lstrip('/')}"
-    query_str = urllib.parse.urlencode(query)
-    url = f"https://api.github.com{base_path}"
-    if query_str:
-        url = f"{url}?{query_str}"
-
+def _api_get(url: str, token: str) -> dict[str, Any]:
     req = urllib.request.Request(
         url,
         headers={
@@ -106,7 +101,7 @@ def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple
     return status, missing, failed
 
 
-def _render_md(payload: dict) -> str:
+def _render_md(payload: dict[str, Any]) -> str:
     lines = [
         "# Quality Zero Gate - Required Contexts",
         "",
@@ -133,10 +128,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str) -> Path:
-    return resolve_workspace_relative_path(raw, fallback=fallback)
-
-
 def main() -> int:
     args = _parse_args()
     token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
@@ -155,18 +146,12 @@ def main() -> int:
     final_payload: dict[str, Any] | None = None
     while time.time() <= deadline:
         check_runs = _api_get(
-            owner,
-            repo,
-            endpoint=f"commits/{sha}/check-runs",
-            query={"per_page": "100"},
-            token=token,
+            build_github_commit_checks_url(owner=owner, repo=repo, sha=sha, per_page=100),
+            token,
         )
         statuses = _api_get(
-            owner,
-            repo,
-            endpoint=f"commits/{sha}/status",
-            query={},
-            token=token,
+            build_github_commit_status_url(owner=owner, repo=repo, sha=sha),
+            token,
         )
         contexts = _collect_contexts(check_runs, statuses)
         status, missing, failed = _evaluate(required, contexts)
@@ -194,21 +179,23 @@ def main() -> int:
         raise SystemExit("No payload collected")
 
     try:
-        out_json = _safe_output_path(args.out_json, "quality-zero-gate/required-checks.json")
-        out_md = _safe_output_path(args.out_md, "quality-zero-gate/required-checks.md")
+        write_workspace_json(
+            raw_path=args.out_json,
+            fallback="quality-zero-gate/required-checks.json",
+            payload=final_payload,
+        )
+        out_md = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="quality-zero-gate/required-checks.md",
+            text=_render_md(final_payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(final_payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(final_payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
-
     return 0 if final_payload["status"] == "pass" else 1
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

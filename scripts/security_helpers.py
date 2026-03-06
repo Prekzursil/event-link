@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import ipaddress
+import json
 import re
 from pathlib import Path
 from urllib.parse import urlencode, urlparse, urlunparse
@@ -127,3 +128,72 @@ def resolve_workspace_relative_path(
         raise ValueError(f"Path must be a regular file: {candidate}")
 
     return resolved
+
+
+def build_github_api_url(
+    *,
+    owner: str,
+    repo: str,
+    resource: tuple[str, ...],
+    query: dict[str, str] | None = None,
+) -> str:
+    safe_owner = validate_slug(owner, field_name="repo owner")
+    safe_repo = validate_slug(repo, field_name="repo name")
+    path_segments = (
+        "repos",
+        safe_owner,
+        safe_repo,
+        *[validate_slug(segment, field_name="api segment") for segment in resource],
+    )
+    return build_https_url(
+        host="api.github.com",
+        path="/".join(path_segments),
+        query=query,
+    )
+
+
+def build_github_commit_checks_url(*, owner: str, repo: str, sha: str, per_page: int = 100) -> str:
+    safe_sha = validate_commit_sha(sha)
+    return build_github_api_url(
+        owner=owner,
+        repo=repo,
+        resource=("commits", safe_sha, "check-runs"),
+        query={"per_page": str(per_page)},
+    )
+
+
+def build_github_commit_status_url(*, owner: str, repo: str, sha: str) -> str:
+    safe_sha = validate_commit_sha(sha)
+    return build_github_api_url(
+        owner=owner,
+        repo=repo,
+        resource=("commits", safe_sha, "status"),
+    )
+
+
+def write_workspace_text(
+    *,
+    raw_path: str,
+    fallback: str,
+    text: str,
+    base: Path | None = None,
+) -> Path:
+    target = resolve_workspace_relative_path(raw_path, fallback=fallback, base=base)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    target.write_text(text, encoding="utf-8")
+    return target
+
+
+def write_workspace_json(
+    *,
+    raw_path: str,
+    fallback: str,
+    payload: object,
+    base: Path | None = None,
+) -> Path:
+    return write_workspace_text(
+        raw_path=raw_path,
+        fallback=fallback,
+        text=json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        base=base,
+    )

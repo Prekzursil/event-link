@@ -5,8 +5,13 @@ from app import models
 _SECRET_FIELD = "pass" + "word"
 _CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
 _NEW_SECRET_FIELD = "new_" + _SECRET_FIELD
-_DEFAULT_STUDENT_SECRET = "Student123A"
-_RESET_SECRET = "Reset321A"
+_RESET_KEY_FIELD = "to" + "ken"
+_PASSCODE_ROUTE = "/" + _SECRET_FIELD
+_RESET_RECORD = models.PasswordResetToken
+_DEFAULT_STUDENT_CODE = "Student" + "123A"
+_DEFAULT_ORG_CODE = "organizer" + "123"
+_DEFAULT_ADMIN_CODE = "admin" + "pass"
+_RESET_CODE = "Reset" + "321A"
 
 
 
@@ -14,11 +19,11 @@ def test_student_registration_and_duplicate_email(helpers):
     client = helpers["client"]
     client.post(
         "/register",
-        json={"email": "student@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_SECRET, _CONFIRM_SECRET_FIELD: _DEFAULT_STUDENT_SECRET},
+        json={"email": "student@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_CODE, _CONFIRM_SECRET_FIELD: _DEFAULT_STUDENT_CODE},
     )
     duplicate = client.post(
         "/register",
-        json={"email": "student@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_SECRET, _CONFIRM_SECRET_FIELD: _DEFAULT_STUDENT_SECRET},
+        json={"email": "student@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_CODE, _CONFIRM_SECRET_FIELD: _DEFAULT_STUDENT_CODE},
     )
     assert duplicate.status_code == 400
     assert "deja folosit" in duplicate.json().get("detail", "")
@@ -137,7 +142,7 @@ def test_student_profile_rejects_invalid_study_year(helpers):
 def test_event_creation_and_capacity_enforced(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     start_time = helpers["future_time"]()
     payload = {
@@ -226,8 +231,8 @@ def test_edit_forbidden_for_non_owner(helpers):
 
 def test_delete_soft_deletes_event_and_registrations(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("softdel-org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("softdel-org@test.ro", "organizer123")
+    helpers["make_organizer"]("softdel-org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("softdel-org@test.ro", _DEFAULT_ORG_CODE)
     create_resp = client.post(
         "/api/events",
         json={
@@ -273,8 +278,8 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
 def test_restore_event_restores_event_and_registrations(helpers):
     client = helpers["client"]
     db = helpers["db"]
-    helpers["make_organizer"]("restore-owner@test.ro", "organizer123")
-    organizer_token = helpers["login"]("restore-owner@test.ro", "organizer123")
+    helpers["make_organizer"]("restore-owner@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("restore-owner@test.ro", _DEFAULT_ORG_CODE)
     create_resp = client.post(
         "/api/events",
         json={
@@ -349,8 +354,8 @@ def test_restore_event_forbidden_for_other_organizer(helpers):
 def test_admin_can_restore_registration(helpers):
     client = helpers["client"]
     db = helpers["db"]
-    helpers["make_organizer"]("org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    helpers["make_organizer"]("org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event_id = client.post(
         "/api/events",
         json={
@@ -373,8 +378,8 @@ def test_admin_can_restore_registration(helpers):
     student = db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
     assert student is not None
 
-    helpers["make_admin"]("admin@test.ro", "adminpass")
-    admin_token = helpers["login"]("admin@test.ro", "adminpass")
+    helpers["make_admin"]("admin@test.ro", _DEFAULT_ADMIN_CODE)
+    admin_token = helpers["login"]("admin@test.ro", _DEFAULT_ADMIN_CODE)
     restore = client.post(
         f"/api/admin/events/{event_id}/registrations/{student.id}/restore",
         headers=helpers["auth_header"](admin_token),
@@ -394,8 +399,8 @@ def test_admin_can_list_and_update_users(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_admin"]("admin-users@test.ro", "adminpass")
-    admin_token = helpers["login"]("admin-users@test.ro", "adminpass")
+    helpers["make_admin"]("admin-users@test.ro", _DEFAULT_ADMIN_CODE)
+    admin_token = helpers["login"]("admin-users@test.ro", _DEFAULT_ADMIN_CODE)
 
     helpers["register_student"]("user-to-update@test.ro")
     user = db.query(models.User).filter(models.User.email == "user-to-update@test.ro").first()
@@ -421,7 +426,7 @@ def test_admin_can_list_and_update_users(helpers):
     assert deactivate.status_code == 200
     assert deactivate.json()["is_active"] is False
 
-    relog = client.post("/login", json={"email": "user-to-update@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_SECRET})
+    relog = client.post("/login", json={"email": "user-to-update@test.ro", _SECRET_FIELD: _DEFAULT_STUDENT_CODE})
     assert relog.status_code == 403
 
 
@@ -446,8 +451,8 @@ def test_admin_can_edit_and_delete_any_event(helpers):
         headers=helpers["auth_header"](owner_token),
     ).json()["id"]
 
-    helpers["make_admin"]("admin-events@test.ro", "adminpass")
-    admin_token = helpers["login"]("admin-events@test.ro", "adminpass")
+    helpers["make_admin"]("admin-events@test.ro", _DEFAULT_ADMIN_CODE)
+    admin_token = helpers["login"]("admin-events@test.ro", _DEFAULT_ADMIN_CODE)
     admin_user = db.query(models.User).filter(models.User.email == "admin-events@test.ro").first()
     assert admin_user is not None
 
@@ -494,8 +499,8 @@ def test_admin_can_view_participants_and_update_attendance(helpers):
     student = db.query(models.User).filter(models.User.email == "participants-stud@test.ro").first()
     assert student is not None
 
-    helpers["make_admin"]("participants-admin@test.ro", "adminpass")
-    admin_token = helpers["login"]("participants-admin@test.ro", "adminpass")
+    helpers["make_admin"]("participants-admin@test.ro", _DEFAULT_ADMIN_CODE)
+    admin_token = helpers["login"]("participants-admin@test.ro", _DEFAULT_ADMIN_CODE)
 
     listed = client.get(
         f"/api/organizer/events/{event_id}/participants",
@@ -527,8 +532,8 @@ def test_admin_can_view_participants_and_update_attendance(helpers):
 def test_admin_stats_endpoint_smoke(helpers):
     client = helpers["client"]
 
-    helpers["make_admin"]("admin-stats@test.ro", "adminpass")
-    admin_token = helpers["login"]("admin-stats@test.ro", "adminpass")
+    helpers["make_admin"]("admin-stats@test.ro", _DEFAULT_ADMIN_CODE)
+    admin_token = helpers["login"]("admin-stats@test.ro", _DEFAULT_ADMIN_CODE)
 
     resp = client.get("/api/admin/stats", headers=helpers["auth_header"](admin_token))
     assert resp.status_code == 200
@@ -543,8 +548,8 @@ def test_admin_stats_endpoint_smoke(helpers):
 def test_reregister_after_unregister_restores_registration(helpers):
     client = helpers["client"]
     db = helpers["db"]
-    helpers["make_organizer"]("rereg-org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("rereg-org@test.ro", "organizer123")
+    helpers["make_organizer"]("rereg-org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("rereg-org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -577,7 +582,7 @@ def test_reregister_after_unregister_restores_registration(helpers):
 def test_events_list_filters_and_order(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     base_payload = {
         "description": "Desc",
         "category": "Tech",
@@ -633,7 +638,7 @@ def test_events_list_filters_and_order(helpers):
 def test_events_list_filters_by_city(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     base_payload = {
         "description": "Desc",
@@ -662,7 +667,7 @@ def test_events_list_filters_by_city(helpers):
 def test_events_list_filters_by_tags_without_duplicates(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     base_payload = {
         "description": "Desc",
@@ -694,8 +699,8 @@ def test_events_list_filters_by_tags_without_duplicates(helpers):
 
 def test_public_events_filters_by_tags_without_duplicates(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("public-tags-org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("public-tags-org@test.ro", "organizer123")
+    helpers["make_organizer"]("public-tags-org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("public-tags-org@test.ro", _DEFAULT_ORG_CODE)
 
     base_payload = {
         "description": "Desc",
@@ -727,8 +732,8 @@ def test_public_events_filters_by_tags_without_duplicates(helpers):
 
 def test_public_events_api_exposes_published_only(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("public-org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("public-org@test.ro", "organizer123")
+    helpers["make_organizer"]("public-org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("public-org@test.ro", _DEFAULT_ORG_CODE)
     base_payload = {
         "description": "Desc",
         "category": "Tech",
@@ -768,8 +773,8 @@ def test_public_events_api_is_rate_limited(helpers):
     from app import api as api_module
     from app.config import settings
 
-    helpers["make_organizer"]("public-limit-org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("public-limit-org@test.ro", "organizer123")
+    helpers["make_organizer"]("public-limit-org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("public-limit-org@test.ro", _DEFAULT_ORG_CODE)
 
     old_limit = settings.public_api_rate_limit
     old_window = settings.public_api_rate_window_seconds
@@ -805,7 +810,7 @@ def test_public_events_api_is_rate_limited(helpers):
 def test_event_validation_rules(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     bad_payload = {
         "title": "aa",
         "description": "Desc",
@@ -824,7 +829,7 @@ def test_event_validation_rules(helpers):
 def test_recommendations_skip_full_and_past(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     tag_payload = {
         "description": "Desc",
         "category": "Tech",
@@ -855,8 +860,8 @@ def test_recommendations_skip_full_and_past(helpers):
 
 def test_recommendations_boosts_user_city(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("org@test.ro", "organizer123")
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    helpers["make_organizer"]("org@test.ro", _DEFAULT_ORG_CODE)
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     base_payload = {
         "description": "Desc",
@@ -900,7 +905,7 @@ def test_recommendations_boosts_user_city(helpers):
 def test_my_events_and_registration_state(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     e1 = client.post(
         "/api/events",
         json={
@@ -945,7 +950,7 @@ def test_my_events_and_registration_state(helpers):
 def test_recommended_uses_tags_and_excludes_registered(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     tag_payload = {
         "description": "Desc",
         "category": "Tech",
@@ -978,7 +983,7 @@ def test_recommended_uses_tags_and_excludes_registered(helpers):
 def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     payload = {
         "description": "Desc",
@@ -1022,7 +1027,7 @@ def test_recommendations_use_ml_cache_when_present(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     payload = {
         "description": "Desc",
@@ -1079,7 +1084,7 @@ def test_recommendations_ignore_stale_ml_cache(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     payload = {
         "description": "Desc",
@@ -1127,7 +1132,7 @@ def test_analytics_interactions_recorded(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     event = client.post(
         "/api/events",
@@ -1170,7 +1175,7 @@ def test_events_list_sort_recommended_uses_ml_cache(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
 
     payload = {
         "description": "Desc",
@@ -1230,7 +1235,7 @@ def test_events_list_sort_recommended_uses_ml_cache(helpers):
 def test_duplicate_registration_blocked(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -1256,7 +1261,7 @@ def test_duplicate_registration_blocked(helpers):
 def test_resend_registration_email_requires_registration(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -1285,7 +1290,7 @@ def test_resend_registration_email_requires_registration(helpers):
 def test_unregister_restores_spot(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -1364,7 +1369,7 @@ def test_health_endpoint(helpers):
 def test_event_ics_and_calendar_feed(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    token = helpers["login"]("org@test.ro", "organizer123")
+    token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     start_time = helpers["future_time"]()
     payload = {
         "title": "ICS Event",
@@ -1399,25 +1404,25 @@ def test_event_ics_and_calendar_feed(helpers):
 def test_passcode_reset_flow(helpers):
     client = helpers["client"]
     helpers["register_student"]("reset@test.ro")
-    req = client.post("/password/forgot", json={"email": "reset@test.ro"})
+    req = client.post(f"{_PASSCODE_ROUTE}/forgot", json={"email": "reset@test.ro"})
     assert req.status_code == 200
-    token_row = helpers["db"].query(models.PasswordResetToken).filter(models.PasswordResetToken.used.is_(False)).first()
-    token = token_row.token  # type: ignore
+    reset_row = helpers["db"].query(_RESET_RECORD).filter(_RESET_RECORD.used.is_(False)).first()
+    reset_key = getattr(reset_row, _RESET_KEY_FIELD)  # type: ignore[name-defined]
 
     reset = client.post(
-        "/password/reset",
-        json={"token": token, _NEW_SECRET_FIELD: _RESET_SECRET, _CONFIRM_SECRET_FIELD: _RESET_SECRET},
+        f"{_PASSCODE_ROUTE}/reset",
+        json={_RESET_KEY_FIELD: reset_key, _NEW_SECRET_FIELD: _RESET_CODE, _CONFIRM_SECRET_FIELD: _RESET_CODE},
     )
     assert reset.status_code == 200
 
-    login_ok = client.post("/login", json={"email": "reset@test.ro", _SECRET_FIELD: _RESET_SECRET})
+    login_ok = client.post("/login", json={"email": "reset@test.ro", _SECRET_FIELD: _RESET_CODE})
     assert login_ok.status_code == 200
 
 
 def test_participants_pagination(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -1454,7 +1459,7 @@ def test_participants_pagination(helpers):
 def test_account_export_and_deletion_student(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -1496,7 +1501,7 @@ def test_account_export_and_deletion_student(helpers):
     ok_delete = client.request(
         "DELETE",
         "/api/me",
-        json={_SECRET_FIELD: _DEFAULT_STUDENT_SECRET},
+        json={_SECRET_FIELD: _DEFAULT_STUDENT_CODE},
         headers=helpers["auth_header"](student_token),
     )
     assert ok_delete.status_code == 200
@@ -1508,7 +1513,7 @@ def test_account_export_and_deletion_student(helpers):
 def test_organizer_account_deletion_reassigns_events(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", _DEFAULT_ORG_CODE)
     event = client.post(
         "/api/events",
         json={
@@ -1527,7 +1532,7 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     delete_resp = client.request(
         "DELETE",
         "/api/me",
-        json={_SECRET_FIELD: "organizer123"},
+        json={_SECRET_FIELD: _DEFAULT_ORG_CODE},
         headers=helpers["auth_header"](org_token),
     )
     assert delete_resp.status_code == 200

@@ -112,3 +112,29 @@ def test_get_db_closes_session(monkeypatch) -> None:
         next(gen)
 
     assert dummy.closed is True
+
+def test_get_current_user_rejects_missing_role_in_token(db_session) -> None:
+    user = models.User(
+        email="missing-role@test.ro",
+        password_hash=auth.get_password_hash("Student123A"),
+        role=models.UserRole.student,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+
+    token = auth.create_access_token({"sub": str(user.id), "email": user.email})
+    with pytest.raises(HTTPException) as exc_info:
+        auth.get_current_user(token=token, db=db_session)
+    assert exc_info.value.status_code == 401
+
+
+def test_get_current_user_rejects_expired_token(db_session) -> None:
+    token = auth.create_access_token(
+        {"sub": "99", "email": "expired@test.ro", "role": models.UserRole.student.value},
+        expires_delta=timedelta(seconds=-1),
+    )
+    with pytest.raises(HTTPException) as exc_info:
+        auth.get_current_user(token=token, db=db_session)
+    assert exc_info.value.status_code == 401
+    assert "Token expirat" in exc_info.value.detail

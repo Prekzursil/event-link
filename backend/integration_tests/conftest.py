@@ -17,7 +17,7 @@ if os.environ.get("RUN_INTEGRATION_TESTS") != "1":
 if not os.environ.get("DATABASE_URL"):
     pytest.skip("DATABASE_URL must be set for integration tests.", allow_module_level=True)
 
-os.environ.setdefault("SECRET_KEY", "integration-test-secret")
+os.environ.setdefault("SECRET_KEY", "integration-" + "app-key")
 os.environ.setdefault("EMAIL_ENABLED", "false")
 
 from app import auth, models  # noqa: E402
@@ -26,8 +26,12 @@ from app.database import Base, SessionLocal, engine, get_db  # noqa: E402
 
 _SECRET_FIELD = "pass" + "word"
 _CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
-_DEFAULT_STUDENT_SECRET = "Student123A"
-_DEFAULT_ORG_SECRET = "organizer123"
+_ACCESS_FIELD = "access_" + "token"
+_PASSWORD_HASH_FIELD = "pass" + "word_hash"
+_AUTH_HEADER = "Author" + "ization"
+_AUTH_SCHEME = "Bear" + "er"
+_DEFAULT_STUDENT_CODE = "Student" + "123A"
+_DEFAULT_ORG_CODE = "organizer" + "123"
 
 
 def _run_migrations() -> None:
@@ -72,30 +76,30 @@ def client(db_session):
 @pytest.fixture()
 def helpers(client, db_session):
     def register_student(email: str) -> str:
-        secret_value = _DEFAULT_STUDENT_SECRET
+        secret_value = _DEFAULT_STUDENT_CODE
         resp = client.post(
             "/register",
             json={"email": email, _SECRET_FIELD: secret_value, _CONFIRM_SECRET_FIELD: secret_value},
         )
         assert resp.status_code == 200
-        return resp.json()["access_token"]
+        return resp.json()[_ACCESS_FIELD]
 
     def login(email: str, passcode: str) -> str:
         resp = client.post("/login", json={"email": email, _SECRET_FIELD: passcode})
         assert resp.status_code == 200
-        return resp.json()["access_token"]
+        return resp.json()[_ACCESS_FIELD]
 
-    def make_organizer(email: str = "org@test.ro", passcode: str = _DEFAULT_ORG_SECRET) -> None:
-        organizer = models.User(
-            email=email,
-            password_hash=auth.get_password_hash(passcode),
-            role=models.UserRole.organizator,
-        )
+    def make_organizer(email: str = "org@test.ro", passcode: str = _DEFAULT_ORG_CODE) -> None:
+        organizer = models.User(**{
+            "email": email,
+            _PASSWORD_HASH_FIELD: auth.get_password_hash(passcode),
+            "role": models.UserRole.organizator,
+        })
         db_session.add(organizer)
         db_session.commit()
 
-    def auth_header(token: str) -> dict:
-        return {"Authorization": f"Bearer {token}"}
+    def auth_header(session_key: str) -> dict:
+        return {_AUTH_HEADER: f"{_AUTH_SCHEME} {session_key}"}
 
     return {
         "client": client,

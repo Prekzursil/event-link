@@ -1,2 +1,4 @@
-export { EventsPage } from './EventsPage';
-export { EventDetailPage } from './EventDetailPage';
+import { EventDetailPage } from './EventDetailPage';
+import { EventsPage } from './EventsPage';
+
+export { EventDetailPage, EventsPage };

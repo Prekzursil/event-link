@@ -306,21 +306,27 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="start">
-                <DropdownMenuItem onSelect={() => handleThemeChange('system')} disabled={isSavingTheme}>
-                  <Monitor className="mr-2 h-4 w-4" />
-                  {t.theme.system}
-                  {themePreference === 'system' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleThemeChange('light')} disabled={isSavingTheme}>
-                  <Sun className="mr-2 h-4 w-4" />
-                  {t.theme.light}
-                  {themePreference === 'light' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleThemeChange('dark')} disabled={isSavingTheme}>
-                  <Moon className="mr-2 h-4 w-4" />
-                  {t.theme.dark}
-                  {themePreference === 'dark' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
+                {(['system', 'light', 'dark'] as ThemePreference[]).map((mode) => (
+                  <DropdownMenuItem
+                    key={`mobile-theme-${mode}`}
+                    onSelect={() => handleThemeChange(mode)}
+                    disabled={isSavingTheme}
+                  >
+                    {mode === 'system' ? (
+                      <Monitor className="mr-2 h-4 w-4" />
+                    ) : mode === 'light' ? (
+                      <Sun className="mr-2 h-4 w-4" />
+                    ) : (
+                      <Moon className="mr-2 h-4 w-4" />
+                    )}
+                    {mode === 'system'
+                      ? t.theme.system
+                      : mode === 'light'
+                        ? t.theme.light
+                        : t.theme.dark}
+                    {themePreference === mode && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
             <DropdownMenu>
@@ -330,19 +336,17 @@ export function Navbar() {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onSelect={() => handleLanguageChange('system')} disabled={isSavingLanguage}>
-                  <Monitor className="mr-2 h-4 w-4" />
-                  {t.language.system}
-                  {languagePreference === 'system' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleLanguageChange('ro')} disabled={isSavingLanguage}>
-                  {t.language.ro}
-                  {languagePreference === 'ro' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
-                <DropdownMenuItem onSelect={() => handleLanguageChange('en')} disabled={isSavingLanguage}>
-                  {t.language.en}
-                  {languagePreference === 'en' && <Check className="ml-auto h-4 w-4" />}
-                </DropdownMenuItem>
+                {(['system', 'ro', 'en'] as LanguagePreference[]).map((mode) => (
+                  <DropdownMenuItem
+                    key={`mobile-language-${mode}`}
+                    onSelect={() => handleLanguageChange(mode)}
+                    disabled={isSavingLanguage}
+                  >
+                    {mode === 'system' ? <Monitor className="mr-2 h-4 w-4" /> : null}
+                    {mode === 'system' ? t.language.system : mode === 'ro' ? t.language.ro : t.language.en}
+                    {languagePreference === mode && <Check className="ml-auto h-4 w-4" />}
+                  </DropdownMenuItem>
+                ))}
               </DropdownMenuContent>
             </DropdownMenu>
           </div>
@@ -401,3 +405,4 @@ export function Navbar() {
     </nav>
   );
 }
+

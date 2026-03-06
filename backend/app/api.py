@@ -1353,16 +1353,17 @@ def create_event(
 ):
     start_time = _normalize_dt(event.start_time)
     end_time = _normalize_dt(event.end_time)
+    cover_url = str(event.cover_url) if event.cover_url else None
     if start_time:
         _ensure_future_date(start_time)
     if end_time and start_time and end_time <= start_time:
         raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
     if event.max_seats is None or event.max_seats <= 0:
         raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
-    if event.cover_url:
-        if len(event.cover_url) > 500:
+    if cover_url:
+        if len(cover_url) > 500:
             raise HTTPException(status_code=400, detail="Cover URL prea lung.")
-        _validate_cover_url(event.cover_url)
+        _validate_cover_url(cover_url)
 
     new_event = models.Event(
         title=event.title,
@@ -1373,7 +1374,7 @@ def create_event(
         city=event.city,
         location=event.location,
         max_seats=event.max_seats,
-        cover_url=event.cover_url,
+        cover_url=cover_url,
         owner_id=current_user.id,
         status=event.status or "published",
         publish_at=_normalize_dt(event.publish_at) if event.publish_at else None,
@@ -1417,13 +1418,15 @@ def update_event(
         db_event.description = update.description
     if update.category is not None:
         db_event.category = update.category
+    normalized_start_time = _normalize_dt(db_event.start_time)
     if update.start_time is not None:
         update.start_time = _normalize_dt(update.start_time)
         _ensure_future_date(update.start_time)
         db_event.start_time = update.start_time
+        normalized_start_time = update.start_time
     if update.end_time is not None:
         update.end_time = _normalize_dt(update.end_time)
-        if db_event.start_time and update.end_time and update.end_time <= db_event.start_time:
+        if normalized_start_time and update.end_time and update.end_time <= normalized_start_time:
             raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
         db_event.end_time = update.end_time
     if update.city is not None:
@@ -1917,11 +1920,12 @@ def update_organizer_profile(
     db: Session = Depends(get_db),
     current_user: models.User = Depends(auth.require_organizer),
 ):
-    if payload.org_logo_url and len(payload.org_logo_url) > 500:
+    logo_url = str(payload.org_logo_url) if payload.org_logo_url else None
+    if logo_url and len(logo_url) > 500:
         raise HTTPException(status_code=400, detail="URL logo prea lung")
     current_user.org_name = payload.org_name or current_user.org_name
     current_user.org_description = payload.org_description
-    current_user.org_logo_url = payload.org_logo_url
+    current_user.org_logo_url = logo_url
     current_user.org_website = payload.org_website
     db.add(current_user)
     db.commit()

@@ -1,2 +1,3 @@
-export { AdminDashboardPage } from './AdminDashboardPage';
+import { AdminDashboardPage } from './AdminDashboardPage';
 
+export { AdminDashboardPage };

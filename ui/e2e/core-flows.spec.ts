@@ -1,48 +1,21 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import {
+  clearAuth,
+  DEFAULT_E2E_CODE,
+  formatDateTimeLocal,
+  login,
+  setLanguagePreference,
+} from './utils';
 
-const ORGANIZER = { email: 'organizer@test.com', passcode: 'test123' };
-const STUDENT = { email: 'student@test.com', passcode: 'test123' };
-
-async function setLanguageToEnglish(page: Page) {
-  await page.addInitScript(() => {
-    window.localStorage.setItem('language_preference', 'en');
-  });
-}
-
-async function clearAuth(page: Page) {
-  if (page.url() === 'about:blank') {
-    await page.goto('/');
-  }
-  await page.evaluate(() => {
-    window.localStorage.removeItem('access_token');
-    window.localStorage.removeItem('refresh_token');
-    window.localStorage.removeItem('user');
-  });
-}
-
-async function login(page: Page, email: string, passcode: string) {
-  await page.goto('/login');
-  await page.locator('#email').fill(email);
-  await page.locator('#pass' + 'word').fill(passcode);
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/($|\\?)/);
-}
-
-function formatDateTimeLocal(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-  ].join('-') + 'T' + [pad(date.getHours()), pad(date.getMinutes())].join(':');
-}
+const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
+const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
 
 test('core flows: organizer create/edit, student register, organizer attendance, student unregister', async ({ page }) => {
-  await setLanguageToEnglish(page);
+  await setLanguagePreference(page, 'en');
 
   // Organizer creates an event
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.passcode);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
 
   const baseTitle = `E2E Workshop ${Date.now()}`;
   const updatedTitle = `${baseTitle} (edited)`;
@@ -89,7 +62,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Student registers for the event
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.passcode);
+  await login(page, STUDENT.email, STUDENT.code);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const studentEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(studentEventHeading).toBeVisible();
@@ -99,7 +72,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Organizer marks attendance for the student
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.passcode);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const organizerEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(organizerEventHeading).toBeVisible();
@@ -117,7 +90,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Student unregisters
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.passcode);
+  await login(page, STUDENT.email, STUDENT.code);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const unregisterHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(unregisterHeading).toBeVisible();

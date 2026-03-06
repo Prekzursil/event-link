@@ -9,15 +9,15 @@ import urllib.error
 import urllib.parse
 import urllib.request
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
 from _security_import import load_security_helpers
 
 _security_helpers = load_security_helpers(__file__)
 build_https_url = _security_helpers.build_https_url
-resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_path
 validate_slug = _security_helpers.validate_slug
+write_workspace_json = _security_helpers.write_workspace_json
+write_workspace_text = _security_helpers.write_workspace_text
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 _CODACY_PROVIDERS = {"gh", "github"}
@@ -105,10 +105,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str) -> Path:
-    return resolve_workspace_relative_path(raw, fallback=fallback)
-
-
 def main() -> int:
     args = _parse_args()
     token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
@@ -169,16 +165,20 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "codacy-zero/codacy.json")
-        out_md = _safe_output_path(args.out_md, "codacy-zero/codacy.md")
+        write_workspace_json(
+            raw_path=args.out_json,
+            fallback="codacy-zero/codacy.json",
+            payload=payload,
+        )
+        out_md = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="codacy-zero/codacy.md",
+            text=_render_md(payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
     return 0 if status == "pass" else 1
 

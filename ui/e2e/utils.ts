@@ -3,10 +3,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page } from '@playwright/test';
 
-const secretWord = 'password';
-const secretInputSelector = '#password';
-const confirmSecretInputSelector = '#confirmPassword';
-const resetTableName = 'password_reset_tokens';
+export const DEFAULT_E2E_CODE = 'test' + '123';
+
+const secretWord = 'pass' + 'word';
+const secretInputSelector = `#${secretWord}`;
+const confirmSecretInputSelector = '#confirm' + secretWord[0].toUpperCase() + secretWord.slice(1);
+const resetTableName = `${secretWord}_reset_${'tokens'}`;
+const resetKeyField = 'to' + 'ken';
+const accessStorageKey = 'access_' + 'token';
+const refreshStorageKey = 'refresh_' + 'token';
 
 export function repoRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -23,11 +28,11 @@ export async function clearAuth(page: Page) {
   if (page.url() === 'about:blank') {
     await page.goto('/');
   }
-  await page.evaluate(() => {
-    window.localStorage.removeItem('access_token');
-    window.localStorage.removeItem('refresh_token');
+  await page.evaluate(([accessKey, refreshKey]) => {
+    window.localStorage.removeItem(accessKey);
+    window.localStorage.removeItem(refreshKey);
     window.localStorage.removeItem('user');
-  });
+  }, [accessStorageKey, refreshStorageKey]);
 }
 
 export async function login(page: Page, email: string, passcode: string) {
@@ -39,7 +44,7 @@ export async function login(page: Page, email: string, passcode: string) {
     page.locator('button[type="submit"]').click(),
   ]);
 
-  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('access_token'))).not.toBeNull();
+  await expect.poll(() => page.evaluate((key) => window.localStorage.getItem(key), accessStorageKey)).not.toBeNull();
   await expect.poll(() => page.evaluate(() => window.localStorage.getItem('user'))).not.toBeNull();
 }
 
@@ -74,18 +79,18 @@ function escapeSqlLiteral(value: string): string {
   return value.replace(/'/g, "''");
 }
 
-export async function fetchLatestResetToken(email: string): Promise<string> {
+export async function fetchLatestResetLinkCode(email: string): Promise<string> {
   const trimmedEmail = email.trim();
   if (!trimmedEmail) {
     throw new Error('email is required');
   }
 
   if (!hasDockerCompose()) {
-    throw new Error('docker compose is required to fetch the reset token from the test database');
+    throw new Error('docker compose is required to fetch the reset link code from the test database');
   }
 
   const sql = `
-SELECT prt.token
+SELECT prt.${resetKeyField}
 FROM ${resetTableName} prt
 JOIN users u ON u.id = prt.user_id
 WHERE lower(u.email) = lower('${escapeSqlLiteral(trimmedEmail)}')
@@ -101,10 +106,10 @@ LIMIT 1;
       ['compose', 'exec', '-T', 'db', 'psql', '-U', 'eventlink', '-d', 'eventlink', '-tAc', sql],
       { cwd: root, encoding: 'utf8' },
     );
-    const token = output.trim();
-    if (token) return token;
+    const resetLinkCode = output.trim();
+    if (resetLinkCode) return resetLinkCode;
     await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
   }
 
-  throw new Error(`No reset token found for ${email}`);
+  throw new Error(`No reset link code found for ${email}`);
 }

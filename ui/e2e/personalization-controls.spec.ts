@@ -1,15 +1,15 @@
 import { expect, test } from '@playwright/test';
-import { clearAuth, formatDateTimeLocal, login, setLanguagePreference } from './utils';
+import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, setLanguagePreference } from './utils';
 
-const ORGANIZER = { email: 'organizer@test.com', passcode: 'test123' };
-const STUDENT = { email: 'student@test.com', passcode: 'test123' };
+const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
+const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
 
 test('personalization controls: hide tag + block organizer', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Organizer creates a tagged event
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.passcode);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   const title = `E2E Personalization ${Date.now()}`;
@@ -45,7 +45,7 @@ test('personalization controls: hide tag + block organizer', async ({ page }) =>
 
   // Student hides the tag from the event detail "Personalization" section
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.passcode);
+  await login(page, STUDENT.email, STUDENT.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto(`/events/${eventId}`);

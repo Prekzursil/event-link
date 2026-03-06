@@ -1,3 +1,5 @@
-export { Layout } from './Layout';
-export { Navbar } from './Navbar';
-export { Footer } from './Footer';
+import { Layout } from './Layout';
+import { Navbar } from './Navbar';
+import { Footer } from './Footer';
+
+export { Layout, Navbar, Footer };

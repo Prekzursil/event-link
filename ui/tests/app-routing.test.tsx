@@ -1,9 +1,15 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-let authState: { isAuthenticated: boolean; isOrganizer: boolean; isLoading: boolean } = {
+let authState: {
+  isAuthenticated: boolean;
+  isOrganizer: boolean;
+  isAdmin: boolean;
+  isLoading: boolean;
+} = {
   isAuthenticated: false,
   isOrganizer: false,
+  isAdmin: false,
   isLoading: false,
 };
 
@@ -40,11 +46,23 @@ vi.mock('@/pages/profile', () => ({
   StudentProfilePage: () => <div>StudentProfilePage</div>,
 }));
 
+vi.mock('@/pages/ForbiddenPage', () => ({
+  ForbiddenPage: () => <div>ForbiddenPage</div>,
+}));
+
+vi.mock('@/pages/NotFoundPage', () => ({
+  NotFoundPage: () => <div>NotFoundPage</div>,
+}));
+
 vi.mock('@/pages/organizer', () => ({
   OrganizerDashboardPage: () => <div>OrganizerDashboardPage</div>,
   EventFormPage: () => <div>EventFormPage</div>,
   ParticipantsPage: () => <div>ParticipantsPage</div>,
   OrganizerProfilePage: () => <div>OrganizerProfilePage</div>,
+}));
+
+vi.mock('@/pages/admin', () => ({
+  AdminDashboardPage: () => <div>AdminDashboardPage</div>,
 }));
 
 vi.mock('@/pages/auth/LoginPage', () => ({
@@ -66,7 +84,8 @@ vi.mock('@/pages/auth/ResetPasswordPage', () => ({
 import App from '@/App';
 
 beforeEach(() => {
-  window.localStorage.setItem('language_preference', 'ro');
+  window.localStorage.setItem('language_preference', 'en');
+  authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
 });
 
 afterEach(() => {
@@ -75,8 +94,17 @@ afterEach(() => {
 });
 
 describe('App routing guards', () => {
+  it('shows loading UI for guarded route while auth is loading', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
+    window.history.pushState({}, '', '/my-events');
+
+    render(<App />);
+
+    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
+  });
+
   it('redirects unauthenticated protected routes to /login', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isLoading: false };
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
     window.history.pushState({}, '', '/my-events');
 
     render(<App />);
@@ -85,7 +113,7 @@ describe('App routing guards', () => {
   });
 
   it('redirects unauthenticated organizer routes to /login', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isLoading: false };
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
     window.history.pushState({}, '', '/organizer');
 
     render(<App />);
@@ -93,17 +121,53 @@ describe('App routing guards', () => {
     expect(await screen.findByText('LoginPage')).toBeInTheDocument();
   });
 
+  it('allows organizer-only routes for organizer users', async () => {
+    authState = { isAuthenticated: true, isOrganizer: true, isAdmin: false, isLoading: false };
+    window.history.pushState({}, '', '/organizer/events/new');
+
+    render(<App />);
+
+    expect(await screen.findByText('EventFormPage')).toBeInTheDocument();
+  });
+
   it('redirects authenticated non-organizers to /forbidden', async () => {
-    authState = { isAuthenticated: true, isOrganizer: false, isLoading: false };
+    authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
     window.history.pushState({}, '', '/organizer');
 
     render(<App />);
 
-    expect(await screen.findByText('Acces interzis')).toBeInTheDocument();
+    expect(await screen.findByText('ForbiddenPage')).toBeInTheDocument();
   });
 
-  it('redirects authenticated users away from /login', async () => {
-    authState = { isAuthenticated: true, isOrganizer: false, isLoading: false };
+  it('redirects unauthenticated admin routes to /login', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
+    window.history.pushState({}, '', '/admin');
+
+    render(<App />);
+
+    expect(await screen.findByText('LoginPage')).toBeInTheDocument();
+  });
+
+  it('redirects non-admin users from /admin to /forbidden', async () => {
+    authState = { isAuthenticated: true, isOrganizer: true, isAdmin: false, isLoading: false };
+    window.history.pushState({}, '', '/admin');
+
+    render(<App />);
+
+    expect(await screen.findByText('ForbiddenPage')).toBeInTheDocument();
+  });
+
+  it('allows admin route for admin users', async () => {
+    authState = { isAuthenticated: true, isOrganizer: true, isAdmin: true, isLoading: false };
+    window.history.pushState({}, '', '/admin');
+
+    render(<App />);
+
+    expect(await screen.findByText('AdminDashboardPage')).toBeInTheDocument();
+  });
+
+  it('redirects authenticated users away from guest routes', async () => {
+    authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
     window.history.pushState({}, '', '/login');
 
     render(<App />);
@@ -111,12 +175,79 @@ describe('App routing guards', () => {
     expect(await screen.findByText('EventsPage')).toBeInTheDocument();
   });
 
+  it('renders guest routes and public auth utility routes', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
+
+    window.history.pushState({}, '', '/register');
+    render(<App />);
+    expect(await screen.findByText('RegisterPage')).toBeInTheDocument();
+
+    cleanup();
+    window.history.pushState({}, '', '/forgot-password');
+    render(<App />);
+    expect(await screen.findByText('ForgotPasswordPage')).toBeInTheDocument();
+
+    cleanup();
+    window.history.pushState({}, '', '/reset-password');
+    render(<App />);
+    expect(await screen.findByText('ResetPasswordPage')).toBeInTheDocument();
+  });
+
+  it('renders event detail and organizer public profile routes', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
+
+    window.history.pushState({}, '', '/events/42');
+    render(<App />);
+    expect(await screen.findByText('EventDetailPage')).toBeInTheDocument();
+
+    cleanup();
+    window.history.pushState({}, '', '/organizers/7');
+    render(<App />);
+    expect(await screen.findByText('OrganizerProfilePage')).toBeInTheDocument();
+  });
+
+
+  it('renders protected route content when authenticated', async () => {
+    authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
+    window.history.pushState({}, '', '/my-events');
+
+    render(<App />);
+
+    expect(await screen.findByText('MyEventsPage')).toBeInTheDocument();
+  });
+
+  it('shows loading UI on organizer route while auth is loading', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
+    window.history.pushState({}, '', '/organizer');
+
+    render(<App />);
+
+    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
+  });
+
+  it('shows loading UI on admin route while auth is loading', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
+    window.history.pushState({}, '', '/admin');
+
+    render(<App />);
+
+    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
+  });
+
+  it('shows loading UI on guest route while auth is loading', async () => {
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
+    window.history.pushState({}, '', '/login');
+
+    render(<App />);
+
+    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
+  });
   it('renders a 404 page for unknown routes', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isLoading: false };
+    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
     window.history.pushState({}, '', '/does-not-exist');
 
     render(<App />);
 
-    expect(await screen.findByText('Pagina nu a fost găsită')).toBeInTheDocument();
+    expect(await screen.findByText('NotFoundPage')).toBeInTheDocument();
   });
 });
