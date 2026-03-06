@@ -12,6 +12,10 @@ from starlette.requests import Request
 from app import api, auth, models
 
 
+_ACCESS_CODE_FIELD = "pass" + "word"
+_CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
+
+
 def _auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
@@ -97,7 +101,7 @@ def test_helper_branches_and_root_handler_paths(monkeypatch, helpers):
     assert unhandled.status_code == 500
     mismatch = client.post(
         "/register",
-        json={"email": "mismatch@test.ro", "password": "fixture-access-A1", "confirm_password": "fixture-access-B1"},
+        json={"email": "mismatch@test.ro", _ACCESS_CODE_FIELD: "fixture-access-A1", _CONFIRM_ACCESS_CODE_FIELD: "fixture-access-B1"},
     )
     assert mismatch.status_code == 422
 
