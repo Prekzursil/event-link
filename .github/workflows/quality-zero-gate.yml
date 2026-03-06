@@ -68,7 +68,7 @@ jobs:
             --required-context "Codecov Analytics" \
             --required-context "Sonar Zero" \
             --required-context "Codacy Zero" \
-            --required-context "Snyk Zero" \
+            --required-context "Semgrep Zero" \
             --required-context "Sentry Zero" \
             --required-context "DeepScan Zero" \
             --required-context "SonarCloud Code Analysis" \
@@ -84,3 +84,5 @@ jobs:
         with:
           name: quality-zero-gate
           path: quality-zero-gate
+
+
