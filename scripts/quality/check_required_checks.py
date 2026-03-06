@@ -52,30 +52,58 @@ def _api_get(url: str, token: str) -> dict[str, Any]:
     return payload
 
 
+def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
+    name = str(run.get("name") or "").strip()
+    if not name:
+        return None
+    return name, {
+        "state": str(run.get("status") or ""),
+        "conclusion": str(run.get("conclusion") or ""),
+        "source": "check_run",
+    }
+
+
+def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
+    name = str(status.get("context") or "").strip()
+    if not name:
+        return None
+    return name, {
+        "state": str(status.get("state") or ""),
+        "conclusion": str(status.get("state") or ""),
+        "source": "status",
+    }
+
+
 def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
     contexts: dict[str, dict[str, str]] = {}
-
     for run in check_runs_payload.get("check_runs", []) or []:
-        name = str(run.get("name") or "").strip()
-        if not name:
-            continue
-        contexts[name] = {
-            "state": str(run.get("status") or ""),
-            "conclusion": str(run.get("conclusion") or ""),
-            "source": "check_run",
-        }
-
+        context = _check_run_context(run)
+        if context is not None:
+            name, payload = context
+            contexts[name] = payload
     for status in status_payload.get("statuses", []) or []:
-        name = str(status.get("context") or "").strip()
-        if not name:
-            continue
-        contexts[name] = {
-            "state": str(status.get("state") or ""),
-            "conclusion": str(status.get("state") or ""),
-            "source": "status",
-        }
-
+        context = _status_context(status)
+        if context is not None:
+            name, payload = context
+            contexts[name] = payload
     return contexts
+
+
+def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
+    state = observed.get("state")
+    if state != "completed":
+        return f"{context}: status={state}"
+    conclusion = observed.get("conclusion")
+    if conclusion != "success":
+        return f"{context}: conclusion={conclusion}"
+    return None
+
+
+def _status_failure(context: str, observed: dict[str, str]) -> str | None:
+    conclusion = observed.get("conclusion")
+    if conclusion != "success":
+        return f"{context}: state={conclusion}"
+    return None
 
 
 def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple[str, list[str], list[str]]:
@@ -87,19 +115,13 @@ def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple
         if not observed:
             missing.append(context)
             continue
-
-        source = observed.get("source")
-        if source == "check_run":
-            state = observed.get("state")
-            conclusion = observed.get("conclusion")
-            if state != "completed":
-                failed.append(f"{context}: status={state}")
-            elif conclusion != "success":
-                failed.append(f"{context}: conclusion={conclusion}")
-        else:
-            conclusion = observed.get("conclusion")
-            if conclusion != "success":
-                failed.append(f"{context}: state={conclusion}")
+        failure = (
+            _check_run_failure(context, observed)
+            if observed.get("source") == "check_run"
+            else _status_failure(context, observed)
+        )
+        if failure is not None:
+            failed.append(failure)
 
     status = "pass" if not missing and not failed else "fail"
     return status, missing, failed
@@ -258,3 +280,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+

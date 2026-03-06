@@ -55,22 +55,31 @@ def _request_json(*, provider: str, owner: str, repo: str, token: str) -> tuple[
     return status, payload
 
 
+def _extract_total_from_mapping(payload: dict[str, Any]) -> int | None:
+    for key, value in payload.items():
+        if key in TOTAL_KEYS and isinstance(value, (int, float)):
+            return int(value)
+    for key in ("pagination", "page", "meta"):
+        total = extract_total_open(payload.get(key))
+        if total is not None:
+            return total
+    return None
+
+
+def _extract_total_from_values(payload: dict[str, Any]) -> int | None:
+    for value in payload.values():
+        total = extract_total_open(value)
+        if total is not None:
+            return total
+    return None
+
+
 def extract_total_open(payload: Any) -> int | None:
     if isinstance(payload, dict):
-        for key, value in payload.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
-                return int(value)
-
-        for key in ("pagination", "page", "meta"):
-            nested = payload.get(key)
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
-
-        for value in payload.values():
-            total = extract_total_open(value)
-            if total is not None:
-                return total
+        direct_total = _extract_total_from_mapping(payload)
+        if direct_total is not None:
+            return direct_total
+        return _extract_total_from_values(payload)
 
     if isinstance(payload, list):
         for item in payload:
@@ -118,6 +127,21 @@ def _provider_candidates(provider: str) -> list[str]:
     return candidates
 
 
+def _evaluate_candidate(*, provider: str, owner: str, repo: str, token: str) -> tuple[str, int | None, list[str]]:
+    status_code, payload = _request_json(provider=provider, owner=owner, repo=repo, token=token)
+    if status_code == 404:
+        return "retry", None, []
+    if not 200 <= status_code < 300:
+        return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
+
+    open_issues = extract_total_open(payload)
+    if open_issues is None:
+        return "fail", None, ["Codacy response did not include a parseable total issue count."]
+    if open_issues != 0:
+        return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
+    return "pass", open_issues, []
+
+
 def _evaluate_codacy(*, provider: str, owner: str, repo: str, token: str) -> tuple[str, int | None, list[str]]:
     if not token:
         return "fail", None, ["CODACY_API_TOKEN is missing."]
@@ -125,22 +149,18 @@ def _evaluate_codacy(*, provider: str, owner: str, repo: str, token: str) -> tup
     last_exc: Exception | None = None
     for candidate in _provider_candidates(provider):
         try:
-            status_code, payload = _request_json(provider=candidate, owner=owner, repo=repo, token=token)
+            status, open_issues, findings = _evaluate_candidate(
+                provider=candidate,
+                owner=owner,
+                repo=repo,
+                token=token,
+            )
         except Exception as exc:  # pragma: no cover - network/runtime surface
             last_exc = exc
             return "fail", None, [f"Codacy API request failed: {exc}"]
-
-        if status_code == 404:
+        if status == "retry":
             continue
-        if not 200 <= status_code < 300:
-            return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
-
-        open_issues = extract_total_open(payload)
-        if open_issues is None:
-            return "fail", None, ["Codacy response did not include a parseable total issue count."]
-        if open_issues != 0:
-            return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
-        return "pass", open_issues, []
+        return status, open_issues, findings
 
     findings = [f"Codacy API endpoint was not found for provider(s): {provider}, gh, github."]
     if last_exc is not None:

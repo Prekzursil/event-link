@@ -402,6 +402,21 @@ def _run_sync(
     )
 
 
+def _tool_change_lines(payload: dict[str, Any]) -> list[str]:
+    return [
+        f"- `{item['tool']}` -> `{json.dumps(item['payload'], sort_keys=True)}`"
+        for item in payload.get("tool_changes") or []
+    ]
+
+
+def _pattern_change_lines(payload: dict[str, Any]) -> list[str]:
+    return [f"- `{item['tool']}` disable `{item['pattern_id']}`" for item in payload.get("pattern_changes") or []]
+
+
+def _prefixed_lines(items: list[str], prefix: str = "- ") -> list[str]:
+    return [f"{prefix}{item}" for item in items]
+
+
 def _render_md(payload: dict[str, Any]) -> str:
     lines = [
         "# Codacy Tool Sync",
@@ -412,20 +427,11 @@ def _render_md(payload: dict[str, Any]) -> str:
         f"- Dry run: `{payload['dry_run']}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
     ]
-    _append_markdown_section(
-        lines,
-        "Tool Changes",
-        [f"- `{item['tool']}` -> `{json.dumps(item['payload'], sort_keys=True)}`" for item in payload.get("tool_changes") or []],
-    )
-    _append_markdown_section(
-        lines,
-        "Pattern Changes",
-        [f"- `{item['tool']}` disable `{item['pattern_id']}`" for item in payload.get("pattern_changes") or []],
-    )
-    _append_markdown_section(lines, "Notes", [f"- {note}" for note in payload.get("notes") or []])
-    _append_markdown_section(lines, "Failures", [f"- {failure}" for failure in payload.get("failures") or []])
+    _append_markdown_section(lines, "Tool Changes", _tool_change_lines(payload))
+    _append_markdown_section(lines, "Pattern Changes", _pattern_change_lines(payload))
+    _append_markdown_section(lines, "Notes", _prefixed_lines(list(payload.get("notes") or [])))
+    _append_markdown_section(lines, "Failures", _prefixed_lines(list(payload.get("failures") or [])))
     return "\n".join(lines) + "\n"
-
 
 def _resolve_token(cli_token: str) -> str:
     return (cli_token or os.environ.get("CODACY_API_TOKEN", "")).strip()

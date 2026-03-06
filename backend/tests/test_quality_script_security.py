@@ -35,6 +35,8 @@ def test_load_module_rejects_missing_loader(monkeypatch: pytest.MonkeyPatch) -> 
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
         _load_module("scripts/security_helpers.py", "event_link_missing_loader")
+
+
 def test_write_workspace_text_rejects_escape(tmp_path: Path) -> None:
     with pytest.raises(ValueError, match="escapes workspace root"):
         security_helpers.write_workspace_text(
@@ -100,12 +102,6 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
 
     class _FakeResponse:
         status = 206
-
-        def __enter__(self):
-            return self
-
-        def __exit__(self, exc_type, exc, tb):
-            return False
 
         def read(self) -> bytes:
             return b'{"status": "ok"}'

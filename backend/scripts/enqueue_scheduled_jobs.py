@@ -5,6 +5,7 @@ import argparse
 import os
 import sys
 from pathlib import Path
+from typing import Any
 
 
 def _bootstrap_imports() -> None:
@@ -14,7 +15,7 @@ def _bootstrap_imports() -> None:
     os.environ.setdefault("EMAIL_ENABLED", "false")
 
 
-def main() -> int:
+def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Enqueue scheduled background jobs.")
     parser.add_argument("--retrain-ml", action="store_true", help="Enqueue ML recommendations retraining job.")
     parser.add_argument(
@@ -30,66 +31,92 @@ def main() -> int:
         help="Enqueue the default set (retrain-ml + guardrails + filling-fast).",
     )
     parser.add_argument("--top-n", type=int, default=50, help="Top-N recommendations to store per user.")
-    args = parser.parse_args()
+    return parser.parse_args()
 
-    _bootstrap_imports()
 
-    from app.database import SessionLocal  # noqa: PLC0415
+def _job_constants() -> dict[str, str]:
     from app.task_queue import (  # noqa: PLC0415
-        enqueue_job,
-        JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
         JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS,
-        JOB_TYPE_SEND_WEEKLY_DIGEST,
+        JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
         JOB_TYPE_SEND_FILLING_FAST_ALERTS,
+        JOB_TYPE_SEND_WEEKLY_DIGEST,
     )
 
+    return {
+        "retrain": JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
+        "guardrails": JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS,
+        "weekly_digest": JOB_TYPE_SEND_WEEKLY_DIGEST,
+        "filling_fast": JOB_TYPE_SEND_FILLING_FAST_ALERTS,
+    }
+
+
+def _wanted_jobs(args: argparse.Namespace) -> dict[str, bool]:
     wanted = {
         "retrain": bool(args.retrain_ml or args.all),
         "guardrails": bool(args.guardrails or args.all),
         "weekly_digest": bool(args.weekly_digest),
         "filling_fast": bool(args.filling_fast or args.all),
     }
-    if not any(wanted.values()):
-        wanted["retrain"] = True
-        wanted["guardrails"] = True
-        wanted["filling_fast"] = True
+    if any(wanted.values()):
+        return wanted
+    return {
+        "retrain": True,
+        "guardrails": True,
+        "weekly_digest": False,
+        "filling_fast": True,
+    }
 
-    def enqueue_once(db, job_type: str, payload: dict) -> int | None:
-        job = enqueue_job(db, job_type, payload, dedupe_key="global")
-        if getattr(job, "_deduped", False):
-            return None
-        return int(job.id)
 
+def _job_payloads(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
+    return {
+        "retrain": {"top_n": int(args.top_n)},
+        "weekly_digest": {},
+        "guardrails": {},
+        "filling_fast": {},
+    }
+
+
+def _enqueue_once(db, enqueue_job, *, job_type: str, payload: dict[str, Any]) -> int | None:
+    job = enqueue_job(db, job_type, payload, dedupe_key="global")
+    if getattr(job, "_deduped", False):
+        return None
+    return int(job.id)
+
+
+def _enqueue_requested_jobs(db, enqueue_job, *, wanted: dict[str, bool], payloads: dict[str, dict[str, Any]]) -> list[tuple[str, int]]:
     created: list[tuple[str, int]] = []
-    with SessionLocal() as db:
-        if wanted["retrain"]:
-            job_id = enqueue_once(
-                db,
-                JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
-                {"top_n": int(args.top_n)},
-            )
-            if job_id is not None:
-                created.append((JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML, job_id))
+    for key, job_type in _job_constants().items():
+        if not wanted[key]:
+            continue
+        job_id = _enqueue_once(db, enqueue_job, job_type=job_type, payload=payloads[key])
+        if job_id is not None:
+            created.append((job_type, job_id))
+    return created
 
-        if wanted["weekly_digest"]:
-            job_id = enqueue_once(db, JOB_TYPE_SEND_WEEKLY_DIGEST, {})
-            if job_id is not None:
-                created.append((JOB_TYPE_SEND_WEEKLY_DIGEST, job_id))
 
-        if wanted["guardrails"]:
-            job_id = enqueue_once(db, JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS, {})
-            if job_id is not None:
-                created.append((JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS, job_id))
-
-        if wanted["filling_fast"]:
-            job_id = enqueue_once(db, JOB_TYPE_SEND_FILLING_FAST_ALERTS, {})
-            if job_id is not None:
-                created.append((JOB_TYPE_SEND_FILLING_FAST_ALERTS, job_id))
-
-    for job_type, job_id in created:
-        print(f"enqueued job_type={job_type} job_id={job_id}")
+def _print_results(created: list[tuple[str, int]]) -> None:
     if not created:
         print("no jobs enqueued (already queued/running)")
+        return
+    for job_type, job_id in created:
+        print(f"enqueued job_type={job_type} job_id={job_id}")
+
+
+def main() -> int:
+    args = _parse_args()
+    _bootstrap_imports()
+
+    from app.database import SessionLocal  # noqa: PLC0415
+    from app.task_queue import enqueue_job  # noqa: PLC0415
+
+    with SessionLocal() as db:
+        created = _enqueue_requested_jobs(
+            db,
+            enqueue_job,
+            wanted=_wanted_jobs(args),
+            payloads=_job_payloads(args),
+        )
+    _print_results(created)
     return 0
 
 

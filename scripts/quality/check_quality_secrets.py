@@ -45,11 +45,21 @@ def _dedupe(items: list[str]) -> list[str]:
     return out
 
 
+def _is_present(name: str) -> bool:
+    return bool(str(os.environ.get(name, "")).strip())
+
+
+def _partition_present_and_missing(names: list[str]) -> tuple[list[str], list[str]]:
+    missing: list[str] = []
+    present: list[str] = []
+    for name in names:
+        (present if _is_present(name) else missing).append(name)
+    return missing, present
+
+
 def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
-    missing_secrets = [name for name in required_secrets if not str(os.environ.get(name, "")).strip()]
-    missing_vars = [name for name in required_vars if not str(os.environ.get(name, "")).strip()]
-    present_secrets = [name for name in required_secrets if name not in missing_secrets]
-    present_vars = [name for name in required_vars if name not in missing_vars]
+    missing_secrets, present_secrets = _partition_present_and_missing(required_secrets)
+    missing_vars, present_vars = _partition_present_and_missing(required_vars)
     return {
         "missing_secrets": missing_secrets,
         "missing_vars": missing_vars,
@@ -120,4 +130,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

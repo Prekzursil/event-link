@@ -2,7 +2,10 @@ from __future__ import annotations
 
 import json
 import re
+import sys
 from pathlib import Path
+
+import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 UI_PACKAGE_JSON = REPO_ROOT / "ui" / "package.json"
@@ -50,3 +53,35 @@ def test_no_current_is_prefix_attribute_regressions() -> None:
                 offenders.append(f"{path.relative_to(REPO_ROOT)}:{snippet}")
 
     assert offenders == [], offenders
+
+
+def test_ui_package_versions_are_exact_reports_offenders(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    package_json = tmp_path / "package.json"
+    package_json.write_text(
+        json.dumps({"dependencies": {"react": "^19.1.0"}}, indent=2),
+        encoding="utf-8",
+    )
+    monkeypatch.setattr(sys.modules[__name__], "UI_PACKAGE_JSON", package_json)
+
+    with pytest.raises(AssertionError, match=r"dependencies:react=\^19\.1\.0"):
+        test_ui_package_versions_are_exact()
+
+
+def test_no_current_is_prefix_attribute_regressions_reports_offenders(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    module_path = tmp_path / "backend" / "app" / "api.py"
+    module_path.parent.mkdir(parents=True)
+    module_path.write_text("payload.is_active = True\n", encoding="utf-8")
+    monkeypatch.setattr(sys.modules[__name__], "REPO_ROOT", tmp_path)
+    monkeypatch.setattr(
+        sys.modules[__name__],
+        "ANALYZER_REGRESSION_TARGETS",
+        {module_path: ["payload.is_active"]},
+    )
+
+    with pytest.raises(AssertionError) as exc_info:
+        test_no_current_is_prefix_attribute_regressions()
+
+    message = str(exc_info.value).replace('\\', '/')
+    assert "api.py:payload.is_active" in message
