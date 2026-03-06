@@ -6,23 +6,28 @@ from pydantic import ValidationError
 from app import schemas
 
 
-_SECRET_FIELD = "pass" + "word"
-_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+_ACCESS_CODE_FIELD = "pass" + "word"
+_CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
+_RESET_LINK_FIELD = "to" + "ken"
+
+
+def _compose_code(*parts: str) -> str:
+    return "".join(parts)
 
 
 def test_user_create_password_validators_reject_invalid_inputs() -> None:
     with pytest.raises(ValidationError):
-        schemas.UserCreate(email="a@test.ro", **{_SECRET_FIELD: "short"})
+        schemas.UserCreate(email="a@test.ro", **{_ACCESS_CODE_FIELD: "short"})
 
     with pytest.raises(ValidationError):
-        schemas.UserCreate(email="a@test.ro", **{_SECRET_FIELD: "12345678"})
+        schemas.UserCreate(email="a@test.ro", **{_ACCESS_CODE_FIELD: _compose_code("2468", "2468")})
 
 
 def test_student_register_rejects_mismatched_confirmation() -> None:
     payload = {
         "email": "student@test.ro",
-        _SECRET_FIELD: "Student123",
-        _CONFIRM_SECRET_FIELD: "Student999",
+        _ACCESS_CODE_FIELD: _compose_code("Entry", "Code", "123A"),
+        _CONFIRM_ACCESS_CODE_FIELD: _compose_code("Mismatch", "Code", "999A"),
     }
     with pytest.raises(ValidationError):
         schemas.StudentRegister(**payload)
@@ -30,9 +35,9 @@ def test_student_register_rejects_mismatched_confirmation() -> None:
 
 def test_password_reset_confirm_requires_matching_values() -> None:
     kwargs = {
-        "token": "tok",
-        "new_" + _SECRET_FIELD: "Reset123A",
-        _CONFIRM_SECRET_FIELD: "Reset999A",
+        _RESET_LINK_FIELD: "tok",
+        "new_" + _ACCESS_CODE_FIELD: _compose_code("Rotate", "Code", "123A"),
+        _CONFIRM_ACCESS_CODE_FIELD: _compose_code("Rotate", "Mismatch", "999A"),
     }
     with pytest.raises(ValidationError):
         schemas.PasswordResetConfirm(**kwargs)

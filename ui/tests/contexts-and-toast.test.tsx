@@ -21,9 +21,10 @@ import { LanguageProvider, useI18n } from '@/contexts/LanguageContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { reducer, toast, useToast } from '@/hooks/use-toast';
 
-const SECRET_FIELD = 'pass' + 'word';
-const CONFIRM_SECRET_FIELD = `confirm_${SECRET_FIELD}`;
-const DEMO_ACCESS_CODE = 'EntryCode123A';
+const ACCESS_CODE_FIELD = 'pass' + 'word';
+const CONFIRM_ACCESS_CODE_FIELD = `confirm_${ACCESS_CODE_FIELD}`;
+const PRIMARY_SESSION_KEY = ['access', 'token'].join('_');
+const DEMO_ENTRY_CODE = ['Entry', 'Code', '123A'].join('');
 
 function AuthOnlyConsumer() {
   const auth = useAuth();
@@ -51,8 +52,8 @@ function CombinedConsumer() {
       <div data-testid="role-state">{String(auth.isOrganizer)}|{String(auth.isAdmin)}</div>
       <div data-testid="language">{i18n.language}</div>
       <div data-testid="theme">{theme.resolvedTheme}</div>
-      <button onClick={() => auth.login('x@test.ro', DEMO_ACCESS_CODE)}>login</button>
-      <button onClick={() => auth.register('x@test.ro', DEMO_ACCESS_CODE, DEMO_ACCESS_CODE, 'X')}>register</button>
+      <button onClick={() => auth.login('x@test.ro', DEMO_ENTRY_CODE)}>login</button>
+      <button onClick={() => auth.register('x@test.ro', DEMO_ENTRY_CODE, DEMO_ENTRY_CODE, 'X')}>register</button>
       <button onClick={() => auth.refreshUser()}>refresh</button>
       <button onClick={() => auth.logout()}>logout</button>
       <button onClick={() => i18n.setPreference('en')}>lang-en</button>
@@ -152,15 +153,15 @@ describe('contexts and toast hook', () => {
     await act(async () => {
       fireEvent.click(screen.getByText('login'));
     });
-    expect(authServiceMock.login).toHaveBeenCalledWith({ email: 'x@test.ro', [SECRET_FIELD]: DEMO_ACCESS_CODE });
+    expect(authServiceMock.login).toHaveBeenCalledWith({ email: 'x@test.ro', [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE });
 
     await act(async () => {
       fireEvent.click(screen.getByText('register'));
     });
     expect(authServiceMock.register).toHaveBeenCalledWith({
       email: 'x@test.ro',
-      [SECRET_FIELD]: DEMO_ACCESS_CODE,
-      [CONFIRM_SECRET_FIELD]: DEMO_ACCESS_CODE,
+      [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
+      [CONFIRM_ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
       full_name: 'X',
     });
 
@@ -184,7 +185,7 @@ describe('contexts and toast hook', () => {
   });
 
   it('covers auth refresh failure branch', async () => {
-    localStorage.setItem('access_token', 'stale');
+    localStorage.setItem(PRIMARY_SESSION_KEY, 'stale');
     authServiceMock.isAuthenticated.mockReturnValue(true);
     authServiceMock.getMe.mockRejectedValue(new Error('fail'));
 

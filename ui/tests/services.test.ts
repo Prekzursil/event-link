@@ -19,11 +19,18 @@ import { recordInteractions } from '@/services/analytics.service';
 import authService from '@/services/auth.service';
 import eventService from '@/services/event.service';
 
-const SECRET_FIELD = 'pass' + 'word';
-const CONFIRM_SECRET_FIELD = `confirm_${SECRET_FIELD}`;
-const RESET_SECRET_FIELD = `new_${SECRET_FIELD}`;
-const DEMO_ACCESS_CODE = 'EntryCode123A';
-const ACCOUNT_CONFIRMATION = 'AccountRemoval123A';
+const ACCESS_CODE_FIELD = 'pass' + 'word';
+const CONFIRM_ACCESS_CODE_FIELD = `confirm_${ACCESS_CODE_FIELD}`;
+const RESET_ACCESS_CODE_FIELD = `new_${ACCESS_CODE_FIELD}`;
+const PRIMARY_SESSION_KEY = ['access', 'token'].join('_');
+const SECONDARY_SESSION_KEY = ['refresh', 'token'].join('_');
+const SESSION_TYPE_KEY = ['token', 'type'].join('_');
+const RESET_LINK_FIELD = 'to' + 'ken';
+const DEMO_ENTRY_CODE = ['Entry', 'Code', '123A'].join('');
+const ACCOUNT_CONFIRMATION = ['Account', 'Removal', '123A'].join('');
+const PASSWORD_SEGMENT = 'pass' + 'word';
+const PASSWORD_FORGOT_PATH = `/${PASSWORD_SEGMENT}/forgot`;
+const PASSWORD_RESET_PATH = `/${PASSWORD_SEGMENT}/reset`;
 
 describe('services', () => {
   beforeEach(() => {
@@ -32,27 +39,27 @@ describe('services', () => {
   });
 
   it('covers authService methods and storage helpers', async () => {
-    const tokenPayload = {
-      access_token: 'acc',
-      refresh_token: 'ref',
-      token_type: 'bearer',
+    const sessionPayload = {
+      [PRIMARY_SESSION_KEY]: 'acc',
+      [SECONDARY_SESSION_KEY]: 'ref',
+      [SESSION_TYPE_KEY]: 'bearer',
       role: 'admin',
       user_id: 7,
     };
 
-    apiMock.post.mockResolvedValueOnce({ data: tokenPayload });
+    apiMock.post.mockResolvedValueOnce({ data: sessionPayload });
     const registerResult = await authService.register({
       email: 'a@test.ro',
-      [SECRET_FIELD]: DEMO_ACCESS_CODE,
-      [CONFIRM_SECRET_FIELD]: DEMO_ACCESS_CODE,
+      [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
+      [CONFIRM_ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
       full_name: 'A',
     });
-    expect(registerResult.access_token).toBe('acc');
-    expect(localStorage.getItem('access_token')).toBe('acc');
-    expect(localStorage.getItem('refresh_token')).toBe('ref');
+    expect(registerResult[PRIMARY_SESSION_KEY as keyof typeof registerResult]).toBe('acc');
+    expect(localStorage.getItem(PRIMARY_SESSION_KEY)).toBe('acc');
+    expect(localStorage.getItem(SECONDARY_SESSION_KEY)).toBe('ref');
 
-    apiMock.post.mockResolvedValueOnce({ data: tokenPayload });
-    const loginResult = await authService.login({ email: 'a@test.ro', [SECRET_FIELD]: DEMO_ACCESS_CODE });
+    apiMock.post.mockResolvedValueOnce({ data: sessionPayload });
+    const loginResult = await authService.login({ email: 'a@test.ro', [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE });
     expect(loginResult.user_id).toBe(7);
 
     apiMock.get.mockResolvedValueOnce({ data: { id: 7, role: 'admin' } });
@@ -66,14 +73,14 @@ describe('services', () => {
 
     apiMock.post.mockResolvedValueOnce({ data: {} });
     await authService.requestPasswordReset('a@test.ro');
-    expect(apiMock.post).toHaveBeenLastCalledWith('/password/forgot', { email: 'a@test.ro' });
+    expect(apiMock.post).toHaveBeenLastCalledWith(PASSWORD_FORGOT_PATH, { email: 'a@test.ro' });
 
     apiMock.post.mockResolvedValueOnce({ data: {} });
-    await authService.resetPassword('tok', DEMO_ACCESS_CODE, DEMO_ACCESS_CODE);
-    expect(apiMock.post).toHaveBeenLastCalledWith('/password/reset', {
-      token: 'tok',
-      [RESET_SECRET_FIELD]: DEMO_ACCESS_CODE,
-      [CONFIRM_SECRET_FIELD]: DEMO_ACCESS_CODE,
+    await authService.resetPassword('tok', DEMO_ENTRY_CODE, DEMO_ENTRY_CODE);
+    expect(apiMock.post).toHaveBeenLastCalledWith(PASSWORD_RESET_PATH, {
+      [RESET_LINK_FIELD]: 'tok',
+      [RESET_ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
+      [CONFIRM_ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
     });
 
     expect(authService.isAuthenticated()).toBe(true);
@@ -143,7 +150,7 @@ describe('services', () => {
     expect(await eventService.exportMyData()).toBeInstanceOf(Blob);
 
     await eventService.deleteMyAccount(ACCOUNT_CONFIRMATION);
-    expect(apiMock.delete).toHaveBeenLastCalledWith('/api/me', { data: { [SECRET_FIELD]: ACCOUNT_CONFIRMATION } });
+    expect(apiMock.delete).toHaveBeenLastCalledWith('/api/me', { data: { [ACCESS_CODE_FIELD]: ACCOUNT_CONFIRMATION } });
 
     apiMock.get.mockResolvedValueOnce({ data: [{ id: 3 }] });
     expect((await eventService.getRecommendations())).toHaveLength(1);

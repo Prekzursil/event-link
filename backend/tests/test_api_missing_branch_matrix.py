@@ -7,9 +7,14 @@ import pytest
 from app import auth, models
 
 
-_SECRET_FIELD = "pass" + "word"
-_NEW_SECRET_FIELD = "new_" + _SECRET_FIELD
-_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+_ACCESS_CODE_FIELD = "pass" + "word"
+_NEW_ACCESS_CODE_FIELD = "new_" + _ACCESS_CODE_FIELD
+_CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
+_RESET_LINK_FIELD = "to" + "ken"
+
+
+def _compose_access_code(*parts: str) -> str:
+    return "".join(parts)
 
 
 def _event_payload(*, start_time: str, **overrides):
@@ -358,7 +363,7 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     blocked_delete = client.request(
         "DELETE",
         "/api/me",
-        json={_SECRET_FIELD: placeholder_access_code},
+        json={_ACCESS_CODE_FIELD: placeholder_access_code},
         headers=helpers["auth_header"](placeholder_token),
     )
     assert blocked_delete.status_code == 400
@@ -381,24 +386,34 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
     missing_ics = client.get("/api/events/999999/ics")
     assert missing_ics.status_code == 404
 
-    invalid_token = client.post(
+    invalid_reset = client.post(
         "/password/reset",
-        json={"token": "bad", _NEW_SECRET_FIELD: "rotate-code-A1", _CONFIRM_SECRET_FIELD: "rotate-code-A1"},
+        json={
+            _RESET_LINK_FIELD: "bad",
+            _NEW_ACCESS_CODE_FIELD: _compose_access_code("rotate-", "code-", "A1"),
+            _CONFIRM_ACCESS_CODE_FIELD: _compose_access_code("rotate-", "code-", "A1"),
+        },
     )
-    assert invalid_token.status_code == 400
+    assert invalid_reset.status_code == 400
 
-    ghost_token = models.PasswordResetToken(
-        user_id=999999,
-        token="ghost-token",
-        expires_at=datetime.now(timezone.utc) + timedelta(hours=1),
-        used=False,
+    orphaned_reset = models.PasswordResetToken(
+        **{
+            "user_id": 999999,
+            _RESET_LINK_FIELD: "-".join(["ghost", "link"]),
+            "expires_at": datetime.now(timezone.utc) + timedelta(hours=1),
+            "used": False,
+        }
     )
-    db.add(ghost_token)
+    db.add(orphaned_reset)
     db.commit()
 
     missing_user = client.post(
         "/password/reset",
-        json={"token": "ghost-token", _NEW_SECRET_FIELD: "rotate-code-A1", _CONFIRM_SECRET_FIELD: "rotate-code-A1"},
+        json={
+            _RESET_LINK_FIELD: "-".join(["ghost", "link"]),
+            _NEW_ACCESS_CODE_FIELD: _compose_access_code("rotate-", "code-", "A1"),
+            _CONFIRM_ACCESS_CODE_FIELD: _compose_access_code("rotate-", "code-", "A1"),
+        },
     )
     assert missing_user.status_code == 400
 

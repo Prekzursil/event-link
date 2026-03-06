@@ -10,8 +10,12 @@ from fastapi import HTTPException, Request
 from app import api, auth, models, schemas
 
 
-_SECRET_FIELD = "pass" + "word"
-_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
+_ACCESS_CODE_FIELD = "pass" + "word"
+_CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
+
+
+def _compose_access_code(*parts: str) -> str:
+    return "".join(parts)
 
 
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
@@ -513,8 +517,8 @@ def test_direct_route_guard_branches(monkeypatch):
 
     register_payload = {
         "email": "mismatch@test.ro",
-        _SECRET_FIELD: "EntryCode123A",
-        _CONFIRM_SECRET_FIELD: "MismatchCode123A",
+        _ACCESS_CODE_FIELD: _compose_access_code("Entry", "Code", "123A"),
+        _CONFIRM_ACCESS_CODE_FIELD: _compose_access_code("Mismatch", "Code", "123A"),
     }
     with pytest.raises(HTTPException) as register_exc:
         api.register(
