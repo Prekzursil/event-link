@@ -64,7 +64,7 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
 
 def test_validate_cover_url_rejects_non_http_scheme():
     with pytest.raises(HTTPException):
-        api._validate_cover_url("ftp://invalid")
+        api._validate_cover_url("ftps://invalid")
 
 
 def test_refresh_token_branches():
@@ -609,4 +609,3 @@ def test_record_interactions_disabled_and_empty_paths(monkeypatch, helpers):
 
     stored = db.query(models.EventInteraction).count()
     assert stored == 0
-
