@@ -173,14 +173,14 @@ function renderRoute(path: string, routePath: string, element: React.ReactElemen
 
 function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
   if (value == null) {
-    throw new Error(`Expected ${label}`);
+    throw new TypeError(`Expected ${label}`);
   }
   return value;
 }
 
 function requireInput(value: Element | null, label: string): HTMLInputElement {
   if (!(value instanceof HTMLInputElement)) {
-    throw new Error(`Expected ${label}`);
+    throw new TypeError(`Expected ${label}`);
   }
   return value;
 }

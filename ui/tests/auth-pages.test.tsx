@@ -65,7 +65,7 @@ function renderWithProviders(node: React.ReactNode, initialEntry = '/') {
 function requireForm(buttonName: RegExp): HTMLFormElement {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
-    throw new Error(`Expected a form for ${buttonName.toString()}`);
+    throw new TypeError(`Expected a form for ${buttonName.toString()}`);
   }
   return form;
 }
@@ -175,7 +175,3 @@ describe('auth pages', () => {
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 });
-
-
-
-

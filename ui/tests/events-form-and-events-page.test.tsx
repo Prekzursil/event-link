@@ -109,7 +109,7 @@ function renderRoute(path: string, routePath: string, element: React.ReactElemen
 function requireForm(buttonName: RegExp): HTMLFormElement {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
-    throw new Error(`Expected a form for ${buttonName.toString()}`);
+    throw new TypeError(`Expected a form for ${buttonName.toString()}`);
   }
   return form;
 }

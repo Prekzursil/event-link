@@ -9,27 +9,50 @@ type AccessCodeValidationStrings = {
   accessCodeRequirementNumbers: string;
 };
 
-const RO_ACCESS_CODE_VALIDATION: AccessCodeValidationStrings = {
-  accessCodeMismatchInline: 'Codurile de acces nu se potrivesc',
-  accessCodeMismatchTitle: 'Eroare',
-  accessCodeMismatchDescription: 'Codurile de acces nu se potrivesc',
-  accessCodeInvalidTitle: 'Eroare',
-  accessCodeInvalidDescription: 'Codul de acces nu îndeplinește cerințele',
-  accessCodeRequirementMin: 'Cel puțin 8 caractere',
-  accessCodeRequirementLetters: 'Conține litere',
-  accessCodeRequirementNumbers: 'Conține cifre',
+type AccessCodeValidationConfig = {
+  mismatchMessage: string;
+  errorTitle: string;
+  invalidDescription: string;
+  minimumRequirement: string;
+  letterRequirement: string;
+  numberRequirement: string;
 };
 
-const EN_ACCESS_CODE_VALIDATION: AccessCodeValidationStrings = {
-  accessCodeMismatchInline: 'Access codes do not match',
-  accessCodeMismatchTitle: 'Error',
-  accessCodeMismatchDescription: 'Access codes do not match',
-  accessCodeInvalidTitle: 'Error',
-  accessCodeInvalidDescription: 'Access code does not meet requirements',
-  accessCodeRequirementMin: 'At least 8 characters',
-  accessCodeRequirementLetters: 'Contains letters',
-  accessCodeRequirementNumbers: 'Contains numbers',
-};
+const buildAccessCodeValidation = ({
+  mismatchMessage,
+  errorTitle,
+  invalidDescription,
+  minimumRequirement,
+  letterRequirement,
+  numberRequirement,
+}: AccessCodeValidationConfig): AccessCodeValidationStrings => ({
+  accessCodeMismatchInline: mismatchMessage,
+  accessCodeMismatchTitle: errorTitle,
+  accessCodeMismatchDescription: mismatchMessage,
+  accessCodeInvalidTitle: errorTitle,
+  accessCodeInvalidDescription: invalidDescription,
+  accessCodeRequirementMin: minimumRequirement,
+  accessCodeRequirementLetters: letterRequirement,
+  accessCodeRequirementNumbers: numberRequirement,
+});
+
+const RO_ACCESS_CODE_VALIDATION = buildAccessCodeValidation({
+  mismatchMessage: 'Codurile de acces nu se potrivesc',
+  errorTitle: 'Eroare',
+  invalidDescription: 'Codul de acces nu îndeplinește cerințele',
+  minimumRequirement: 'Cel puțin 8 caractere',
+  letterRequirement: 'Conține litere',
+  numberRequirement: 'Conține cifre',
+});
+
+const EN_ACCESS_CODE_VALIDATION = buildAccessCodeValidation({
+  mismatchMessage: 'Access codes do not match',
+  errorTitle: 'Error',
+  invalidDescription: 'Access code does not meet requirements',
+  minimumRequirement: 'At least 8 characters',
+  letterRequirement: 'Contains letters',
+  numberRequirement: 'Contains numbers',
+});
 
 export const RO_STRINGS = {
   common: {
