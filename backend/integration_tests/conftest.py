@@ -5,7 +5,6 @@ import pytest
 from alembic import command
 from alembic.config import Config
 from fastapi.testclient import TestClient
-from sqlalchemy import text
 
 if os.environ.get("RUN_INTEGRATION_TESTS") != "1":
     pytest.skip(
@@ -44,10 +43,9 @@ def _ensure_schema():
 def db_session():
     db = SessionLocal()
     try:
-        tables = [t.name for t in Base.metadata.sorted_tables]
-        if tables:
-            db.execute(text(f"TRUNCATE TABLE {', '.join(tables)} RESTART IDENTITY CASCADE"))
-            db.commit()
+        for table in reversed(Base.metadata.sorted_tables):
+            db.execute(table.delete())
+        db.commit()
         yield db
     finally:
         db.close()

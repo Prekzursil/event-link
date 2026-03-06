@@ -51,12 +51,15 @@ def normalize_https_url(
     except ValueError:
         ip_value = None
 
-    if ip_value is not None and (
-        ip_value.is_private
-        or ip_value.is_loopback
-        or ip_value.is_link_local
-        or ip_value.is_reserved
-        or ip_value.is_multicast
+    if ip_value is not None and any(
+        bool(getattr(ip_value, attribute, False))
+        for attribute in (
+            "is_private",
+            "is_loopback",
+            "is_link_local",
+            "is_reserved",
+            "is_multicast",
+        )
     ):
         raise ValueError(f"Private or local addresses are not allowed: {hostname}")
 
@@ -116,8 +119,9 @@ def _decode_json_payload(raw_text: str) -> object | None:
 
 
 def _open_https_request(request: urllib.request.Request, *, timeout: int):
+    opener = urllib.request.build_opener(urllib.request.HTTPSHandler())
     try:
-        return urllib.request.urlopen(request, timeout=timeout)
+        return opener.open(request, timeout=timeout)
     except urllib.error.HTTPError as exc:
         return exc
 
@@ -199,22 +203,15 @@ def resolve_workspace_relative_path(
     must_exist: bool = False,
     must_be_file: bool = False,
 ) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw_path or "").strip() or fallback).expanduser()
-    if candidate.is_absolute():
-        raise ValueError(f"Absolute paths are not allowed: {candidate}")
-
-    resolved = (root / candidate).resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Path escapes workspace root: {candidate}") from exc
-
-    if must_exist and not resolved.exists():
-        raise ValueError(f"Path does not exist: {candidate}")
-    if must_be_file and resolved.exists() and not resolved.is_file():
-        raise ValueError(f"Path must be a regular file: {candidate}")
-
+    root = _workspace_root(base)
+    candidate = _candidate_relative_path(raw_path, fallback)
+    resolved = _resolve_workspace_path(root, candidate)
+    _validate_resolved_path(
+        resolved,
+        candidate=candidate,
+        must_exist=must_exist,
+        must_be_file=must_be_file,
+    )
     return resolved
 
 

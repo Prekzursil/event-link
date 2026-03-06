@@ -38,3 +38,10 @@ def test_selected_workflows_define_top_level_permissions_floor() -> None:
     for workflow in WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS:
         content = workflow.read_text(encoding='utf-8')
         assert 'permissions: {}' in content, workflow.name
+
+
+def test_codacy_tool_sync_workflow_dispatch_has_no_inputs() -> None:
+    content = (REPO_ROOT / '.github' / 'workflows' / 'codacy-tool-sync.yml').read_text(encoding='utf-8')
+
+    assert 'workflow_dispatch:' in content
+    assert 'inputs:' not in content

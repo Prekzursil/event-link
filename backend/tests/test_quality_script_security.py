@@ -113,17 +113,22 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
         def getheaders(self):
             return [("X-Hits", "5"), ("Content-Type", "application/json")]
 
-    def _fake_urlopen(request, timeout=None):
-        calls["request"] = {
-            "method": request.get_method(),
-            "url": request.full_url,
-            "body": request.data,
-            "headers": dict(request.header_items()),
-        }
-        calls["timeout"] = timeout
-        return _FakeResponse()
+    class _FakeOpener:
+        def open(self, request, timeout=None):
+            calls["request"] = {
+                "method": request.get_method(),
+                "url": request.full_url,
+                "body": request.data,
+                "headers": dict(request.header_items()),
+            }
+            calls["timeout"] = timeout
+            return _FakeResponse()
 
-    monkeypatch.setattr(security_helpers.urllib.request, "urlopen", _fake_urlopen)
+    monkeypatch.setattr(
+        security_helpers.urllib.request,
+        "build_opener",
+        lambda *_args, **_kwargs: _FakeOpener(),
+    )
 
     payload, headers, status = security_helpers.request_https_json(
         "https://api.github.com/repos/Prekzursil/event-link/check-runs?per_page=1",
