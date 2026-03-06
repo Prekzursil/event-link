@@ -100,36 +100,13 @@ vi.mock('@/contexts/ThemeContext', () => ({
   useTheme: () => themeState,
 }));
 
-vi.mock('@/components/ui/select', async () => {
-  const ReactMod = await vi.importActual<typeof import('react')>('react');
-  type SelectCtx = { onValueChange?: (value: string) => void; disabled?: boolean };
-  const SelectContext = ReactMod.createContext<SelectCtx>({});
+vi.mock('@/components/ui/select', () =>
+  import('./mock-component-modules').then((module) => module.createSelectMockModule()),
+);
 
-  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => {
-    const selectContextValue = ReactMod.useMemo(() => ({ onValueChange, disabled }), [disabled, onValueChange]);
-    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>;
-  };
-  const SelectTrigger = ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button type="button" {...props}>{children}</button>
-  );
-  const SelectValue = ({ placeholder }: { placeholder?: string }) => <span>{placeholder ?? 'value'}</span>;
-  const SelectContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-  const SelectItem = ({ value, children }: { value: string; children: React.ReactNode }) => {
-    const ctx = ReactMod.useContext(SelectContext);
-    return <button type="button" disabled={ctx.disabled} onClick={() => ctx.onValueChange?.(value)}>{children}</button>;
-  };
-  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
-});
-
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({ children, onClick, onSelect }: { children: React.ReactNode; onClick?: () => void; onSelect?: () => void }) => (
-    <button type="button" onClick={() => { onSelect?.(); onClick?.(); }}>{children}</button>
-  ),
-  DropdownMenuSeparator: () => <hr />,
-}));
+vi.mock('@/components/ui/dropdown-menu', () =>
+  import('./mock-component-modules').then((module) => module.createDropdownMenuMockModule()),
+);
 
 vi.mock('react-router-dom', async () => {
   const actual = await vi.importActual<typeof import('react-router-dom')>('react-router-dom');

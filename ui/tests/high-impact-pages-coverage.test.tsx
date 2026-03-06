@@ -77,64 +77,17 @@ vi.mock('react-router-dom', async () => {
 });
 
 // Simplify select interactions while keeping callback behavior explicit.
-vi.mock('@/components/ui/select', async () => {
-  const ReactMod = await vi.importActual<typeof import('react')>('react');
-  type SelectCtx = { onValueChange?: (value: string) => void; disabled?: boolean };
-  const SelectContext = ReactMod.createContext<SelectCtx>({});
+vi.mock('@/components/ui/select', () =>
+  import('./mock-component-modules').then((module) => module.createSelectMockModule()),
+);
 
-  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => {
-    const selectContextValue = ReactMod.useMemo(() => ({ onValueChange, disabled }), [disabled, onValueChange]);
-    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>;
-  };
-  const SelectTrigger = ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button type="button" {...props}>
-      {children}
-    </button>
-  );
-  const SelectValue = ({ placeholder }: { placeholder?: string }) => <span>{placeholder ?? 'value'}</span>;
-  const SelectContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>;
-  const SelectItem = ({ value, children }: { value: string; children: React.ReactNode }) => {
-    const ctx = ReactMod.useContext(SelectContext);
-    return (
-      <button
-        type="button"
-        disabled={ctx.disabled}
-        onClick={() => ctx.onValueChange?.(value)}
-      >
-        {children}
-      </button>
-    );
-  };
-  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
-});
+vi.mock('@/components/ui/checkbox', () =>
+  import('./mock-component-modules').then((module) => module.createCheckboxMockModule()),
+);
 
-vi.mock('@/components/ui/checkbox', () => ({
-  Checkbox: ({ checked, onCheckedChange, disabled, ...rest }: { checked?: boolean; disabled?: boolean; onCheckedChange?: (value: boolean) => void }) => (
-    <input
-      type="checkbox"
-      checked={Boolean(checked)}
-      disabled={disabled}
-      onChange={() => onCheckedChange?.(!checked)}
-      {...rest}
-    />
-  ),
-}));
-
-vi.mock('@/components/ui/calendar', () => ({
-  Calendar: ({ onSelect }: { onSelect?: (range: { from?: Date; to?: Date }) => void }) => (
-    <button
-      type="button"
-      onClick={() =>
-        onSelect?.({
-          from: new Date('2026-03-10T00:00:00Z'),
-          to: new Date('2026-03-11T00:00:00Z'),
-        })
-      }
-    >
-      Pick range
-    </button>
-  ),
-}));
+vi.mock('@/components/ui/calendar', () =>
+  import('./mock-component-modules').then((module) => module.createCalendarMockModule()),
+);
 
 vi.mock('@/components/events/EventCard', () => ({
   EventCard: ({ event, onFavoriteToggle, onEventClick, isFavorite }: {

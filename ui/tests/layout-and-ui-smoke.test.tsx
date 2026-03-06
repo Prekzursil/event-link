@@ -43,35 +43,9 @@ vi.mock('@/hooks/use-toast', () => ({
 vi.mock('@/services/auth.service', () => ({
   default: authServiceMock,
 }));
-vi.mock('@/components/ui/dropdown-menu', () => ({
-  DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuItem: ({
-    children,
-    onSelect,
-    onClick,
-    disabled,
-  }: {
-    children: React.ReactNode;
-    onSelect?: () => void;
-    onClick?: () => void;
-    disabled?: boolean;
-  }) => (
-    <button
-      type="button"
-      disabled={disabled}
-      onClick={() => {
-        onSelect?.();
-        onClick?.();
-      }}
-    >
-      {children}
-    </button>
-  ),
-  DropdownMenuLabel: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-  DropdownMenuSeparator: () => <hr />,
-}));
+vi.mock('@/components/ui/dropdown-menu', () =>
+  import('./mock-component-modules').then((module) => module.createDropdownMenuMockModule()),
+);
 
 import { Footer, Layout, Navbar } from '@/components/layout';
 import {
