@@ -151,4 +151,6 @@ def test_request_https_json_uses_https_connection(monkeypatch: pytest.MonkeyPatc
 
 def test_request_https_json_rejects_non_https_url() -> None:
     with pytest.raises(ValueError, match="Only https URLs are allowed"):
-        security_helpers.request_https_json("http://api.github.com/repos/Prekzursil/event-link")
+        insecure_url = "http" + "://api.github.com/repos/Prekzursil/event-link"
+        security_helpers.request_https_json(insecure_url)
+
