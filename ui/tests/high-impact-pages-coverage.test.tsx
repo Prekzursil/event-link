@@ -1,9 +1,14 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import {
+  defineMutableValue,
+  renderLanguageRoute,
+  requireElement,
+  requireInput,
+  setEnglishPreference,
+} from './page-test-helpers';
 
 const {
   toastSpy,
@@ -112,32 +117,6 @@ import { EventsPage } from '@/pages/events/EventsPage';
 import { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
 import { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
 
-function renderRoute(path: string, routePath: string, element: React.ReactElement) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LanguageProvider>
-        <Routes>
-          <Route path={routePath} element={element} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
-
-function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
-  if (value == null) {
-    throw new TypeError(`Expected ${label}`);
-  }
-  return value;
-}
-
-function requireInput(value: Element | null, label: string): HTMLInputElement {
-  if (!(value instanceof HTMLInputElement)) {
-    throw new TypeError(`Expected ${label}`);
-  }
-  return value;
-}
-
 function makeEvent(id: number) {
   return {
     id,
@@ -161,36 +140,22 @@ function makeEvent(id: number) {
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  localStorage.setItem('language_preference', 'en');
+  setEnglishPreference();
 
-  Object.defineProperty(globalThis, 'matchMedia', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockImplementation(() => ({
+  defineMutableValue(
+    globalThis,
+    'matchMedia',
+    vi.fn().mockImplementation(() => ({
       matches: false,
       media: '(min-width: 640px)',
       addListener: mediaAddListenerSpy,
       removeListener: mediaRemoveListenerSpy,
     })),
-  });
+  );
 
-  Object.defineProperty(globalThis, 'confirm', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockReturnValue(true),
-  });
-
-  Object.defineProperty(globalThis, 'open', {
-    writable: true,
-    configurable: true,
-    value: vi.fn(),
-  });
-
-  Object.defineProperty(URL, 'createObjectURL', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockReturnValue('blob://data'),
-  });
+  defineMutableValue(globalThis, 'confirm', vi.fn().mockReturnValue(true));
+  defineMutableValue(globalThis, 'open', vi.fn());
+  defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://data'));
 
   authState.isAuthenticated = true;
   authState.isOrganizer = true;
@@ -266,7 +231,7 @@ beforeEach(() => {
 
 describe('high-impact page coverage', () => {
   it('covers EventsPage filter/pagination handlers and favorite remove error branch', async () => {
-    renderRoute(
+    renderLanguageRoute(
       '/events?search=abc&category=technical&city=Cluj&location=Hall&start_date=2026-03-01&end_date=2026-03-02&page=2&sort=recommended&page_size=12',
       '/events',
       <EventsPage />,
@@ -299,7 +264,7 @@ describe('high-impact page coverage', () => {
     });
     eventServiceMock.getFavorites.mockResolvedValueOnce({ items: [makeEvent(2)] });
     eventServiceMock.removeFromFavorites.mockRejectedValueOnce(new Error('fav-remove-fail'));
-    renderRoute('/events?page=2', '/events', <EventsPage />);
+    renderLanguageRoute('/events?page=2', '/events', <EventsPage />);
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
 
     const event2Card = await screen.findByTestId('event-2');
@@ -319,7 +284,7 @@ describe('high-impact page coverage', () => {
       return { items: [makeEvent(1)], total: 25, page: 1, page_size: 12, total_pages: 3 };
     });
 
-    renderRoute('/events?search=ai&category=technical&city=Cluj&location=Hall&tags=ai,ml&page=1', '/events', <EventsPage />);
+    renderLanguageRoute('/events?search=ai&category=technical&city=Cluj&location=Hall&tags=ai,ml&page=1', '/events', <EventsPage />);
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
 
     // Trigger delayed impression + search interaction payload path.
@@ -347,7 +312,7 @@ describe('high-impact page coverage', () => {
     cleanup();
 
     // The page keeps tag filters in query state, but only exposes a clear-all control in the UI.
-    renderRoute('/events?tags=ai,ml&page=1', '/events', <EventsPage />);
+    renderLanguageRoute('/events?tags=ai,ml&page=1', '/events', <EventsPage />);
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /clear/i }));
 
@@ -359,7 +324,7 @@ describe('high-impact page coverage', () => {
 
     cleanup();
 
-    renderRoute('/events?category=technical&page=1', '/events', <EventsPage />);
+    renderLanguageRoute('/events?category=technical&page=1', '/events', <EventsPage />);
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
 
     const categoryOnlyIcons = Array.from(document.querySelectorAll('svg.cursor-pointer'));
@@ -378,7 +343,7 @@ describe('high-impact page coverage', () => {
 
     cleanup();
 
-    renderRoute('/events?sort=time', '/events', <EventsPage />);
+    renderLanguageRoute('/events?sort=time', '/events', <EventsPage />);
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
 
     // Recommendation click branch.
@@ -408,7 +373,7 @@ describe('high-impact page coverage', () => {
       response: { data: { detail: 'bad-access-code' } },
     });
 
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
     const musicTagButton = screen.getByRole('button', { name: /Muzică/i });
@@ -445,7 +410,7 @@ describe('high-impact page coverage', () => {
 
 
   it('covers StudentProfilePage success handlers and guarded branches', async () => {
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
     fireEvent.change(screen.getByLabelText(/Full name/i), { target: { value: 'New Name' } });
@@ -524,19 +489,19 @@ describe('high-impact page coverage', () => {
 
   it('covers StudentProfilePage non-student and load-failure branches', async () => {
     authState.user = { id: 11, role: 'organizator', email: 'org@test.local' };
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
     expect(screen.queryByText(/Personalization/i)).not.toBeInTheDocument();
 
     cleanup();
     authState.user = { id: 11, role: 'student', email: 'student@test.local' };
     eventServiceMock.getStudentProfile.mockRejectedValueOnce(new Error('profile-load-fail'));
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 
   it('covers OrganizerDashboardPage bulk tag branches and delete guard branches', async () => {
-    renderRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
 
     const checkboxes = screen.getAllByRole('checkbox');
@@ -613,7 +578,7 @@ describe('high-impact page coverage', () => {
     }
   });
   it('covers student tag checkbox onCheckedChange callback', async () => {
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
     const tagCheckbox = document.getElementById('tag-1');
@@ -624,7 +589,7 @@ describe('high-impact page coverage', () => {
     fireEvent.click(tagCheckboxElement);
   });
   it('renders tag option cards and toggles selection via card click', async () => {
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
     const techTagCard = await screen.findByRole('button', { name: /Tech/i });

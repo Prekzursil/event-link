@@ -1,9 +1,8 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { defineMutableValue, renderLanguageRoute, requireElement, setEnglishPreference } from './page-test-helpers';
 
 const { eventServiceMock, recordInteractionsSpy, authState, toastSpy, navigateSpy } = vi.hoisted(() => ({
   eventServiceMock: {
@@ -47,22 +46,7 @@ vi.mock('react-router-dom', async () => {
 import { EventDetailPage } from '@/pages/events/EventDetailPage';
 
 function renderEventDetail(path = '/events/1') {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LanguageProvider>
-        <Routes>
-          <Route path="/events/:id" element={<EventDetailPage />} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
-
-function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
-  if (value == null) {
-    throw new Error(`Expected ${label}`);
-  }
-  return value;
+  return renderLanguageRoute(path, '/events/:id', <EventDetailPage />);
 }
 
 function makeEvent(overrides?: Partial<Record<string, unknown>>) {
@@ -94,31 +78,14 @@ function makeEvent(overrides?: Partial<Record<string, unknown>>) {
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  localStorage.setItem('language_preference', 'en');
+  setEnglishPreference();
 
-  Object.defineProperty(globalThis, 'open', {
-    writable: true,
-    configurable: true,
-    value: vi.fn(),
+  defineMutableValue(globalThis, 'open', vi.fn());
+  defineMutableValue(navigator, 'clipboard', {
+    writeText: vi.fn().mockResolvedValue(undefined),
   });
-
-  Object.defineProperty(navigator, 'clipboard', {
-    writable: true,
-    configurable: true,
-    value: { writeText: vi.fn().mockResolvedValue(undefined) },
-  });
-
-  Object.defineProperty(navigator, 'share', {
-    writable: true,
-    configurable: true,
-    value: undefined,
-  });
-
-  Object.defineProperty(HTMLElement.prototype, 'scrollIntoView', {
-    writable: true,
-    configurable: true,
-    value: vi.fn(),
-  });
+  defineMutableValue(navigator, 'share', undefined);
+  defineMutableValue(HTMLElement.prototype, 'scrollIntoView', vi.fn());
 
   authState.isAuthenticated = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
@@ -184,11 +151,7 @@ describe('event detail branch coverage', () => {
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
 
     // Share native path.
-    Object.defineProperty(navigator, 'share', {
-      writable: true,
-      configurable: true,
-      value: vi.fn().mockResolvedValue(undefined),
-    });
+    defineMutableValue(navigator, 'share', vi.fn().mockResolvedValue(undefined));
     fireEvent.click(actionButtons[1]);
     await waitFor(() => expect(navigator.share).toHaveBeenCalled());
 

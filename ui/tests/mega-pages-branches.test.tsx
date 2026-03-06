@@ -1,9 +1,8 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor, within } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { defineMutableValue, renderLanguageRoute, requireElement, setEnglishPreference } from './page-test-helpers';
 
 const {
   toastSpy,
@@ -122,25 +121,6 @@ import { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage
 import { ParticipantsPage } from '@/pages/organizer/ParticipantsPage';
 import { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
 
-function renderRoute(path: string, routePath: string, element: React.ReactElement) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LanguageProvider>
-        <Routes>
-          <Route path={routePath} element={element} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
-
-function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
-  if (value == null) {
-    throw new Error(`Expected ${label}`);
-  }
-  return value;
-}
-
 function makeEventDetail(id: number) {
   return {
     id,
@@ -169,25 +149,11 @@ function makeEventDetail(id: number) {
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  localStorage.setItem('language_preference', 'en');
+  setEnglishPreference();
 
-  Object.defineProperty(globalThis, 'confirm', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockReturnValue(true),
-  });
-
-  Object.defineProperty(globalThis, 'open', {
-    writable: true,
-    configurable: true,
-    value: vi.fn(),
-  });
-
-  Object.defineProperty(URL, 'createObjectURL', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockReturnValue('blob://csv'),
-  });
+  defineMutableValue(globalThis, 'confirm', vi.fn().mockReturnValue(true));
+  defineMutableValue(globalThis, 'open', vi.fn());
+  defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://csv'));
 
   authState.isAuthenticated = true;
   authState.isOrganizer = true;
@@ -396,7 +362,7 @@ beforeEach(() => {
 
 describe('mega pages branch matrix', () => {
   it('covers admin dashboard queue/users/events action branches', async () => {
-    renderRoute('/admin', '/admin', <AdminDashboardPage />);
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
 
     fireEvent.click(await screen.findByRole('button', { name: /Retrain/i }));
@@ -441,7 +407,7 @@ describe('mega pages branch matrix', () => {
   it('covers event detail unauthenticated redirect and registered flows', async () => {
     authState.isAuthenticated = false;
     authState.user = null;
-    renderRoute('/events/1', '/events/:id', <EventDetailPage />);
+    renderLanguageRoute('/events/1', '/events/:id', <EventDetailPage />);
 
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
     fireEvent.click(screen.getByRole('button', { name: /Register for event/i }));
@@ -451,7 +417,7 @@ describe('mega pages branch matrix', () => {
     authState.isAuthenticated = true;
     authState.user = { id: 1, role: 'student', email: 'student@test.local' };
     eventServiceMock.getEvent.mockResolvedValueOnce({ ...makeEventDetail(1), is_registered: true, is_favorite: true });
-    renderRoute('/events/1', '/events/:id', <EventDetailPage />);
+    renderLanguageRoute('/events/1', '/events/:id', <EventDetailPage />);
 
     await waitFor(() => expect(screen.getByRole('button', { name: /Resend confirmation email/i })).toBeInTheDocument());
     fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/i }));
@@ -462,7 +428,7 @@ describe('mega pages branch matrix', () => {
   });
 
   it('covers organizer dashboard bulk actions and participants email/csv/sort flows', async () => {
-    renderRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
 
     const organizerCheckboxes = screen.getAllByRole('checkbox');
@@ -471,7 +437,7 @@ describe('mega pages branch matrix', () => {
     await waitFor(() => expect(eventServiceMock.bulkUpdateEventStatus).toHaveBeenCalledWith([3], 'published'));
 
     cleanup();
-    renderRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
+    renderLanguageRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
     await waitFor(() => expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 1, 20, 'registration_time', 'asc'));
 
     fireEvent.click(screen.getByRole('button', { name: /Email participants/i }));
@@ -505,7 +471,7 @@ describe('mega pages branch matrix', () => {
     adminServiceMock.enqueueWeeklyDigest.mockRejectedValueOnce(new Error('digest-fail'));
     adminServiceMock.enqueueFillingFast.mockRejectedValueOnce(new Error('filling-fail'));
 
-    renderRoute('/admin', '/admin', <AdminDashboardPage />);
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
@@ -618,7 +584,7 @@ describe('mega pages branch matrix', () => {
   }, 20000);
 
   it('covers organizer and participants callback edge branches', async () => {
-    renderRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
 
     const organizerCheckboxes = screen.getAllByRole('checkbox');
@@ -661,7 +627,7 @@ describe('mega pages branch matrix', () => {
 
     cleanup();
     eventServiceMock.getEventParticipants.mockRejectedValueOnce(new Error('participants-load-fail'));
-    renderRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
+    renderLanguageRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     cleanup();
@@ -681,7 +647,7 @@ describe('mega pages branch matrix', () => {
       page: 1,
       page_size: 20,
     });
-    renderRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
+    renderLanguageRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
     await waitFor(() => expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 1, 20, 'registration_time', 'asc'));
 
     fireEvent.click(screen.getByRole('button', { name: /Email participants/i }));
@@ -746,7 +712,7 @@ describe('mega pages branch matrix', () => {
   }, 25000);
 
   it('covers student profile save/export/delete and personalization branches', async () => {
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
@@ -790,7 +756,7 @@ describe('mega pages branch matrix', () => {
       page_size: 20,
     });
 
-    renderRoute('/admin', '/admin', <AdminDashboardPage />);
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
     const usersTab = await screen.findByRole('tab', { name: /Users/i });
     fireEvent.mouseDown(usersTab);
     fireEvent.click(usersTab);
@@ -805,7 +771,7 @@ describe('mega pages branch matrix', () => {
     await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalledWith(expect.objectContaining({ page: 1 })));
 
     cleanup();
-    renderRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
 
     const organizerCheckboxes = screen.getAllByRole('checkbox');

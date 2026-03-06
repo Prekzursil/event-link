@@ -1,9 +1,8 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { defineMutableValue, renderLanguageRoute, setEnglishPreference } from './page-test-helpers';
 
 const {
   toastSpy,
@@ -165,28 +164,16 @@ function makeEventDetail(id: number) {
   };
 }
 
-function renderRoute(path: string, routePath: string, element: React.ReactElement) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LanguageProvider>
-        <Routes>
-          <Route path={routePath} element={element} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
-
 describe('mega pages smoke coverage', () => {
   beforeEach(() => {
     cleanup();
     vi.clearAllMocks();
-    localStorage.setItem('language_preference', 'en');
+    setEnglishPreference();
 
-    Object.defineProperty(globalThis, 'matchMedia', {
-      writable: true,
-      configurable: true,
-      value: vi.fn().mockImplementation(() => ({
+    defineMutableValue(
+      globalThis,
+      'matchMedia',
+      vi.fn().mockImplementation(() => ({
         matches: true,
         media: '(min-width: 640px)',
         addEventListener: vi.fn(),
@@ -194,31 +181,14 @@ describe('mega pages smoke coverage', () => {
         addListener: vi.fn(),
         removeListener: vi.fn(),
       })),
-    });
+    );
 
-    Object.defineProperty(navigator, 'clipboard', {
-      writable: true,
-      configurable: true,
-      value: { writeText: vi.fn().mockResolvedValue(undefined) },
+    defineMutableValue(navigator, 'clipboard', {
+      writeText: vi.fn().mockResolvedValue(undefined),
     });
-
-    Object.defineProperty(globalThis, 'open', {
-      writable: true,
-      configurable: true,
-      value: vi.fn(),
-    });
-
-    Object.defineProperty(globalThis, 'confirm', {
-      writable: true,
-      configurable: true,
-      value: vi.fn().mockReturnValue(true),
-    });
-
-    Object.defineProperty(URL, 'createObjectURL', {
-      writable: true,
-      configurable: true,
-      value: vi.fn().mockReturnValue('blob://mock-file'),
-    });
+    defineMutableValue(globalThis, 'open', vi.fn());
+    defineMutableValue(globalThis, 'confirm', vi.fn().mockReturnValue(true));
+    defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://mock-file'));
 
     authState.isAuthenticated = true;
     authState.isOrganizer = true;
@@ -425,12 +395,12 @@ describe('mega pages smoke coverage', () => {
   });
 
   it('covers events listing and detail flows', async () => {
-    renderRoute('/events?search=tech', '/events', <EventsPage />);
+    renderLanguageRoute('/events?search=tech', '/events', <EventsPage />);
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
     expect(await screen.findByText(/Event 1/i)).toBeInTheDocument();
 
     cleanup();
-    renderRoute('/events/1', '/events/:id', <EventDetailPage />);
+    renderLanguageRoute('/events/1', '/events/:id', <EventDetailPage />);
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
 
     fireEvent.click(screen.getByRole('button', { name: /Register/i }));
@@ -442,47 +412,47 @@ describe('mega pages smoke coverage', () => {
 
   it('covers events page and event detail error branches', async () => {
     eventServiceMock.getEvents.mockRejectedValueOnce(new Error('events-fail'));
-    renderRoute('/events', '/events', <EventsPage />);
+    renderLanguageRoute('/events', '/events', <EventsPage />);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     cleanup();
     eventServiceMock.getEvent.mockRejectedValueOnce(new Error('event-fail'));
-    renderRoute('/events/1', '/events/:id', <EventDetailPage />);
+    renderLanguageRoute('/events/1', '/events/:id', <EventDetailPage />);
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/'));
   });
 
   it('covers organizer pages basic success flows', async () => {
-    renderRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
     expect(await screen.findByText(/Event 3/i)).toBeInTheDocument();
 
     cleanup();
-    renderRoute('/organizer/events/3/edit', '/organizer/events/:id/edit', <EventFormPage />);
+    renderLanguageRoute('/organizer/events/3/edit', '/organizer/events/:id/edit', <EventFormPage />);
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(3));
 
     cleanup();
-    renderRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
+    renderLanguageRoute('/organizer/events/3/participants', '/organizer/events/:id/participants', <ParticipantsPage />);
     await waitFor(() => expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 1, 20, 'registration_time', 'asc'));
 
     cleanup();
-    renderRoute('/organizers/7', '/organizers/:id', <OrganizerProfilePage />);
+    renderLanguageRoute('/organizers/7', '/organizers/:id', <OrganizerProfilePage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerProfile).toHaveBeenCalledWith(7));
     expect(await screen.findByText(/Organizer Team/i)).toBeInTheDocument();
   });
 
   it('covers organizer page error branches', async () => {
     eventServiceMock.getOrganizerEvents.mockRejectedValueOnce(new Error('org-events-fail'));
-    renderRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     cleanup();
     eventServiceMock.getOrganizerProfile.mockRejectedValueOnce(new Error('org-profile-fail'));
-    renderRoute('/organizers/7', '/organizers/:id', <OrganizerProfilePage />);
+    renderLanguageRoute('/organizers/7', '/organizers/:id', <OrganizerProfilePage />);
     await waitFor(() => expect(screen.getByText(/Organizer not found/i)).toBeInTheDocument());
   });
 
   it('covers admin dashboard loading and tab-driven fetches', async () => {
-    renderRoute('/admin', '/admin', <AdminDashboardPage />);
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
 
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
     await waitFor(() => expect(adminServiceMock.getPersonalizationMetrics).toHaveBeenCalled());
@@ -494,7 +464,7 @@ describe('mega pages smoke coverage', () => {
   });
 
   it('covers student profile load and primary actions', async () => {
-    renderRoute('/profile', '/profile', <StudentProfilePage />);
+    renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
     await waitFor(() => expect(eventServiceMock.getAllTags).toHaveBeenCalled());
 

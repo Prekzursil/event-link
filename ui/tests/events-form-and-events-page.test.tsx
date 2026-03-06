@@ -1,9 +1,8 @@
 import React from 'react';
-import { cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { LanguageProvider } from '@/contexts/LanguageContext';
+import { defineMutableValue, renderLanguageRoute, setEnglishPreference } from './page-test-helpers';
 
 const {
   toastSpy,
@@ -71,18 +70,6 @@ vi.mock('@/components/events/EventCard', () => ({
 import { EventsPage } from '@/pages/events/EventsPage';
 import { EventFormPage } from '@/pages/organizer/EventFormPage';
 
-function renderRoute(path: string, routePath: string, element: React.ReactElement) {
-  return render(
-    <MemoryRouter initialEntries={[path]}>
-      <LanguageProvider>
-        <Routes>
-          <Route path={routePath} element={element} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
-
 function requireForm(buttonName: RegExp): HTMLFormElement {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
@@ -114,12 +101,12 @@ function makeEvent(id: number, title = `Event ${id}`) {
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
-  localStorage.setItem('language_preference', 'en');
+  setEnglishPreference();
 
-  Object.defineProperty(globalThis, 'matchMedia', {
-    writable: true,
-    configurable: true,
-    value: vi.fn().mockImplementation(() => ({
+  defineMutableValue(
+    globalThis,
+    'matchMedia',
+    vi.fn().mockImplementation(() => ({
       matches: true,
       media: '(min-width: 640px)',
       addEventListener: vi.fn(),
@@ -127,7 +114,7 @@ beforeEach(() => {
       addListener: vi.fn(),
       removeListener: vi.fn(),
     })),
-  });
+  );
 
   authState.isAuthenticated = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
@@ -161,7 +148,7 @@ beforeEach(() => {
 
 describe('events page and event form branch coverage', () => {
   it('covers EventsPage recommendations, favorites, interactions and no-results branch', async () => {
-    renderRoute('/events?sort=time', '/events', <EventsPage />);
+    renderLanguageRoute('/events?sort=time', '/events', <EventsPage />);
 
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
     await waitFor(() => expect(eventServiceMock.getFavorites).toHaveBeenCalled());
@@ -176,13 +163,13 @@ describe('events page and event form branch coverage', () => {
 
     cleanup();
     eventServiceMock.getEvents.mockResolvedValueOnce({ items: [], total: 0, page: 1, page_size: 12, total_pages: 1 });
-    renderRoute('/events?search=abc', '/events', <EventsPage />);
+    renderLanguageRoute('/events?search=abc', '/events', <EventsPage />);
     expect(await screen.findByText(/No events found/i)).toBeInTheDocument();
     fireEvent.click(screen.getByRole('button', { name: /Clear all/i }));
 
     cleanup();
     eventServiceMock.getEvents.mockResolvedValueOnce({ items: [makeEvent(11)], total: 1, page: 1, page_size: 12, total_pages: 1 });
-    renderRoute('/events?category=Technical&sort=time', '/events', <EventsPage />);
+    renderLanguageRoute('/events?category=Technical&sort=time', '/events', <EventsPage />);
     await screen.findByText(/Event 11/i);
     await waitFor(() => {
       const hasFilterPayload = recordInteractionsSpy.mock.calls.some(([payload]) =>
@@ -194,21 +181,21 @@ describe('events page and event form branch coverage', () => {
 
   it('covers EventsPage error and unauthenticated favorite guard', async () => {
     eventServiceMock.getEvents.mockRejectedValueOnce(new Error('load-events-failed'));
-    renderRoute('/events', '/events', <EventsPage />);
+    renderLanguageRoute('/events', '/events', <EventsPage />);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     cleanup();
     authState.isAuthenticated = false;
     authState.user = null;
     eventServiceMock.getEvents.mockResolvedValueOnce({ items: [makeEvent(10)], total: 1, page: 1, page_size: 12, total_pages: 1 });
-    renderRoute('/events', '/events', <EventsPage />);
+    renderLanguageRoute('/events', '/events', <EventsPage />);
     await screen.findByText(/Event 10/i);
     fireEvent.click(screen.getByText('favorite-10'));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 
   it('covers EventFormPage create flow with suggest/apply and validation branches', async () => {
-    renderRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
+    renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
     fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
@@ -231,7 +218,7 @@ describe('events page and event form branch coverage', () => {
   });
 
   it('covers EventFormPage edit load/update success and load failure redirect', async () => {
-    renderRoute('/organizer/events/33/edit', '/organizer/events/:id/edit', <EventFormPage />);
+    renderLanguageRoute('/organizer/events/33/edit', '/organizer/events/:id/edit', <EventFormPage />);
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(33));
 
     fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
@@ -240,12 +227,12 @@ describe('events page and event form branch coverage', () => {
 
     cleanup();
     eventServiceMock.getEvent.mockRejectedValueOnce(new Error('load-failed'));
-    renderRoute('/organizer/events/88/edit', '/organizer/events/:id/edit', <EventFormPage />);
+    renderLanguageRoute('/organizer/events/88/edit', '/organizer/events/:id/edit', <EventFormPage />);
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/organizer'));
   });
 
   it('covers EventFormPage validation branches, suggest-error detail, and tag/image helpers', async () => {
-    renderRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
+    renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Validation Event' } });
     fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Validation description' } });
@@ -324,7 +311,7 @@ describe('events page and event form branch coverage', () => {
   }, 20000);
 
   it('covers EventFormPage back and cancel navigation actions', async () => {
-    renderRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
+    renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
     fireEvent.click(screen.getByRole('button', { name: /Back/i }));
     expect(navigateSpy).toHaveBeenCalledWith(-1);
