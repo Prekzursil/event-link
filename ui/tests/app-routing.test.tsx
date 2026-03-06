@@ -1,17 +1,29 @@
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
-let authState: {
+type AuthState = {
   isAuthenticated: boolean;
   isOrganizer: boolean;
   isAdmin: boolean;
   isLoading: boolean;
-} = {
+};
+
+type RouteCase = {
+  path: string;
+  expected: string | RegExp;
+  state?: Partial<AuthState>;
+};
+
+const DEFAULT_AUTH_STATE: AuthState = {
   isAuthenticated: false,
   isOrganizer: false,
   isAdmin: false,
   isLoading: false,
 };
+
+const LOADING_TEXT = /Loading|Se încarcă/i;
+
+let authState: AuthState = { ...DEFAULT_AUTH_STATE };
 
 vi.mock('@/contexts/AuthContext', () => ({
   AuthProvider: ({ children }: { children: unknown }) => children,
@@ -83,9 +95,15 @@ vi.mock('@/pages/auth/ResetPasswordPage', () => ({
 
 import App from '@/App';
 
+const renderRoute = (path: string, state: Partial<AuthState> = {}) => {
+  authState = { ...DEFAULT_AUTH_STATE, ...state };
+  globalThis.history.pushState({}, '', path);
+  render(<App />);
+};
+
 beforeEach(() => {
   globalThis.localStorage.setItem('language_preference', 'en');
-  authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
+  authState = { ...DEFAULT_AUTH_STATE };
 });
 
 afterEach(() => {
@@ -94,160 +112,43 @@ afterEach(() => {
 });
 
 describe('App routing guards', () => {
-  it('shows loading UI for guarded route while auth is loading', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    globalThis.history.pushState({}, '', '/my-events');
+  it.each(['/my-events', '/organizer', '/admin'])(
+    'redirects unauthenticated users from %s to LoginPage',
+    async (path) => {
+      renderRoute(path);
+      expect(await screen.findByText('LoginPage')).toBeInTheDocument();
+    },
+  );
 
-    render(<App />);
+  it.each(['/my-events', '/organizer', '/admin', '/login'])(
+    'shows loading UI for %s while auth is loading',
+    async (path) => {
+      renderRoute(path, { isLoading: true });
+      expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument();
+    },
+  );
 
-    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
+  it.each<RouteCase>([
+    { path: '/organizer/events/new', expected: 'EventFormPage', state: { isAuthenticated: true, isOrganizer: true } },
+    { path: '/admin', expected: 'AdminDashboardPage', state: { isAuthenticated: true, isOrganizer: true, isAdmin: true } },
+    { path: '/my-events', expected: 'MyEventsPage', state: { isAuthenticated: true } },
+    { path: '/login', expected: 'EventsPage', state: { isAuthenticated: true } },
+    { path: '/register', expected: 'RegisterPage' },
+    { path: '/forgot-password', expected: 'ForgotPasswordPage' },
+    { path: '/reset-password', expected: 'ResetPasswordPage' },
+    { path: '/events/42', expected: 'EventDetailPage' },
+    { path: '/organizers/7', expected: 'OrganizerProfilePage' },
+    { path: '/does-not-exist', expected: 'NotFoundPage' },
+  ])('renders $expected for $path', async ({ path, expected, state }) => {
+    renderRoute(path, state);
+    expect(await screen.findByText(expected)).toBeInTheDocument();
   });
 
-  it('redirects unauthenticated protected routes to /login', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/my-events');
-
-    render(<App />);
-
-    expect(await screen.findByText('LoginPage')).toBeInTheDocument();
-  });
-
-  it('redirects unauthenticated organizer routes to /login', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/organizer');
-
-    render(<App />);
-
-    expect(await screen.findByText('LoginPage')).toBeInTheDocument();
-  });
-
-  it('allows organizer-only routes for organizer users', async () => {
-    authState = { isAuthenticated: true, isOrganizer: true, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/organizer/events/new');
-
-    render(<App />);
-
-    expect(await screen.findByText('EventFormPage')).toBeInTheDocument();
-  });
-
-  it('redirects authenticated non-organizers to /forbidden', async () => {
-    authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/organizer');
-
-    render(<App />);
-
-    expect(await screen.findByText('ForbiddenPage')).toBeInTheDocument();
-  });
-
-  it('redirects unauthenticated admin routes to /login', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/admin');
-
-    render(<App />);
-
-    expect(await screen.findByText('LoginPage')).toBeInTheDocument();
-  });
-
-  it('redirects non-admin users from /admin to /forbidden', async () => {
-    authState = { isAuthenticated: true, isOrganizer: true, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/admin');
-
-    render(<App />);
-
-    expect(await screen.findByText('ForbiddenPage')).toBeInTheDocument();
-  });
-
-  it('allows admin route for admin users', async () => {
-    authState = { isAuthenticated: true, isOrganizer: true, isAdmin: true, isLoading: false };
-    globalThis.history.pushState({}, '', '/admin');
-
-    render(<App />);
-
-    expect(await screen.findByText('AdminDashboardPage')).toBeInTheDocument();
-  });
-
-  it('redirects authenticated users away from guest routes', async () => {
-    authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/login');
-
-    render(<App />);
-
-    expect(await screen.findByText('EventsPage')).toBeInTheDocument();
-  });
-
-  it('renders guest routes and public auth utility routes', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-
-    globalThis.history.pushState({}, '', '/register');
-    render(<App />);
-    expect(await screen.findByText('RegisterPage')).toBeInTheDocument();
-
-    cleanup();
-    globalThis.history.pushState({}, '', '/forgot-password');
-    render(<App />);
-    expect(await screen.findByText('ForgotPasswordPage')).toBeInTheDocument();
-
-    cleanup();
-    globalThis.history.pushState({}, '', '/reset-password');
-    render(<App />);
-    expect(await screen.findByText('ResetPasswordPage')).toBeInTheDocument();
-  });
-
-  it('renders event detail and organizer public profile routes', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-
-    globalThis.history.pushState({}, '', '/events/42');
-    render(<App />);
-    expect(await screen.findByText('EventDetailPage')).toBeInTheDocument();
-
-    cleanup();
-    globalThis.history.pushState({}, '', '/organizers/7');
-    render(<App />);
-    expect(await screen.findByText('OrganizerProfilePage')).toBeInTheDocument();
-  });
-
-
-  it('renders protected route content when authenticated', async () => {
-    authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/my-events');
-
-    render(<App />);
-
-    expect(await screen.findByText('MyEventsPage')).toBeInTheDocument();
-  });
-
-  it('shows loading UI on organizer route while auth is loading', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    globalThis.history.pushState({}, '', '/organizer');
-
-    render(<App />);
-
-    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
-  });
-
-  it('shows loading UI on admin route while auth is loading', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    globalThis.history.pushState({}, '', '/admin');
-
-    render(<App />);
-
-    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
-  });
-
-  it('shows loading UI on guest route while auth is loading', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    globalThis.history.pushState({}, '', '/login');
-
-    render(<App />);
-
-    expect(await screen.findByText(/Loading|Se încarcă/i)).toBeInTheDocument();
-  });
-  it('renders a 404 page for unknown routes', async () => {
-    authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    globalThis.history.pushState({}, '', '/does-not-exist');
-
-    render(<App />);
-
-    expect(await screen.findByText('NotFoundPage')).toBeInTheDocument();
+  it.each<RouteCase>([
+    { path: '/organizer', expected: 'ForbiddenPage', state: { isAuthenticated: true } },
+    { path: '/admin', expected: 'ForbiddenPage', state: { isAuthenticated: true, isOrganizer: true } },
+  ])('renders ForbiddenPage for blocked authenticated route $path', async ({ path, expected, state }) => {
+    renderRoute(path, state);
+    expect(await screen.findByText(expected)).toBeInTheDocument();
   });
 });

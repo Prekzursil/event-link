@@ -1,3 +1,36 @@
+type AccessCodeValidationStrings = {
+  accessCodeMismatchInline: string;
+  accessCodeMismatchTitle: string;
+  accessCodeMismatchDescription: string;
+  accessCodeInvalidTitle: string;
+  accessCodeInvalidDescription: string;
+  accessCodeRequirementMin: string;
+  accessCodeRequirementLetters: string;
+  accessCodeRequirementNumbers: string;
+};
+
+const RO_ACCESS_CODE_VALIDATION: AccessCodeValidationStrings = {
+  accessCodeMismatchInline: 'Codurile de acces nu se potrivesc',
+  accessCodeMismatchTitle: 'Eroare',
+  accessCodeMismatchDescription: 'Codurile de acces nu se potrivesc',
+  accessCodeInvalidTitle: 'Eroare',
+  accessCodeInvalidDescription: 'Codul de acces nu îndeplinește cerințele',
+  accessCodeRequirementMin: 'Cel puțin 8 caractere',
+  accessCodeRequirementLetters: 'Conține litere',
+  accessCodeRequirementNumbers: 'Conține cifre',
+};
+
+const EN_ACCESS_CODE_VALIDATION: AccessCodeValidationStrings = {
+  accessCodeMismatchInline: 'Access codes do not match',
+  accessCodeMismatchTitle: 'Error',
+  accessCodeMismatchDescription: 'Access codes do not match',
+  accessCodeInvalidTitle: 'Error',
+  accessCodeInvalidDescription: 'Access code does not meet requirements',
+  accessCodeRequirementMin: 'At least 8 characters',
+  accessCodeRequirementLetters: 'Contains letters',
+  accessCodeRequirementNumbers: 'Contains numbers',
+};
+
 export const RO_STRINGS = {
   common: {
     appName: 'EventLink',
@@ -124,14 +157,7 @@ export const RO_STRINGS = {
       emailPlaceholder: 'email@exemplu.com',
       accessCodeLabel: 'Cod de acces',
       confirmAccessCodeLabel: 'Confirmă codul de acces',
-      accessCodeMismatchInline: 'Codurile de acces nu se potrivesc',
-      accessCodeMismatchTitle: 'Eroare',
-      accessCodeMismatchDescription: 'Codurile de acces nu se potrivesc',
-      accessCodeInvalidTitle: 'Eroare',
-      accessCodeInvalidDescription: 'Codul de acces nu îndeplinește cerințele',
-      accessCodeRequirementMin: 'Cel puțin 8 caractere',
-      accessCodeRequirementLetters: 'Conține litere',
-      accessCodeRequirementNumbers: 'Conține cifre',
+      ...RO_ACCESS_CODE_VALIDATION,
       successTitle: 'Cont creat cu succes!',
       successDescription: 'Bine ai venit pe EventLink!',
       errorTitle: 'Eroare la înregistrare',
@@ -161,20 +187,13 @@ export const RO_STRINGS = {
       description: 'Introdu noul cod de acces pentru contul tău',
       newAccessCodeLabel: 'Cod de acces nou',
       confirmAccessCodeLabel: 'Confirmă codul de acces',
-      accessCodeMismatchTitle: 'Eroare',
-      accessCodeMismatchDescription: 'Codurile de acces nu se potrivesc',
-      accessCodeInvalidTitle: 'Eroare',
-      accessCodeInvalidDescription: 'Codul de acces nu îndeplinește cerințele',
-      accessCodeMismatchInline: 'Codurile de acces nu se potrivesc',
+      ...RO_ACCESS_CODE_VALIDATION,
       successTitle: 'Cod de acces resetat cu succes!',
       successDescription: 'Te poți autentifica acum cu noul cod de acces.',
       errorTitle: 'Eroare',
       errorFallback: 'Link invalid sau expirat',
       submit: 'Resetează codul de acces',
       submitting: 'Se resetează...',
-      accessCodeRequirementMin: 'Cel puțin 8 caractere',
-      accessCodeRequirementLetters: 'Conține litere',
-      accessCodeRequirementNumbers: 'Conține cifre',
     },
   },
   pages: {
@@ -849,14 +868,7 @@ export const EN_STRINGS: typeof RO_STRINGS = {
       emailPlaceholder: 'email@example.com',
       accessCodeLabel: 'Access code',
       confirmAccessCodeLabel: 'Confirm access code',
-      accessCodeMismatchInline: 'Access codes do not match',
-      accessCodeMismatchTitle: 'Error',
-      accessCodeMismatchDescription: 'Access codes do not match',
-      accessCodeInvalidTitle: 'Error',
-      accessCodeInvalidDescription: 'Access code does not meet requirements',
-      accessCodeRequirementMin: 'At least 8 characters',
-      accessCodeRequirementLetters: 'Contains letters',
-      accessCodeRequirementNumbers: 'Contains numbers',
+      ...EN_ACCESS_CODE_VALIDATION,
       successTitle: 'Account created!',
       successDescription: 'Welcome to EventLink!',
       errorTitle: 'Sign-up failed',
@@ -886,20 +898,13 @@ export const EN_STRINGS: typeof RO_STRINGS = {
       description: 'Enter a new access code for your account',
       newAccessCodeLabel: 'New access code',
       confirmAccessCodeLabel: 'Confirm access code',
-      accessCodeMismatchTitle: 'Error',
-      accessCodeMismatchDescription: 'Access codes do not match',
-      accessCodeInvalidTitle: 'Error',
-      accessCodeInvalidDescription: 'Access code does not meet requirements',
-      accessCodeMismatchInline: 'Access codes do not match',
+      ...EN_ACCESS_CODE_VALIDATION,
       successTitle: 'Access code reset',
       successDescription: 'You can now sign in with your new access code.',
       errorTitle: 'Error',
       errorFallback: 'Invalid or expired link',
       submit: 'Reset access code',
       submitting: 'Resetting...',
-      accessCodeRequirementMin: 'At least 8 characters',
-      accessCodeRequirementLetters: 'Contains letters',
-      accessCodeRequirementNumbers: 'Contains numbers',
     },
   },
   pages: {
@@ -1452,4 +1457,3 @@ export const UI_STRINGS = {
 } as const;
 
 export type UiStrings = typeof RO_STRINGS;
-

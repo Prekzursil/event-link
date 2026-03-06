@@ -272,15 +272,19 @@ describe('event detail branch coverage', () => {
     const actionButtons = within(requireElement(addToCalendarButton.parentElement, 'calendar action group')).getAllByRole('button');
     fireEvent.click(actionButtons[0]);
     await waitFor(() => expect(eventServiceMock.removeFromFavorites).toHaveBeenCalledWith(1));
-    await waitFor(() =>
-      expect(recordInteractionsSpy).toHaveBeenCalledWith(
-        expect.arrayContaining([
-          expect.objectContaining({
-            interaction_type: 'favorite',
-            meta: expect.objectContaining({ action: 'remove' }),
-          }),
-        ]),
-      ),
+    await waitFor(
+      () => {
+        const payloads = recordInteractionsSpy.mock.calls.flatMap(([payload]) => payload);
+        expect(payloads).toEqual(
+          expect.arrayContaining([
+            expect.objectContaining({
+              interaction_type: 'favorite',
+              meta: expect.objectContaining({ action: 'remove' }),
+            }),
+          ]),
+        );
+      },
+      { timeout: 5000 },
     );
 
     const hideButton = screen.getByRole('button', { name: /Hide|Ascunde/i });

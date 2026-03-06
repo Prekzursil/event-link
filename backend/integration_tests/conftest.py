@@ -7,7 +7,6 @@ from alembic.config import Config
 from fastapi.testclient import TestClient
 from sqlalchemy import text
 
-
 if os.environ.get("RUN_INTEGRATION_TESTS") != "1":
     pytest.skip(
         "Integration tests are disabled. Set RUN_INTEGRATION_TESTS=1 to enable.",
@@ -23,15 +22,7 @@ os.environ.setdefault("EMAIL_ENABLED", "false")
 from app import auth, models  # noqa: E402
 from app.api import app  # noqa: E402
 from app.database import Base, SessionLocal, engine, get_db  # noqa: E402
-
-_SECRET_FIELD = "pass" + "word"
-_CONFIRM_SECRET_FIELD = "confirm_" + _SECRET_FIELD
-_ACCESS_FIELD = "access_" + "token"
-_PASSWORD_HASH_FIELD = "pass" + "word_hash"
-_AUTH_HEADER = "Author" + "ization"
-_AUTH_SCHEME = "Bear" + "er"
-_DEFAULT_STUDENT_CODE = "student-fixture-A1"
-_DEFAULT_ORG_CODE = "organizer-fixture-A1"
+from fixture_helpers import build_test_helpers  # noqa: E402
 
 
 def _run_migrations() -> None:
@@ -75,38 +66,10 @@ def client(db_session):
 
 @pytest.fixture()
 def helpers(client, db_session):
-    def register_student(email: str) -> str:
-        access_code = _DEFAULT_STUDENT_CODE
-        resp = client.post(
-            "/register",
-            json={"email": email, _SECRET_FIELD: access_code, _CONFIRM_SECRET_FIELD: access_code},
-        )
-        assert resp.status_code == 200
-        return resp.json()[_ACCESS_FIELD]
-
-    def login(email: str, access_code: str) -> str:
-        resp = client.post("/login", json={"email": email, _SECRET_FIELD: access_code})
-        assert resp.status_code == 200
-        return resp.json()[_ACCESS_FIELD]
-
-    def make_organizer(email: str = "org@test.ro", access_code: str = _DEFAULT_ORG_CODE) -> None:
-        organizer = models.User(**{
-            "email": email,
-            _PASSWORD_HASH_FIELD: auth.get_password_hash(access_code),
-            "role": models.UserRole.organizator,
-        })
-        db_session.add(organizer)
-        db_session.commit()
-
-    def auth_header(session_key: str) -> dict:
-        return {_AUTH_HEADER: f"{_AUTH_SCHEME} {session_key}"}
-
-    return {
-        "client": client,
-        "db": db_session,
-        "register_student": register_student,
-        "login": login,
-        "make_organizer": make_organizer,
-        "auth_header": auth_header,
-    }
-
+    return build_test_helpers(
+        client=client,
+        db_session=db_session,
+        auth_module=auth,
+        models_module=models,
+        include_future_time=False,
+    )

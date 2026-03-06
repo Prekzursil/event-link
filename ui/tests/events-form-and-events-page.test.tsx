@@ -241,7 +241,7 @@ describe('events page and event form branch coverage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
     await waitFor(() => expect(eventServiceMock.suggestEvent).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/i }));
 
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Aula Magna' } });
     fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Cluj' } });
@@ -292,7 +292,7 @@ describe('events page and event form branch coverage', () => {
     });
     fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
     await waitFor(() => expect(eventServiceMock.suggestEvent).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/i }));
 
     // Explicitly exercise select handlers for category + status.
     screen.getAllByRole('button', { name: /Technical|Tehnic/i }).forEach((button) => fireEvent.click(button));
@@ -356,14 +356,3 @@ describe('events page and event form branch coverage', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/organizer');
   });
 });
-
-
-
-
-
-
-
-
-
-
-

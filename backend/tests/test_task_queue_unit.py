@@ -27,6 +27,10 @@ def _unexpected_enqueue(*_args, **_kwargs):
     raise AssertionError("enqueue_job should not run")
 
 
+def test_unexpected_enqueue_guard_raises() -> None:
+    with pytest.raises(AssertionError, match='enqueue_job should not run'):
+        _unexpected_enqueue()
+
 def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool(True) is True
     assert task_queue._coerce_bool(False) is False
@@ -893,5 +897,3 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
 
     assert result["days"] == 7
     assert result["enabled"] is True
-
-
