@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import os
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
@@ -104,12 +105,11 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
 
     observed = {}
 
-    def _run(cmd, **kwargs):
-        observed["cmd"] = cmd
-        observed["kwargs"] = kwargs
+    def _run_script(**kwargs):
+        observed.update(kwargs)
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(task_queue.subprocess, "run", _run)
+    monkeypatch.setattr(task_queue, "_execute_python_script", _run_script)
     task_queue._run_recompute_recommendations_ml(
         payload={
             "top_n": 5,
@@ -124,20 +124,20 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
         }
     )
 
-    cmd = " ".join(observed["cmd"])
-    assert "--top-n 5" in cmd
-    assert "--user-id 7" in cmd
-    assert "--skip-training" in cmd
-    assert "--epochs 2" in cmd
-    assert "--lr 0.01" in cmd
-    assert "--l2 0.001" in cmd
-    assert "--seed 42" in cmd
-    assert observed["kwargs"]["env"]["RECOMMENDER_MODEL_VERSION"] == "m2"
+    argv = " ".join(observed["argv"])
+    assert "--top-n 5" in argv
+    assert "--user-id 7" in argv
+    assert "--skip-training" in argv
+    assert "--epochs 2" in argv
+    assert "--lr 0.01" in argv
+    assert "--l2 0.001" in argv
+    assert "--seed 42" in argv
+    assert observed["env_overrides"]["RECOMMENDER_MODEL_VERSION"] == "m2"
 
-    def _run_fail(_cmd, **_kwargs):
+    def _run_fail(**_kwargs):
         return SimpleNamespace(returncode=2, stdout="oops", stderr="bad")
 
-    monkeypatch.setattr(task_queue.subprocess, "run", _run_fail)
+    monkeypatch.setattr(task_queue, "_execute_python_script", _run_fail)
     with pytest.raises(RuntimeError):
         task_queue._run_recompute_recommendations_ml(payload={"timeout_seconds": 5})
 
@@ -897,3 +897,343 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
 
     assert result["days"] == 7
     assert result["enabled"] is True
+
+
+def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
+    script_ok = tmp_path / "ok.py"
+    script_ok.write_text("print('ok')\nraise SystemExit(0)\n", encoding="utf-8")
+    result_ok = task_queue._execute_python_script(
+        script_path=script_ok,
+        argv=[str(script_ok)],
+        cwd=tmp_path,
+        env_overrides={"EVENT_LINK_TEST_FLAG": "1"},
+        timeout_seconds=5,
+    )
+    assert result_ok.returncode == 0
+    assert "ok" in result_ok.stdout
+
+    script_fail = tmp_path / "fail.py"
+    script_fail.write_text("raise RuntimeError('boom')\n", encoding="utf-8")
+    result_fail = task_queue._execute_python_script(
+        script_path=script_fail,
+        argv=[str(script_fail)],
+        cwd=tmp_path,
+        env_overrides={},
+        timeout_seconds=5,
+    )
+    assert result_fail.returncode == 1
+    assert "RuntimeError: boom" in result_fail.stderr
+
+    script_sleep = tmp_path / "sleep.py"
+    script_sleep.write_text("import time\ntime.sleep(2)\n", encoding="utf-8")
+    result_timeout = task_queue._execute_python_script(
+        script_path=script_sleep,
+        argv=[str(script_sleep)],
+        cwd=tmp_path,
+        env_overrides={},
+        timeout_seconds=1,
+    )
+    assert result_timeout.returncode == 124
+    assert "timed out" in result_timeout.stderr
+
+
+def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path):
+    class _Queue:
+        def __init__(self) -> None:
+            self.payload = None
+
+        def put(self, value) -> None:
+            self.payload = value
+
+    os.environ["EVENT_LINK_QUEUE_FLAG"] = "parent-flag"
+    original_flag = os.environ.get("EVENT_LINK_QUEUE_FLAG")
+    script_ok = tmp_path / "ok_worker.py"
+    script_ok.write_text("import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n", encoding="utf-8")
+    queue_ok = _Queue()
+    task_queue._run_python_entrypoint_worker(
+        str(script_ok),
+        [str(script_ok)],
+        str(tmp_path),
+        {"EVENT_LINK_QUEUE_FLAG": "worker-ok"},
+        queue_ok,
+    )
+    assert queue_ok.payload["returncode"] == 0
+    assert "worker-ok" in queue_ok.payload["stdout"]
+    assert os.environ.get("EVENT_LINK_QUEUE_FLAG") == original_flag
+
+    script_fail = tmp_path / "fail_worker.py"
+    script_fail.write_text("raise RuntimeError('worker boom')\n", encoding="utf-8")
+    queue_fail = _Queue()
+    task_queue._run_python_entrypoint_worker(
+        str(script_fail),
+        [str(script_fail)],
+        str(tmp_path),
+        {"EVENT_LINK_QUEUE_TEMP": "worker-temp"},
+        queue_fail,
+    )
+    assert queue_fail.payload["returncode"] == 1
+    assert "worker boom" in queue_fail.payload["stderr"]
+    assert "EVENT_LINK_QUEUE_TEMP" not in os.environ
+
+
+def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
+    process = type(
+        "_Process",
+        (),
+        {
+            "exitcode": None,
+            "terminated": False,
+            "start": lambda self: None,
+            "join": lambda self, timeout=None: None,
+            "is_alive": lambda self: not self.terminated,
+            "terminate": lambda self: setattr(self, "terminated", True),
+        },
+    )()
+    context = type(
+        "_Context",
+        (),
+        {
+            "Queue": lambda self: type(
+                "_Queue",
+                (),
+                {"get": lambda self, timeout: (_ for _ in ()).throw(AssertionError("queue get should not run on timeout path"))},
+            )(),
+            "Process": lambda self, *args, **kwargs: process,
+        },
+    )()
+
+    monkeypatch.setattr(task_queue.multiprocessing, "get_context", lambda _mode: context)
+    script_path = tmp_path / "noop_timeout.py"
+    script_path.write_text("print('noop')\n", encoding="utf-8")
+
+    result = task_queue._execute_python_script(
+        script_path=script_path,
+        argv=[str(script_path)],
+        cwd=tmp_path,
+        env_overrides={},
+        timeout_seconds=1,
+    )
+
+    assert result.returncode == 124
+    assert "timed out after 1 seconds" in result.stderr
+
+
+def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
+    process = type(
+        "_Process",
+        (),
+        {
+            "exitcode": 7,
+            "start": lambda self: None,
+            "join": lambda self, timeout=None: None,
+            "is_alive": lambda self: False,
+        },
+    )()
+    context = type(
+        "_Context",
+        (),
+        {
+            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: (_ for _ in ()).throw(task_queue.queue.Empty)})(),
+            "Process": lambda self, *args, **kwargs: process,
+        },
+    )()
+
+    monkeypatch.setattr(task_queue.multiprocessing, "get_context", lambda _mode: context)
+    script_path = tmp_path / "noop.py"
+    script_path.write_text("print('noop')\n", encoding="utf-8")
+
+    result = task_queue._execute_python_script(
+        script_path=script_path,
+        argv=[str(script_path)],
+        cwd=tmp_path,
+        env_overrides={},
+        timeout_seconds=1,
+    )
+    assert result.returncode == 7
+    assert "without emitting" in result.stderr
+
+
+
+def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
+    from sqlalchemy.exc import IntegrityError
+
+    job = task_queue.enqueue_job(db_session, "mail", {"x": 1}, dedupe_key="fresh-key")
+    assert job.id is not None
+    assert job.job_type == "mail"
+
+    existing = models.BackgroundJob(
+        job_type="mail",
+        payload={"old": True},
+        status="queued",
+        dedupe_key="dup-key",
+        run_at=datetime.now(timezone.utc),
+    )
+    db_session.add(existing)
+    db_session.commit()
+    db_session.refresh(existing)
+
+    def _commit_fail():
+        raise IntegrityError("stmt", {}, Exception("dup"))
+
+    monkeypatch.setattr(db_session, "commit", _commit_fail)
+    deduped = task_queue.enqueue_job(db_session, "mail", {"x": 2}, dedupe_key="dup-key")
+    assert deduped.id == existing.id
+    assert getattr(deduped, "_deduped", False) is True
+
+
+def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
+    user = models.User(
+        email="prefs@test.ro",
+        password_hash=auth.get_password_hash("student-fixture-A1"),
+        role=models.UserRole.student,
+    )
+    organizer = models.User(
+        email="blocked-org@test.ro",
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
+        role=models.UserRole.organizator,
+    )
+    tag = models.Tag(name="blocked-tag")
+    db_session.add_all([user, organizer, tag])
+    db_session.commit()
+    db_session.refresh(user)
+    db_session.refresh(organizer)
+    db_session.refresh(tag)
+
+    db_session.execute(
+        models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id))
+    )
+    db_session.execute(
+        models.user_blocked_organizers.insert().values(
+            user_id=int(user.id), organizer_id=int(organizer.id)
+        )
+    )
+    db_session.commit()
+
+    hidden_tag_ids, blocked_organizer_ids = task_queue._load_personalization_exclusions(
+        db=db_session,
+        user_id=int(user.id),
+    )
+    assert hidden_tag_ids == {int(tag.id)}
+    assert blocked_organizer_ids == {int(organizer.id)}
+
+    job = _mk_job(db_session, job_type="success-case", status="running")
+    task_queue.mark_job_succeeded(db_session, job)
+    db_session.refresh(job)
+    assert job.status == "succeeded"
+    assert job.finished_at is not None
+    assert job.dedupe_key is None
+
+
+def test_send_weekly_digest_skips_already_sent_delivery(monkeypatch, db_session):
+    now = datetime.now(timezone.utc)
+    iso = now.isocalendar()
+    week_key = f"{iso.year}-W{iso.week:02d}"
+
+    user = models.User(
+        email="digest-sent@test.ro",
+        password_hash=auth.get_password_hash("student-fixture-A1"),
+        role=models.UserRole.student,
+        is_active=True,
+        email_digest_enabled=True,
+    )
+    db_session.add(user)
+    db_session.commit()
+    db_session.refresh(user)
+    db_session.add(
+        models.NotificationDelivery(
+            dedupe_key=f"digest:{int(user.id)}:{week_key}",
+            notification_type="weekly_digest",
+            user_id=int(user.id),
+            event_id=None,
+            meta={"source": "test"},
+        )
+    )
+    db_session.commit()
+
+    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(task_queue, "enqueue_job", _unexpected_enqueue)
+
+    result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 1})
+    assert result == {"users": 1, "emails": 0}
+
+
+def test_guardrails_rollback_reactivates_previous_model(monkeypatch, db_session):
+    db_session.query(models.EventInteraction).delete()
+    db_session.query(models.RecommenderModel).delete()
+    db_session.commit()
+
+    user, event = _seed_guardrail_user_event(db_session)
+    now = datetime.now(timezone.utc)
+
+    for sort in ("recommended", "time"):
+        db_session.add(
+            models.EventInteraction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                interaction_type="impression",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": sort},
+            )
+        )
+        db_session.add(
+            models.EventInteraction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                interaction_type="click",
+                occurred_at=now + timedelta(minutes=1),
+                meta={"source": "events_list", "sort": sort},
+            )
+        )
+        db_session.add(
+            models.EventInteraction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                interaction_type="register",
+                occurred_at=now + timedelta(minutes=5),
+            )
+        )
+
+    db_session.add(
+        models.EventInteraction(
+            user_id=int(user.id),
+            event_id=int(event.id),
+            interaction_type="impression",
+            occurred_at=now,
+            meta={"source": "events_list", "sort": "recommended"},
+        )
+    )
+
+    previous = models.RecommenderModel(
+        model_version="model-prev",
+        feature_names=["bias"],
+        weights=[0.0],
+        meta={},
+        is_active=False,
+    )
+    active = models.RecommenderModel(
+        model_version="model-active",
+        feature_names=["bias"],
+        weights=[0.1],
+        meta={},
+        is_active=True,
+    )
+    db_session.add_all([previous, active])
+    db_session.commit()
+
+    enqueued = []
+    monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
+    monkeypatch.setattr(task_queue, "enqueue_job", lambda *args, **kwargs: enqueued.append((args, kwargs)))
+
+    result = task_queue._evaluate_personalization_guardrails(
+        db=db_session,
+        payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
+    )
+
+    db_session.refresh(previous)
+    db_session.refresh(active)
+    assert result["action"] == "rollback"
+    assert result["rolled_back_from"] == "model-active"
+    assert result["rolled_back_to"] == "model-prev"
+    assert previous.is_active is True
+    assert active.is_active is False
+    assert enqueued and enqueued[0][1]["dedupe_key"] == "global"

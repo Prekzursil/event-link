@@ -9,14 +9,15 @@ Usage:
 """
 
 import os
-import random
+from secrets import SystemRandom
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
-from sqlalchemy import text
+from sqlalchemy import func, select
 from app.database import SessionLocal
-from app.models import User, UserRole, Event, Tag, Registration, FavoriteEvent
+from app.models import PasswordResetToken, User, UserRole, Event, Tag, Registration, FavoriteEvent, event_tags, user_interest_tags
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_rng = SystemRandom()
 
 _SECRET_FIELD = "pass" + "word"
 _PASSWORD_HASH_FIELD = "pass" + "word_hash"
@@ -348,28 +349,27 @@ def seed_database():
     session = SessionLocal()
     try:
         # Check if data already exists
-        result = session.execute(text("SELECT COUNT(*) FROM users"))
-        user_count = result.scalar()
+        user_count = session.scalar(select(func.count()).select_from(User)) or 0
         
         if user_count > 0:
             print("⚠️  Database already has data. Clearing existing data...")
             # Clear existing data in correct order (respecting foreign keys)
             # Use try/except for tables that might not exist
             tables_to_clear = [
-                "user_interest_tags",
-                "favorite_events", 
-                "registrations",
-                "event_tags",
-                "events",
-                _RESET_RECORD_TABLE,
-                "users",
-                "tags",
+                user_interest_tags,
+                FavoriteEvent.__table__,
+                Registration.__table__,
+                event_tags,
+                Event.__table__,
+                PasswordResetToken.__table__,
+                User.__table__,
+                Tag.__table__,
             ]
             for table in tables_to_clear:
                 try:
-                    session.execute(text(f"DELETE FROM {table}"))
-                except Exception:
-                    pass  # Table might not exist
+                    session.execute(table.delete())
+                except Exception as exc:
+                    print(f"⚠️  Skipping clear for {table.name}: {exc}")
             session.commit()
             print("✅ Existing data cleared")
         
@@ -402,8 +402,8 @@ def seed_database():
         print("🏷️  Assigning interest tags to students...")
         for student in student_objects:
             # Each student gets 3-6 random interest tags
-            num_tags = random.randint(3, 6)
-            selected_tags = random.sample(list(tag_objects.values()), num_tags)
+            num_tags = _rng.randint(3, 6)
+            selected_tags = _rng.sample(list(tag_objects.values()), num_tags)
             student.interest_tags = selected_tags
         session.flush()
         
@@ -450,22 +450,22 @@ def seed_database():
             # Distribute events across time: some past, some upcoming
             if i < 3:
                 # Past events (last 30 days)
-                days_ago = random.randint(5, 30)
-                start_time = now - timedelta(days=days_ago, hours=random.randint(10, 18))
+                days_ago = _rng.randint(5, 30)
+                start_time = now - timedelta(days=days_ago, hours=_rng.randint(10, 18))
             else:
                 # Future events (next 60 days)
-                days_ahead = random.randint(3, 60)
-                start_time = now + timedelta(days=days_ahead, hours=random.randint(10, 18))
+                days_ahead = _rng.randint(3, 60)
+                start_time = now + timedelta(days=days_ahead, hours=_rng.randint(10, 18))
                 
             # Round to nearest hour
             start_time = start_time.replace(minute=0, second=0, microsecond=0)
             
             # Event duration: 2-4 hours
-            duration_hours = random.randint(2, 4)
+            duration_hours = _rng.randint(2, 4)
             end_time = start_time + timedelta(hours=duration_hours)
             
             # Random organizer
-            organizer = random.choice(organizer_objects)
+            organizer = _rng.choice(organizer_objects)
             
             event = Event(
                 title=event_data["title"],
@@ -473,9 +473,9 @@ def seed_database():
                 category=event_data["category"],
                 start_time=start_time,
                 end_time=end_time,
-                location=random.choice(LOCATIONS),
+                location=_rng.choice(LOCATIONS),
                 max_seats=event_data["max_seats"],
-                cover_url=random.choice(COVER_IMAGES),
+                cover_url=_rng.choice(COVER_IMAGES),
                 owner_id=organizer.id,
                 status="published"
             )
@@ -498,15 +498,15 @@ def seed_database():
         registration_count = 0
         for event, _ in event_objects:
             # Random students register for events
-            num_registrations = random.randint(0, min(len(student_objects), event.max_seats // 2))
-            registered_students = random.sample(student_objects, num_registrations)
+            num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
+            registered_students = _rng.sample(student_objects, num_registrations)
             
             for student in registered_students:
                 is_past = event.start_time < now
                 registration = Registration(
                     user_id=student.id,
                     event_id=event.id,
-                    attended=is_past and random.random() > 0.2  # 80% attendance for past events
+                    attended=is_past and _rng.random() > 0.2  # 80% attendance for past events
                 )
                 session.add(registration)
                 registration_count += 1
@@ -519,8 +519,8 @@ def seed_database():
         favorite_count = 0
         for student in student_objects:
             # Each student favorites 2-5 random events
-            num_favorites = random.randint(2, 5)
-            favorite_events = random.sample([e for e, _ in event_objects], min(num_favorites, len(event_objects)))
+            num_favorites = _rng.randint(2, 5)
+            favorite_events = _rng.sample([e for e, _ in event_objects], min(num_favorites, len(event_objects)))
             
             for event in favorite_events:
                 favorite = FavoriteEvent(

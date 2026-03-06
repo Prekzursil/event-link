@@ -14,6 +14,16 @@ DEFAULT_ORG_CODE = "organizer-fixture-A1"
 DEFAULT_ADMIN_CODE = "admin-fixture-A1"
 
 
+def _require_success(*, action: str, response: Any) -> None:
+    if response.status_code == 200:
+        return
+    detail = getattr(response, "text", "") or getattr(response, "content", b"") or ""
+    if isinstance(detail, bytes):
+        detail = detail.decode("utf-8", errors="replace")
+    detail = str(detail).strip()[:200]
+    raise RuntimeError(f"{action} failed with status={response.status_code}: {detail}")
+
+
 def build_test_helpers(
     *,
     client: Any,
@@ -29,12 +39,12 @@ def build_test_helpers(
             "/register",
             json={"email": email, SECRET_FIELD: access_code, CONFIRM_SECRET_FIELD: access_code},
         )
-        assert response.status_code == 200
+        _require_success(action="register_student", response=response)
         return response.json()[ACCESS_FIELD]
 
     def login(email: str, access_code: str) -> str:
         response = client.post("/login", json={"email": email, SECRET_FIELD: access_code})
-        assert response.status_code == 200
+        _require_success(action="login", response=response)
         return response.json()[ACCESS_FIELD]
 
     def make_organizer(email: str = "org@test.ro", access_code: str = DEFAULT_ORG_CODE) -> None:

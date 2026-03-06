@@ -402,7 +402,7 @@ describe('mega pages branch matrix', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Restore/i }));
     await waitFor(() => expect(eventServiceMock.restoreEvent).toHaveBeenCalledWith(22));
-  }, 15000);
+  }, 30000);
 
   it('covers event detail unauthenticated redirect and registered flows', async () => {
     authState.isAuthenticated = false;

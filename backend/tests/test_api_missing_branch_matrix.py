@@ -3,8 +3,9 @@ from __future__ import annotations
 from datetime import datetime, timedelta, timezone
 
 import pytest
+from fastapi import HTTPException
 
-from app import auth, models
+from app import api, auth, models, schemas
 
 
 _ACCESS_CODE_FIELD = "pass" + "word"
@@ -426,3 +427,42 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
 
 
 
+
+
+def test_admin_update_user_row_missing_branch(monkeypatch, db_session):
+    current_user = models.User(email="admin-detail@test.ro", password_hash="hash", role=models.UserRole.admin)
+    target_user = models.User(email="user-detail@test.ro", password_hash="hash", role=models.UserRole.student)
+    db_session.add_all([current_user, target_user])
+    db_session.commit()
+    db_session.refresh(current_user)
+    db_session.refresh(target_user)
+
+    real_query = db_session.query
+
+    class _RowlessQuery:
+        def outerjoin(self, *_args, **_kwargs):
+            return self
+
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def first(self):
+            return None
+
+    def _query(*args, **kwargs):
+        if len(args) == 4 and args[0] is models.User:
+            return _RowlessQuery()
+        return real_query(*args, **kwargs)
+
+    monkeypatch.setattr(db_session, "query", _query)
+
+    with pytest.raises(HTTPException) as exc_info:
+        api.admin_update_user(
+            user_id=int(target_user.id),
+            payload=schemas.AdminUserUpdate(),
+            db=db_session,
+            current_user=current_user,
+        )
+
+    assert exc_info.value.status_code == 404
+    assert exc_info.value.detail == "Utilizatorul nu există."

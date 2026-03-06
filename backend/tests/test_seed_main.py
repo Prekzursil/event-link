@@ -30,13 +30,18 @@ class _FakeSession:
     def execute(self, stmt):
         text_stmt = str(stmt)
         self.executed.append(text_stmt)
-        if "SELECT COUNT(*) FROM users" in text_stmt:
-            return _FakeResult(self.user_count)
         if text_stmt.startswith("DELETE FROM"):
             table = text_stmt.split()[-1]
             if table in self.delete_fail_tables:
                 raise RuntimeError("missing table")
         return _FakeResult(0)
+
+    def scalar(self, stmt):
+        text_stmt = str(stmt)
+        self.executed.append(text_stmt)
+        if "from users" in text_stmt.lower() and "count" in text_stmt.lower():
+            return self.user_count
+        return 0
 
     def add(self, _obj):
         if self.raise_on_add:
@@ -83,17 +88,32 @@ def _load_seed_data_module(monkeypatch):
     return module
 
 
-def _patch_random(monkeypatch, seed_module):
-    monkeypatch.setattr(seed_module.random, "randint", lambda a, b: 1 if b >= 1 else 0)
-    monkeypatch.setattr(seed_module.random, "sample", lambda seq, k: list(seq)[:k])
-    monkeypatch.setattr(seed_module.random, "choice", lambda seq: list(seq)[0])
-    monkeypatch.setattr(seed_module.random, "random", lambda: 0.9)
+class _FakeRng:
+    @staticmethod
+    def randint(_a, b):
+        return 1 if b >= 1 else 0
+
+    @staticmethod
+    def sample(seq, k):
+        return list(seq)[:k]
+
+    @staticmethod
+    def choice(seq):
+        return list(seq)[0]
+
+    @staticmethod
+    def random():
+        return 0.9
+
+
+def _patch_rng(monkeypatch, seed_module):
+    monkeypatch.setattr(seed_module, "_rng", _FakeRng())
 
 
 def _prepare_seed(monkeypatch):
     seed_module = _load_seed_data_module(monkeypatch)
     monkeypatch.setattr("builtins.print", lambda *args, **kwargs: None)
-    _patch_random(monkeypatch, seed_module)
+    _patch_rng(monkeypatch, seed_module)
     return seed_module
 
 
@@ -162,6 +182,14 @@ def test_backend_main_entrypoint_rejects_wildcard_host(monkeypatch):
         runpy.run_path(str(main_path), run_name="__main__")
 
 
+def test_backend_main_entrypoint_rejects_ipv6_wildcard_host(monkeypatch):
+    monkeypatch.setenv("APP_HOST", "[::]")
+    monkeypatch.setenv("APP_PORT", "9001")
+
+    main_path = Path(__file__).resolve().parents[1] / "main.py"
+    with pytest.raises(RuntimeError, match="must not bind to all network interfaces"):
+        runpy.run_path(str(main_path), run_name="__main__")
+
 
 def test_seed_data_module_main_guard_executes(monkeypatch):
     class _FakeCryptContext:
@@ -178,18 +206,13 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
     monkeypatch.setitem(sys.modules, "passlib", fake_passlib)
     monkeypatch.setitem(sys.modules, "passlib.context", fake_context)
 
-    fake = _FakeSession(user_count=0)
     import app.database as db_module
+    import secrets
 
+    fake = _FakeSession(user_count=0)
     monkeypatch.setattr(db_module, "SessionLocal", lambda: fake)
+    monkeypatch.setattr(secrets, "SystemRandom", lambda: _FakeRng())
     monkeypatch.setattr("builtins.print", lambda *args, **kwargs: None)
-
-    import random as random_module
-
-    monkeypatch.setattr(random_module, "randint", lambda a, b: 1 if b >= 1 else 0)
-    monkeypatch.setattr(random_module, "sample", lambda seq, k: list(seq)[:k])
-    monkeypatch.setattr(random_module, "choice", lambda seq: list(seq)[0])
-    monkeypatch.setattr(random_module, "random", lambda: 0.9)
 
     seed_path = Path(__file__).resolve().parents[1] / "seed_data.py"
     runpy.run_path(str(seed_path), run_name="__main__")
@@ -201,3 +224,26 @@ def test_fake_session_add_all_executes_add_path():
     fake = _FakeSession(user_count=0)
     fake.add_all([object(), object()])
     assert fake.commits == 0
+
+
+def test_fake_helpers_cover_scalar_and_host_allow_path(monkeypatch):
+    assert _FakeResult(5).scalar() == 5
+    fake = _FakeSession(user_count=7)
+    assert fake.scalar("SELECT count(*) FROM users") == 7
+    assert fake.scalar("SELECT 1") == 0
+
+    calls = []
+
+    def _fake_run(app, host, port):
+        calls.append((app, host, port))
+
+    monkeypatch.setenv("APP_HOST", "dev.local")
+    monkeypatch.setenv("APP_PORT", "9002")
+    import uvicorn
+
+    monkeypatch.setattr(uvicorn, "run", _fake_run)
+    main_path = Path(__file__).resolve().parents[1] / "main.py"
+    runpy.run_path(str(main_path), run_name="__main__")
+
+    assert calls and calls[0][1] == "dev.local"
+    assert calls[0][2] == 9002
