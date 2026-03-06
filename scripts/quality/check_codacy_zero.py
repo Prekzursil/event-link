@@ -5,9 +5,7 @@ import argparse
 import json
 import os
 import sys
-import urllib.error
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
@@ -16,6 +14,7 @@ from _security_import import load_security_helpers
 _security_helpers = load_security_helpers(__file__)
 build_https_url = _security_helpers.build_https_url
 validate_slug = _security_helpers.validate_slug
+request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
@@ -34,7 +33,7 @@ def _parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def _request_json(*, provider: str, owner: str, repo: str, token: str) -> dict[str, Any]:
+def _request_json(*, provider: str, owner: str, repo: str, token: str) -> tuple[int, dict[str, Any]]:
     query = urllib.parse.urlencode({"limit": "1"})
     url = build_https_url(
         host="api.codacy.com",
@@ -45,7 +44,7 @@ def _request_json(*, provider: str, owner: str, repo: str, token: str) -> dict[s
         # build_https_url already encoded query; this keeps explicit intent and avoids mutable full URL inputs.
         pass
 
-    req = urllib.request.Request(
+    payload, _headers, status = request_https_json(
         url,
         headers={
             "Accept": "application/json",
@@ -54,10 +53,13 @@ def _request_json(*, provider: str, owner: str, repo: str, token: str) -> dict[s
             "Content-Type": "application/json",
         },
         method="POST",
-        data=b"{}",
+        body=b"{}",
+        timeout=30,
+        allowed_hosts={"api.codacy.com"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Codacy response payload")
+    return status, payload
 
 
 def extract_total_open(payload: Any) -> int | None:
@@ -128,20 +130,19 @@ def main() -> int:
             if candidate not in _CODACY_PROVIDERS:
                 continue
             try:
-                payload = _request_json(provider=candidate, owner=owner, repo=repo, token=token)
+                status_code, payload = _request_json(provider=candidate, owner=owner, repo=repo, token=token)
+                if status_code == 404:
+                    continue
+                if not 200 <= status_code < 300:
+                    findings.append(f"Codacy API request failed: HTTP {status_code}")
+                    status = "fail"
+                    break
                 open_issues = extract_total_open(payload)
                 if open_issues is None:
                     findings.append("Codacy response did not include a parseable total issue count.")
                 elif open_issues != 0:
                     findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
                 status = "pass" if not findings else "fail"
-                break
-            except urllib.error.HTTPError as exc:
-                last_exc = exc
-                if exc.code == 404:
-                    continue
-                findings.append(f"Codacy API request failed: HTTP {exc.code}")
-                status = "fail"
                 break
             except Exception as exc:  # pragma: no cover - network/runtime surface
                 last_exc = exc

@@ -5,7 +5,6 @@ import argparse
 import json
 import os
 import sys
-import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
@@ -13,6 +12,7 @@ from _security_import import load_security_helpers
 
 _security_helpers = load_security_helpers(__file__)
 normalize_https_url = _security_helpers.normalize_https_url
+request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
@@ -46,7 +46,7 @@ def extract_total_open(payload: Any) -> int | None:
 
 def _request_json(url: str, token: str) -> dict[str, Any]:
     safe_url = normalize_https_url(url, allowed_host_suffixes={"deepscan.io"})
-    req = urllib.request.Request(
+    payload, _headers, status = request_https_json(
         safe_url,
         headers={
             "Accept": "application/json",
@@ -54,9 +54,14 @@ def _request_json(url: str, token: str) -> dict[str, Any]:
             "User-Agent": "event-link-deepscan-zero-gate",
         },
         method="GET",
+        timeout=30,
+        allowed_host_suffixes={"deepscan.io"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not 200 <= status < 300:
+        raise RuntimeError(f"DeepScan API request failed: HTTP {status}")
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected DeepScan response payload")
+    return payload
 
 
 def _render_md(payload: dict) -> str:

@@ -6,7 +6,6 @@ import json
 import os
 import sys
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
@@ -15,6 +14,7 @@ from _security_import import load_security_helpers
 _security_helpers = load_security_helpers(__file__)
 normalize_https_url = _security_helpers.normalize_https_url
 validate_slug = _security_helpers.validate_slug
+request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
@@ -38,7 +38,7 @@ def _parse_args() -> argparse.Namespace:
 
 def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
     safe_url = normalize_https_url(url, allowed_host_suffixes={"sentry.io"})
-    req = urllib.request.Request(
+    payload, headers, status = request_https_json(
         safe_url,
         headers={
             "Accept": "application/json",
@@ -46,13 +46,14 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
             "User-Agent": "event-link-sentry-zero-gate",
         },
         method="GET",
+        timeout=30,
+        allowed_host_suffixes={"sentry.io"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        body = json.loads(resp.read().decode("utf-8"))
-        headers = {k.lower(): v for k, v in resp.headers.items()}
-    if not isinstance(body, list):
+    if not 200 <= status < 300:
+        raise RuntimeError(f"Sentry API request failed: HTTP {status}")
+    if not isinstance(payload, list):
         raise RuntimeError("Unexpected Sentry response payload")
-    return body, headers
+    return payload, headers
 
 
 def _hits_from_headers(headers: dict[str, str]) -> int | None:

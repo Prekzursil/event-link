@@ -1,0 +1,8 @@
+---
+engines:
+  bandit:
+    exclude_paths:
+      - backend/tests/**
+      - backend/integration_tests/**
+  pylint:
+    python_version: 3

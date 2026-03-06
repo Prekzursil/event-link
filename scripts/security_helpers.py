@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import http.client
 import ipaddress
 import json
 import re
@@ -101,6 +102,37 @@ def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None
         urlunparse(("https", safe_host, normalized_path, "", encoded_query, "")),
         allowed_hosts={safe_host},
     )
+
+
+def request_https_json(
+    raw_url: str,
+    *,
+    method: str = "GET",
+    headers: dict[str, str] | None = None,
+    body: bytes | None = None,
+    timeout: int = 30,
+    allowed_hosts: set[str] | None = None,
+    allowed_host_suffixes: set[str] | None = None,
+) -> tuple[object, dict[str, str], int]:
+    safe_url = normalize_https_url(
+        raw_url,
+        allowed_hosts=allowed_hosts,
+        allowed_host_suffixes=allowed_host_suffixes,
+    )
+    parsed = urlparse(safe_url)
+    path = parsed.path or "/"
+    if parsed.query:
+        path = f"{path}?{parsed.query}"
+
+    connection = http.client.HTTPSConnection(parsed.hostname, port=parsed.port or 443, timeout=timeout)
+    try:
+        connection.request(method.upper(), path, body=body, headers=headers or {})
+        response = connection.getresponse()
+        payload = json.loads(response.read().decode("utf-8"))
+        response_headers = {key.lower(): value for key, value in response.getheaders()}
+        return payload, response_headers, int(response.status)
+    finally:
+        connection.close()
 
 
 def resolve_workspace_relative_path(

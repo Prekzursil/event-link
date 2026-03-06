@@ -6,7 +6,6 @@ import json
 import os
 import sys
 import time
-import urllib.request
 from datetime import datetime, timezone
 from typing import Any
 
@@ -17,6 +16,7 @@ build_github_commit_checks_url = _security_helpers.build_github_commit_checks_ur
 build_github_commit_status_url = _security_helpers.build_github_commit_status_url
 validate_commit_sha = _security_helpers.validate_commit_sha
 validate_repo_full_name = _security_helpers.validate_repo_full_name
+request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
@@ -34,7 +34,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _api_get(url: str, token: str) -> dict[str, Any]:
-    req = urllib.request.Request(
+    payload, _headers, status = request_https_json(
         url,
         headers={
             "Accept": "application/vnd.github+json",
@@ -43,9 +43,14 @@ def _api_get(url: str, token: str) -> dict[str, Any]:
             "User-Agent": "event-link-quality-zero-gate",
         },
         method="GET",
+        timeout=30,
+        allowed_hosts={"api.github.com"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not 200 <= status < 300:
+        raise RuntimeError(f"GitHub API request failed: HTTP {status}")
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GitHub API response payload")
+    return payload
 
 
 def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:

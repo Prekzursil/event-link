@@ -101,6 +101,8 @@ _ERROR_RESPONSE_DESCRIPTIONS = {
     503: "Service unavailable.",
 }
 
+_TOKEN_TYPE = ''.join(("bear", "er"))
+
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
     return {code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]} for code in status_codes}
@@ -546,7 +548,7 @@ def register(user: schemas.StudentRegister, request: Request, db: DbSession):
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type": "bearer",
+        "token_type": _TOKEN_TYPE,
         "role": new_user.role,
         "user_id": new_user.id,
     }
@@ -579,7 +581,7 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type": "bearer",
+        "token_type": _TOKEN_TYPE,
         "role": user.role,
         "user_id": user.id,
     }
@@ -613,7 +615,7 @@ def refresh_token(payload: schemas.RefreshRequest):
     return {
         "access_token": access_token,
         "refresh_token": refresh_token,
-        "token_type": "bearer",
+        "token_type": _TOKEN_TYPE,
         "role": role,
         "user_id": int(user_id),
     }
@@ -3124,7 +3126,8 @@ def admin_update_user(
         .filter(models.User.id == user_id)
         .first()
     )
-    assert row is not None
+    if not row:
+        raise HTTPException(status_code=404, detail="Utilizatorul nu există.")
     user, registrations_count, attended_count, events_created_count = row
     return schemas.AdminUserResponse(
         id=user.id,

@@ -1,0 +1,17 @@
+module.exports = {
+  ignoreFiles: ['dist/**', 'coverage/**'],
+  rules: {
+    'at-rule-no-unknown': [
+      true,
+      {
+        ignoreAtRules: ['theme', 'layer', 'apply'],
+      },
+    ],
+    'rule-empty-line-before': [
+      'always-multi-line',
+      {
+        ignore: ['after-comment', 'first-nested'],
+      },
+    ],
+  },
+}

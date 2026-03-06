@@ -93,3 +93,62 @@ def test_collect_contexts_captures_check_runs_and_statuses() -> None:
         "source": "status",
     }
 
+
+
+def test_request_https_json_uses_https_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+    calls: dict[str, object] = {}
+
+    class _FakeResponse:
+        status = 206
+
+        def read(self) -> bytes:
+            return b'{"status": "ok"}'
+
+        def getheaders(self):
+            return [("X-Hits", "5"), ("Content-Type", "application/json")]
+
+    class _FakeConnection:
+        def __init__(self, host: str, port: int | None = None, timeout: int | None = None) -> None:
+            calls["init"] = {"host": host, "port": port, "timeout": timeout}
+
+        def request(self, method: str, path: str, body=None, headers=None) -> None:
+            calls["request"] = {
+                "method": method,
+                "path": path,
+                "body": body,
+                "headers": headers,
+            }
+
+        def getresponse(self) -> _FakeResponse:
+            return _FakeResponse()
+
+        def close(self) -> None:
+            calls["closed"] = True
+
+    monkeypatch.setattr(security_helpers.http.client, "HTTPSConnection", _FakeConnection)
+
+    payload, headers, status = security_helpers.request_https_json(
+        "https://api.github.com/repos/Prekzursil/event-link/check-runs?per_page=1",
+        method="POST",
+        headers={"Accept": "application/json"},
+        body=b"{}",
+        allowed_hosts={"api.github.com"},
+        timeout=9,
+    )
+
+    assert payload == {"status": "ok"}
+    assert headers["x-hits"] == "5"
+    assert status == 206
+    assert calls["init"] == {"host": "api.github.com", "port": 443, "timeout": 9}
+    assert calls["request"] == {
+        "method": "POST",
+        "path": "/repos/Prekzursil/event-link/check-runs?per_page=1",
+        "body": b"{}",
+        "headers": {"Accept": "application/json"},
+    }
+    assert calls["closed"] is True
+
+
+def test_request_https_json_rejects_non_https_url() -> None:
+    with pytest.raises(ValueError, match="Only https URLs are allowed"):
+        security_helpers.request_https_json("http://api.github.com/repos/Prekzursil/event-link")
