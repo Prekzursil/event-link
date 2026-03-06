@@ -19,7 +19,8 @@ request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
-SONAR_API_BASE = "https://sonarcloud.io"
+SONAR_HOST = "sonarcloud.io"
+SONAR_API_BASE = f"https://{SONAR_HOST}"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -39,7 +40,7 @@ def _auth_header(token: str) -> str:
 
 
 def _request_json(url: str, auth_header: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sonarcloud.io"}).rstrip("/")
+    safe_url = normalize_https_url(url, allowed_host_suffixes={SONAR_HOST}).rstrip("/")
     payload, _headers, status = request_https_json(
         safe_url,
         headers={
@@ -49,7 +50,7 @@ def _request_json(url: str, auth_header: str) -> dict[str, Any]:
         },
         method="GET",
         timeout=30,
-        allowed_host_suffixes={"sonarcloud.io"},
+        allowed_host_suffixes={SONAR_HOST},
     )
     if not 200 <= status < 300:
         raise RuntimeError(f"Sonar API request failed: HTTP {status}")
@@ -81,7 +82,7 @@ def _render_md(payload: dict) -> str:
 def main() -> int:
     args = _parse_args()
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
-    api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={"sonarcloud.io"}).rstrip("/")
+    api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip("/")
 
     findings: list[str] = []
     open_issues: int | None = None

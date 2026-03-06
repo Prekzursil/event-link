@@ -40,8 +40,11 @@ class _FakeUser:
 
 
 class _FakeModels:
-    User = _FakeUser
-    UserRole = _FakeUserRole
+    pass
+
+
+setattr(_FakeModels, "User", _FakeUser)
+setattr(_FakeModels, "UserRole", _FakeUserRole)
 
 
 class _FakeDb:

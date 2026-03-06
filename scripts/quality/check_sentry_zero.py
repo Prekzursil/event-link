@@ -18,7 +18,8 @@ request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
-SENTRY_API_BASE = "https://sentry.io/api/0"
+SENTRY_HOST = "sentry.io"
+SENTRY_API_BASE = f"https://{SENTRY_HOST}/api/0"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -37,7 +38,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sentry.io"})
+    safe_url = normalize_https_url(url, allowed_host_suffixes={SENTRY_HOST})
     payload, headers, status = request_https_json(
         safe_url,
         headers={
@@ -47,7 +48,7 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
         },
         method="GET",
         timeout=30,
-        allowed_host_suffixes={"sentry.io"},
+        allowed_host_suffixes={SENTRY_HOST},
     )
     if not 200 <= status < 300:
         raise RuntimeError(f"Sentry API request failed: HTTP {status}")
@@ -97,7 +98,7 @@ def main() -> int:
     args = _parse_args()
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org_input = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
-    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={"sentry.io"}).rstrip("/")
+    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={SENTRY_HOST}).rstrip("/")
 
     projects = [p for p in args.project if p]
     if not projects:

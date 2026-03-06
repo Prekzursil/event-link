@@ -28,6 +28,10 @@ def _unexpected_enqueue(*_args, **_kwargs):
     raise AssertionError("enqueue_job should not run")
 
 
+def _raise(exc: Exception) -> None:
+    raise exc
+
+
 def test_unexpected_enqueue_guard_raises() -> None:
     with pytest.raises(AssertionError, match='enqueue_job should not run'):
         _unexpected_enqueue()
@@ -950,13 +954,15 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
     script_ok = tmp_path / "ok_worker.py"
     script_ok.write_text("import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n", encoding="utf-8")
     queue_ok = _Queue()
-    task_queue._run_python_entrypoint_worker(
-        str(script_ok),
-        [str(script_ok)],
-        str(tmp_path),
-        {"EVENT_LINK_QUEUE_FLAG": "worker-ok"},
-        queue_ok,
-    )
+    with pytest.raises(SystemExit) as excinfo:
+        task_queue._run_python_entrypoint_worker(
+            str(script_ok),
+            [str(script_ok)],
+            str(tmp_path),
+            {"EVENT_LINK_QUEUE_FLAG": "worker-ok"},
+            queue_ok,
+        )
+    assert excinfo.value.code == 0
     assert queue_ok.payload["returncode"] == 0
     assert "worker-ok" in queue_ok.payload["stdout"]
     assert os.environ.get("EVENT_LINK_QUEUE_FLAG") == original_flag
@@ -996,7 +1002,7 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
             "Queue": lambda self: type(
                 "_Queue",
                 (),
-                {"get": lambda self, timeout: (_ for _ in ()).throw(AssertionError("queue get should not run on timeout path"))},
+                {"get": lambda self, timeout: _raise(AssertionError("queue get should not run on timeout path"))},
             )(),
             "Process": lambda self, *args, **kwargs: process,
         },
@@ -1033,7 +1039,7 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
         "_Context",
         (),
         {
-            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: (_ for _ in ()).throw(task_queue.queue.Empty)})(),
+            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: _raise(task_queue.queue.Empty)})(),
             "Process": lambda self, *args, **kwargs: process,
         },
     )()

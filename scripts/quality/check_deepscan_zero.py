@@ -16,6 +16,7 @@ request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
+DEEPSCAN_HOST = "deepscan.io"
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 
 
@@ -45,7 +46,7 @@ def extract_total_open(payload: Any) -> int | None:
 
 
 def _request_json(url: str, token: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"deepscan.io"})
+    safe_url = normalize_https_url(url, allowed_host_suffixes={DEEPSCAN_HOST})
     payload, _headers, status = request_https_json(
         safe_url,
         headers={
@@ -55,7 +56,7 @@ def _request_json(url: str, token: str) -> dict[str, Any]:
         },
         method="GET",
         timeout=30,
-        allowed_host_suffixes={"deepscan.io"},
+        allowed_host_suffixes={DEEPSCAN_HOST},
     )
     if not 200 <= status < 300:
         raise RuntimeError(f"DeepScan API request failed: HTTP {status}")
@@ -99,7 +100,7 @@ def main() -> int:
         try:
             open_issues_url = normalize_https_url(
                 open_issues_url,
-                allowed_host_suffixes={"deepscan.io"},
+                allowed_host_suffixes={DEEPSCAN_HOST},
             )
         except ValueError as exc:
             findings.append(str(exc))

@@ -105,4 +105,5 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
+    # Normalization merged duplicate tags and trimmed stored values in place; downgrade cannot reconstruct the original data.
     pass

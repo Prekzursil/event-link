@@ -50,6 +50,7 @@ def _run_python_entrypoint_worker(
     original_argv = list(sys.argv)
     previous_env: dict[str, str | None] = {}
     returncode = 0
+    pending_system_exit: SystemExit | None = None
     try:
         os.chdir(cwd)
         for key, value in env_overrides.items():
@@ -61,6 +62,7 @@ def _run_python_entrypoint_worker(
     except SystemExit as exc:  # pragma: no cover - exercised via parent result handling
         code = exc.code
         returncode = code if isinstance(code, int) else 1
+        pending_system_exit = exc
     except Exception:  # noqa: BLE001
         traceback.print_exc(file=stderr_buffer)
         returncode = 1
@@ -79,6 +81,8 @@ def _run_python_entrypoint_worker(
                 "stderr": stderr_buffer.getvalue(),
             }
         )
+    if pending_system_exit is not None:
+        raise pending_system_exit
 
 
 def _execute_python_script(

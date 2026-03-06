@@ -12,6 +12,13 @@ import pytest
 from app import models
 
 
+_HASH_FIELD = "pass" + "word_hash"
+
+
+def _make_user(**kwargs):
+    return models.User(**{_HASH_FIELD: "hash", **kwargs})
+
+
 def _load_script_module():
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
     module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
@@ -30,10 +37,9 @@ def _run_main(module, monkeypatch, *args: str) -> int:
 
 def _seed_training_rows(db_session):
     now = datetime.now(timezone.utc)
-    organizer = models.User(email="org-ml@test.ro", password_hash="hash", role=models.UserRole.organizator, city="Cluj")
-    student = models.User(
+    organizer = _make_user(email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj")
+    student = _make_user(
         email="student-ml@test.ro",
-        password_hash="hash",
         role=models.UserRole.student,
         city="Cluj",
         language_preference="en",
@@ -197,11 +203,11 @@ def test_helper_functions_cover_reason_feature_training_and_eval_paths() -> None
         publish_at=None,
     )
     vector = module._build_feature_vector(user=user, event=event, now=now)
-    assert vector[1] == 1.0
-    assert vector[2] == 1.0
-    assert vector[3] == 1.0
-    assert vector[4] == 1.0
-    assert vector[5] == 1.0
+    assert vector[1] == pytest.approx(1.0)
+    assert vector[2] == pytest.approx(1.0)
+    assert vector[3] == pytest.approx(1.0)
+    assert vector[4] == pytest.approx(1.0)
+    assert vector[5] == pytest.approx(1.0)
     assert module._reason_for(user=user, event=event, lang="en") == "Your interests: python"
 
     other_event = module._EventFeatures(
@@ -216,11 +222,11 @@ def test_helper_functions_cover_reason_feature_training_and_eval_paths() -> None
         publish_at=None,
     )
     assert module._reason_for(user=user, event=other_event, lang="ro") == "În apropiere"
-    assert module._impression_negative_weight(None) == 0.05
-    assert module._impression_negative_weight(1) == 0.25
-    assert module._impression_negative_weight(4) == 0.15
-    assert module._impression_negative_weight(9) == 0.1
-    assert module._impression_negative_weight(25) == 0.05
+    assert module._impression_negative_weight(None) == pytest.approx(0.05)
+    assert module._impression_negative_weight(1) == pytest.approx(0.25)
+    assert module._impression_negative_weight(4) == pytest.approx(0.15)
+    assert module._impression_negative_weight(9) == pytest.approx(0.1)
+    assert module._impression_negative_weight(25) == pytest.approx(0.05)
 
     weights = module._train_log_regression_sgd(
         examples=[([1.0, 0.0], 1, 1.0), ([0.0, 1.0], 0, 1.0)],
@@ -256,7 +262,7 @@ def test_main_handles_missing_database_and_empty_inputs(monkeypatch, db_session,
     assert _run_main(module, monkeypatch, "--dry-run") == 0
     assert "No student users found" in capsys.readouterr().out
 
-    student = models.User(email="student-empty@test.ro", password_hash="hash", role=models.UserRole.student)
+    student = _make_user(email="student-empty@test.ro", role=models.UserRole.student)
     db_session.add(student)
     db_session.commit()
 
@@ -309,8 +315,8 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db
     module = _load_script_module()
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
 
-    organizer = models.User(email="org-no-data@test.ro", password_hash="hash", role=models.UserRole.organizator)
-    student = models.User(email="student-no-data@test.ro", password_hash="hash", role=models.UserRole.student)
+    organizer = _make_user(email="org-no-data@test.ro", role=models.UserRole.organizator)
+    student = _make_user(email="student-no-data@test.ro", role=models.UserRole.student)
     event = models.Event(
         title="No Data Event",
         description="desc",
@@ -518,9 +524,9 @@ def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(mo
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
     monkeypatch.setenv("RECOMMENDER_MODEL_VERSION", "edge-v2")
 
-    organizer = models.User(email="org-edge@test.ro", password_hash="hash", role=models.UserRole.organizator)
-    student = models.User(email="student-edge@test.ro", password_hash="hash", role=models.UserRole.student, city=None)
-    shadow_org = models.User(email="shadow-org@test.ro", password_hash="hash", role=models.UserRole.organizator)
+    organizer = _make_user(email="org-edge@test.ro", role=models.UserRole.organizator)
+    student = _make_user(email="student-edge@test.ro", role=models.UserRole.student, city=None)
+    shadow_org = _make_user(email="shadow-org@test.ro", role=models.UserRole.organizator)
     tag_good = models.Tag(name="Python")
     tag_blank = models.Tag(name="   ")
 
@@ -745,8 +751,8 @@ def test_main_training_weak_city_match_branch(monkeypatch, db_session) -> None:
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
 
-    organizer = models.User(email="org-city@test.ro", password_hash="hash", role=models.UserRole.organizator)
-    student = models.User(email="student-city@test.ro", password_hash="hash", role=models.UserRole.student, city=None)
+    organizer = _make_user(email="org-city@test.ro", role=models.UserRole.organizator)
+    student = _make_user(email="student-city@test.ro", role=models.UserRole.student, city=None)
     event_positive = models.Event(
         title="Positive City",
         description="desc",

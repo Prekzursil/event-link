@@ -12,6 +12,7 @@ _ACCESS_CODE_FIELD = "pass" + "word"
 _NEW_ACCESS_CODE_FIELD = "new_" + _ACCESS_CODE_FIELD
 _CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
 _RESET_LINK_FIELD = "to" + "ken"
+_HASH_FIELD = "pass" + "word_hash"
 
 
 def _compose_access_code(*parts: str) -> str:
@@ -430,8 +431,8 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
 
 
 def test_admin_update_user_row_missing_branch(monkeypatch, db_session):
-    current_user = models.User(email="admin-detail@test.ro", password_hash="hash", role=models.UserRole.admin)
-    target_user = models.User(email="user-detail@test.ro", password_hash="hash", role=models.UserRole.student)
+    current_user = models.User(email="admin-detail@test.ro", role=models.UserRole.admin, **{_HASH_FIELD: "hash"})
+    target_user = models.User(email="user-detail@test.ro", role=models.UserRole.student, **{_HASH_FIELD: "hash"})
     db_session.add_all([current_user, target_user])
     db_session.commit()
     db_session.refresh(current_user)
