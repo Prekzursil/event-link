@@ -437,7 +437,7 @@ describe('mega pages smoke coverage', () => {
     await waitFor(() => expect(eventServiceMock.registerForEvent).toHaveBeenCalledWith(1));
 
     fireEvent.click(screen.getByRole('button', { name: /Add to calendar/i }));
-    expect(window.open).toHaveBeenCalled();
+    expect(globalThis.open).toHaveBeenCalled();
   }, 15000);
 
   it('covers events page and event detail error branches', async () => {

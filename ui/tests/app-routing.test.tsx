@@ -90,13 +90,13 @@ beforeEach(() => {
 
 afterEach(() => {
   cleanup();
-  window.history.pushState({}, '', '/');
+  globalThis.history.pushState({}, '', '/');
 });
 
 describe('App routing guards', () => {
   it('shows loading UI for guarded route while auth is loading', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    window.history.pushState({}, '', '/my-events');
+    globalThis.history.pushState({}, '', '/my-events');
 
     render(<App />);
 
@@ -105,7 +105,7 @@ describe('App routing guards', () => {
 
   it('redirects unauthenticated protected routes to /login', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/my-events');
+    globalThis.history.pushState({}, '', '/my-events');
 
     render(<App />);
 
@@ -114,7 +114,7 @@ describe('App routing guards', () => {
 
   it('redirects unauthenticated organizer routes to /login', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/organizer');
+    globalThis.history.pushState({}, '', '/organizer');
 
     render(<App />);
 
@@ -123,7 +123,7 @@ describe('App routing guards', () => {
 
   it('allows organizer-only routes for organizer users', async () => {
     authState = { isAuthenticated: true, isOrganizer: true, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/organizer/events/new');
+    globalThis.history.pushState({}, '', '/organizer/events/new');
 
     render(<App />);
 
@@ -132,7 +132,7 @@ describe('App routing guards', () => {
 
   it('redirects authenticated non-organizers to /forbidden', async () => {
     authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/organizer');
+    globalThis.history.pushState({}, '', '/organizer');
 
     render(<App />);
 
@@ -141,7 +141,7 @@ describe('App routing guards', () => {
 
   it('redirects unauthenticated admin routes to /login', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/admin');
+    globalThis.history.pushState({}, '', '/admin');
 
     render(<App />);
 
@@ -150,7 +150,7 @@ describe('App routing guards', () => {
 
   it('redirects non-admin users from /admin to /forbidden', async () => {
     authState = { isAuthenticated: true, isOrganizer: true, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/admin');
+    globalThis.history.pushState({}, '', '/admin');
 
     render(<App />);
 
@@ -159,7 +159,7 @@ describe('App routing guards', () => {
 
   it('allows admin route for admin users', async () => {
     authState = { isAuthenticated: true, isOrganizer: true, isAdmin: true, isLoading: false };
-    window.history.pushState({}, '', '/admin');
+    globalThis.history.pushState({}, '', '/admin');
 
     render(<App />);
 
@@ -168,7 +168,7 @@ describe('App routing guards', () => {
 
   it('redirects authenticated users away from guest routes', async () => {
     authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/login');
+    globalThis.history.pushState({}, '', '/login');
 
     render(<App />);
 
@@ -178,17 +178,17 @@ describe('App routing guards', () => {
   it('renders guest routes and public auth utility routes', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
 
-    window.history.pushState({}, '', '/register');
+    globalThis.history.pushState({}, '', '/register');
     render(<App />);
     expect(await screen.findByText('RegisterPage')).toBeInTheDocument();
 
     cleanup();
-    window.history.pushState({}, '', '/forgot-password');
+    globalThis.history.pushState({}, '', '/forgot-password');
     render(<App />);
     expect(await screen.findByText('ForgotPasswordPage')).toBeInTheDocument();
 
     cleanup();
-    window.history.pushState({}, '', '/reset-password');
+    globalThis.history.pushState({}, '', '/reset-password');
     render(<App />);
     expect(await screen.findByText('ResetPasswordPage')).toBeInTheDocument();
   });
@@ -196,12 +196,12 @@ describe('App routing guards', () => {
   it('renders event detail and organizer public profile routes', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
 
-    window.history.pushState({}, '', '/events/42');
+    globalThis.history.pushState({}, '', '/events/42');
     render(<App />);
     expect(await screen.findByText('EventDetailPage')).toBeInTheDocument();
 
     cleanup();
-    window.history.pushState({}, '', '/organizers/7');
+    globalThis.history.pushState({}, '', '/organizers/7');
     render(<App />);
     expect(await screen.findByText('OrganizerProfilePage')).toBeInTheDocument();
   });
@@ -209,7 +209,7 @@ describe('App routing guards', () => {
 
   it('renders protected route content when authenticated', async () => {
     authState = { isAuthenticated: true, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/my-events');
+    globalThis.history.pushState({}, '', '/my-events');
 
     render(<App />);
 
@@ -218,7 +218,7 @@ describe('App routing guards', () => {
 
   it('shows loading UI on organizer route while auth is loading', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    window.history.pushState({}, '', '/organizer');
+    globalThis.history.pushState({}, '', '/organizer');
 
     render(<App />);
 
@@ -227,7 +227,7 @@ describe('App routing guards', () => {
 
   it('shows loading UI on admin route while auth is loading', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    window.history.pushState({}, '', '/admin');
+    globalThis.history.pushState({}, '', '/admin');
 
     render(<App />);
 
@@ -236,7 +236,7 @@ describe('App routing guards', () => {
 
   it('shows loading UI on guest route while auth is loading', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: true };
-    window.history.pushState({}, '', '/login');
+    globalThis.history.pushState({}, '', '/login');
 
     render(<App />);
 
@@ -244,7 +244,7 @@ describe('App routing guards', () => {
   });
   it('renders a 404 page for unknown routes', async () => {
     authState = { isAuthenticated: false, isOrganizer: false, isAdmin: false, isLoading: false };
-    window.history.pushState({}, '', '/does-not-exist');
+    globalThis.history.pushState({}, '', '/does-not-exist');
 
     render(<App />);
 

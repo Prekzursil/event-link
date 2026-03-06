@@ -1,3 +1,1 @@
-import { AdminDashboardPage } from './AdminDashboardPage';
-
-export { AdminDashboardPage };
+export { AdminDashboardPage } from './AdminDashboardPage';

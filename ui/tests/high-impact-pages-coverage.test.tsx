@@ -82,9 +82,10 @@ vi.mock('@/components/ui/select', async () => {
   type SelectCtx = { onValueChange?: (value: string) => void; disabled?: boolean };
   const SelectContext = ReactMod.createContext<SelectCtx>({});
 
-  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => (
-    <SelectContext.Provider value={{ onValueChange, disabled }}>{children}</SelectContext.Provider>
-  );
+  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => {
+    const selectContextValue = ReactMod.useMemo(() => ({ onValueChange, disabled }), [disabled, onValueChange]);
+    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>;
+  };
   const SelectTrigger = ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button type="button" {...props}>
       {children}
@@ -109,12 +110,11 @@ vi.mock('@/components/ui/select', async () => {
 
 vi.mock('@/components/ui/checkbox', () => ({
   Checkbox: ({ checked, onCheckedChange, disabled, ...rest }: { checked?: boolean; disabled?: boolean; onCheckedChange?: (value: boolean) => void }) => (
-    <button
-      type="button"
-      role="checkbox"
-      aria-checked={checked ? 'true' : 'false'}
+    <input
+      type="checkbox"
+      checked={Boolean(checked)}
       disabled={disabled}
-      onClick={() => onCheckedChange?.(!checked)}
+      onChange={() => onCheckedChange?.(!checked)}
       {...rest}
     />
   ),
@@ -388,7 +388,7 @@ describe('high-impact page coverage', () => {
     // Trigger page-size update branch.
     const pageSizeOption = screen
       .getAllByRole('button')
-      .find((button) => /^24/.test((button.textContent || '').trim()));
+      .find((button) => (button.textContent || '').trim().startsWith('24'));
     expect(pageSizeOption).toBeDefined();
     fireEvent.click(pageSizeOption as HTMLElement);
 
@@ -643,13 +643,13 @@ describe('high-impact page coverage', () => {
     fireEvent.click(menuTrigger as HTMLElement);
     const deleteOption = screen.queryByText(/Delete|Șterge/i);
     if (deleteOption) {
-      (window.confirm as unknown as { mockReturnValueOnce: (v: boolean) => unknown }).mockReturnValueOnce(false);
+      (globalThis.confirm as unknown as { mockReturnValueOnce: (v: boolean) => unknown }).mockReturnValueOnce(false);
       fireEvent.click(deleteOption);
 
       fireEvent.click(menuTrigger as HTMLElement);
       const deleteOptionRetry = screen.queryByText(/Delete|Șterge/i);
       if (deleteOptionRetry) {
-        (window.confirm as unknown as { mockReturnValueOnce: (v: boolean) => unknown }).mockReturnValueOnce(true);
+        (globalThis.confirm as unknown as { mockReturnValueOnce: (v: boolean) => unknown }).mockReturnValueOnce(true);
         eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
         fireEvent.click(deleteOptionRetry);
         await waitFor(() => expect(toastSpy).toHaveBeenCalled());

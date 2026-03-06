@@ -1,6 +1,4 @@
-import { EventFormPage } from './EventFormPage';
-import { OrganizerDashboardPage } from './OrganizerDashboardPage';
-import { OrganizerProfilePage } from './OrganizerProfilePage';
-import { ParticipantsPage } from './ParticipantsPage';
-
-export { EventFormPage, OrganizerDashboardPage, OrganizerProfilePage, ParticipantsPage };
+export { EventFormPage } from './EventFormPage';
+export { OrganizerDashboardPage } from './OrganizerDashboardPage';
+export { OrganizerProfilePage } from './OrganizerProfilePage';
+export { ParticipantsPage } from './ParticipantsPage';

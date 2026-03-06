@@ -122,6 +122,28 @@ export function Navbar() {
     }
   };
 
+  const renderThemeModeIcon = (mode: ThemePreference) => {
+    if (mode === 'system') return <Monitor className="mr-2 h-4 w-4" />;
+    if (mode === 'light') return <Sun className="mr-2 h-4 w-4" />;
+    return <Moon className="mr-2 h-4 w-4" />;
+  };
+
+  const renderThemeModeLabel = (mode: ThemePreference) => {
+    if (mode === 'system') return t.theme.system;
+    if (mode === 'light') return t.theme.light;
+    return t.theme.dark;
+  };
+
+  const renderLanguageModeIcon = (mode: LanguagePreference) => (
+    mode === 'system' ? <Monitor className="mr-2 h-4 w-4" /> : null
+  );
+
+  const renderLanguageModeLabel = (mode: LanguagePreference) => {
+    if (mode === 'system') return t.language.system;
+    if (mode === 'ro') return t.language.ro;
+    return t.language.en;
+  };
+
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -312,18 +334,8 @@ export function Navbar() {
                     onSelect={() => handleThemeChange(mode)}
                     disabled={isSavingTheme}
                   >
-                    {mode === 'system' ? (
-                      <Monitor className="mr-2 h-4 w-4" />
-                    ) : mode === 'light' ? (
-                      <Sun className="mr-2 h-4 w-4" />
-                    ) : (
-                      <Moon className="mr-2 h-4 w-4" />
-                    )}
-                    {mode === 'system'
-                      ? t.theme.system
-                      : mode === 'light'
-                        ? t.theme.light
-                        : t.theme.dark}
+                    {renderThemeModeIcon(mode)}
+                    {renderThemeModeLabel(mode)}
                     {themePreference === mode && <Check className="ml-auto h-4 w-4" />}
                   </DropdownMenuItem>
                 ))}
@@ -342,8 +354,8 @@ export function Navbar() {
                     onSelect={() => handleLanguageChange(mode)}
                     disabled={isSavingLanguage}
                   >
-                    {mode === 'system' ? <Monitor className="mr-2 h-4 w-4" /> : null}
-                    {mode === 'system' ? t.language.system : mode === 'ro' ? t.language.ro : t.language.en}
+                    {renderLanguageModeIcon(mode)}
+                    {renderLanguageModeLabel(mode)}
                     {languagePreference === mode && <Check className="ml-auto h-4 w-4" />}
                   </DropdownMenuItem>
                 ))}

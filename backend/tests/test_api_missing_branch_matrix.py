@@ -17,6 +17,10 @@ def _compose_access_code(*parts: str) -> str:
     return "".join(parts)
 
 
+def _raise_db_down(*_args, **_kwargs):
+    raise RuntimeError("db down")
+
+
 def _event_payload(*, start_time: str, **overrides):
     payload = {
         "title": "Branch Event",
@@ -378,7 +382,7 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
     from fastapi import HTTPException
 
     with monkeypatch.context() as m:
-        m.setattr(db, "execute", lambda *_a, **_k: (_ for _ in ()).throw(RuntimeError("db down")))
+        m.setattr(db, "execute", _raise_db_down)
         with pytest.raises(HTTPException) as exc_info:
             api_module.health_check(db=db)
         assert exc_info.value.status_code == 503

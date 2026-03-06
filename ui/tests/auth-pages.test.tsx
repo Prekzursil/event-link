@@ -78,7 +78,7 @@ describe('auth pages', () => {
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
     fireEvent.change(screen.getByLabelText(/Access code/i), { target: { value: 'AccessCode123A' } });
-    const loginToggle = document.querySelector('button.absolute.right-0.top-0') as HTMLButtonElement;
+    const loginToggle = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
     expect(loginToggle).not.toBeNull();
     fireEvent.click(loginToggle);
     fireEvent.submit(screen.getByRole('button', { name: /Sign in/i }).closest('form')!);
@@ -97,7 +97,7 @@ describe('auth pages', () => {
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
     fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'AccessCode123A' } });
-    const registerToggle = document.querySelector('button.absolute.right-0.top-0') as HTMLButtonElement;
+    const registerToggle = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
     expect(registerToggle).not.toBeNull();
     fireEvent.click(registerToggle);
     fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'OtherCode123A' } });
@@ -152,7 +152,7 @@ describe('auth pages', () => {
     fireEvent.submit(screen.getByRole('button', { name: /Reset access code/i }).closest('form')!);
     expect(toastSpy).toHaveBeenCalled();
 
-    const toggleButton = document.querySelector('button.absolute.right-0.top-0') as HTMLButtonElement;
+    const toggleButton = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
     expect(toggleButton).not.toBeNull();
     fireEvent.click(toggleButton);
 

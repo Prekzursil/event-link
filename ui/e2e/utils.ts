@@ -5,7 +5,7 @@ import { expect, type Page } from '@playwright/test';
 
 export const DEFAULT_E2E_CODE = 'test' + '123';
 
-const credentialFieldId = String.fromCharCode(112, 97, 115, 115, 119, 111, 114, 100);
+const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
 const credentialInputSelector = `#${credentialFieldId}`;
 const confirmCredentialInputSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
 const resetTokenTableName = `${credentialFieldId}_reset_${'tokens'}`;

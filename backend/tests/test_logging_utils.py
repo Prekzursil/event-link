@@ -69,9 +69,11 @@ def test_request_id_middleware_uses_incoming_header() -> None:
     middleware = logging_utils.RequestIdMiddleware(_app)
 
     async def _receive():
+        await asyncio.sleep(0)
         return {"type": "http.request", "body": b"", "more_body": False}
 
     async def _send(message):
+        await asyncio.sleep(0)
         messages.append(message)
 
     scope = {

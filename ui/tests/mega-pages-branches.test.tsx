@@ -105,9 +105,10 @@ vi.mock('@/components/ui/select', async () => {
   type SelectCtx = { onValueChange?: (value: string) => void; disabled?: boolean };
   const SelectContext = ReactMod.createContext<SelectCtx>({});
 
-  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => (
-    <SelectContext.Provider value={{ onValueChange, disabled }}>{children}</SelectContext.Provider>
-  );
+  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => {
+    const selectContextValue = ReactMod.useMemo(() => ({ onValueChange, disabled }), [disabled, onValueChange]);
+    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>;
+  };
   const SelectTrigger = ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button type="button" {...props}>{children}</button>
   );
@@ -661,16 +662,16 @@ describe('mega pages branch matrix', () => {
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
 
-    (window.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
+    (globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
     eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    (window.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(false);
+    (globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(false);
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     expect(eventServiceMock.deleteEvent).toHaveBeenCalledTimes(1);
 
-    (window.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
+    (globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
     eventServiceMock.deleteEvent.mockResolvedValueOnce(undefined);
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledWith(3));

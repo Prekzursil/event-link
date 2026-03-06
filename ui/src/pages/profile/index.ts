@@ -1,3 +1,1 @@
-import { StudentProfilePage } from './StudentProfilePage';
-
-export { StudentProfilePage };
+export { StudentProfilePage } from './StudentProfilePage';

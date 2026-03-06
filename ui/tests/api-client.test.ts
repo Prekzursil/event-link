@@ -18,12 +18,12 @@ type ResponseInterceptorHandler = {
 
 function getRequestHandlers(api: { interceptors: { request: { handlers: unknown[] } } }): RequestInterceptorHandler {
   const handlers = (api.interceptors.request as unknown as { handlers: RequestInterceptorHandler[] }).handlers;
-  return handlers[handlers.length - 1];
+  return handlers.at(-1)!;
 }
 
 function getResponseHandlers(api: { interceptors: { response: { handlers: unknown[] } } }): ResponseInterceptorHandler {
   const handlers = (api.interceptors.response as unknown as { handlers: ResponseInterceptorHandler[] }).handlers;
-  return handlers[handlers.length - 1];
+  return handlers.at(-1)!;
 }
 
 describe('api client interceptors', () => {

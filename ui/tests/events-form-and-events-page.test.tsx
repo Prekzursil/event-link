@@ -54,9 +54,10 @@ vi.mock('@/components/ui/select', async () => {
   type SelectCtx = { onValueChange?: (value: string) => void; disabled?: boolean };
   const SelectContext = ReactMod.createContext<SelectCtx>({});
 
-  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => (
-    <SelectContext.Provider value={{ onValueChange, disabled }}>{children}</SelectContext.Provider>
-  );
+  const Select = ({ children, onValueChange, disabled }: { children: React.ReactNode; onValueChange?: (value: string) => void; disabled?: boolean }) => {
+    const selectContextValue = ReactMod.useMemo(() => ({ onValueChange, disabled }), [disabled, onValueChange]);
+    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>;
+  };
   const SelectTrigger = ({ children, ...props }: React.ComponentProps<'button'>) => (
     <button type="button" {...props}>
       {children}
@@ -267,7 +268,7 @@ describe('events page and event form branch coverage', () => {
     fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Validation description' } });
 
     const submit = screen.getByRole('button', { name: /Create event/i });
-    const form = submit.closest('form') as HTMLFormElement;
+    const form = submit.closest('form');
 
     // Category required branch before suggestion fills it.
     fireEvent.submit(form);
@@ -313,22 +314,22 @@ describe('events page and event form branch coverage', () => {
 
     fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '20' } });
 
-    const coverInput = document.getElementById('cover_url') as HTMLInputElement;
+    const coverInput = document.getElementById('cover_url');
     expect(coverInput).not.toBeNull();
     fireEvent.change(coverInput, { target: { value: 'https://example.com/img.jpg' } });
-    const preview = screen.getByAltText(/Preview/i) as HTMLImageElement;
+    const preview = screen.getByAltText(/Preview/i);
     fireEvent.error(preview);
     expect(preview.style.display).toBe('none');
 
     const addTagButton = screen.getByRole('button', { name: /Add/i });
-    const tagInput = screen.getByPlaceholderText(/tag/i) as HTMLInputElement;
+    const tagInput = screen.getByPlaceholderText(/tag/i);
     fireEvent.change(tagInput, { target: { value: 'AI' } });
     fireEvent.click(addTagButton);
     expect(screen.getByText('AI')).toBeInTheDocument();
 
     const removeIcon = document.querySelector('svg.h-3.w-3.cursor-pointer');
     expect(removeIcon).not.toBeNull();
-    fireEvent.click(removeIcon as SVGElement);
+    fireEvent.click(removeIcon!);
 
     eventServiceMock.createEvent.mockRejectedValueOnce({ response: { data: { detail: 'create-fail' } } });
     fireEvent.submit(form);

@@ -1,6 +1,4 @@
-import { LoginPage } from './LoginPage';
-import { RegisterPage } from './RegisterPage';
-import { ForgotPasswordPage } from './ForgotPasswordPage';
-import { ResetPasswordPage } from './ResetPasswordPage';
-
-export { ForgotPasswordPage, LoginPage, RegisterPage, ResetPasswordPage };
+export { ForgotPasswordPage } from './ForgotPasswordPage';
+export { LoginPage } from './LoginPage';
+export { RegisterPage } from './RegisterPage';
+export { ResetPasswordPage } from './ResetPasswordPage';

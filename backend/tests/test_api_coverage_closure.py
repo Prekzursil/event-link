@@ -33,8 +33,8 @@ def test_helper_branches_and_root_handler_paths(monkeypatch, helpers):
     assert "many_links" in flags
     assert status in {"clean", "flagged"}
 
-    assert api._jaccard_similarity(set(), set()) == 1.0
-    assert api._jaccard_similarity({"a"}, set()) == 0.0
+    assert api._jaccard_similarity(set(), set()) == pytest.approx(1.0)
+    assert api._jaccard_similarity({"a"}, set()) == pytest.approx(0.0)
     assert api._format_ics_dt(None) == ""
 
     ev = models.Event(

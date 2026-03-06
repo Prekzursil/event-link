@@ -7,7 +7,7 @@ import {
   setLanguagePreference,
 } from './utils';
 
-const credentialFieldId = String.fromCharCode(112, 97, 115, 115, 119, 111, 114, 100);
+const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
 const credentialSelector = `#${credentialFieldId}`;
 const confirmCredentialSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
 const forgotRoute = `/forgot-${credentialFieldId}`;

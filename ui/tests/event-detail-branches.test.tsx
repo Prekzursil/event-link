@@ -187,7 +187,7 @@ describe('event detail branch coverage', () => {
 
     // Export calendar path.
     fireEvent.click(addToCalendarButton);
-    expect(window.open).toHaveBeenCalled();
+    expect(globalThis.open).toHaveBeenCalled();
   }, 20000);
 
   it('covers registered attendee resend/unregister success and fallback branches', async () => {
