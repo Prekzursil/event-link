@@ -4,6 +4,7 @@ from __future__ import annotations
 import argparse
 import os
 import sys
+import time
 from datetime import datetime, timezone
 from typing import Any
 from urllib.parse import parse_qs, urlparse
@@ -32,6 +33,8 @@ TOTAL_KEYS = {
     "totalItems",
     "total_items",
 }
+STATUS_RETRY_ATTEMPTS = 6
+STATUS_RETRY_DELAY_SECONDS = 5.0
 
 
 def _parse_args() -> argparse.Namespace:
@@ -134,6 +137,21 @@ def _deepscan_dashboard_url(status_payload: dict[str, Any]) -> str:
     raise RuntimeError("DeepScan commit status did not include a provider target URL.")
 
 
+def _wait_for_deepscan_dashboard_url(*, owner: str, repo: str, sha: str, github_token: str) -> str:
+    last_error: RuntimeError | None = None
+    for attempt in range(STATUS_RETRY_ATTEMPTS):
+        try:
+            return _deepscan_dashboard_url(
+                _github_status_payload(owner=owner, repo=repo, sha=sha, github_token=github_token)
+            )
+        except RuntimeError as exc:
+            last_error = exc
+            if attempt == STATUS_RETRY_ATTEMPTS - 1:
+                break
+            time.sleep(STATUS_RETRY_DELAY_SECONDS)
+    raise last_error or RuntimeError("DeepScan commit status did not include a provider target URL.")
+
+
 def _analysis_api_url(ids: dict[str, str], *, owner_bid: str, head_aid: str) -> str:
     return build_https_url(
         host=DEEPSCAN_HOST,
@@ -183,8 +201,11 @@ def _resolve_open_issues(
     else:
         owner, repo_name = validate_repo_full_name(repo)
         safe_sha = validate_commit_sha(sha)
-        dashboard_url = _deepscan_dashboard_url(
-            _github_status_payload(owner=owner, repo=repo_name, sha=safe_sha, github_token=github_token)
+        dashboard_url = _wait_for_deepscan_dashboard_url(
+            owner=owner,
+            repo=repo_name,
+            sha=safe_sha,
+            github_token=github_token,
         )
         analysis_url = _resolve_analysis_url_from_dashboard(dashboard_url, token)
 

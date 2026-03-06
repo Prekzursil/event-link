@@ -133,3 +133,35 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
     assert open_issues == 2
     assert source_url == "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
     assert findings == ["DeepScan reports 2 open issues (expected 0)."]
+
+def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+    dashboard_url = (
+        "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139&bid=1008135"
+        "&subview=pull-request&prid=2297205"
+    )
+    payloads = [
+        {"statuses": []},
+        {"statuses": [{"context": "DeepScan", "target_url": dashboard_url}]},
+    ]
+    sleeps: list[float] = []
+
+    def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+        assert owner == "Prekzursil"
+        assert repo == "event-link"
+        assert sha == "2a1fcc315ff970968cb44f4be08ca270733c3c8f"
+        assert github_token == "gh-token"
+        return payloads.pop(0)
+
+    monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
+    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    resolved = module._wait_for_deepscan_dashboard_url(
+        owner="Prekzursil",
+        repo="event-link",
+        sha="2a1fcc315ff970968cb44f4be08ca270733c3c8f",
+        github_token="gh-token",
+    )
+
+    assert resolved == dashboard_url
+    assert sleeps == [module.STATUS_RETRY_DELAY_SECONDS]
