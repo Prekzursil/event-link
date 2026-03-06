@@ -78,7 +78,9 @@ def _render_md(payload: dict) -> str:
     ]
 
     for item in payload.get("projects", []):
-        lines.append(f"- `{item['project']}` unresolved=`{item['unresolved']}`")
+        state = item.get("state")
+        state_suffix = "" if not state or state == "ok" else f" state=`{state}`"
+        lines.append(f"- `{item['project']}` unresolved=`{item['unresolved']}`{state_suffix}")
 
     if not payload.get("projects"):
         lines.append("- None")
@@ -155,6 +157,10 @@ def _project_result(*, api_base: str, token: str, org: str, project: str) -> tup
     return {"project": project, "unresolved": unresolved}, findings
 
 
+def _is_not_found_error(message: str) -> bool:
+    return "HTTP 404" in message
+
+
 def _evaluate_sentry(
     *,
     token: str,
@@ -167,18 +173,22 @@ def _evaluate_sentry(
         return "fail", [], findings
 
     project_results: list[dict[str, Any]] = []
-    try:
-        for project in safe_projects:
+    for project in safe_projects:
+        try:
             result, project_findings = _project_result(
                 api_base=api_base,
                 token=token,
                 org=org,
                 project=project,
             )
-            project_results.append(result)
-            findings.extend(project_findings)
-    except Exception as exc:  # pragma: no cover - network/runtime surface
-        return "fail", project_results, [*findings, f"Sentry API request failed: {exc}"]
+        except Exception as exc:  # pragma: no cover - network/runtime surface
+            message = str(exc)
+            if _is_not_found_error(message):
+                project_results.append({"project": project, "unresolved": 0, "state": "not_found"})
+                continue
+            return "fail", project_results, [*findings, f"Sentry API request failed: {exc}"]
+        project_results.append({**result, "state": "ok"})
+        findings.extend(project_findings)
 
     status = "pass" if not findings else "fail"
     return status, project_results, findings

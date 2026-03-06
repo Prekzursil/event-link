@@ -187,6 +187,10 @@ def _tools_by_name(tools: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     return {str(tool["name"]): tool for tool in tools if isinstance(tool, dict) and tool.get("name")}
 
 
+def _is_standard_managed_tool_conflict(message: str) -> bool:
+    return "HTTP 409" in message and "enabled by a standard" in message
+
+
 def _sync_tool_settings(
     *,
     provider: str,
@@ -219,7 +223,11 @@ def _sync_tool_settings(
                 payload=payload,
             )
         except Exception as exc:
-            failures.append(str(exc))
+            message = str(exc)
+            if _is_standard_managed_tool_conflict(message):
+                notes.append(f"{tool_name}: managed by Codacy standard; skipping disable request")
+                continue
+            failures.append(message)
 
     return tool_changes, notes, failures
 

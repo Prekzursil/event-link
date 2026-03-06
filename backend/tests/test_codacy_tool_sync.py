@@ -151,3 +151,40 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
     assert payload['pattern_changes'] == [{'tool': 'Pylint', 'pattern_id': 'PyLint_W1618'}]
     assert payload['failures'] == []
     assert reanalyze_calls == []
+
+
+def test_sync_tool_settings_skips_standard_managed_disable_conflicts():
+    module = _load_module()
+
+    tools_by_name = {
+        'ESLint': {
+            'name': 'ESLint',
+            'uuid': 'eslint-uuid',
+            'settings': {'isEnabled': True},
+        }
+    }
+
+    def fake_configure_tool(**_kwargs):
+        raise RuntimeError(
+            'Codacy tool patch failed for eslint-uuid: HTTP 409 '
+            '{"actions": [], "error": "Conflict", "message": "Cannot disable a tool that is enabled by a standard"}'
+        )
+
+    module._configure_tool = fake_configure_tool
+
+    tool_changes, notes, failures = module._sync_tool_settings(
+        provider='gh',
+        owner='Prekzursil',
+        repo='event-link',
+        token='token',
+        tools_by_name=tools_by_name,
+        dry_run=False,
+    )
+
+    assert tool_changes == [{'tool': 'ESLint', 'payload': {'enabled': False}}]
+    assert failures == []
+    assert notes == [
+        'ESLint: configuration file not detected by Codacy yet',
+        'ESLint: managed by Codacy standard; skipping disable request',
+    ]
+
