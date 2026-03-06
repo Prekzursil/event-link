@@ -13,7 +13,17 @@ module.exports = {
       jsx: true,
     },
   },
-  plugins: ['import'],
+  plugins: ['import', 'n', 'es-x', 'flowtype'],
+  rules: {
+    // Codacy still exposes a legacy ESLint analyzer on this repo. Keep it aligned with
+    // the actual TypeScript/React toolchain instead of defaulting to ES5/Flow-era rules.
+    'es-x/no-modules': 'off',
+    'es-x/no-block-scoped-variables': 'off',
+    'es-x/no-trailing-commas': 'off',
+    'flowtype/require-parameter-type': 'off',
+    'import/no-unresolved': 'off',
+    'n/no-missing-import': 'off',
+  },
   ignorePatterns: [
     '**/node_modules/**',
     '**/dist/**',

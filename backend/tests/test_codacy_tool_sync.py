@@ -23,7 +23,7 @@ def test_planned_tool_payload_disables_legacy_tools():
     payload, notes = module._planned_tool_payload('ESLint', {'isEnabled': True})
 
     assert payload == {'enabled': False}
-    assert notes == []
+    assert notes == ['ESLint: configuration file not detected by Codacy yet']
 
 
 def test_planned_tool_payload_enables_configuration_file_when_available():
@@ -35,6 +35,18 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
     )
 
     assert payload == {'useConfigurationFile': True}
+    assert notes == []
+
+
+def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present() -> None:
+    module = _load_module()
+
+    payload, notes = module._planned_tool_payload(
+        'ESLint',
+        {'isEnabled': True, 'hasConfigurationFile': True, 'usesConfigurationFile': False},
+    )
+
+    assert payload == {'enabled': False, 'useConfigurationFile': True}
     assert notes == []
 
 

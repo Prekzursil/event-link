@@ -32,9 +32,15 @@ DISABLED_TOOL_NAMES = {
 }
 CONFIG_FILE_TOOL_NAMES = {
     "Bandit",
+    "ESLint",
+    "ESLint (deprecated)",
     "ESLint9",
+    "Pylint",
+    "Pylint (deprecated)",
     "Ruff",
     "Stylelint",
+    "TSLint",
+    "TSLint (deprecated)",
 }
 DISABLED_PATTERNS_BY_TOOL = {
     "Pylint": {"PyLint_W1618"},
@@ -431,3 +437,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
