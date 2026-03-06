@@ -6,6 +6,7 @@ import os
 import sys
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import parse_qs, urlparse
 
 from _security_import import load_security_helpers
 
@@ -14,14 +15,31 @@ normalize_https_url = _security_helpers.normalize_https_url
 request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
+build_github_commit_status_url = _security_helpers.build_github_commit_status_url
+validate_commit_sha = _security_helpers.validate_commit_sha
+validate_repo_full_name = _security_helpers.validate_repo_full_name
+build_https_url = _security_helpers.build_https_url
 
 DEEPSCAN_HOST = "deepscan.io"
-TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
+TOTAL_KEYS = {
+    "count",
+    "hits",
+    "open_issues",
+    "outstandingDefectCount",
+    "outstanding_defect_count",
+    "total",
+    "totalCount",
+    "totalItems",
+    "total_items",
+}
 
 
 def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Assert DeepScan has zero total open issues.")
     parser.add_argument("--token", default="", help="DeepScan API token (falls back to DEEPSCAN_API_TOKEN env)")
+    parser.add_argument("--repo", default="", help="GitHub repository owner/name for DeepScan status discovery")
+    parser.add_argument("--sha", default="", help="Commit SHA for DeepScan status discovery")
+    parser.add_argument("--github-token", default="", help="GitHub token for DeepScan status discovery")
     parser.add_argument("--out-json", default="deepscan-zero/deepscan.json", help="Output JSON path")
     parser.add_argument("--out-md", default="deepscan-zero/deepscan.md", help="Output markdown path")
     return parser.parse_args()
@@ -46,13 +64,15 @@ def extract_total_open(payload: Any) -> int | None:
 
 def _request_json(url: str, token: str) -> dict[str, Any]:
     safe_url = normalize_https_url(url, allowed_host_suffixes={DEEPSCAN_HOST})
+    headers = {
+        "Accept": "application/json",
+        "User-Agent": "event-link-deepscan-zero-gate",
+    }
+    if token:
+        headers["Authorization"] = f"Bearer {token}"
     payload, _headers, status = request_https_json(
         safe_url,
-        headers={
-            "Accept": "application/json",
-            "Authorization": f"Bearer {token}",
-            "User-Agent": "event-link-deepscan-zero-gate",
-        },
+        headers=headers,
         method="GET",
         timeout=30,
         allowed_host_suffixes={DEEPSCAN_HOST},
@@ -64,7 +84,118 @@ def _request_json(url: str, token: str) -> dict[str, Any]:
     return payload
 
 
-def _render_md(payload: dict) -> str:
+def _github_status_payload(*, owner: str, repo: str, sha: str, github_token: str) -> dict[str, Any]:
+    payload, _headers, status = request_https_json(
+        build_github_commit_status_url(owner=owner, repo=repo, sha=sha),
+        headers={
+            "Accept": "application/vnd.github+json",
+            "Authorization": f"Bearer {github_token}",
+            "X-GitHub-Api-Version": "2022-11-28",
+            "User-Agent": "event-link-deepscan-zero-gate",
+        },
+        method="GET",
+        timeout=30,
+        allowed_hosts={"api.github.com"},
+    )
+    if not 200 <= status < 300:
+        raise RuntimeError(f"GitHub API request failed: HTTP {status}")
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected GitHub status payload")
+    return payload
+
+
+def _required_numeric(fragment_values: dict[str, list[str]], key: str) -> str:
+    value = str((fragment_values.get(key) or [""])[0]).strip()
+    if not value.isdigit():
+        raise RuntimeError(f"DeepScan dashboard URL is missing a valid {key} value.")
+    return value
+
+
+def _parse_dashboard_url_ids(dashboard_url: str) -> dict[str, str]:
+    normalize_https_url(dashboard_url, allowed_host_suffixes={DEEPSCAN_HOST})
+    parsed = urlparse((dashboard_url or "").strip())
+    fragment_values = parse_qs(parsed.fragment, keep_blank_values=False)
+    return {
+        "team_id": _required_numeric(fragment_values, "tid"),
+        "project_id": _required_numeric(fragment_values, "pid"),
+        "branch_id": _required_numeric(fragment_values, "bid"),
+        "pull_request_id": _required_numeric(fragment_values, "prid"),
+    }
+
+
+def _deepscan_dashboard_url(status_payload: dict[str, Any]) -> str:
+    for status in status_payload.get("statuses") or []:
+        if str(status.get("context") or "").strip() != "DeepScan":
+            continue
+        target_url = str(status.get("target_url") or status.get("targetUrl") or "").strip()
+        if target_url:
+            normalize_https_url(target_url, allowed_host_suffixes={DEEPSCAN_HOST})
+            return target_url
+    raise RuntimeError("DeepScan commit status did not include a provider target URL.")
+
+
+def _analysis_api_url(ids: dict[str, str], *, owner_bid: str, head_aid: str) -> str:
+    return build_https_url(
+        host=DEEPSCAN_HOST,
+        path=(
+            f"api/teams/{ids['team_id']}/projects/{ids['project_id']}"
+            f"/branches/{owner_bid}/analyses/{head_aid}"
+        ),
+    )
+
+
+def _resolve_analysis_url_from_dashboard(dashboard_url: str, token: str) -> str:
+    ids = _parse_dashboard_url_ids(dashboard_url)
+    pull_url = build_https_url(
+        host=DEEPSCAN_HOST,
+        path=f"api/teams/{ids['team_id']}/projects/{ids['project_id']}/pulls/{ids['pull_request_id']}",
+    )
+    pull_payload = _request_json(pull_url, token)
+    data = pull_payload.get("data") if isinstance(pull_payload, dict) else None
+    if not isinstance(data, dict):
+        raise RuntimeError("DeepScan pull payload did not include a data object.")
+    owner_bid = str(data.get("ownerBid") or "").strip()
+    head_aid = str(data.get("headAid") or "").strip()
+    if not owner_bid.isdigit() or not head_aid.isdigit():
+        raise RuntimeError("DeepScan pull payload did not include valid analysis identifiers.")
+    return _analysis_api_url(ids, owner_bid=owner_bid, head_aid=head_aid)
+
+
+def _is_dashboard_url(raw_url: str) -> bool:
+    parsed = urlparse(raw_url)
+    return parsed.path.rstrip("/") == "/dashboard" and "prid=" in parsed.fragment
+
+
+def _resolve_open_issues(
+    *,
+    token: str,
+    open_issues_url: str | None,
+    repo: str,
+    sha: str,
+    github_token: str,
+) -> tuple[int, str]:
+    if open_issues_url:
+        analysis_url = (
+            _resolve_analysis_url_from_dashboard(open_issues_url, token)
+            if _is_dashboard_url(open_issues_url)
+            else open_issues_url
+        )
+    else:
+        owner, repo_name = validate_repo_full_name(repo)
+        safe_sha = validate_commit_sha(sha)
+        dashboard_url = _deepscan_dashboard_url(
+            _github_status_payload(owner=owner, repo=repo_name, sha=safe_sha, github_token=github_token)
+        )
+        analysis_url = _resolve_analysis_url_from_dashboard(dashboard_url, token)
+
+    analysis_payload = _request_json(analysis_url, token)
+    open_issues = extract_total_open(analysis_payload)
+    if open_issues is None:
+        raise RuntimeError("DeepScan response did not include a parseable total issue count.")
+    return open_issues, analysis_url
+
+
+def _render_md(payload: dict[str, Any]) -> str:
     lines = [
         "# DeepScan Zero Gate",
         "",
@@ -83,54 +214,72 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _validated_inputs(args: argparse.Namespace) -> tuple[str, str | None, list[str]]:
+def _validated_inputs(args: argparse.Namespace) -> tuple[str, str | None, str, str, str, list[str]]:
     token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
     raw_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
+    repo = (args.repo or os.environ.get("GITHUB_REPOSITORY", "")).strip()
+    sha = (args.sha or os.environ.get("TARGET_SHA", "") or os.environ.get("GITHUB_SHA", "")).strip()
+    github_token = (args.github_token or os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
     findings: list[str] = []
+    safe_url: str | None = None
 
-    if not token:
-        findings.append("DEEPSCAN_API_TOKEN is missing.")
-    if not raw_url:
-        findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
-        return token, None, findings
+    if raw_url:
+        try:
+            safe_url = normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST})
+        except ValueError as exc:
+            findings.append(str(exc))
+    if safe_url is None and not (repo and sha and github_token):
+        findings.append(
+            "DeepScan open-issues URL is missing and GitHub status fallback is not fully configured."
+        )
+
+    return token, safe_url, repo, sha, github_token, findings
+
+
+def _evaluate_deepscan(
+    *,
+    token: str,
+    open_issues_url: str | None,
+    repo: str,
+    sha: str,
+    github_token: str,
+    findings: list[str],
+    resolver=_resolve_open_issues,
+) -> tuple[str, int | None, list[str], str | None]:
+    if findings:
+        return "fail", None, findings, open_issues_url
 
     try:
-        safe_url = normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST})
-    except ValueError as exc:
-        findings.append(str(exc))
-        safe_url = None
-    return token, safe_url, findings
-
-
-def _evaluate_deepscan(*, token: str, open_issues_url: str | None, findings: list[str]) -> tuple[str, int | None, list[str]]:
-    if findings or open_issues_url is None:
-        return "fail", None, findings
-
-    try:
-        payload = _request_json(open_issues_url, token)
+        open_issues, source_url = resolver(
+            token=token,
+            open_issues_url=open_issues_url,
+            repo=repo,
+            sha=sha,
+            github_token=github_token,
+        )
     except Exception as exc:  # pragma: no cover - network/runtime surface
-        return "fail", None, [*findings, f"DeepScan API request failed: {exc}"]
+        return "fail", None, [*findings, f"DeepScan API request failed: {exc}"], open_issues_url
 
-    open_issues = extract_total_open(payload)
-    if open_issues is None:
-        return "fail", None, [*findings, "DeepScan response did not include a parseable total issue count."]
     if open_issues != 0:
-        return "fail", open_issues, [*findings, f"DeepScan reports {open_issues} open issues (expected 0)."]
-    return "pass", open_issues, findings
+        return "fail", open_issues, [*findings, f"DeepScan reports {open_issues} open issues (expected 0)."], source_url
+    return "pass", open_issues, findings, source_url
 
 
 def main() -> int:
     args = _parse_args()
-    token, open_issues_url, findings = _validated_inputs(args)
-    status, open_issues, findings = _evaluate_deepscan(
+    token, open_issues_url, repo, sha, github_token, findings = _validated_inputs(args)
+    status, open_issues, findings, resolved_url = _evaluate_deepscan(
         token=token,
         open_issues_url=open_issues_url,
+        repo=repo,
+        sha=sha,
+        github_token=github_token,
         findings=findings,
     )
     payload = {
         "status": status,
         "open_issues": open_issues,
-        "open_issues_url": open_issues_url,
+        "open_issues_url": resolved_url,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
     }
@@ -152,3 +301,5 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
+
+

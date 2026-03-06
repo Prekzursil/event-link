@@ -2,6 +2,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 QUALITY_GATE = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-gate.yml'
+DEEPSCAN_ZERO = REPO_ROOT / '.github' / 'workflows' / 'deepscan-zero.yml'
 SEMGREP_ZERO = REPO_ROOT / '.github' / 'workflows' / 'semgrep-zero.yml'
 WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
     REPO_ROOT / '.github' / 'workflows' / 'ci.yml',
@@ -47,10 +48,19 @@ def test_codacy_tool_sync_workflow_dispatch_has_no_inputs() -> None:
     assert 'inputs:' not in content
 
 
-
 def test_ci_and_coverage_workflows_install_lizard_for_backend_quality_checks() -> None:
     ci_content = (REPO_ROOT / '.github' / 'workflows' / 'ci.yml').read_text(encoding='utf-8')
     coverage_content = (REPO_ROOT / '.github' / 'workflows' / 'coverage-100.yml').read_text(encoding='utf-8')
 
     assert 'lizard' in ci_content
     assert 'lizard' in coverage_content
+
+
+def test_deepscan_zero_workflow_has_github_status_fallback_inputs() -> None:
+    content = DEEPSCAN_ZERO.read_text(encoding='utf-8')
+
+    assert 'GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}' in content
+    assert 'GITHUB_REPOSITORY: ${{ github.repository }}' in content
+    assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
+    assert '--repo "${GITHUB_REPOSITORY}"' in content
+    assert '--sha "${TARGET_SHA}"' in content

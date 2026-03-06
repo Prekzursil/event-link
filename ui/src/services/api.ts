@@ -14,11 +14,12 @@ export const api = axios.create({
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
     const token = localStorage.getItem('access_token');
-    if (token && config.headers) {
-      config.headers.Authorization = `Bearer ${token}`;
+    const headers = config.headers ?? {};
+    if (token) {
+      headers.Authorization = `Bearer ${token}`;
     }
-    // Add language header
-    config.headers['Accept-Language'] = resolveLanguage(getStoredLanguagePreference());
+    headers['Accept-Language'] = resolveLanguage(getStoredLanguagePreference());
+    config.headers = headers;
     return config;
   },
   (error) => Promise.reject(error)
