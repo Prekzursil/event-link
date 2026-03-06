@@ -659,7 +659,7 @@ def main() -> int:
                 model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
             if model_row is None:
                 model_row = (
-                    model_query.filter(models.RecommenderModel.is_active.is_(True))
+                    model_query.filter(getattr(models.RecommenderModel, "is_active").is_(True))
                     .order_by(models.RecommenderModel.id.desc())
                     .first()
                 )
@@ -819,7 +819,7 @@ def main() -> int:
                 existing_model.feature_names = list(FEATURE_NAMES)
                 existing_model.weights = [float(w) for w in weights]
                 existing_model.meta = meta
-                existing_model.is_active = True
+                setattr(existing_model, "is_active", True)
 
             db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version != model_version).update(
                 {"is_active": False},

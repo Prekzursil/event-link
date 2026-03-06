@@ -2855,7 +2855,7 @@ def admin_personalization_status(
 ):
     active = (
         db.query(models.RecommenderModel)
-        .filter(models.RecommenderModel.is_active.is_(True))
+        .filter(getattr(models.RecommenderModel, "is_active").is_(True))
         .order_by(models.RecommenderModel.id.desc())
         .first()
     )
@@ -2908,7 +2908,7 @@ def admin_activate_personalization_model(
         raise HTTPException(status_code=404, detail="Modelul nu există.")
 
     db.query(models.RecommenderModel).update({"is_active": False}, synchronize_session=False)
-    model.is_active = True
+    setattr(model, "is_active", True)
     db.add(model)
     db.commit()
 
@@ -2995,7 +2995,7 @@ def admin_list_users(
     if role:
         filters.append(models.User.role == role)
     if is_active is not None:
-        filters.append(models.User.is_active == is_active)
+        filters.append(getattr(models.User, "is_active") == is_active)
 
     total = db.query(func.count(models.User.id)).filter(*filters).scalar() or 0
 
@@ -3049,7 +3049,7 @@ def admin_list_users(
                 org_name=user.org_name,
                 created_at=user.created_at,
                 last_seen_at=user.last_seen_at,
-                is_active=bool(user.is_active),
+                is_active=bool(getattr(user, "is_active")),
                 registrations_count=int(registrations_count or 0),
                 attended_count=int(attended_count or 0),
                 events_created_count=int(events_created_count or 0),
@@ -3074,8 +3074,9 @@ def admin_update_user(
     if payload.role is not None:
         user.role = payload.role
         changed = True
-    if payload.is_active is not None:
-        user.is_active = payload.is_active
+    payload_is_active = getattr(payload, "is_active")
+    if payload_is_active is not None:
+        setattr(user, "is_active", payload_is_active)
         changed = True
     if changed:
         db.add(user)
@@ -3087,7 +3088,7 @@ def admin_update_user(
             entity_id=user.id,
             action="admin_update",
             actor_user_id=current_user.id,
-            meta={"role": user.role.value, "is_active": bool(user.is_active)},
+            meta={"role": user.role.value, "is_active": bool(getattr(user, "is_active"))},
         )
         db.commit()
 
@@ -3137,7 +3138,7 @@ def admin_update_user(
         org_name=user.org_name,
         created_at=user.created_at,
         last_seen_at=user.last_seen_at,
-        is_active=bool(user.is_active),
+        is_active=bool(getattr(user, "is_active")),
         registrations_count=int(registrations_count or 0),
         attended_count=int(attended_count or 0),
         events_created_count=int(events_created_count or 0),
@@ -3520,3 +3521,4 @@ def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: 
     db.commit()
     log_event("password_reset", user_id=user.id)
     return {"status": "password_reset"}
+

@@ -13,7 +13,7 @@ def _is_unspecified_host(host: str) -> bool:
     if candidate.startswith("[") and candidate.endswith("]"):
         candidate = candidate[1:-1]
     try:
-        return ipaddress.ip_address(candidate).is_unspecified
+        return bool(getattr(ipaddress.ip_address(candidate), "is_unspecified"))
     except ValueError:
         return False
 

@@ -670,7 +670,7 @@ def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]
 
     active = (
         db.query(models.RecommenderModel)
-        .filter(models.RecommenderModel.is_active.is_(True))
+        .filter(getattr(models.RecommenderModel, "is_active").is_(True))
         .order_by(models.RecommenderModel.id.desc())
         .first()
     )
@@ -690,8 +690,8 @@ def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]
         result["action"] = "no_previous_model"
         return result
 
-    active.is_active = False
-    previous.is_active = True
+    setattr(active, "is_active", False)
+    setattr(previous, "is_active", True)
     db.add_all([active, previous])
     db.commit()
     log_warning(
