@@ -62,30 +62,33 @@ def test_planned_tool_payload_notes_missing_configuration_files():
     assert notes == ['Stylelint: configuration file not detected by Codacy yet']
 
 
+def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> None:
+    module = _load_module()
+
+    payload, notes = module._planned_tool_payload(
+        'Prospector',
+        {'isEnabled': True, 'hasConfigurationFile': True, 'usesConfigurationFile': False},
+    )
+
+    assert payload == {'useConfigurationFile': True}
+    assert notes == []
+
+
 def test_request_codacy_preserves_query_string():
     module = _load_module()
     request_args = {}
 
-    class FakeResponse:
-        status = 204
+    def fake_request_https_json(raw_url, *, method='GET', headers=None, body=None, timeout=30, allowed_hosts=None, allowed_host_suffixes=None):
+        request_args['raw_url'] = raw_url
+        request_args['method'] = method
+        request_args['headers'] = headers
+        request_args['body'] = body
+        request_args['timeout'] = timeout
+        request_args['allowed_hosts'] = allowed_hosts
+        request_args['allowed_host_suffixes'] = allowed_host_suffixes
+        return None, {'x-test': '1'}, 204
 
-        def read(self):
-            return b''
-
-    class FakeConnection:
-        def request(self, method, path, body=None, headers=None):
-            request_args['method'] = method
-            request_args['path'] = path
-            request_args['body'] = body
-            request_args['headers'] = headers
-
-        def getresponse(self):
-            return FakeResponse()
-
-        def close(self):
-            request_args['closed'] = True
-
-    module.http.client.HTTPSConnection = lambda *args, **kwargs: FakeConnection()
+    module.request_https_json = fake_request_https_json
 
     status, payload, raw = module._request_codacy(
         method='PATCH',
@@ -97,8 +100,9 @@ def test_request_codacy_preserves_query_string():
     assert status == 204
     assert payload is None
     assert raw == ''
-    assert request_args['path'].endswith('?search=PyLint_W1618')
-    assert request_args['closed'] is True
+    assert request_args['raw_url'].endswith('/patterns?search=PyLint_W1618')
+    assert request_args['method'] == 'PATCH'
+    assert request_args['allowed_hosts'] == {'api.codacy.com'}
 
 
 def test_append_markdown_section_uses_none_marker_for_empty_values():

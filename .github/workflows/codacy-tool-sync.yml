@@ -16,6 +16,8 @@ on:
         default: false
         type: boolean
 
+permissions: {}
+
 jobs:
   codacy-tool-sync:
     name: Codacy Tool Sync

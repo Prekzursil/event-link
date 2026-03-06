@@ -149,7 +149,12 @@ def _seed_training_rows(db_session):
         models.EventInteraction(user_id=int(student.id), event_id=int(event_candidate.id), interaction_type="share", meta={}),
         models.EventInteraction(user_id=int(student.id), event_id=int(event_candidate.id), interaction_type="register", meta={}),
         models.EventInteraction(user_id=int(student.id), event_id=int(event_positive.id), interaction_type="unregister", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"}),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=None,
+            interaction_type="search",
+            meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"},
+        ),
     ])
     db_session.commit()
 

@@ -1,6 +1,7 @@
 from __future__ import annotations
 
-import http.client
+import urllib.error
+import urllib.request
 import ipaddress
 import json
 import re
@@ -104,6 +105,23 @@ def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None
     )
 
 
+def _decode_json_payload(raw_text: str) -> object | None:
+    raw = raw_text.strip()
+    if not raw:
+        return None
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return {"raw_text": raw_text}
+
+
+def _open_https_request(request: urllib.request.Request, *, timeout: int):
+    try:
+        return urllib.request.urlopen(request, timeout=timeout)
+    except urllib.error.HTTPError as exc:
+        return exc
+
+
 def request_https_json(
     raw_url: str,
     *,
@@ -113,26 +131,64 @@ def request_https_json(
     timeout: int = 30,
     allowed_hosts: set[str] | None = None,
     allowed_host_suffixes: set[str] | None = None,
-) -> tuple[object, dict[str, str], int]:
+) -> tuple[object | None, dict[str, str], int]:
     safe_url = normalize_https_url(
         raw_url,
         allowed_hosts=allowed_hosts,
         allowed_host_suffixes=allowed_host_suffixes,
     )
-    parsed = urlparse(safe_url)
-    path = parsed.path or "/"
-    if parsed.query:
-        path = f"{path}?{parsed.query}"
-
-    connection = http.client.HTTPSConnection(parsed.hostname, port=parsed.port or 443, timeout=timeout)
+    request = urllib.request.Request(
+        safe_url,
+        data=body,
+        headers=headers or {},
+        method=method.upper(),
+    )
+    response = _open_https_request(request, timeout=timeout)
     try:
-        connection.request(method.upper(), path, body=body, headers=headers or {})
-        response = connection.getresponse()
-        payload = json.loads(response.read().decode("utf-8"))
+        raw_text = response.read().decode("utf-8")
+        payload = _decode_json_payload(raw_text)
         response_headers = {key.lower(): value for key, value in response.getheaders()}
-        return payload, response_headers, int(response.status)
+        status_value = getattr(response, "status", None)
+        if status_value is None:
+            status_value = response.getcode()
+        return payload, response_headers, int(status_value)
     finally:
-        connection.close()
+        close = getattr(response, "close", None)
+        if callable(close):
+            close()
+
+
+def _workspace_root(base: Path | None) -> Path:
+    return (base or Path.cwd()).resolve()
+
+
+def _candidate_relative_path(raw_path: str, fallback: str) -> Path:
+    candidate = Path((raw_path or "").strip() or fallback).expanduser()
+    if candidate.is_absolute():
+        raise ValueError(f"Absolute paths are not allowed: {candidate}")
+    return candidate
+
+
+def _resolve_workspace_path(root: Path, candidate: Path) -> Path:
+    resolved = (root / candidate).resolve(strict=False)
+    try:
+        resolved.relative_to(root)
+    except ValueError as exc:
+        raise ValueError(f"Path escapes workspace root: {candidate}") from exc
+    return resolved
+
+
+def _validate_resolved_path(
+    resolved: Path,
+    *,
+    candidate: Path,
+    must_exist: bool,
+    must_be_file: bool,
+) -> None:
+    if must_exist and not resolved.exists():
+        raise ValueError(f"Path does not exist: {candidate}")
+    if must_be_file and resolved.exists() and not resolved.is_file():
+        raise ValueError(f"Path must be a regular file: {candidate}")
 
 
 def resolve_workspace_relative_path(

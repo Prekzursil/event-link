@@ -2,13 +2,11 @@
 from __future__ import annotations
 
 import argparse
-import http.client
 import json
 import os
 import sys
 from datetime import datetime, timezone
 from typing import Any
-from urllib.parse import urlparse
 
 from _security_import import load_security_helpers
 
@@ -16,6 +14,7 @@ _security_helpers = load_security_helpers(__file__)
 build_https_url = _security_helpers.build_https_url
 validate_commit_sha = _security_helpers.validate_commit_sha
 validate_slug = _security_helpers.validate_slug
+request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
@@ -26,7 +25,6 @@ DISABLED_TOOL_NAMES = {
     "ESLint",
     "ESLint (deprecated)",
     "JSHint (deprecated)",
-    "Prospector",
     "Pylint (deprecated)",
     "TSLint (deprecated)",
 }
@@ -35,6 +33,7 @@ CONFIG_FILE_TOOL_NAMES = {
     "ESLint",
     "ESLint (deprecated)",
     "ESLint9",
+    "Prospector",
     "Pylint",
     "Pylint (deprecated)",
     "Ruff",
@@ -68,7 +67,6 @@ def _request_codacy(
     body: dict[str, Any] | None = None,
 ) -> tuple[int, Any, str]:
     url = build_https_url(host=CODACY_HOST, path=path)
-    parsed = urlparse(url)
     payload_bytes = b"" if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
     headers = {
         "Accept": "application/json",
@@ -78,21 +76,16 @@ def _request_codacy(
     if body is not None:
         headers["Content-Type"] = "application/json"
 
-    request_path = parsed.path or "/"
-    if parsed.query:
-        request_path = f"{request_path}?{parsed.query}"
-
-    connection = http.client.HTTPSConnection(parsed.hostname, port=parsed.port or 443, timeout=30)
-    try:
-        connection.request(method.upper(), request_path, body=payload_bytes, headers=headers)
-        response = connection.getresponse()
-        raw_text = response.read().decode("utf-8")
-        parsed_payload: Any = None
-        if raw_text.strip():
-            parsed_payload = json.loads(raw_text)
-        return int(response.status), parsed_payload, raw_text
-    finally:
-        connection.close()
+    parsed_payload, _response_headers, status = request_https_json(
+        url,
+        method=method.upper(),
+        headers=headers,
+        body=payload_bytes,
+        timeout=30,
+        allowed_hosts={CODACY_HOST},
+    )
+    raw_text = "" if parsed_payload is None else json.dumps(parsed_payload, sort_keys=True)
+    return status, parsed_payload, raw_text
 
 
 def _list_tools(*, provider: str, owner: str, repo: str, token: str) -> list[dict[str, Any]]:
@@ -289,11 +282,7 @@ def _trigger_reanalysis(
 
 def _build_payload(
     *,
-    provider: str,
-    owner: str,
-    repo: str,
-    commit_sha: str,
-    dry_run: bool,
+    context: dict[str, Any],
     tool_changes: list[dict[str, Any]],
     pattern_changes: list[dict[str, Any]],
     notes: list[str],
@@ -301,17 +290,48 @@ def _build_payload(
 ) -> dict[str, Any]:
     return {
         "status": "pass" if not failures else "fail",
+        **context,
+        "tool_changes": tool_changes,
+        "pattern_changes": pattern_changes,
+        "notes": notes,
+        "failures": failures,
+    }
+
+
+def _sync_context(*, provider: str, owner: str, repo: str, commit_sha: str, dry_run: bool) -> dict[str, Any]:
+    return {
         "provider": provider,
         "owner": owner,
         "repo": repo,
         "commit": commit_sha,
         "dry_run": dry_run,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "tool_changes": tool_changes,
-        "pattern_changes": pattern_changes,
-        "notes": notes,
-        "failures": failures,
     }
+
+
+def _apply_reanalysis_if_clean(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    commit_sha: str,
+    dry_run: bool,
+    notes: list[str],
+    failures: list[str],
+) -> None:
+    if failures:
+        return
+    reanalysis_notes, reanalysis_failures = _trigger_reanalysis(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        commit_sha=commit_sha,
+        dry_run=dry_run,
+    )
+    notes.extend(reanalysis_notes)
+    failures.extend(reanalysis_failures)
 
 
 def _run_sync(
@@ -344,25 +364,25 @@ def _run_sync(
     )
     notes.extend(pattern_notes)
     failures.extend(pattern_failures)
-
-    if not failures:
-        reanalysis_notes, reanalysis_failures = _trigger_reanalysis(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            commit_sha=commit_sha,
-            dry_run=dry_run,
-        )
-        notes.extend(reanalysis_notes)
-        failures.extend(reanalysis_failures)
-
-    return _build_payload(
+    _apply_reanalysis_if_clean(
         provider=provider,
         owner=owner,
         repo=repo,
+        token=token,
         commit_sha=commit_sha,
         dry_run=dry_run,
+        notes=notes,
+        failures=failures,
+    )
+
+    return _build_payload(
+        context=_sync_context(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            commit_sha=commit_sha,
+            dry_run=dry_run,
+        ),
         tool_changes=tool_changes,
         pattern_changes=pattern_changes,
         notes=notes,

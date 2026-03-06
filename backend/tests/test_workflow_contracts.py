@@ -3,6 +3,18 @@ from pathlib import Path
 REPO_ROOT = Path(__file__).resolve().parents[2]
 QUALITY_GATE = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-gate.yml'
 SEMGREP_ZERO = REPO_ROOT / '.github' / 'workflows' / 'semgrep-zero.yml'
+WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
+    REPO_ROOT / '.github' / 'workflows' / 'ci.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'coverage-100.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'codecov-analytics.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'quality-zero-gate.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'codacy-zero.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'codacy-tool-sync.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'deepscan-zero.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'sentry-zero.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'sonar-zero.yml',
+    REPO_ROOT / '.github' / 'workflows' / 'snyk-zero.yml',
+]
 
 
 def test_quality_zero_gate_requires_semgrep_zero_not_snyk_zero() -> None:
@@ -20,3 +32,9 @@ def test_semgrep_zero_workflow_exists_and_supports_pr_and_dispatch() -> None:
     assert 'pull_request:' in content
     assert 'workflow_dispatch:' in content
     assert 'name: Semgrep Zero' in content
+
+
+def test_selected_workflows_define_top_level_permissions_floor() -> None:
+    for workflow in WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS:
+        content = workflow.read_text(encoding='utf-8')
+        assert 'permissions: {}' in content, workflow.name

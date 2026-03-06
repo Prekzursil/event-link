@@ -354,7 +354,17 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
     db_session.refresh(active)
     db_session.refresh(event)
 
-    db_session.add(models.UserRecommendation(user_id=int(active.id), event_id=int(event.id), score=0.87, rank=1, model_version="test", reason=None, generated_at=now))
+    db_session.add(
+        models.UserRecommendation(
+            user_id=int(active.id),
+            event_id=int(event.id),
+            score=0.87,
+            rank=1,
+            model_version="test",
+            reason=None,
+            generated_at=now,
+        )
+    )
     db_session.commit()
 
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))

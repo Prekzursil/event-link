@@ -95,11 +95,17 @@ def test_collect_contexts_captures_check_runs_and_statuses() -> None:
 
 
 
-def test_request_https_json_uses_https_connection(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
 
     class _FakeResponse:
         status = 206
+
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
 
         def read(self) -> bytes:
             return b'{"status": "ok"}'
@@ -107,25 +113,17 @@ def test_request_https_json_uses_https_connection(monkeypatch: pytest.MonkeyPatc
         def getheaders(self):
             return [("X-Hits", "5"), ("Content-Type", "application/json")]
 
-    class _FakeConnection:
-        def __init__(self, host: str, port: int | None = None, timeout: int | None = None) -> None:
-            calls["init"] = {"host": host, "port": port, "timeout": timeout}
+    def _fake_urlopen(request, timeout=None):
+        calls["request"] = {
+            "method": request.get_method(),
+            "url": request.full_url,
+            "body": request.data,
+            "headers": dict(request.header_items()),
+        }
+        calls["timeout"] = timeout
+        return _FakeResponse()
 
-        def request(self, method: str, path: str, body=None, headers=None) -> None:
-            calls["request"] = {
-                "method": method,
-                "path": path,
-                "body": body,
-                "headers": headers,
-            }
-
-        def getresponse(self) -> _FakeResponse:
-            return _FakeResponse()
-
-        def close(self) -> None:
-            calls["closed"] = True
-
-    monkeypatch.setattr(security_helpers.http.client, "HTTPSConnection", _FakeConnection)
+    monkeypatch.setattr(security_helpers.urllib.request, "urlopen", _fake_urlopen)
 
     payload, headers, status = security_helpers.request_https_json(
         "https://api.github.com/repos/Prekzursil/event-link/check-runs?per_page=1",
@@ -139,14 +137,13 @@ def test_request_https_json_uses_https_connection(monkeypatch: pytest.MonkeyPatc
     assert payload == {"status": "ok"}
     assert headers["x-hits"] == "5"
     assert status == 206
-    assert calls["init"] == {"host": "api.github.com", "port": 443, "timeout": 9}
     assert calls["request"] == {
         "method": "POST",
-        "path": "/repos/Prekzursil/event-link/check-runs?per_page=1",
+        "url": "https://api.github.com/repos/Prekzursil/event-link/check-runs?per_page=1",
         "body": b"{}",
         "headers": {"Accept": "application/json"},
     }
-    assert calls["closed"] is True
+    assert calls["timeout"] == 9
 
 
 def test_request_https_json_rejects_non_https_url() -> None:

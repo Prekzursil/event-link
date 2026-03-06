@@ -79,7 +79,7 @@ export function hasDockerCompose(): boolean {
 }
 
 function escapeSqlLiteral(value: string): string {
-  return value.replaceAll(`'`, `''`);
+  return value.split(`'`).join(`''`);
 }
 
 export async function fetchLatestResetLinkCode(email: string): Promise<string> {
