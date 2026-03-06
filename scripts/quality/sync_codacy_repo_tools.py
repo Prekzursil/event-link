@@ -162,11 +162,10 @@ def _planned_tool_payload(tool_name: str, settings: dict[str, Any]) -> tuple[dic
     if tool_name in CONFIG_FILE_TOOL_NAMES:
         has_config = bool(settings.get("hasConfigurationFile"))
         uses_config = bool(settings.get("usesConfigurationFile"))
-        if has_config:
-            if not uses_config:
-                payload["useConfigurationFile"] = True
-        else:
-            notes.append(f"{tool_name}: configuration file not detected by Codacy yet")
+        if not uses_config:
+            payload["useConfigurationFile"] = True
+        if not has_config:
+            notes.append(f"{tool_name}: configuration file not detected by Codacy yet; requesting config-file mode anyway")
 
     return (payload or None), notes
 
@@ -195,6 +194,12 @@ def _is_reanalysis_forbidden(message: str) -> bool:
     return "HTTP 403" in message and "Operation is not authorized" in message
 
 
+def _config_only_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
+    if payload.get("useConfigurationFile") is True:
+        return {"useConfigurationFile": True}
+    return None
+
+
 def _sync_tool_settings(
     *,
     provider: str,
@@ -217,18 +222,37 @@ def _sync_tool_settings(
         tool_changes.append({"tool": tool_name, "payload": payload})
         if dry_run:
             continue
+        tool_uuid = _tool_uuid(tool_name, tool)
         try:
             _configure_tool(
                 provider=provider,
                 owner=owner,
                 repo=repo,
                 token=token,
-                tool_uuid=_tool_uuid(tool_name, tool),
+                tool_uuid=tool_uuid,
                 payload=payload,
             )
         except Exception as exc:
             message = str(exc)
             if _is_standard_managed_tool_conflict(message):
+                config_payload = _config_only_payload(payload)
+                if config_payload is not None:
+                    notes.append(
+                        f"{tool_name}: managed by Codacy standard; retrying config-file mode without disable request"
+                    )
+                    try:
+                        _configure_tool(
+                            provider=provider,
+                            owner=owner,
+                            repo=repo,
+                            token=token,
+                            tool_uuid=tool_uuid,
+                            payload=config_payload,
+                        )
+                    except Exception as retry_exc:
+                        failures.append(str(retry_exc))
+                    else:
+                        continue
                 notes.append(f"{tool_name}: managed by Codacy standard; skipping disable request")
                 continue
             failures.append(message)

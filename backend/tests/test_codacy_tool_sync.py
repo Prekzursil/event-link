@@ -3,6 +3,7 @@ import sys
 from pathlib import Path
 
 
+
 def _load_module():
     repo_root = Path(__file__).resolve().parents[2]
     module_path = repo_root / 'scripts' / 'quality' / 'sync_codacy_repo_tools.py'
@@ -17,13 +18,15 @@ def _load_module():
         sys.path.pop(0)
 
 
+
 def test_planned_tool_payload_disables_legacy_tools():
     module = _load_module()
 
     payload, notes = module._planned_tool_payload('ESLint', {'isEnabled': True})
 
-    assert payload == {'enabled': False}
-    assert notes == ['ESLint: configuration file not detected by Codacy yet']
+    assert payload == {'enabled': False, 'useConfigurationFile': True}
+    assert notes == ['ESLint: configuration file not detected by Codacy yet; requesting config-file mode anyway']
+
 
 
 def test_planned_tool_payload_enables_configuration_file_when_available():
@@ -38,6 +41,7 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
     assert notes == []
 
 
+
 def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present() -> None:
     module = _load_module()
 
@@ -50,7 +54,8 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
     assert notes == []
 
 
-def test_planned_tool_payload_notes_missing_configuration_files():
+
+def test_planned_tool_payload_requests_missing_configuration_files_anyway():
     module = _load_module()
 
     payload, notes = module._planned_tool_payload(
@@ -58,8 +63,9 @@ def test_planned_tool_payload_notes_missing_configuration_files():
         {'isEnabled': True, 'hasConfigurationFile': False, 'usesConfigurationFile': False},
     )
 
-    assert payload is None
-    assert notes == ['Stylelint: configuration file not detected by Codacy yet']
+    assert payload == {'useConfigurationFile': True}
+    assert notes == ['Stylelint: configuration file not detected by Codacy yet; requesting config-file mode anyway']
+
 
 
 def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> None:
@@ -72,6 +78,7 @@ def test_planned_tool_payload_enables_prospector_configuration_file_when_availab
 
     assert payload == {'useConfigurationFile': True}
     assert notes == []
+
 
 
 def test_request_codacy_preserves_query_string():
@@ -105,6 +112,7 @@ def test_request_codacy_preserves_query_string():
     assert request_args['allowed_hosts'] == {'api.codacy.com'}
 
 
+
 def test_append_markdown_section_uses_none_marker_for_empty_values():
     module = _load_module()
     lines = ['# Title']
@@ -112,6 +120,7 @@ def test_append_markdown_section_uses_none_marker_for_empty_values():
     module._append_markdown_section(lines, 'Tool Changes', [])
 
     assert lines == ['# Title', '', '## Tool Changes', module.NONE_MARKDOWN_ITEM]
+
 
 
 def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
@@ -147,13 +156,17 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
     )
 
     assert payload['status'] == 'pass'
-    assert payload['tool_changes'] == [{'tool': 'ESLint', 'payload': {'enabled': False}}]
+    assert payload['tool_changes'] == [
+        {'tool': 'ESLint', 'payload': {'enabled': False, 'useConfigurationFile': True}},
+        {'tool': 'Pylint', 'payload': {'useConfigurationFile': True}},
+    ]
     assert payload['pattern_changes'] == [{'tool': 'Pylint', 'pattern_id': 'PyLint_W1618'}]
     assert payload['failures'] == []
     assert reanalyze_calls == []
 
 
-def test_sync_tool_settings_skips_standard_managed_disable_conflicts():
+
+def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
     module = _load_module()
 
     tools_by_name = {
@@ -163,10 +176,52 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts():
             'settings': {'isEnabled': True},
         }
     }
+    calls = []
+
+    def fake_configure_tool(**kwargs):
+        calls.append(kwargs['payload'])
+        if kwargs['payload'] == {'enabled': False, 'useConfigurationFile': True}:
+            raise RuntimeError(
+                'Codacy tool patch failed for eslint-uuid: HTTP 409 '
+                '{"actions": [], "error": "Conflict", "message": "Cannot disable a tool that is enabled by a standard"}'
+            )
+        assert kwargs['payload'] == {'useConfigurationFile': True}
+
+    module._configure_tool = fake_configure_tool
+
+    tool_changes, notes, failures = module._sync_tool_settings(
+        provider='gh',
+        owner='Prekzursil',
+        repo='event-link',
+        token='token',
+        tools_by_name=tools_by_name,
+        dry_run=False,
+    )
+
+    assert tool_changes == [{'tool': 'ESLint', 'payload': {'enabled': False, 'useConfigurationFile': True}}]
+    assert failures == []
+    assert calls == [{'enabled': False, 'useConfigurationFile': True}, {'useConfigurationFile': True}]
+    assert notes == [
+        'ESLint: configuration file not detected by Codacy yet; requesting config-file mode anyway',
+        'ESLint: managed by Codacy standard; retrying config-file mode without disable request',
+    ]
+
+
+
+def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_config_retry():
+    module = _load_module()
+
+    tools_by_name = {
+        'JSHint (deprecated)': {
+            'name': 'JSHint (deprecated)',
+            'uuid': 'jshint-uuid',
+            'settings': {'isEnabled': True},
+        }
+    }
 
     def fake_configure_tool(**_kwargs):
         raise RuntimeError(
-            'Codacy tool patch failed for eslint-uuid: HTTP 409 '
+            'Codacy tool patch failed for jshint-uuid: HTTP 409 '
             '{"actions": [], "error": "Conflict", "message": "Cannot disable a tool that is enabled by a standard"}'
         )
 
@@ -181,12 +236,9 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts():
         dry_run=False,
     )
 
-    assert tool_changes == [{'tool': 'ESLint', 'payload': {'enabled': False}}]
+    assert tool_changes == [{'tool': 'JSHint (deprecated)', 'payload': {'enabled': False}}]
     assert failures == []
-    assert notes == [
-        'ESLint: configuration file not detected by Codacy yet',
-        'ESLint: managed by Codacy standard; skipping disable request',
-    ]
+    assert notes == ['JSHint (deprecated): managed by Codacy standard; skipping disable request']
 
 
 
