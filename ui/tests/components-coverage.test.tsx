@@ -82,7 +82,7 @@ describe('shared component coverage matrix', () => {
     vi.clearAllMocks();
     localStorage.setItem('language_preference', 'en');
 
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(globalThis, 'matchMedia', {
       writable: true,
       configurable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -120,9 +120,9 @@ describe('shared component coverage matrix', () => {
       </MemoryRouter>,
     );
 
-    const image = screen.getByRole('img', { name: /Event title/i }) as HTMLImageElement;
+    const image = screen.getByRole('img', { name: /Event title/i });
     fireEvent.error(image);
-    expect(image.src).toContain('images.unsplash.com');
+    expect(image).toHaveAttribute('src', expect.stringContaining('images.unsplash.com'));
 
     const favoriteButton = screen.getAllByRole('button')[0];
     fireEvent.click(favoriteButton);

@@ -108,7 +108,7 @@ describe('contexts and toast hook', () => {
       removeListener: vi.fn(),
     };
 
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(globalThis, 'matchMedia', {
       writable: true,
       configurable: true,
       value: vi.fn().mockImplementation(() => mediaQuery),

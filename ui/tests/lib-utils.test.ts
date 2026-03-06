@@ -61,7 +61,7 @@ describe('lib helpers', () => {
     expect(resolveTheme('dark')).toBe('dark');
 
     const matchMediaMock = vi.fn();
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(globalThis, 'matchMedia', {
       value: matchMediaMock,
       configurable: true,
       writable: true,

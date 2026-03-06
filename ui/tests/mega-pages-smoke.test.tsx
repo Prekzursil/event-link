@@ -183,7 +183,7 @@ describe('mega pages smoke coverage', () => {
     vi.clearAllMocks();
     localStorage.setItem('language_preference', 'en');
 
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(globalThis, 'matchMedia', {
       writable: true,
       configurable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -202,13 +202,13 @@ describe('mega pages smoke coverage', () => {
       value: { writeText: vi.fn().mockResolvedValue(undefined) },
     });
 
-    Object.defineProperty(window, 'open', {
+    Object.defineProperty(globalThis, 'open', {
       writable: true,
       configurable: true,
       value: vi.fn(),
     });
 
-    Object.defineProperty(window, 'confirm', {
+    Object.defineProperty(globalThis, 'confirm', {
       writable: true,
       configurable: true,
       value: vi.fn().mockReturnValue(true),

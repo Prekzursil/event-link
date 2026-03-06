@@ -58,6 +58,13 @@ function renderEventDetail(path = '/events/1') {
   );
 }
 
+function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
+  if (value == null) {
+    throw new Error(`Expected ${label}`);
+  }
+  return value;
+}
+
 function makeEvent(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,
@@ -89,7 +96,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.setItem('language_preference', 'en');
 
-  Object.defineProperty(window, 'open', {
+  Object.defineProperty(globalThis, 'open', {
     writable: true,
     configurable: true,
     value: vi.fn(),
@@ -149,7 +156,7 @@ describe('event detail branch coverage', () => {
     );
 
     const addToCalendarButton = screen.getByRole('button', { name: /Add to calendar/i });
-    const actionButtons = within(addToCalendarButton.parentElement as HTMLElement).getAllByRole('button');
+    const actionButtons = within(requireElement(addToCalendarButton.parentElement, 'calendar action group')).getAllByRole('button');
     fireEvent.click(actionButtons[0]);
     await waitFor(() => expect(navigateSpy).toHaveBeenCalledTimes(2));
   });
@@ -162,7 +169,7 @@ describe('event detail branch coverage', () => {
     await waitFor(() => expect(eventServiceMock.registerForEvent).toHaveBeenCalledWith(1));
 
     const addToCalendarButton = screen.getByRole('button', { name: /Add to calendar/i });
-    const actionButtons = within(addToCalendarButton.parentElement as HTMLElement).getAllByRole('button');
+    const actionButtons = within(requireElement(addToCalendarButton.parentElement, 'calendar action group')).getAllByRole('button');
 
     // Favorite add success then remove error.
     fireEvent.click(actionButtons[0]);
@@ -174,7 +181,7 @@ describe('event detail branch coverage', () => {
 
     // Share fallback path (clipboard).
     fireEvent.click(actionButtons[1]);
-    await waitFor(() => expect((navigator.clipboard.writeText as unknown as ReturnType<typeof vi.fn>)).toHaveBeenCalled());
+    await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
 
     // Share native path.
     Object.defineProperty(navigator, 'share', {
@@ -240,9 +247,9 @@ describe('event detail branch coverage', () => {
     fireEvent.click(screen.getByRole('button', { name: /Back/i }));
     expect(navigateSpy).toHaveBeenCalledWith(-1);
 
-    const coverImage = screen.getByRole('img', { name: /AI Summit/i }) as HTMLImageElement;
+    const coverImage = screen.getByRole('img', { name: /AI Summit/i });
     fireEvent.error(coverImage);
-    expect(coverImage.src).toContain('images.unsplash.com/photo-1540575467063-178a50c2df87');
+    expect(coverImage).toHaveAttribute('src', expect.stringContaining('images.unsplash.com/photo-1540575467063-178a50c2df87'));
 
     fireEvent.click(screen.getByRole('button', { name: /Register for event/i }));
     await waitFor(() => expect(eventServiceMock.registerForEvent).toHaveBeenCalledWith(1));
@@ -262,7 +269,7 @@ describe('event detail branch coverage', () => {
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
 
     const addToCalendarButton = screen.getByRole('button', { name: /Add to calendar/i });
-    const actionButtons = within(addToCalendarButton.parentElement as HTMLElement).getAllByRole('button');
+    const actionButtons = within(requireElement(addToCalendarButton.parentElement, 'calendar action group')).getAllByRole('button');
     fireEvent.click(actionButtons[0]);
     await waitFor(() => expect(eventServiceMock.removeFromFavorites).toHaveBeenCalledWith(1));
     await waitFor(() =>

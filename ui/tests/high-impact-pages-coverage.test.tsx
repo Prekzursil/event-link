@@ -171,6 +171,20 @@ function renderRoute(path: string, routePath: string, element: React.ReactElemen
   );
 }
 
+function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
+  if (value == null) {
+    throw new Error(`Expected ${label}`);
+  }
+  return value;
+}
+
+function requireInput(value: Element | null, label: string): HTMLInputElement {
+  if (!(value instanceof HTMLInputElement)) {
+    throw new Error(`Expected ${label}`);
+  }
+  return value;
+}
+
 function makeEvent(id: number) {
   return {
     id,
@@ -196,7 +210,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.setItem('language_preference', 'en');
 
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,
     configurable: true,
     value: vi.fn().mockImplementation(() => ({
@@ -207,13 +221,13 @@ beforeEach(() => {
     })),
   });
 
-  Object.defineProperty(window, 'confirm', {
+  Object.defineProperty(globalThis, 'confirm', {
     writable: true,
     configurable: true,
     value: vi.fn().mockReturnValue(true),
   });
 
-  Object.defineProperty(window, 'open', {
+  Object.defineProperty(globalThis, 'open', {
     writable: true,
     configurable: true,
     value: vi.fn(),
@@ -339,9 +353,8 @@ describe('high-impact page coverage', () => {
     fireEvent.click(within(event2Card).getByRole('button', { name: /toggle-favorite-2/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    const pager = screen.getByText(/Page\s+2\s+of\s+3/i).parentElement;
-    expect(pager).not.toBeNull();
-    const pagerButtons = within(pager as HTMLElement).getAllByRole('button');
+    const pager = requireElement(screen.getByText(/Page\s+2\s+of\s+3/i).parentElement, 'events pager');
+    const pagerButtons = within(pager).getAllByRole('button');
     fireEvent.click(pagerButtons[0]);
     fireEvent.click(pagerButtons[1]);
   }, 20000);
@@ -371,7 +384,7 @@ describe('high-impact page coverage', () => {
     const activeFilterIcons = Array.from(document.querySelectorAll('svg.cursor-pointer'));
     expect(activeFilterIcons.length).toBeGreaterThan(1);
     // Active filter icon order is search, category, date, city, location, then tags.
-    fireEvent.click(activeFilterIcons[1] as SVGElement);
+    fireEvent.click(requireElement(activeFilterIcons[1], 'category active filter icon'));
 
     // Remove any remaining active filter chips.
     Array.from(document.querySelectorAll('svg.cursor-pointer')).forEach((icon) => {
@@ -389,8 +402,7 @@ describe('high-impact page coverage', () => {
     const pageSizeOption = screen
       .getAllByRole('button')
       .find((button) => (button.textContent || '').trim().startsWith('24'));
-    expect(pageSizeOption).toBeDefined();
-    fireEvent.click(pageSizeOption as HTMLElement);
+    fireEvent.click(requireElement(pageSizeOption, 'page size option'));
 
     cleanup();
 
@@ -399,7 +411,7 @@ describe('high-impact page coverage', () => {
 
     const categoryOnlyIcons = Array.from(document.querySelectorAll('svg.cursor-pointer'));
     if (categoryOnlyIcons.length) {
-      fireEvent.click(categoryOnlyIcons[0] as SVGElement);
+      fireEvent.click(requireElement(categoryOnlyIcons[0], 'category only icon'));
     }
 
     // Trigger delayed impression + filter interaction payload path.
@@ -407,9 +419,8 @@ describe('high-impact page coverage', () => {
     await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
 
     // Pagination next branch.
-    const pager = screen.getByText(/Page\s+1\s+of\s+3/i).parentElement;
-    expect(pager).not.toBeNull();
-    const pagerButtons = within(pager as HTMLElement).getAllByRole('button');
+    const pager = requireElement(screen.getByText(/Page\s+1\s+of\s+3/i).parentElement, 'recommendations pager');
+    const pagerButtons = within(pager).getAllByRole('button');
     fireEvent.click(pagerButtons[1]);
 
     cleanup();
@@ -420,8 +431,7 @@ describe('high-impact page coverage', () => {
     // Recommendation click branch.
     const recommendationsHeading = await screen.findByRole('heading', { name: /Recommended for you/i });
     const recommendationsSection = recommendationsHeading.closest('div')?.parentElement;
-    expect(recommendationsSection).not.toBeNull();
-    fireEvent.click(within(recommendationsSection as HTMLElement).getByRole('button', { name: /open-event-90/i }));
+    fireEvent.click(within(requireElement(recommendationsSection, 'recommendations section')).getByRole('button', { name: /open-event-90/i }));
     await waitFor(() =>
       expect(recordInteractionsSpy).toHaveBeenCalledWith(
         expect.arrayContaining([
@@ -467,8 +477,7 @@ describe('high-impact page coverage', () => {
 
     const digestLabel = screen.getByText(/Weekly digest/i);
     const digestRow = digestLabel.closest('div')?.parentElement?.parentElement;
-    expect(digestRow).not.toBeNull();
-    fireEvent.click(within(digestRow as HTMLElement).getByRole('checkbox'));
+    fireEvent.click(within(requireElement(digestRow, 'digest row')).getByRole('checkbox'));
     await waitFor(() => expect(eventServiceMock.updateNotificationPreferences).toHaveBeenCalled());
 
     fireEvent.click(screen.getByRole('button', { name: /Delete account|Șterge contul/i }));
@@ -494,17 +503,16 @@ describe('high-impact page coverage', () => {
     fireEvent.change(screen.getByLabelText(/University|Universitate/i), { target: { value: 'UTCN' } });
 
     const interestToggle = document.getElementById('tag-2');
-    expect(interestToggle).not.toBeNull();
-    fireEvent.click(interestToggle as HTMLElement);
-    fireEvent.keyDown(interestToggle as HTMLElement, { key: 'Enter' });
+    const interestToggleElement = requireElement(interestToggle, 'interest toggle');
+    fireEvent.click(interestToggleElement);
+    fireEvent.keyDown(interestToggleElement, { key: 'Enter' });
 
     const interestCheckbox = screen.getByRole('checkbox', { name: /Tech/i });
     fireEvent.click(interestCheckbox);
 
     // Explicitly trigger Checkbox onCheckedChange branch for tag chips.
     const musicCheckbox = document.getElementById('tag-1');
-    expect(musicCheckbox).not.toBeNull();
-    fireEvent.click(musicCheckbox as HTMLElement);
+    fireEvent.click(requireElement(musicCheckbox, 'music checkbox'));
 
     fireEvent.click(screen.getByRole('button', { name: /Master/i }));
     fireEvent.click(screen.getByRole('button', { name: /^1$/i }));
@@ -518,16 +526,14 @@ describe('high-impact page coverage', () => {
     const firstHiddenButton = screen
       .getAllByRole('button')
       .find((btn) => (btn.textContent || '').trim() === '✕');
-    expect(firstHiddenButton).toBeDefined();
-    fireEvent.click(firstHiddenButton as HTMLElement);
+    fireEvent.click(requireElement(firstHiddenButton, 'first hidden tag button'));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     eventServiceMock.unhideTag.mockResolvedValueOnce(undefined);
     const secondHiddenButton = screen
       .getAllByRole('button')
       .find((btn) => (btn.textContent || '').trim() === '✕');
-    expect(secondHiddenButton).toBeDefined();
-    fireEvent.click(secondHiddenButton as HTMLElement);
+    fireEvent.click(requireElement(secondHiddenButton, 'second hidden tag button'));
     await waitFor(() => expect(eventServiceMock.unhideTag).toHaveBeenCalledWith(5));
 
     eventServiceMock.unblockOrganizer.mockRejectedValueOnce(new Error('unblock-fail'));
@@ -536,14 +542,12 @@ describe('high-impact page coverage', () => {
 
     const digestLabel = screen.getByText(/Digest|Rezumat/i);
     const digestRow = digestLabel.closest('div')?.parentElement?.parentElement;
-    expect(digestRow).not.toBeNull();
-    fireEvent.click(within(digestRow as HTMLElement).getByRole('checkbox'));
+    fireEvent.click(within(requireElement(digestRow, 'digest row')).getByRole('checkbox'));
     await waitFor(() => expect(eventServiceMock.updateNotificationPreferences).toHaveBeenCalled());
 
     const notificationsHeading = screen.getByText(/Notifications|Notificări/i);
     const notificationsCard = notificationsHeading.closest('div')?.parentElement?.parentElement;
-    expect(notificationsCard).not.toBeNull();
-    const notificationCheckboxes = within(notificationsCard as HTMLElement).getAllByRole('checkbox');
+    const notificationCheckboxes = within(requireElement(notificationsCard, 'notifications card')).getAllByRole('checkbox');
     fireEvent.click(notificationCheckboxes[notificationCheckboxes.length - 1]);
     await waitFor(() => expect(eventServiceMock.updateNotificationPreferences).toHaveBeenCalled());
 
@@ -553,15 +557,15 @@ describe('high-impact page coverage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Delete account|Șterge contul/i }));
     const dialog = await screen.findByRole('dialog');
-    const accessCodeField = within(dialog).getByLabelText(/Access code|Cod de acces/i) as HTMLInputElement;
+    const accessCodeField = requireInput(within(dialog).getByLabelText(/Access code|Cod de acces/i), 'access code field');
     fireEvent.change(accessCodeField, { target: { value: 'temporary-access-code' } });
     fireEvent.click(within(dialog).getByRole('button', { name: /Cancel|Anulează/i }));
     await waitFor(() => expect(screen.queryByRole('dialog')).not.toBeInTheDocument());
 
     fireEvent.click(screen.getByRole('button', { name: /Delete account|Șterge contul/i }));
     const reopenedDialog = await screen.findByRole('dialog');
-    const reopenedAccessCode = within(reopenedDialog).getByLabelText(/Access code|Cod de acces/i) as HTMLInputElement;
-    expect(reopenedAccessCode.value).toBe('');
+    const reopenedAccessCode = requireInput(within(reopenedDialog).getByLabelText(/Access code|Cod de acces/i), 'reopened access code field');
+    expect(reopenedAccessCode).toHaveValue('');
     fireEvent.click(within(reopenedDialog).getByRole('button', { name: /Cancel|Anulează/i }));
   }, 20000);
 
@@ -586,8 +590,7 @@ describe('high-impact page coverage', () => {
     fireEvent.click(checkboxes[1]);
     const publishButton = screen.getByRole('button', { name: /Publish/i });
     const bulkContainer = publishButton.parentElement;
-    expect(bulkContainer).not.toBeNull();
-    const bannerButtons = within(bulkContainer as HTMLElement).getAllByRole('button');
+    const bannerButtons = within(requireElement(bulkContainer, 'bulk container')).getAllByRole('button');
     fireEvent.click(bannerButtons[2]);
     const dialog = await screen.findByRole('dialog');
     const input = within(dialog).getByPlaceholderText(/tag/i);
@@ -640,16 +643,16 @@ describe('high-impact page coverage', () => {
     expect(menuTrigger).toBeDefined();
 
     // Delete action branch when dropdown item is available in this test runtime.
-    fireEvent.click(menuTrigger as HTMLElement);
+    fireEvent.click(requireElement(menuTrigger, 'menu trigger'));
     const deleteOption = screen.queryByText(/Delete|Șterge/i);
     if (deleteOption) {
-      (globalThis.confirm as unknown as { mockReturnValueOnce: (v: boolean) => unknown }).mockReturnValueOnce(false);
+      vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
       fireEvent.click(deleteOption);
 
-      fireEvent.click(menuTrigger as HTMLElement);
+      fireEvent.click(requireElement(menuTrigger, 'menu trigger'));
       const deleteOptionRetry = screen.queryByText(/Delete|Șterge/i);
       if (deleteOptionRetry) {
-        (globalThis.confirm as unknown as { mockReturnValueOnce: (v: boolean) => unknown }).mockReturnValueOnce(true);
+        vi.mocked(globalThis.confirm).mockReturnValueOnce(true);
         eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
         fireEvent.click(deleteOptionRetry);
         await waitFor(() => expect(toastSpy).toHaveBeenCalled());
@@ -663,8 +666,9 @@ describe('high-impact page coverage', () => {
     const tagCheckbox = document.getElementById('tag-1');
     expect(tagCheckbox).not.toBeNull();
 
-    fireEvent.click(tagCheckbox as HTMLElement);
-    fireEvent.click(tagCheckbox as HTMLElement);
+    const tagCheckboxElement = requireElement(tagCheckbox, 'tag checkbox');
+    fireEvent.click(tagCheckboxElement);
+    fireEvent.click(tagCheckboxElement);
   });
   it('renders tag option cards and toggles selection via card click', async () => {
     renderRoute('/profile', '/profile', <StudentProfilePage />);

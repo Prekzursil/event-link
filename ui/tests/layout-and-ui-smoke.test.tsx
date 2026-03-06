@@ -85,6 +85,13 @@ import {
 } from '@/components/ui/toast';
 import { Toaster } from '@/components/ui/toaster';
 
+function requireValue<T>(value: T | null | undefined, label: string): T {
+  if (value == null) {
+    throw new Error(`Expected ${label}`);
+  }
+  return value;
+}
+
 describe('layout and ui smoke', () => {
   beforeEach(() => {
     cleanup();
@@ -99,7 +106,7 @@ describe('layout and ui smoke', () => {
     authServiceMock.updateThemePreference.mockResolvedValue(undefined);
     authState.refreshUser.mockResolvedValue(undefined);
 
-    Object.defineProperty(window, 'matchMedia', {
+    Object.defineProperty(globalThis, 'matchMedia', {
       writable: true,
       configurable: true,
       value: vi.fn().mockImplementation(() => ({
@@ -131,11 +138,11 @@ describe('layout and ui smoke', () => {
     expect(screen.getAllByRole('link', { name: /Log in/i }).length).toBeGreaterThan(0);
     expect(screen.getAllByRole('link', { name: /Register/i }).length).toBeGreaterThan(0);
 
-    const menuButton = screen
-      .getAllByRole('button')
-      .find((button) => button.className.includes('md:hidden'));
-    expect(menuButton).toBeDefined();
-    fireEvent.click(menuButton!);
+    const menuButton = requireValue(
+      screen.getAllByRole('button').find((button) => button.className.includes('md:hidden')),
+      'guest mobile menu button',
+    );
+    fireEvent.click(menuButton);
 
     expect(screen.getAllByRole('link', { name: /Log in/i }).length).toBeGreaterThan(0);
   }, 15000);
@@ -158,10 +165,11 @@ describe('layout and ui smoke', () => {
 
     expect(screen.getAllByRole('link', { name: /Dashboard/i }).length).toBeGreaterThan(0);
 
-    const menuButton = screen
-      .getAllByRole('button')
-      .find((button) => button.className.includes('md:hidden'));
-    fireEvent.click(menuButton!);
+    const menuButton = requireValue(
+      screen.getAllByRole('button').find((button) => button.className.includes('md:hidden')),
+      'authenticated mobile menu button',
+    );
+    fireEvent.click(menuButton);
 
     fireEvent.click(screen.getAllByRole('button', { name: /Log out/i })[0]);
     expect(authState.logout).toHaveBeenCalled();
@@ -230,10 +238,11 @@ describe('layout and ui smoke', () => {
       </MemoryRouter>,
     );
 
-    const menuButton = screen
-      .getAllByRole('button')
-      .find((button) => button.className.includes('md:hidden'));
-    fireEvent.click(menuButton!);
+    const menuButton = requireValue(
+      screen.getAllByRole('button').find((button) => button.className.includes('md:hidden')),
+      'authenticated mobile menu button',
+    );
+    fireEvent.click(menuButton);
 
     const systemButtons = screen.getAllByRole('button', { name: /System|Sistem/i });
     systemButtons.forEach((button) => fireEvent.click(button));
@@ -249,10 +258,11 @@ describe('layout and ui smoke', () => {
     enButtons.forEach((button) => fireEvent.click(button));
     await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalled());
 
-    const dashboardLink = screen
-      .getAllByRole('link', { name: /Dashboard/i })
-      .find((link) => link.className.includes('rounded-md'));
-    fireEvent.click(dashboardLink!);
+    const dashboardLink = requireValue(
+      screen.getAllByRole('link', { name: /Dashboard/i }).find((link) => link.className.includes('rounded-md')),
+      'dashboard link',
+    );
+    fireEvent.click(dashboardLink);
 
     const newEventLinks = screen
       .getAllByRole('link', { name: /New event|Event nou/i });
@@ -279,19 +289,22 @@ describe('layout and ui smoke', () => {
       </MemoryRouter>,
     );
 
-    const guestMenuButton = screen
-      .getAllByRole('button')
-      .find((button) => button.className.includes('md:hidden'));
-    fireEvent.click(guestMenuButton!);
+    const guestMenuButton = requireValue(
+      screen.getAllByRole('button').find((button) => button.className.includes('md:hidden')),
+      'guest mobile menu button',
+    );
+    fireEvent.click(guestMenuButton);
 
-    const loginLink = screen
-      .getAllByRole('link', { name: /Log in/i })
-      .find((link) => link.className.includes('w-full'));
-    const registerLink = screen
-      .getAllByRole('link', { name: /Register/i })
-      .find((link) => link.className.includes('w-full'));
-    fireEvent.click(loginLink!);
-    fireEvent.click(registerLink!);
+    const loginLink = requireValue(
+      screen.getAllByRole('link', { name: /Log in/i }).find((link) => link.className.includes('w-full')),
+      'login link',
+    );
+    const registerLink = requireValue(
+      screen.getAllByRole('link', { name: /Register/i }).find((link) => link.className.includes('w-full')),
+      'register link',
+    );
+    fireEvent.click(loginLink);
+    fireEvent.click(registerLink);
   }, 20000);
 
   it('covers initials fallback branches in avatar', () => {
@@ -400,32 +413,34 @@ describe('layout and ui smoke', () => {
       </MemoryRouter>,
     );
 
-    const menuButton = screen
-      .getAllByRole('button')
-      .find((button) => button.className.includes('md:hidden'));
-    expect(menuButton).toBeDefined();
-    fireEvent.click(menuButton!);
+    const menuButton = requireValue(
+      screen.getAllByRole('button').find((button) => button.className.includes('md:hidden')),
+      'guest mobile menu button',
+    );
+    fireEvent.click(menuButton);
 
-    const mobilePanel = Array.from(document.querySelectorAll('div')).find((node) => {
-      const className = typeof node.className === 'string' ? node.className : '';
-      return className.includes('top-16') && className.includes('md:hidden');
-    });
-    expect(mobilePanel).toBeDefined();
+    const mobilePanel = requireValue(
+      Array.from(document.querySelectorAll('div')).find((node) => {
+        const className = typeof node.className === 'string' ? node.className : '';
+        return className.includes('top-16') && className.includes('md:hidden');
+      }),
+      'mobile panel',
+    );
 
-    within(mobilePanel!)
+    within(mobilePanel)
       .getAllByRole('button', { name: /System|Sistem/i })
       .forEach((button) => fireEvent.click(button));
-    within(mobilePanel!)
+    within(mobilePanel)
       .getAllByRole('button', { name: /Light|Luminos/i })
       .forEach((button) => fireEvent.click(button));
-    within(mobilePanel!)
+    within(mobilePanel)
       .getAllByRole('button', { name: /Dark|Întunecat/i })
       .forEach((button) => fireEvent.click(button));
 
-    within(mobilePanel!)
+    within(mobilePanel)
       .getAllByRole('button', { name: /Romanian|Română/i })
       .forEach((button) => fireEvent.click(button));
-    within(mobilePanel!)
+    within(mobilePanel)
       .getAllByRole('button', { name: /^English$/i })
       .forEach((button) => fireEvent.click(button));
 

@@ -157,6 +157,13 @@ function renderRoute(path: string, routePath: string, element: React.ReactElemen
   );
 }
 
+function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
+  if (value == null) {
+    throw new Error(`Expected ${label}`);
+  }
+  return value;
+}
+
 function makeEventDetail(id: number) {
   return {
     id,
@@ -187,13 +194,13 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.setItem('language_preference', 'en');
 
-  Object.defineProperty(window, 'confirm', {
+  Object.defineProperty(globalThis, 'confirm', {
     writable: true,
     configurable: true,
     value: vi.fn().mockReturnValue(true),
   });
 
-  Object.defineProperty(window, 'open', {
+  Object.defineProperty(globalThis, 'open', {
     writable: true,
     configurable: true,
     value: vi.fn(),
@@ -546,8 +553,7 @@ describe('mega pages branch matrix', () => {
 
     adminServiceMock.updateUser.mockRejectedValueOnce(new Error('update-user-fail'));
     const usersRow = screen.getByText('student@test.local').closest('tr');
-    expect(usersRow).not.toBeNull();
-    fireEvent.click(within(usersRow as HTMLElement).getByRole('button', { name: /Admin/i }));
+    fireEvent.click(within(requireElement(usersRow, 'users row')).getByRole('button', { name: /Admin/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     adminServiceMock.getUsers.mockResolvedValueOnce({
@@ -662,16 +668,16 @@ describe('mega pages branch matrix', () => {
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
 
-    (globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
+    vi.mocked(globalThis.confirm).mockReturnValueOnce(true);
     eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    (globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(false);
+    vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     expect(eventServiceMock.deleteEvent).toHaveBeenCalledTimes(1);
 
-    (globalThis.confirm as ReturnType<typeof vi.fn>).mockReturnValueOnce(true);
+    vi.mocked(globalThis.confirm).mockReturnValueOnce(true);
     eventServiceMock.deleteEvent.mockResolvedValueOnce(undefined);
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledWith(3));
@@ -715,8 +721,7 @@ describe('mega pages branch matrix', () => {
     const participantsPageText = screen.getAllByText(/Page/i).find((node) => /of/i.test(node.textContent || '')) ?? null;
     expect(participantsPageText).not.toBeNull();
     const participantsPageContainer = participantsPageText?.closest('div')?.parentElement;
-    expect(participantsPageContainer).not.toBeNull();
-    const participantsPagerButtons = within(participantsPageContainer as HTMLElement).getAllByRole('button');
+    const participantsPagerButtons = within(requireElement(participantsPageContainer, 'participants page container')).getAllByRole('button');
     fireEvent.click(participantsPagerButtons[participantsPagerButtons.length - 1]);
     await waitFor(() => expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 2, 20, 'registration_time', 'asc'));
     fireEvent.click(participantsPagerButtons[participantsPagerButtons.length - 2]);

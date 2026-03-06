@@ -27,20 +27,6 @@ def _unexpected_enqueue(*_args, **_kwargs):
     raise AssertionError("enqueue_job should not run")
 
 
-    job = models.BackgroundJob(
-        job_type=job_type,
-        payload=payload or {},
-        status=status,
-        attempts=0,
-        max_attempts=3,
-        run_at=run_at or datetime.now(timezone.utc),
-    )
-    db_session.add(job)
-    db_session.commit()
-    db_session.refresh(job)
-    return job
-
-
 def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool(True) is True
     assert task_queue._coerce_bool(False) is False

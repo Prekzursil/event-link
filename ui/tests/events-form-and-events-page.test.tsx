@@ -106,6 +106,14 @@ function renderRoute(path: string, routePath: string, element: React.ReactElemen
   );
 }
 
+function requireForm(buttonName: RegExp): HTMLFormElement {
+  const form = screen.getByRole('button', { name: buttonName }).closest('form');
+  if (!(form instanceof HTMLFormElement)) {
+    throw new Error(`Expected a form for ${buttonName.toString()}`);
+  }
+  return form;
+}
+
 function makeEvent(id: number, title = `Event ${id}`) {
   return {
     id,
@@ -131,7 +139,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   localStorage.setItem('language_preference', 'en');
 
-  Object.defineProperty(window, 'matchMedia', {
+  Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,
     configurable: true,
     value: vi.fn().mockImplementation(() => ({
@@ -225,9 +233,7 @@ describe('events page and event form branch coverage', () => {
   it('covers EventFormPage create flow with suggest/apply and validation branches', async () => {
     renderRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
-    const form = screen.getByRole('button', { name: /Create event/i }).closest('form');
-    expect(form).not.toBeNull();
-    fireEvent.submit(form!);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'AI Meetup' } });
@@ -267,11 +273,8 @@ describe('events page and event form branch coverage', () => {
     fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Validation Event' } });
     fireEvent.change(screen.getByLabelText(/Description/i), { target: { value: 'Validation description' } });
 
-    const submit = screen.getByRole('button', { name: /Create event/i });
-    const form = submit.closest('form');
-
     // Category required branch before suggestion fills it.
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     eventServiceMock.suggestEvent.mockRejectedValueOnce({ response: { data: { detail: 'bad-suggest' } } });
@@ -295,21 +298,21 @@ describe('events page and event form branch coverage', () => {
     screen.getAllByRole('button', { name: /Technical|Tehnic/i }).forEach((button) => fireEvent.click(button));
     screen.getAllByRole('button', { name: /Draft|Ciornă/i }).forEach((button) => fireEvent.click(button));
 
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Aula Magna' } });
     fireEvent.change(screen.getByLabelText(/City/i), { target: { value: '' } });
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Cluj' } });
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: '2026-03-10T10:00' } });
     fireEvent.change(screen.getByLabelText(/End date/i), { target: { value: '2026-03-10T12:00' } });
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '20' } });
@@ -332,14 +335,14 @@ describe('events page and event form branch coverage', () => {
     fireEvent.click(removeIcon!);
 
     eventServiceMock.createEvent.mockRejectedValueOnce({ response: { data: { detail: 'create-fail' } } });
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     // Enter key path in tag input should also add tags.
     fireEvent.change(tagInput, { target: { value: 'ML' } });
     fireEvent.keyDown(tagInput, { key: 'Enter' });
 
-    fireEvent.submit(form);
+    fireEvent.submit(requireForm(/Create event/i));
     await waitFor(() => expect(eventServiceMock.createEvent).toHaveBeenCalled());
   }, 20000);
 
@@ -353,6 +356,7 @@ describe('events page and event form branch coverage', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/organizer');
   });
 });
+
 
 
 
