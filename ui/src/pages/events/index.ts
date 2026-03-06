@@ -1,2 +1,2 @@
-export { EventsPage } from './EventsPage';
 export { EventDetailPage } from './EventDetailPage';
+export { EventsPage } from './EventsPage';

@@ -615,7 +615,7 @@ export function AdminDashboardPage() {
                         variant="outline"
                         size="sm"
                         disabled={usersPage <= 1}
-                        onClick={() => loadUsers(usersPage - 1)}
+                        onClick={loadUsers.bind(null, usersPage - 1)}
                       >
                         {t.adminDashboard.pagination.prev}
                       </Button>
@@ -623,7 +623,7 @@ export function AdminDashboardPage() {
                         variant="outline"
                         size="sm"
                         disabled={usersPage >= totalUserPages}
-                        onClick={() => loadUsers(usersPage + 1)}
+                        onClick={loadUsers.bind(null, usersPage + 1)}
                       >
                         {t.adminDashboard.pagination.next}
                       </Button>
@@ -866,3 +866,4 @@ export function AdminDashboardPage() {
     </div>
   );
 }
+

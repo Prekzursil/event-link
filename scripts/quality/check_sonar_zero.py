@@ -3,22 +3,23 @@ from __future__ import annotations
 
 import argparse
 import base64
-import json
+import os
 import sys
 import urllib.parse
-import urllib.request
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
+from _security_import import load_security_helpers
 
-from security_helpers import normalize_https_url
+_security_helpers = load_security_helpers(__file__)
+normalize_https_url = _security_helpers.normalize_https_url
+validate_slug = _security_helpers.validate_slug
+request_https_json = _security_helpers.request_https_json
+write_workspace_json = _security_helpers.write_workspace_json
+write_workspace_text = _security_helpers.write_workspace_text
 
-SONAR_API_BASE = "https://sonarcloud.io"
+SONAR_HOST = "sonarcloud.io"
+SONAR_API_BASE = f"https://{SONAR_HOST}"
 
 
 def _parse_args() -> argparse.Namespace:
@@ -38,18 +39,23 @@ def _auth_header(token: str) -> str:
 
 
 def _request_json(url: str, auth_header: str) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"sonarcloud.io"}).rstrip("/")
-    request = urllib.request.Request(
+    safe_url = normalize_https_url(url, allowed_host_suffixes={SONAR_HOST}).rstrip("/")
+    payload, _headers, status = request_https_json(
         safe_url,
         headers={
             "Accept": "application/json",
             "Authorization": auth_header,
-            "User-Agent": "reframe-sonar-zero-gate",
+            "User-Agent": "event-link-sonar-zero-gate",
         },
         method="GET",
+        timeout=30,
+        allowed_host_suffixes={SONAR_HOST},
     )
-    with urllib.request.urlopen(request, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not 200 <= status < 300:
+        raise RuntimeError(f"Sonar API request failed: HTTP {status}")
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Sonar response payload")
+    return payload
 
 
 def _render_md(payload: dict) -> str:
@@ -72,74 +78,107 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
-
-
-def main() -> int:
-    import os
-
-    args = _parse_args()
+def _validated_scope(args: argparse.Namespace) -> tuple[str, str, str, str, str, list[str]]:
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
-    api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={"sonarcloud.io"}).rstrip("/")
-
+    api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip("/")
     findings: list[str] = []
-    open_issues: int | None = None
-    quality_gate: str | None = None
+
+    try:
+        project_key = validate_slug(args.project_key, field_name="sonar project key")
+    except ValueError as exc:
+        findings.append(str(exc))
+        project_key = ""
+
+    branch = args.branch.strip()
+    if branch:
+        try:
+            branch = validate_slug(branch, field_name="sonar branch")
+        except ValueError as exc:
+            findings.append(str(exc))
+
+    pull_request = args.pull_request.strip()
+    if pull_request:
+        try:
+            pull_request = validate_slug(pull_request, field_name="sonar pull request")
+        except ValueError as exc:
+            findings.append(str(exc))
 
     if not token:
         findings.append("SONAR_TOKEN is missing.")
-        status = "fail"
-    else:
-        auth = _auth_header(token)
-        try:
-            issues_query = {
-                "componentKeys": args.project_key,
-                "resolved": "false",
-                "ps": "1",
-            }
-            if args.branch:
-                issues_query["branch"] = args.branch
-            if args.pull_request:
-                issues_query["pullRequest"] = args.pull_request
 
-            issues_url = f"{api_base}/api/issues/search?{urllib.parse.urlencode(issues_query)}"
-            issues_payload = _request_json(issues_url, auth)
-            paging = issues_payload.get("paging") or {}
-            open_issues = int(paging.get("total") or 0)
+    return token, api_base, project_key, branch, pull_request, findings
 
-            gate_query = {"projectKey": args.project_key}
-            if args.branch:
-                gate_query["branch"] = args.branch
-            if args.pull_request:
-                gate_query["pullRequest"] = args.pull_request
-            gate_url = f"{api_base}/api/qualitygates/project_status?{urllib.parse.urlencode(gate_query)}"
-            gate_payload = _request_json(gate_url, auth)
-            project_status = (gate_payload.get("projectStatus") or {})
-            quality_gate = str(project_status.get("status") or "UNKNOWN")
 
-            if open_issues != 0:
-                findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
-            if quality_gate != "OK":
-                findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
+def _issues_query(project_key: str, branch: str, pull_request: str) -> str:
+    issues_query = {
+        "componentKeys": project_key,
+        "resolved": "false",
+        "ps": "1",
+    }
+    if branch:
+        issues_query["branch"] = branch
+    if pull_request:
+        issues_query["pullRequest"] = pull_request
+    return urllib.parse.urlencode(issues_query)
 
-            status = "pass" if not findings else "fail"
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            status = "fail"
-            findings.append(f"Sonar API request failed: {exc}")
 
+def _gate_query(project_key: str, branch: str, pull_request: str) -> str:
+    gate_query = {"projectKey": project_key}
+    if branch:
+        gate_query["branch"] = branch
+    if pull_request:
+        gate_query["pullRequest"] = pull_request
+    return urllib.parse.urlencode(gate_query)
+
+
+def _evaluate_sonar(
+    *,
+    token: str,
+    api_base: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+    findings: list[str],
+) -> tuple[str, int | None, str | None, list[str]]:
+    if findings:
+        return "fail", None, None, findings
+
+    auth = _auth_header(token)
+    try:
+        issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
+        issues_payload = _request_json(issues_url, auth)
+        paging = issues_payload.get("paging") or {}
+        open_issues = int(paging.get("total") or 0)
+
+        gate_url = f"{api_base}/api/qualitygates/project_status?{_gate_query(project_key, branch, pull_request)}"
+        gate_payload = _request_json(gate_url, auth)
+        project_status = gate_payload.get("projectStatus") or {}
+        quality_gate = str(project_status.get("status") or "UNKNOWN")
+    except Exception as exc:  # pragma: no cover - network/runtime surface
+        return "fail", None, None, [*findings, f"Sonar API request failed: {exc}"]
+
+    if open_issues != 0:
+        findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
+    if quality_gate != "OK":
+        findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
+    status = "pass" if not findings else "fail"
+    return status, open_issues, quality_gate, findings
+
+
+def main() -> int:
+    args = _parse_args()
+    token, api_base, project_key, branch, pull_request, findings = _validated_scope(args)
+    status, open_issues, quality_gate, findings = _evaluate_sonar(
+        token=token,
+        api_base=api_base,
+        project_key=project_key,
+        branch=branch,
+        pull_request=pull_request,
+        findings=findings,
+    )
     payload = {
         "status": status,
-        "project_key": args.project_key,
+        "project_key": project_key,
         "open_issues": open_issues,
         "quality_gate": quality_gate,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -147,18 +186,17 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "sonar-zero/sonar.json")
-        out_md = _safe_output_path(args.out_md, "sonar-zero/sonar.md")
+        write_workspace_json(raw_path=args.out_json, fallback="sonar-zero/sonar.json", payload=payload)
+        out_md = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="sonar-zero/sonar.md",
+            text=_render_md(payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
-
     return 0 if status == "pass" else 1
 
 

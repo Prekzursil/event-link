@@ -127,11 +127,9 @@ export function EventsPage() {
       Object.entries(newFilters).forEach(([key, value]) => {
         if (value === '' || value === null || (Array.isArray(value) && value.length === 0)) {
           params.delete(key);
-        } else if (Array.isArray(value)) {
-          params.set(key, value.join(','));
-        } else {
-          params.set(key, String(value));
+          return;
         }
+        params.set(key, String(value));
       });
 
       // Reset to page 1 when filters change (except for page changes)

@@ -7,21 +7,22 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   codecov-analytics:
     name: Codecov Analytics
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
         with:
           node-version: '20'
 
@@ -39,9 +40,10 @@ jobs:
           npm --prefix ui test -- --coverage --watch=false
       - name: Upload coverage to Codecov
         if: ${{ always() }}
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
         with:
           files: backend/coverage.xml,ui/coverage/lcov.info
           flags: backend,ui
           fail_ci_if_error: true
           verbose: true
+

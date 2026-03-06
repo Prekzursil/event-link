@@ -1,13 +1,13 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, login, setLanguagePreference } from './utils';
+import { clearAuth, DEFAULT_E2E_CODE, login, setLanguagePreference } from './utils';
 
-const STUDENT = { email: 'student@test.com', password: 'test123' };
+const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
 
 test('student profile: interests + academic fields', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await page.goto('/profile');
@@ -44,3 +44,5 @@ test('student profile: interests + academic fields', async ({ page }) => {
   const tagCheckboxAfter = page.getByLabel('AI & ML');
   await expect(tagCheckboxAfter).toHaveAttribute('aria-checked', 'true');
 });
+
+

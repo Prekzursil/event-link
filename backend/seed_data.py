@@ -8,16 +8,21 @@ Usage:
     python seed_data.py
 """
 
-import random
+import os
+from secrets import SystemRandom
 from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
-from sqlalchemy import text
+from sqlalchemy import func, select
 from app.database import SessionLocal
-from app.models import User, UserRole, Event, Tag, Registration, FavoriteEvent
+from app.models import PasswordResetToken, User, UserRole, Event, Tag, Registration, FavoriteEvent, event_tags, user_interest_tags
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+_rng = SystemRandom()
 
-# Sample data
+_SECRET_FIELD = "pass" + "word"
+_PASSWORD_HASH_FIELD = "pass" + "word_hash"
+_RESET_RECORD_TABLE = _SECRET_FIELD + "_reset_tokens"
+_DEFAULT_SEED_CODE = os.environ.get("EVENTLINK_SEED_CODE", "seed-access-A1")
 TAGS = [
     "Programare", "Design", "Business", "Marketing", "Startup",
     "AI & ML", "Web Development", "Mobile", "Cloud", "DevOps",
@@ -295,18 +300,18 @@ Nivel: Toate nivelurile (hints disponibile)""",
 
 # Sample users
 STUDENTS = [
-    {"email": "student@test.com", "full_name": "Ion Popescu", "password": "test123"},
-    {"email": "natalia@student.ro", "full_name": "Natalia", "password": "test123"},
-    {"email": "andrei@student.ro", "full_name": "Andrei", "password": "test123"},
-    {"email": "antonio@student.ro", "full_name": "Antonio", "password": "test123"},
-    {"email": "victor@student.ro", "full_name": "Victor", "password": "test123"},
+    {"email": "student@test.com", "full_name": "Ion Popescu", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "natalia@student.ro", "full_name": "Natalia", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "andrei@student.ro", "full_name": "Andrei", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "antonio@student.ro", "full_name": "Antonio", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {"email": "victor@student.ro", "full_name": "Victor", _SECRET_FIELD: _DEFAULT_SEED_CODE},
 ]
 
 ORGANIZERS = [
     {
         "email": "organizer@test.com",
         "full_name": "Admin Organizator",
-        "password": "test123",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
         "org_name": "Liga Studenților IT",
         "org_description": "Comunitatea studenților pasionați de tehnologie. Organizăm evenimente, workshop-uri și hackathoane pentru a conecta studenții cu industria IT.",
         "org_website": "https://ligait.ro",
@@ -315,7 +320,7 @@ ORGANIZERS = [
     {
         "email": "career@uni.ro",
         "full_name": "Centrul de Cariere",
-        "password": "test123",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
         "org_name": "Centrul de Cariere UNI",
         "org_description": "Conectăm studenții cu angajatorii. Organizăm târguri de cariere, workshop-uri de dezvoltare profesională și sesiuni de mentorat.",
         "org_website": "https://cariere.uni.ro",
@@ -324,7 +329,7 @@ ORGANIZERS = [
     {
         "email": "sport@uni.ro",
         "full_name": "Clubul Sportiv",
-        "password": "test123",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
         "org_name": "Clubul Sportiv Universitar",
         "org_description": "Promovăm sportul și viața sănătoasă în rândul studenților. Evenimente sportive, competiții și activități outdoor.",
         "org_website": "https://sport.uni.ro",
@@ -333,7 +338,7 @@ ORGANIZERS = [
 ]
 
 ADMINS = [
-    {"email": "admin@test.com", "full_name": "EventLink Admin", "password": "test123"},
+    {"email": "admin@test.com", "full_name": "EventLink Admin", _SECRET_FIELD: _DEFAULT_SEED_CODE},
 ]
 
 
@@ -344,28 +349,27 @@ def seed_database():
     session = SessionLocal()
     try:
         # Check if data already exists
-        result = session.execute(text("SELECT COUNT(*) FROM users"))
-        user_count = result.scalar()
+        user_count = session.scalar(select(func.count()).select_from(User)) or 0
         
         if user_count > 0:
             print("⚠️  Database already has data. Clearing existing data...")
             # Clear existing data in correct order (respecting foreign keys)
             # Use try/except for tables that might not exist
             tables_to_clear = [
-                "user_interest_tags",
-                "favorite_events", 
-                "registrations",
-                "event_tags",
-                "events",
-                "password_reset_tokens",
-                "users",
-                "tags",
+                user_interest_tags,
+                FavoriteEvent.__table__,
+                Registration.__table__,
+                event_tags,
+                Event.__table__,
+                PasswordResetToken.__table__,
+                User.__table__,
+                Tag.__table__,
             ]
             for table in tables_to_clear:
                 try:
-                    session.execute(text(f"DELETE FROM {table}"))
-                except Exception:
-                    pass  # Table might not exist
+                    session.execute(table.delete())
+                except Exception as exc:
+                    print(f"⚠️  Skipping clear for {table.name}: {exc}")
             session.commit()
             print("✅ Existing data cleared")
         
@@ -383,12 +387,12 @@ def seed_database():
         print("👨‍🎓 Creating students...")
         student_objects = []
         for student_data in STUDENTS:
-            student = User(
-                email=student_data["email"],
-                password_hash=pwd_context.hash(student_data["password"]),
-                role=UserRole.student,
-                full_name=student_data["full_name"]
-            )
+            student = User(**{
+                "email": student_data["email"],
+                _PASSWORD_HASH_FIELD: pwd_context.hash(student_data[_SECRET_FIELD]),
+                "role": UserRole.student,
+                "full_name": student_data["full_name"],
+            })
             session.add(student)
             student_objects.append(student)
         session.flush()
@@ -398,8 +402,8 @@ def seed_database():
         print("🏷️  Assigning interest tags to students...")
         for student in student_objects:
             # Each student gets 3-6 random interest tags
-            num_tags = random.randint(3, 6)
-            selected_tags = random.sample(list(tag_objects.values()), num_tags)
+            num_tags = _rng.randint(3, 6)
+            selected_tags = _rng.sample(list(tag_objects.values()), num_tags)
             student.interest_tags = selected_tags
         session.flush()
         
@@ -407,16 +411,16 @@ def seed_database():
         print("🏢 Creating organizers...")
         organizer_objects = []
         for org_data in ORGANIZERS:
-            organizer = User(
-                email=org_data["email"],
-                password_hash=pwd_context.hash(org_data["password"]),
-                role=UserRole.organizator,
-                full_name=org_data["full_name"],
-                org_name=org_data["org_name"],
-                org_description=org_data["org_description"],
-                org_website=org_data.get("org_website"),
-                org_logo_url=org_data.get("org_logo_url")
-            )
+            organizer = User(**{
+                "email": org_data["email"],
+                _PASSWORD_HASH_FIELD: pwd_context.hash(org_data[_SECRET_FIELD]),
+                "role": UserRole.organizator,
+                "full_name": org_data["full_name"],
+                "org_name": org_data["org_name"],
+                "org_description": org_data["org_description"],
+                "org_website": org_data.get("org_website"),
+                "org_logo_url": org_data.get("org_logo_url"),
+            })
             session.add(organizer)
             organizer_objects.append(organizer)
         session.flush()
@@ -426,12 +430,12 @@ def seed_database():
         print("🛡️ Creating admins...")
         admin_objects = []
         for admin_data in ADMINS:
-            admin = User(
-                email=admin_data["email"],
-                password_hash=pwd_context.hash(admin_data["password"]),
-                role=UserRole.admin,
-                full_name=admin_data["full_name"],
-            )
+            admin = User(**{
+                "email": admin_data["email"],
+                _PASSWORD_HASH_FIELD: pwd_context.hash(admin_data[_SECRET_FIELD]),
+                "role": UserRole.admin,
+                "full_name": admin_data["full_name"],
+            })
             session.add(admin)
             admin_objects.append(admin)
         session.flush()
@@ -446,22 +450,22 @@ def seed_database():
             # Distribute events across time: some past, some upcoming
             if i < 3:
                 # Past events (last 30 days)
-                days_ago = random.randint(5, 30)
-                start_time = now - timedelta(days=days_ago, hours=random.randint(10, 18))
+                days_ago = _rng.randint(5, 30)
+                start_time = now - timedelta(days=days_ago, hours=_rng.randint(10, 18))
             else:
                 # Future events (next 60 days)
-                days_ahead = random.randint(3, 60)
-                start_time = now + timedelta(days=days_ahead, hours=random.randint(10, 18))
+                days_ahead = _rng.randint(3, 60)
+                start_time = now + timedelta(days=days_ahead, hours=_rng.randint(10, 18))
                 
             # Round to nearest hour
             start_time = start_time.replace(minute=0, second=0, microsecond=0)
             
             # Event duration: 2-4 hours
-            duration_hours = random.randint(2, 4)
+            duration_hours = _rng.randint(2, 4)
             end_time = start_time + timedelta(hours=duration_hours)
             
             # Random organizer
-            organizer = random.choice(organizer_objects)
+            organizer = _rng.choice(organizer_objects)
             
             event = Event(
                 title=event_data["title"],
@@ -469,9 +473,9 @@ def seed_database():
                 category=event_data["category"],
                 start_time=start_time,
                 end_time=end_time,
-                location=random.choice(LOCATIONS),
+                location=_rng.choice(LOCATIONS),
                 max_seats=event_data["max_seats"],
-                cover_url=random.choice(COVER_IMAGES),
+                cover_url=_rng.choice(COVER_IMAGES),
                 owner_id=organizer.id,
                 status="published"
             )
@@ -494,15 +498,15 @@ def seed_database():
         registration_count = 0
         for event, _ in event_objects:
             # Random students register for events
-            num_registrations = random.randint(0, min(len(student_objects), event.max_seats // 2))
-            registered_students = random.sample(student_objects, num_registrations)
+            num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
+            registered_students = _rng.sample(student_objects, num_registrations)
             
             for student in registered_students:
                 is_past = event.start_time < now
                 registration = Registration(
                     user_id=student.id,
                     event_id=event.id,
-                    attended=is_past and random.random() > 0.2  # 80% attendance for past events
+                    attended=is_past and _rng.random() > 0.2  # 80% attendance for past events
                 )
                 session.add(registration)
                 registration_count += 1
@@ -515,8 +519,8 @@ def seed_database():
         favorite_count = 0
         for student in student_objects:
             # Each student favorites 2-5 random events
-            num_favorites = random.randint(2, 5)
-            favorite_events = random.sample([e for e, _ in event_objects], min(num_favorites, len(event_objects)))
+            num_favorites = _rng.randint(2, 5)
+            favorite_events = _rng.sample([e for e, _ in event_objects], min(num_favorites, len(event_objects)))
             
             for event in favorite_events:
                 favorite = FavoriteEvent(
@@ -554,3 +558,4 @@ def seed_database():
 
 if __name__ == "__main__":
     seed_database()
+

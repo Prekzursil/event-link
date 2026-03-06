@@ -30,7 +30,7 @@ def test_notification_preferences_get_and_update(client, helpers):
 
 def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers):
     helpers["make_organizer"]("org@test.ro")
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
     resp = client.post(
         "/api/events",
         headers=helpers["auth_header"](org_token),
@@ -48,7 +48,7 @@ def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers
     assert resp.status_code == 201
     event_id = resp.json()["id"]
 
-    student_token = helpers["register_student"]("student-digest@test.ro")
+    helpers["register_student"]("student-digest@test.ro")
     db = helpers["db"]
     user = db.query(models.User).filter(models.User.email == "student-digest@test.ro").first()
     assert user is not None
@@ -85,4 +85,5 @@ def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers
 
     queued_emails2 = db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == JOB_TYPE_SEND_EMAIL).all()
     assert len(queued_emails2) == 1
+
 

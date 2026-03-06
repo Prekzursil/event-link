@@ -30,6 +30,7 @@
   * {
     @apply border-border;
   }
+
   body {
     @apply bg-background text-foreground;
     font-family: system-ui, Avenir, Helvetica, Arial, sans-serif;
@@ -166,3 +167,4 @@
   font-weight: 600;
   color: var(--color-foreground);
 }
+

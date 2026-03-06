@@ -3,27 +3,31 @@ import globals from 'globals'
 import reactHooks from 'eslint-plugin-react-hooks'
 import reactRefresh from 'eslint-plugin-react-refresh'
 import tseslint from 'typescript-eslint'
-import { defineConfig, globalIgnores } from 'eslint/config'
 
-export default defineConfig([
-  globalIgnores(['dist', 'coverage', 'playwright-report', 'test-results']),
+const browserGlobals = {
+  ...globals.browser,
+}
+
+export default tseslint.config(
+  {
+    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', '.eslintrc.cjs', '.stylelintrc.cjs'],
+  },
+  js.configs.recommended,
+  ...tseslint.configs.recommended,
+  reactHooks.configs.flat.recommended,
+  reactRefresh.configs.vite,
   {
     files: ['**/*.{ts,tsx}'],
-    extends: [
-      js.configs.recommended,
-      tseslint.configs.recommended,
-      reactHooks.configs.flat.recommended,
-      reactRefresh.configs.vite,
-    ],
+    languageOptions: {
+      ecmaVersion: 'latest',
+      sourceType: 'module',
+      globals: browserGlobals,
+    },
     rules: {
       'react-refresh/only-export-components': [
         'error',
         { allowConstantExport: true, allowExportNames: ['useAuth', 'useTheme', 'useI18n'] },
       ],
-    },
-    languageOptions: {
-      ecmaVersion: 2020,
-      globals: globals.browser,
     },
   },
   {
@@ -38,4 +42,4 @@ export default defineConfig([
       'react-refresh/only-export-components': 'off',
     },
   },
-])
+)

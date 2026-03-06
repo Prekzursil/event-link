@@ -1,7 +1,7 @@
 def test_registration_endpoints_disabled_in_maintenance_mode(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    organizer_token = helpers["login"]("owner@test.ro", "ownerpass")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    organizer_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
 
     event = client.post(
         "/api/events",

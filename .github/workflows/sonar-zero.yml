@@ -7,30 +7,37 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   sonar-zero:
     name: Sonar Zero
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
     steps:
-      - uses: actions/checkout@v6
-      - name: Run Sonar scan
-        uses: SonarSource/sonarqube-scan-action@v6
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Assert Sonar zero-open gate
-        env:
-          SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+        shell: bash
         run: |
+          set -euo pipefail
+          scope_args=()
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            scope_args+=(--pull-request "${{ github.event.pull_request.number }}")
+          else
+            scope_args+=(--branch "${{ github.ref_name }}")
+          fi
+
           python3 scripts/quality/check_sonar_zero.py \
             --project-key "Prekzursil_event-link" \
+            "${scope_args[@]}" \
             --out-json "sonar-zero/sonar.json" \
             --out-md "sonar-zero/sonar.md"
       - name: Upload Sonar artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: sonar-zero
           path: sonar-zero

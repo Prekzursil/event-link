@@ -19,7 +19,7 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
 
     organizer = models.User(
         email="org-realtime@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     db.add(organizer)
@@ -90,7 +90,7 @@ def test_interactions_respects_realtime_refresh_min_interval(helpers):
 
     organizer = models.User(
         email="org-interval@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     db.add(organizer)

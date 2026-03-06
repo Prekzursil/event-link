@@ -7,19 +7,20 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions:
-  contents: read
+permissions: {}
 
 jobs:
   coverage-100:
     name: Coverage 100 Gate
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
     steps:
-      - uses: actions/checkout@v6
-      - uses: actions/setup-python@v6
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
         with:
           python-version: '3.12'
-      - uses: actions/setup-node@v6
+      - uses: actions/setup-node@53b83947a5a98c8d113130e565377fae1a50d02f # v6
         with:
           node-version: '20'
 
@@ -27,7 +28,7 @@ jobs:
         run: |
           mkdir -p coverage
           python -m pip install --upgrade pip
-          python -m pip install -r backend/requirements.txt pytest pytest-cov
+          python -m pip install -r backend/requirements.txt pytest pytest-cov lizard
           python -m pytest backend/tests --cov=backend --cov-report=xml:backend/coverage.xml
       - name: UI coverage
         run: |
@@ -43,7 +44,7 @@ jobs:
             --out-md "coverage-100/coverage.md"
       - name: Upload coverage artifacts
         if: always()
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: coverage-100
           path: |

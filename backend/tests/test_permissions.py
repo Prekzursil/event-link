@@ -23,10 +23,10 @@ def test_organizer_routes_reject_students(helpers):
 
 def test_participants_visible_only_to_owner(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    helpers["make_organizer"]("other@test.ro", "otherpass")
-    owner_token = helpers["login"]("owner@test.ro", "ownerpass")
-    other_token = helpers["login"]("other@test.ro", "otherpass")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("other@test.ro", "other-fixture-A1")
+    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
+    other_token = helpers["login"]("other@test.ro", "other-fixture-A1")
 
     create_resp = client.post(
         "/api/events",

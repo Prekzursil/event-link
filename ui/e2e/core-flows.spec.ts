@@ -1,48 +1,22 @@
-import { test, expect, type Page } from '@playwright/test';
+import { test, expect } from '@playwright/test';
+import {
+  clearAuth,
+  DEFAULT_E2E_CODE,
+  formatDateTimeLocal,
+  login,
+  setLanguagePreference,
+  expectPathname,
+} from './utils';
 
-const ORGANIZER = { email: 'organizer@test.com', password: 'test123' };
-const STUDENT = { email: 'student@test.com', password: 'test123' };
-
-async function setLanguageToEnglish(page: Page) {
-  await page.addInitScript(() => {
-    window.localStorage.setItem('language_preference', 'en');
-  });
-}
-
-async function clearAuth(page: Page) {
-  if (page.url() === 'about:blank') {
-    await page.goto('/');
-  }
-  await page.evaluate(() => {
-    window.localStorage.removeItem('access_token');
-    window.localStorage.removeItem('refresh_token');
-    window.localStorage.removeItem('user');
-  });
-}
-
-async function login(page: Page, email: string, password: string) {
-  await page.goto('/login');
-  await page.locator('#email').fill(email);
-  await page.locator('#password').fill(password);
-  await page.locator('button[type="submit"]').click();
-  await expect(page).toHaveURL(/\/($|\\?)/);
-}
-
-function formatDateTimeLocal(date: Date): string {
-  const pad = (value: number) => String(value).padStart(2, '0');
-  return [
-    date.getFullYear(),
-    pad(date.getMonth() + 1),
-    pad(date.getDate()),
-  ].join('-') + 'T' + [pad(date.getHours()), pad(date.getMinutes())].join(':');
-}
+const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
+const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
 
 test('core flows: organizer create/edit, student register, organizer attendance, student unregister', async ({ page }) => {
-  await setLanguageToEnglish(page);
+  await setLanguagePreference(page, 'en');
 
   // Organizer creates an event
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
 
   const baseTitle = `E2E Workshop ${Date.now()}`;
   const updatedTitle = `${baseTitle} (edited)`;
@@ -77,7 +51,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Organizer edits the event title
   await page.getByRole('link', { name: 'Edit event' }).click();
-  await expect(page).toHaveURL(new RegExp(`/organizer/events/${createdEventId}/edit$`));
+  await expectPathname(page, `/organizer/events/${createdEventId}/edit`);
   await page.locator('#title').fill(updatedTitle);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/organizer($|\?)/);
@@ -89,7 +63,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Student registers for the event
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.code);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const studentEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(studentEventHeading).toBeVisible();
@@ -99,13 +73,13 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Organizer marks attendance for the student
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const organizerEventHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(organizerEventHeading).toBeVisible();
   await organizerEventHeading.click();
   await page.getByRole('link', { name: 'View participants' }).click();
-  await expect(page).toHaveURL(new RegExp(`/organizer/events/${createdEventId}/participants$`));
+  await expectPathname(page, `/organizer/events/${createdEventId}/participants`);
   await expect(page.getByRole('link', { name: STUDENT.email })).toBeVisible();
 
   const participantRow = page.locator('tr', { hasText: STUDENT.email });
@@ -117,7 +91,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Student unregisters
   await clearAuth(page);
-  await login(page, STUDENT.email, STUDENT.password);
+  await login(page, STUDENT.email, STUDENT.code);
   await page.getByPlaceholder('Search events...').fill(updatedTitle);
   const unregisterHeading = page.getByRole('heading', { name: updatedTitle }).first();
   await expect(unregisterHeading).toBeVisible();
@@ -125,3 +99,8 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await page.getByRole('button', { name: 'Unregister' }).click();
   await expect(page.getByRole('button', { name: 'Register for event' })).toBeVisible();
 });
+
+
+
+
+
