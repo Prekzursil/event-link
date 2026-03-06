@@ -28,13 +28,19 @@ def _unexpected_enqueue(*_args, **_kwargs):
     raise AssertionError("enqueue_job should not run")
 
 
-def _raise(exc: Exception) -> None:
-    raise exc
+def _raise_assertion(message: str) -> None:
+    raise AssertionError(message)
+
+
+def _raise_queue_empty() -> None:
+    raise task_queue.queue.Empty
 
 
 def test_unexpected_enqueue_guard_raises() -> None:
     with pytest.raises(AssertionError, match='enqueue_job should not run'):
         _unexpected_enqueue()
+    with pytest.raises(AssertionError, match='timeout path'):
+        _raise_assertion('timeout path')
 
 def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool(True) is True
@@ -1002,7 +1008,7 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
             "Queue": lambda self: type(
                 "_Queue",
                 (),
-                {"get": lambda self, timeout: _raise(AssertionError("queue get should not run on timeout path"))},
+                {"get": lambda self, timeout: _raise_assertion("queue get should not run on timeout path")},
             )(),
             "Process": lambda self, *args, **kwargs: process,
         },
@@ -1039,7 +1045,7 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
         "_Context",
         (),
         {
-            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: _raise(task_queue.queue.Empty)})(),
+            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: _raise_queue_empty()})(),
             "Process": lambda self, *args, **kwargs: process,
         },
     )()
