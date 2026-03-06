@@ -4,7 +4,6 @@ from __future__ import annotations
 import argparse
 import os
 import sys
-import urllib.parse
 from datetime import datetime, timezone
 from typing import Any
 
@@ -33,16 +32,11 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _request_json(*, provider: str, owner: str, repo: str, token: str) -> tuple[int, dict[str, Any]]:
-    query = urllib.parse.urlencode({"limit": "1"})
     url = build_https_url(
         host="api.codacy.com",
         path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/issues/search",
         query={"limit": "1"},
     )
-    if query:
-        # build_https_url already encoded query; this keeps explicit intent and avoids mutable full URL inputs.
-        pass
-
     payload, _headers, status = request_https_json(
         url,
         headers={
@@ -106,54 +100,68 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
-    args = _parse_args()
-    token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-
+def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, str, str]:
     owner = validate_slug(args.owner, field_name="owner")
     repo = validate_slug(args.repo, field_name="repo")
     provider = validate_slug(args.provider.lower(), field_name="provider")
     if provider not in _CODACY_PROVIDERS:
-        print(f"Unsupported Codacy provider: {provider}", file=sys.stderr)
+        raise ValueError(f"Unsupported Codacy provider: {provider}")
+    token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
+    return token, owner, repo, provider
+
+
+def _provider_candidates(provider: str) -> list[str]:
+    candidates: list[str] = []
+    for candidate in (provider, "gh", "github"):
+        if candidate in _CODACY_PROVIDERS and candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
+
+
+def _evaluate_codacy(*, provider: str, owner: str, repo: str, token: str) -> tuple[str, int | None, list[str]]:
+    if not token:
+        return "fail", None, ["CODACY_API_TOKEN is missing."]
+
+    last_exc: Exception | None = None
+    for candidate in _provider_candidates(provider):
+        try:
+            status_code, payload = _request_json(provider=candidate, owner=owner, repo=repo, token=token)
+        except Exception as exc:  # pragma: no cover - network/runtime surface
+            last_exc = exc
+            return "fail", None, [f"Codacy API request failed: {exc}"]
+
+        if status_code == 404:
+            continue
+        if not 200 <= status_code < 300:
+            return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
+
+        open_issues = extract_total_open(payload)
+        if open_issues is None:
+            return "fail", None, ["Codacy response did not include a parseable total issue count."]
+        if open_issues != 0:
+            return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
+        return "pass", open_issues, []
+
+    findings = [f"Codacy API endpoint was not found for provider(s): {provider}, gh, github."]
+    if last_exc is not None:
+        findings.append(f"Last Codacy API error: {last_exc}")
+    return "fail", None, findings
+
+
+def main() -> int:
+    args = _parse_args()
+    try:
+        token, owner, repo, provider = _validated_inputs(args)
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
         return 1
 
-    findings: list[str] = []
-    open_issues: int | None = None
-
-    if not token:
-        findings.append("CODACY_API_TOKEN is missing.")
-        status = "fail"
-    else:
-        last_exc: Exception | None = None
-        for candidate in (provider, "gh", "github"):
-            if candidate not in _CODACY_PROVIDERS:
-                continue
-            try:
-                status_code, payload = _request_json(provider=candidate, owner=owner, repo=repo, token=token)
-                if status_code == 404:
-                    continue
-                if not 200 <= status_code < 300:
-                    findings.append(f"Codacy API request failed: HTTP {status_code}")
-                    status = "fail"
-                    break
-                open_issues = extract_total_open(payload)
-                if open_issues is None:
-                    findings.append("Codacy response did not include a parseable total issue count.")
-                elif open_issues != 0:
-                    findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
-                status = "pass" if not findings else "fail"
-                break
-            except Exception as exc:  # pragma: no cover - network/runtime surface
-                last_exc = exc
-                findings.append(f"Codacy API request failed: {exc}")
-                status = "fail"
-                break
-        else:
-            findings.append(f"Codacy API endpoint was not found for provider(s): {provider}, gh, github.")
-            if last_exc is not None:
-                findings.append(f"Last Codacy API error: {last_exc}")
-            status = "fail"
-
+    status, open_issues, findings = _evaluate_codacy(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+    )
     payload = {
         "status": status,
         "owner": owner,
@@ -165,11 +173,7 @@ def main() -> int:
     }
 
     try:
-        write_workspace_json(
-            raw_path=args.out_json,
-            fallback="codacy-zero/codacy.json",
-            payload=payload,
-        )
+        write_workspace_json(raw_path=args.out_json, fallback="codacy-zero/codacy.json", payload=payload)
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="codacy-zero/codacy.md",
@@ -185,4 +189,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

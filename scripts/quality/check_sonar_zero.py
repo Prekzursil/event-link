@@ -78,29 +78,25 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
-    args = _parse_args()
+def _validated_scope(args: argparse.Namespace) -> tuple[str, str, str, str, str, list[str]]:
     token = (args.token or os.environ.get("SONAR_TOKEN", "")).strip()
     api_base = normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip("/")
-
     findings: list[str] = []
-    open_issues: int | None = None
-    quality_gate: str | None = None
 
-    project_key = ""
     try:
         project_key = validate_slug(args.project_key, field_name="sonar project key")
     except ValueError as exc:
         findings.append(str(exc))
+        project_key = ""
 
     branch = args.branch.strip()
-    pull_request = args.pull_request.strip()
-
     if branch:
         try:
             branch = validate_slug(branch, field_name="sonar branch")
         except ValueError as exc:
             findings.append(str(exc))
+
+    pull_request = args.pull_request.strip()
     if pull_request:
         try:
             pull_request = validate_slug(pull_request, field_name="sonar pull request")
@@ -109,47 +105,77 @@ def main() -> int:
 
     if not token:
         findings.append("SONAR_TOKEN is missing.")
-        status = "fail"
-    elif findings:
-        status = "fail"
-    else:
-        auth = _auth_header(token)
-        try:
-            issues_query = {
-                "componentKeys": project_key,
-                "resolved": "false",
-                "ps": "1",
-            }
-            if branch:
-                issues_query["branch"] = branch
-            if pull_request:
-                issues_query["pullRequest"] = pull_request
 
-            issues_url = f"{api_base}/api/issues/search?{urllib.parse.urlencode(issues_query)}"
-            issues_payload = _request_json(issues_url, auth)
-            paging = issues_payload.get("paging") or {}
-            open_issues = int(paging.get("total") or 0)
+    return token, api_base, project_key, branch, pull_request, findings
 
-            gate_query = {"projectKey": project_key}
-            if branch:
-                gate_query["branch"] = branch
-            if pull_request:
-                gate_query["pullRequest"] = pull_request
-            gate_url = f"{api_base}/api/qualitygates/project_status?{urllib.parse.urlencode(gate_query)}"
-            gate_payload = _request_json(gate_url, auth)
-            project_status = gate_payload.get("projectStatus") or {}
-            quality_gate = str(project_status.get("status") or "UNKNOWN")
 
-            if open_issues != 0:
-                findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
-            if quality_gate != "OK":
-                findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
+def _issues_query(project_key: str, branch: str, pull_request: str) -> str:
+    issues_query = {
+        "componentKeys": project_key,
+        "resolved": "false",
+        "ps": "1",
+    }
+    if branch:
+        issues_query["branch"] = branch
+    if pull_request:
+        issues_query["pullRequest"] = pull_request
+    return urllib.parse.urlencode(issues_query)
 
-            status = "pass" if not findings else "fail"
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            status = "fail"
-            findings.append(f"Sonar API request failed: {exc}")
 
+def _gate_query(project_key: str, branch: str, pull_request: str) -> str:
+    gate_query = {"projectKey": project_key}
+    if branch:
+        gate_query["branch"] = branch
+    if pull_request:
+        gate_query["pullRequest"] = pull_request
+    return urllib.parse.urlencode(gate_query)
+
+
+def _evaluate_sonar(
+    *,
+    token: str,
+    api_base: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+    findings: list[str],
+) -> tuple[str, int | None, str | None, list[str]]:
+    if findings:
+        return "fail", None, None, findings
+
+    auth = _auth_header(token)
+    try:
+        issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
+        issues_payload = _request_json(issues_url, auth)
+        paging = issues_payload.get("paging") or {}
+        open_issues = int(paging.get("total") or 0)
+
+        gate_url = f"{api_base}/api/qualitygates/project_status?{_gate_query(project_key, branch, pull_request)}"
+        gate_payload = _request_json(gate_url, auth)
+        project_status = gate_payload.get("projectStatus") or {}
+        quality_gate = str(project_status.get("status") or "UNKNOWN")
+    except Exception as exc:  # pragma: no cover - network/runtime surface
+        return "fail", None, None, [*findings, f"Sonar API request failed: {exc}"]
+
+    if open_issues != 0:
+        findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
+    if quality_gate != "OK":
+        findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
+    status = "pass" if not findings else "fail"
+    return status, open_issues, quality_gate, findings
+
+
+def main() -> int:
+    args = _parse_args()
+    token, api_base, project_key, branch, pull_request, findings = _validated_scope(args)
+    status, open_issues, quality_gate, findings = _evaluate_sonar(
+        token=token,
+        api_base=api_base,
+        project_key=project_key,
+        branch=branch,
+        pull_request=pull_request,
+        findings=findings,
+    )
     payload = {
         "status": status,
         "project_key": project_key,
@@ -160,11 +186,7 @@ def main() -> int:
     }
 
     try:
-        write_workspace_json(
-            raw_path=args.out_json,
-            fallback="sonar-zero/sonar.json",
-            payload=payload,
-        )
+        write_workspace_json(raw_path=args.out_json, fallback="sonar-zero/sonar.json", payload=payload)
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="sonar-zero/sonar.md",
@@ -175,10 +197,8 @@ def main() -> int:
         return 1
 
     print(out_md.read_text(encoding="utf-8"), end="")
-
     return 0 if status == "pass" else 1
 
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

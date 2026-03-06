@@ -83,41 +83,50 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
-    args = _parse_args()
+def _validated_inputs(args: argparse.Namespace) -> tuple[str, str | None, list[str]]:
     token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
-    open_issues_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
-
+    raw_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
     findings: list[str] = []
-    open_issues: int | None = None
 
     if not token:
         findings.append("DEEPSCAN_API_TOKEN is missing.")
-    if not open_issues_url:
+    if not raw_url:
         findings.append("DEEPSCAN_OPEN_ISSUES_URL is missing.")
-    else:
-        try:
-            open_issues_url = normalize_https_url(
-                open_issues_url,
-                allowed_host_suffixes={DEEPSCAN_HOST},
-            )
-        except ValueError as exc:
-            findings.append(str(exc))
+        return token, None, findings
 
-    status = "fail"
-    if not findings:
-        try:
-            payload = _request_json(open_issues_url, token)
-            open_issues = extract_total_open(payload)
-            if open_issues is None:
-                findings.append("DeepScan response did not include a parseable total issue count.")
-            elif open_issues != 0:
-                findings.append(f"DeepScan reports {open_issues} open issues (expected 0).")
-            status = "pass" if not findings else "fail"
-        except Exception as exc:  # pragma: no cover - network/runtime surface
-            findings.append(f"DeepScan API request failed: {exc}")
-            status = "fail"
+    try:
+        safe_url = normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST})
+    except ValueError as exc:
+        findings.append(str(exc))
+        safe_url = None
+    return token, safe_url, findings
 
+
+def _evaluate_deepscan(*, token: str, open_issues_url: str | None, findings: list[str]) -> tuple[str, int | None, list[str]]:
+    if findings or open_issues_url is None:
+        return "fail", None, findings
+
+    try:
+        payload = _request_json(open_issues_url, token)
+    except Exception as exc:  # pragma: no cover - network/runtime surface
+        return "fail", None, [*findings, f"DeepScan API request failed: {exc}"]
+
+    open_issues = extract_total_open(payload)
+    if open_issues is None:
+        return "fail", None, [*findings, "DeepScan response did not include a parseable total issue count."]
+    if open_issues != 0:
+        return "fail", open_issues, [*findings, f"DeepScan reports {open_issues} open issues (expected 0)."]
+    return "pass", open_issues, findings
+
+
+def main() -> int:
+    args = _parse_args()
+    token, open_issues_url, findings = _validated_inputs(args)
+    status, open_issues, findings = _evaluate_deepscan(
+        token=token,
+        open_issues_url=open_issues_url,
+        findings=findings,
+    )
     payload = {
         "status": status,
         "open_issues": open_issues,
@@ -127,11 +136,7 @@ def main() -> int:
     }
 
     try:
-        write_workspace_json(
-            raw_path=args.out_json,
-            fallback="deepscan-zero/deepscan.json",
-            payload=payload,
-        )
+        write_workspace_json(raw_path=args.out_json, fallback="deepscan-zero/deepscan.json", payload=payload)
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="deepscan-zero/deepscan.md",
@@ -147,4 +152,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

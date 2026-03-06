@@ -334,18 +334,15 @@ def _apply_reanalysis_if_clean(
     failures.extend(reanalysis_failures)
 
 
-def _run_sync(
+def _sync_changes(
     *,
     provider: str,
     owner: str,
     repo: str,
     token: str,
-    commit_sha: str,
+    tools_by_name: dict[str, dict[str, Any]],
     dry_run: bool,
-) -> dict[str, Any]:
-    tools = _list_tools(provider=provider, owner=owner, repo=repo, token=token)
-    tools_by_name = _tools_by_name(tools)
-
+) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], list[str]]:
     tool_changes, notes, failures = _sync_tool_settings(
         provider=provider,
         owner=owner,
@@ -364,6 +361,27 @@ def _run_sync(
     )
     notes.extend(pattern_notes)
     failures.extend(pattern_failures)
+    return tool_changes, pattern_changes, notes, failures
+
+
+def _run_sync(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    commit_sha: str,
+    dry_run: bool,
+) -> dict[str, Any]:
+    tools_by_name = _tools_by_name(_list_tools(provider=provider, owner=owner, repo=repo, token=token))
+    tool_changes, pattern_changes, notes, failures = _sync_changes(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        tools_by_name=tools_by_name,
+        dry_run=dry_run,
+    )
     _apply_reanalysis_if_clean(
         provider=provider,
         owner=owner,
@@ -374,15 +392,9 @@ def _run_sync(
         notes=notes,
         failures=failures,
     )
-
+    context = _sync_context(provider=provider, owner=owner, repo=repo, commit_sha=commit_sha, dry_run=dry_run)
     return _build_payload(
-        context=_sync_context(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            commit_sha=commit_sha,
-            dry_run=dry_run,
-        ),
+        context=context,
         tool_changes=tool_changes,
         pattern_changes=pattern_changes,
         notes=notes,

@@ -1,16 +1,80 @@
 from __future__ import annotations
 
-import urllib.error
-import urllib.request
 import ipaddress
 import json
 import re
+import urllib.error
+import urllib.request
 from pathlib import Path
 from urllib.parse import urlencode, urlparse, urlunparse
 
 _SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
 _HOST_RE = re.compile(r"^(?:[A-Za-z0-9-]+\.)+[A-Za-z0-9-]+$")
+_FORBIDDEN_IP_ATTRIBUTES = (
+    "is_private",
+    "is_loopback",
+    "is_link_local",
+    "is_reserved",
+    "is_multicast",
+)
+_LOCAL_HOSTS = {"localhost", "localhost.localdomain"}
+
+
+def _parse_https_url(raw_url: str):
+    parsed = urlparse((raw_url or "").strip())
+    if parsed.scheme != "https":
+        raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
+    if parsed.username or parsed.password:
+        raise ValueError(f"URL credentials are not allowed: {raw_url!r}")
+    return parsed
+
+
+def _normalized_hostname(parsed, raw_url: str) -> str:
+    if not parsed.hostname:
+        raise ValueError(f"URL is missing a hostname: {raw_url!r}")
+    return parsed.hostname.lower().strip(".")
+
+
+def _normalized_set(values: set[str] | None) -> set[str]:
+    if values is None:
+        return set()
+    return {value.lower().strip(".") for value in values if value.strip(".")}
+
+
+def _validate_host_allowlists(
+    hostname: str,
+    *,
+    allowed_hosts: set[str] | None,
+    allowed_host_suffixes: set[str] | None,
+) -> None:
+    normalized_hosts = _normalized_set(allowed_hosts)
+    if normalized_hosts and hostname not in normalized_hosts:
+        raise ValueError(f"URL host is not in allowlist: {hostname}")
+
+    suffixes = _normalized_set(allowed_host_suffixes)
+    if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
+        raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
+
+
+def _parse_ip_address(hostname: str):
+    try:
+        return ipaddress.ip_address(hostname)
+    except ValueError:
+        return None
+
+
+def _is_forbidden_ip(ip_value) -> bool:
+    if ip_value is None:
+        return False
+    return any(bool(getattr(ip_value, attribute, False)) for attribute in _FORBIDDEN_IP_ATTRIBUTES)
+
+
+def _reject_local_target(hostname: str) -> None:
+    if hostname in _LOCAL_HOSTS:
+        raise ValueError("Localhost URLs are not allowed.")
+    if _is_forbidden_ip(_parse_ip_address(hostname)):
+        raise ValueError(f"Private or local addresses are not allowed: {hostname}")
 
 
 def normalize_https_url(
@@ -30,41 +94,14 @@ def normalize_https_url(
     - optional hostname suffix allowlist.
     """
 
-    parsed = urlparse((raw_url or "").strip())
-    if parsed.scheme != "https":
-        raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
-    if not parsed.hostname:
-        raise ValueError(f"URL is missing a hostname: {raw_url!r}")
-    if parsed.username or parsed.password:
-        raise ValueError(f"URL credentials are not allowed: {raw_url!r}")
-
-    hostname = parsed.hostname.lower().strip(".")
-    if allowed_hosts is not None and hostname not in {host.lower().strip(".") for host in allowed_hosts}:
-        raise ValueError(f"URL host is not in allowlist: {hostname}")
-    if allowed_host_suffixes is not None:
-        suffixes = {suffix.lower().strip(".") for suffix in allowed_host_suffixes if suffix.strip(".")}
-        if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
-            raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
-
-    try:
-        ip_value = ipaddress.ip_address(hostname)
-    except ValueError:
-        ip_value = None
-
-    if ip_value is not None and any(
-        bool(getattr(ip_value, attribute, False))
-        for attribute in (
-            "is_private",
-            "is_loopback",
-            "is_link_local",
-            "is_reserved",
-            "is_multicast",
-        )
-    ):
-        raise ValueError(f"Private or local addresses are not allowed: {hostname}")
-
-    if hostname in {"localhost", "localhost.localdomain"}:
-        raise ValueError("Localhost URLs are not allowed.")
+    parsed = _parse_https_url(raw_url)
+    hostname = _normalized_hostname(parsed, raw_url)
+    _validate_host_allowlists(
+        hostname,
+        allowed_hosts=allowed_hosts,
+        allowed_host_suffixes=allowed_host_suffixes,
+    )
+    _reject_local_target(hostname)
 
     sanitized = parsed._replace(fragment="", params="")
     if strip_query:

@@ -132,55 +132,110 @@ def _render_md(payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def main() -> int:
-    args = _parse_args()
-    token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
+def _validated_runtime(args: argparse.Namespace) -> tuple[str, list[str], str, str, str]:
     required = [item.strip() for item in args.required_context if item.strip()]
-
     if not required:
-        raise SystemExit("At least one --required-context is required")
+        raise ValueError("At least one --required-context is required")
+
+    token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
     if not token:
-        raise SystemExit("GITHUB_TOKEN or GH_TOKEN is required")
+        raise ValueError("GITHUB_TOKEN or GH_TOKEN is required")
 
     owner, repo = validate_repo_full_name(args.repo)
     sha = validate_commit_sha(args.sha)
+    return token, required, owner, repo, sha
 
-    deadline = time.time() + max(args.timeout_seconds, 1)
 
+def _payload_from_contexts(
+    *,
+    owner: str,
+    repo: str,
+    sha: str,
+    required: list[str],
+    contexts: dict[str, dict[str, str]],
+) -> dict[str, Any]:
+    status, missing, failed = _evaluate(required, contexts)
+    return {
+        "status": status,
+        "repo": f"{owner}/{repo}",
+        "sha": sha,
+        "required": required,
+        "missing": missing,
+        "failed": failed,
+        "contexts": contexts,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+    }
+
+
+def _fetch_contexts(*, owner: str, repo: str, sha: str, token: str) -> dict[str, dict[str, str]]:
+    check_runs = _api_get(
+        build_github_commit_checks_url(owner=owner, repo=repo, sha=sha, per_page=100),
+        token,
+    )
+    statuses = _api_get(
+        build_github_commit_status_url(owner=owner, repo=repo, sha=sha),
+        token,
+    )
+    return _collect_contexts(check_runs, statuses)
+
+
+def _has_in_progress_check_runs(contexts: dict[str, dict[str, str]]) -> bool:
+    return any(
+        value.get("state") != "completed"
+        for value in contexts.values()
+        if value.get("source") == "check_run"
+    )
+
+
+def _poll_required_contexts(
+    *,
+    owner: str,
+    repo: str,
+    sha: str,
+    token: str,
+    required: list[str],
+    timeout_seconds: int,
+    poll_seconds: int,
+) -> dict[str, Any]:
+    deadline = time.time() + max(timeout_seconds, 1)
     final_payload: dict[str, Any] | None = None
+
     while time.time() <= deadline:
-        check_runs = _api_get(
-            build_github_commit_checks_url(owner=owner, repo=repo, sha=sha, per_page=100),
-            token,
+        contexts = _fetch_contexts(owner=owner, repo=repo, sha=sha, token=token)
+        final_payload = _payload_from_contexts(
+            owner=owner,
+            repo=repo,
+            sha=sha,
+            required=required,
+            contexts=contexts,
         )
-        statuses = _api_get(
-            build_github_commit_status_url(owner=owner, repo=repo, sha=sha),
-            token,
-        )
-        contexts = _collect_contexts(check_runs, statuses)
-        status, missing, failed = _evaluate(required, contexts)
-
-        final_payload = {
-            "status": status,
-            "repo": f"{owner}/{repo}",
-            "sha": sha,
-            "required": required,
-            "missing": missing,
-            "failed": failed,
-            "contexts": contexts,
-            "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        }
-
-        if status == "pass":
-            break
-
-        in_progress = any(v.get("state") != "completed" for v in contexts.values() if v.get("source") == "check_run")
-        if not missing and not in_progress:
-            break
-        time.sleep(max(args.poll_seconds, 1))
+        if final_payload["status"] == "pass":
+            return final_payload
+        if not final_payload["missing"] and not _has_in_progress_check_runs(contexts):
+            return final_payload
+        time.sleep(max(poll_seconds, 1))
 
     if final_payload is None:
-        raise SystemExit("No payload collected")
+        raise RuntimeError("No payload collected")
+    return final_payload
+
+
+def main() -> int:
+    args = _parse_args()
+    try:
+        token, required, owner, repo, sha = _validated_runtime(args)
+    except ValueError as exc:
+        raise SystemExit(str(exc))
+
+    final_payload = _poll_required_contexts(
+        owner=owner,
+        repo=repo,
+        sha=sha,
+        token=token,
+        required=required,
+        timeout_seconds=args.timeout_seconds,
+        poll_seconds=args.poll_seconds,
+    )
 
     try:
         write_workspace_json(
