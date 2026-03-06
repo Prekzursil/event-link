@@ -1,0 +1,57 @@
+name: Codacy Tool Sync
+
+on:
+  workflow_dispatch:
+    inputs:
+      commit:
+        description: Commit SHA to reanalyze after syncing tool settings
+        required: false
+        type: string
+      dry_run:
+        description: Report intended Codacy changes without applying them
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  codacy-tool-sync:
+    name: Codacy Tool Sync
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    env:
+      CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
+      TARGET_COMMIT: ${{ inputs.commit != '' && inputs.commit || github.sha }}
+      DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Assert Codacy token is present
+        shell: bash
+        run: |
+          set -euo pipefail
+          test -n "${CODACY_API_TOKEN:-}"
+      - name: Sync Codacy repository tools
+        shell: bash
+        run: |
+          set -euo pipefail
+          args=()
+          if [ "${DRY_RUN}" = "true" ]; then
+            args+=(--dry-run)
+          fi
+          python3 scripts/quality/sync_codacy_repo_tools.py \
+            --provider gh \
+            --owner Prekzursil \
+            --repo event-link \
+            --commit "${TARGET_COMMIT}" \
+            --out-json codacy-tool-sync/codacy-sync.json \
+            --out-md codacy-tool-sync/codacy-sync.md \
+            "${args[@]}"
+      - name: Upload Codacy sync artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: codacy-tool-sync
+          path: codacy-tool-sync
