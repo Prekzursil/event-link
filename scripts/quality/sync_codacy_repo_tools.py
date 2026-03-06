@@ -7,7 +7,6 @@ import json
 import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 from urllib.parse import urlparse
 
@@ -21,6 +20,7 @@ write_workspace_json = _security_helpers.write_workspace_json
 write_workspace_text = _security_helpers.write_workspace_text
 
 CODACY_HOST = "api.codacy.com"
+NONE_MARKDOWN_ITEM = "- None"
 DISABLED_TOOL_NAMES = {
     "CSSLint (deprecated)",
     "ESLint",
@@ -72,9 +72,13 @@ def _request_codacy(
     if body is not None:
         headers["Content-Type"] = "application/json"
 
+    request_path = parsed.path or "/"
+    if parsed.query:
+        request_path = f"{request_path}?{parsed.query}"
+
     connection = http.client.HTTPSConnection(parsed.hostname, port=parsed.port or 443, timeout=30)
     try:
-        connection.request(method.upper(), parsed.path or "/", body=payload_bytes, headers=headers)
+        connection.request(method.upper(), request_path, body=payload_bytes, headers=headers)
         response = connection.getresponse()
         raw_text = response.read().decode("utf-8")
         parsed_payload: Any = None
@@ -168,74 +172,34 @@ def _planned_tool_payload(tool_name: str, settings: dict[str, Any]) -> tuple[dic
     return (payload or None), notes
 
 
-def _render_md(payload: dict[str, Any]) -> str:
-    lines = [
-        "# Codacy Tool Sync",
-        "",
-        f"- Status: `{payload['status']}`",
-        f"- Repository: `{payload['owner']}/{payload['repo']}`",
-        f"- Commit reanalyzed: `{payload['commit']}`",
-        f"- Dry run: `{payload['dry_run']}`",
-        f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
-        "",
-        "## Tool Changes",
-    ]
-    tool_changes = payload.get("tool_changes") or []
-    if tool_changes:
-        for item in tool_changes:
-            lines.append(f"- `{item['tool']}` -> `{json.dumps(item['payload'], sort_keys=True)}`")
-    else:
-        lines.append("- None")
-
-    lines.extend(["", "## Pattern Changes"])
-    pattern_changes = payload.get("pattern_changes") or []
-    if pattern_changes:
-        for item in pattern_changes:
-            lines.append(f"- `{item['tool']}` disable `{item['pattern_id']}`")
-    else:
-        lines.append("- None")
-
-    lines.extend(["", "## Notes"])
-    notes = payload.get("notes") or []
-    if notes:
-        lines.extend(f"- {note}" for note in notes)
-    else:
-        lines.append("- None")
-
-    lines.extend(["", "## Failures"])
-    failures = payload.get("failures") or []
-    if failures:
-        lines.extend(f"- {failure}" for failure in failures)
-    else:
-        lines.append("- None")
-
-    return "\n".join(lines) + "\n"
+def _append_markdown_section(lines: list[str], title: str, items: list[str]) -> None:
+    lines.extend(["", f"## {title}"])
+    if items:
+        lines.extend(items)
+        return
+    lines.append(NONE_MARKDOWN_ITEM)
 
 
-def main() -> int:
-    args = _parse_args()
-    token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    if not token:
-        print("CODACY_API_TOKEN is missing", file=sys.stderr)
-        return 1
+def _tool_uuid(tool_name: str, tool: dict[str, Any]) -> str:
+    return validate_slug(str(tool["uuid"]), field_name=f"{tool_name} uuid")
 
-    provider = validate_slug(args.provider.lower(), field_name="provider")
-    owner = validate_slug(args.owner, field_name="owner")
-    repo = validate_slug(args.repo, field_name="repo")
-    commit_sha = validate_commit_sha(args.commit)
 
+def _tools_by_name(tools: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
+    return {str(tool["name"]): tool for tool in tools if isinstance(tool, dict) and tool.get("name")}
+
+
+def _sync_tool_settings(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    tools_by_name: dict[str, dict[str, Any]],
+    dry_run: bool,
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
     notes: list[str] = []
     failures: list[str] = []
     tool_changes: list[dict[str, Any]] = []
-    pattern_changes: list[dict[str, Any]] = []
-
-    try:
-        tools = _list_tools(provider=provider, owner=owner, repo=repo, token=token)
-    except Exception as exc:
-        print(str(exc), file=sys.stderr)
-        return 1
-
-    tools_by_name = {tool.get("name"): tool for tool in tools if isinstance(tool, dict) and tool.get("name")}
 
     for tool_name, tool in sorted(tools_by_name.items()):
         settings = tool.get("settings") if isinstance(tool.get("settings"), dict) else {}
@@ -243,11 +207,8 @@ def main() -> int:
         notes.extend(tool_notes)
         if payload is None:
             continue
-        tool_changes.append({
-            "tool": tool_name,
-            "payload": payload,
-        })
-        if args.dry_run:
+        tool_changes.append({"tool": tool_name, "payload": payload})
+        if dry_run:
             continue
         try:
             _configure_tool(
@@ -255,21 +216,37 @@ def main() -> int:
                 owner=owner,
                 repo=repo,
                 token=token,
-                tool_uuid=validate_slug(str(tool["uuid"]), field_name=f"{tool_name} uuid"),
+                tool_uuid=_tool_uuid(tool_name, tool),
                 payload=payload,
             )
         except Exception as exc:
             failures.append(str(exc))
+
+    return tool_changes, notes, failures
+
+
+def _sync_pattern_settings(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    tools_by_name: dict[str, dict[str, Any]],
+    dry_run: bool,
+) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    notes: list[str] = []
+    failures: list[str] = []
+    pattern_changes: list[dict[str, Any]] = []
 
     for tool_name, pattern_ids in DISABLED_PATTERNS_BY_TOOL.items():
         tool = tools_by_name.get(tool_name)
         if not isinstance(tool, dict):
             notes.append(f"{tool_name}: tool not present in repository settings")
             continue
-        tool_uuid = validate_slug(str(tool["uuid"]), field_name=f"{tool_name} uuid")
+        tool_uuid = _tool_uuid(tool_name, tool)
         for pattern_id in sorted(pattern_ids):
             pattern_changes.append({"tool": tool_name, "pattern_id": pattern_id})
-            if args.dry_run:
+            if dry_run:
                 continue
             try:
                 _disable_pattern(
@@ -283,27 +260,163 @@ def main() -> int:
             except Exception as exc:
                 failures.append(str(exc))
 
-    if not failures and not args.dry_run:
-        try:
-            _reanalyze_commit(provider=provider, owner=owner, repo=repo, token=token, commit_sha=commit_sha)
-            notes.append(f"Triggered Codacy reanalysis for {commit_sha}")
-        except Exception as exc:
-            failures.append(str(exc))
+    return pattern_changes, notes, failures
 
-    status = "pass" if not failures else "fail"
-    payload = {
-        "status": status,
+
+def _trigger_reanalysis(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    commit_sha: str,
+    dry_run: bool,
+) -> tuple[list[str], list[str]]:
+    if dry_run:
+        return [], []
+    try:
+        _reanalyze_commit(provider=provider, owner=owner, repo=repo, token=token, commit_sha=commit_sha)
+    except Exception as exc:
+        return [], [str(exc)]
+    return [f"Triggered Codacy reanalysis for {commit_sha}"], []
+
+
+def _build_payload(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    commit_sha: str,
+    dry_run: bool,
+    tool_changes: list[dict[str, Any]],
+    pattern_changes: list[dict[str, Any]],
+    notes: list[str],
+    failures: list[str],
+) -> dict[str, Any]:
+    return {
+        "status": "pass" if not failures else "fail",
         "provider": provider,
         "owner": owner,
         "repo": repo,
         "commit": commit_sha,
-        "dry_run": args.dry_run,
+        "dry_run": dry_run,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "tool_changes": tool_changes,
         "pattern_changes": pattern_changes,
         "notes": notes,
         "failures": failures,
     }
+
+
+def _run_sync(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    commit_sha: str,
+    dry_run: bool,
+) -> dict[str, Any]:
+    tools = _list_tools(provider=provider, owner=owner, repo=repo, token=token)
+    tools_by_name = _tools_by_name(tools)
+
+    tool_changes, notes, failures = _sync_tool_settings(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        tools_by_name=tools_by_name,
+        dry_run=dry_run,
+    )
+    pattern_changes, pattern_notes, pattern_failures = _sync_pattern_settings(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        tools_by_name=tools_by_name,
+        dry_run=dry_run,
+    )
+    notes.extend(pattern_notes)
+    failures.extend(pattern_failures)
+
+    if not failures:
+        reanalysis_notes, reanalysis_failures = _trigger_reanalysis(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            commit_sha=commit_sha,
+            dry_run=dry_run,
+        )
+        notes.extend(reanalysis_notes)
+        failures.extend(reanalysis_failures)
+
+    return _build_payload(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        commit_sha=commit_sha,
+        dry_run=dry_run,
+        tool_changes=tool_changes,
+        pattern_changes=pattern_changes,
+        notes=notes,
+        failures=failures,
+    )
+
+
+def _render_md(payload: dict[str, Any]) -> str:
+    lines = [
+        "# Codacy Tool Sync",
+        "",
+        f"- Status: `{payload['status']}`",
+        f"- Repository: `{payload['owner']}/{payload['repo']}`",
+        f"- Commit reanalyzed: `{payload['commit']}`",
+        f"- Dry run: `{payload['dry_run']}`",
+        f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
+    ]
+    _append_markdown_section(
+        lines,
+        "Tool Changes",
+        [f"- `{item['tool']}` -> `{json.dumps(item['payload'], sort_keys=True)}`" for item in payload.get("tool_changes") or []],
+    )
+    _append_markdown_section(
+        lines,
+        "Pattern Changes",
+        [f"- `{item['tool']}` disable `{item['pattern_id']}`" for item in payload.get("pattern_changes") or []],
+    )
+    _append_markdown_section(lines, "Notes", [f"- {note}" for note in payload.get("notes") or []])
+    _append_markdown_section(lines, "Failures", [f"- {failure}" for failure in payload.get("failures") or []])
+    return "\n".join(lines) + "\n"
+
+
+def _resolve_token(cli_token: str) -> str:
+    return (cli_token or os.environ.get("CODACY_API_TOKEN", "")).strip()
+
+
+def main() -> int:
+    args = _parse_args()
+    token = _resolve_token(args.token)
+    if not token:
+        print("CODACY_API_TOKEN is missing", file=sys.stderr)
+        return 1
+
+    provider = validate_slug(args.provider.lower(), field_name="provider")
+    owner = validate_slug(args.owner, field_name="owner")
+    repo = validate_slug(args.repo, field_name="repo")
+    commit_sha = validate_commit_sha(args.commit)
+
+    try:
+        payload = _run_sync(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            commit_sha=commit_sha,
+            dry_run=args.dry_run,
+        )
+    except Exception as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
     try:
         write_workspace_json(raw_path=args.out_json, fallback="codacy-tool-sync/codacy-sync.json", payload=payload)
@@ -313,7 +426,7 @@ def main() -> int:
         return 1
 
     print(md_path.read_text(encoding="utf-8"), end="")
-    return 0 if status == "pass" else 1
+    return 0 if payload["status"] == "pass" else 1
 
 
 if __name__ == "__main__":
