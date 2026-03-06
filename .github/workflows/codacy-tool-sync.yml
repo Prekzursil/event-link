@@ -1,6 +1,9 @@
 name: Codacy Tool Sync
 
 on:
+  push:
+    branches:
+      - fix/true-zero-and-coverage-100-v3
   workflow_dispatch:
     inputs:
       commit:
