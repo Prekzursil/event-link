@@ -57,6 +57,9 @@ export async function registerStudent(page: Page, email: string, accessCode: str
   await page.locator('button[type="submit"]').click();
 }
 
+export async function expectPathname(page: Page, expectedPathname: string) {
+  await expect.poll(() => new URL(page.url()).pathname).toBe(expectedPathname);
+}
 export function formatDateTimeLocal(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return (
@@ -113,3 +116,4 @@ LIMIT 1;
 
   throw new Error(`No reset link code found for ${email}`);
 }
+

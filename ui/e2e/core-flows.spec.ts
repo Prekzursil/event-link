@@ -5,6 +5,7 @@ import {
   formatDateTimeLocal,
   login,
   setLanguagePreference,
+  expectPathname,
 } from './utils';
 
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
@@ -50,7 +51,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
 
   // Organizer edits the event title
   await page.getByRole('link', { name: 'Edit event' }).click();
-  await expect(page).toHaveURL(new RegExp(`/organizer/events/${createdEventId}/edit$`));
+  await expectPathname(page, `/organizer/events/${createdEventId}/edit`);
   await page.locator('#title').fill(updatedTitle);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/organizer($|\?)/);
@@ -78,7 +79,7 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await expect(organizerEventHeading).toBeVisible();
   await organizerEventHeading.click();
   await page.getByRole('link', { name: 'View participants' }).click();
-  await expect(page).toHaveURL(new RegExp(`/organizer/events/${createdEventId}/participants$`));
+  await expectPathname(page, `/organizer/events/${createdEventId}/participants`);
   await expect(page.getByRole('link', { name: STUDENT.email })).toBeVisible();
 
   const participantRow = page.locator('tr', { hasText: STUDENT.email });
@@ -98,6 +99,8 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await page.getByRole('button', { name: 'Unregister' }).click();
   await expect(page.getByRole('button', { name: 'Register for event' })).toBeVisible();
 });
+
+
 
 
 

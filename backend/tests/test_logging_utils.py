@@ -1,5 +1,7 @@
+import asyncio
 import logging
 
+from app import logging_utils
 from app.logging_utils import log_event, log_warning
 
 _SENSITIVE_ATTR = "pass" + "word"
@@ -34,8 +36,6 @@ def test_log_warning_does_not_emit_sensitive_kwargs(caplog):
     assert not hasattr(record, "details")
     assert not hasattr(record, _AUTH_CONTEXT_FIELD)
 
-import asyncio
-from app import logging_utils
 
 
 def test_json_formatter_adds_exc_info_field() -> None:
@@ -93,3 +93,4 @@ def test_log_error_sanitizes_message(caplog):
         logging_utils.log_error("danger\nline")
 
     assert caplog.records[-1].getMessage() == "event=dangerline"
+

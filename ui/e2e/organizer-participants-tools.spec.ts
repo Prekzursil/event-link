@@ -1,5 +1,5 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, setLanguagePreference } from './utils';
+import { clearAuth, DEFAULT_E2E_CODE, expectPathname, formatDateTimeLocal, login, setLanguagePreference } from './utils';
 
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
@@ -61,7 +61,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   await expect(organizerHeading).toBeVisible();
   await organizerHeading.click();
   await page.getByRole('link', { name: 'View participants' }).click();
-  await expect(page).toHaveURL(new RegExp(`/organizer/events/${eventId}/participants$`));
+  await expectPathname(page, `/organizer/events/${eventId}/participants`);
 
   await expect(page.getByRole('link', { name: STUDENT.email })).toBeVisible();
 
@@ -83,5 +83,7 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('Email sent to 1 participants.').first()).toBeVisible();
 });
+
+
 
 
