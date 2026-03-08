@@ -64,12 +64,14 @@ def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatc
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
 
     status, open_issues, quality_gate, findings = module._evaluate_sonar(
-        token="token",
-        api_base="https://sonarcloud.io",
-        project_key="Prekzursil_event-link",
-        branch="",
-        pull_request="97",
-        expected_commit="0123456789abcdef0123456789abcdef01234567",
+        runtime={
+            "token": "token",
+            "api_base": "https://sonarcloud.io",
+            "project_key": "Prekzursil_event-link",
+            "branch": "",
+            "pull_request": "97",
+            "expected_commit": "0123456789abcdef0123456789abcdef01234567",
+        },
         timeout_seconds=30,
         poll_seconds=7,
         findings=[],
@@ -92,20 +94,22 @@ def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: py
     monkeypatch.setattr(module.time, "time", lambda: next(timestamps))
 
     status, open_issues, quality_gate, findings = module._evaluate_sonar(
-        token="token",
-        api_base="https://sonarcloud.io",
-        project_key="Prekzursil_event-link",
-        branch="",
-        pull_request="97",
-        expected_commit="0123456789abcdef0123456789abcdef01234567",
+        runtime={
+            "token": "token",
+            "api_base": "https://sonarcloud.io",
+            "project_key": "Prekzursil_event-link",
+            "branch": "",
+            "pull_request": "97",
+            "expected_commit": "0123456789abcdef0123456789abcdef01234567",
+        },
         timeout_seconds=1,
         poll_seconds=1,
         findings=[],
     )
 
     assert status == "fail"
-    assert open_issues == 0
-    assert quality_gate == "OK"
+    assert open_issues is None
+    assert quality_gate is None
     assert findings == [
-        "Sonar has not analyzed commit 0123456789abcdef0123456789abcdef01234567; latest analyzed commit is feedfeedfeedfeedfeedfeedfeedfeedfeedfeed."
+        "Sonar API request failed: Sonar has not analyzed commit 0123456789abcdef0123456789abcdef01234567; latest analyzed commit is feedfeedfeedfeedfeedfeedfeedfeedfeedfeed."
     ]

@@ -75,3 +75,11 @@ def test_sonar_zero_workflow_waits_for_the_current_commit_analysis() -> None:
 
     assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
     assert '--expected-commit "${TARGET_SHA}"' in content
+
+
+def test_codacy_zero_workflow_uses_pr_or_commit_scoped_analysis() -> None:
+    content = (REPO_ROOT / '.github' / 'workflows' / 'codacy-zero.yml').read_text(encoding='utf-8')
+
+    assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
+    assert 'scope_args+=(--pr-number "${{ github.event.pull_request.number }}")' in content
+    assert '--commit "${TARGET_SHA}"' in content
