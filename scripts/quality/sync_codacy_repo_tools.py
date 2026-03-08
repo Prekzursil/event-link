@@ -200,6 +200,70 @@ def _config_only_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
     return None
 
 
+def _retry_standard_managed_tool_with_config_only(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    tool_name: str,
+    tool_uuid: str,
+    payload: dict[str, Any],
+) -> tuple[list[str], list[str]]:
+    config_payload = _config_only_payload(payload)
+    if config_payload is None:
+        return [f"{tool_name}: managed by Codacy standard; skipping disable request"], []
+
+    notes = [f"{tool_name}: managed by Codacy standard; retrying config-file mode without disable request"]
+    try:
+        _configure_tool(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            tool_uuid=tool_uuid,
+            payload=config_payload,
+        )
+    except Exception as exc:
+        return notes, [str(exc)]
+    return notes, []
+
+
+def _apply_tool_configuration(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    tool_name: str,
+    tool_uuid: str,
+    payload: dict[str, Any],
+) -> tuple[list[str], list[str]]:
+    try:
+        _configure_tool(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            tool_uuid=tool_uuid,
+            payload=payload,
+        )
+    except Exception as exc:
+        message = str(exc)
+        if not _is_standard_managed_tool_conflict(message):
+            return [], [message]
+        return _retry_standard_managed_tool_with_config_only(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            tool_name=tool_name,
+            tool_uuid=tool_uuid,
+            payload=payload,
+        )
+    return [], []
+
+
 def _sync_tool_settings(
     *,
     provider: str,
@@ -223,39 +287,17 @@ def _sync_tool_settings(
         if dry_run:
             continue
         tool_uuid = _tool_uuid(tool_name, tool)
-        try:
-            _configure_tool(
-                provider=provider,
-                owner=owner,
-                repo=repo,
-                token=token,
-                tool_uuid=tool_uuid,
-                payload=payload,
-            )
-        except Exception as exc:
-            message = str(exc)
-            if _is_standard_managed_tool_conflict(message):
-                config_payload = _config_only_payload(payload)
-                if config_payload is not None:
-                    notes.append(
-                        f"{tool_name}: managed by Codacy standard; retrying config-file mode without disable request"
-                    )
-                    try:
-                        _configure_tool(
-                            provider=provider,
-                            owner=owner,
-                            repo=repo,
-                            token=token,
-                            tool_uuid=tool_uuid,
-                            payload=config_payload,
-                        )
-                    except Exception as retry_exc:
-                        failures.append(str(retry_exc))
-                    else:
-                        continue
-                notes.append(f"{tool_name}: managed by Codacy standard; skipping disable request")
-                continue
-            failures.append(message)
+        tool_notes, tool_failures = _apply_tool_configuration(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            tool_name=tool_name,
+            tool_uuid=tool_uuid,
+            payload=payload,
+        )
+        notes.extend(tool_notes)
+        failures.extend(tool_failures)
 
     return tool_changes, notes, failures
 
