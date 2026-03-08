@@ -162,10 +162,10 @@ def _planned_tool_payload(tool_name: str, settings: dict[str, Any]) -> tuple[dic
     if tool_name in CONFIG_FILE_TOOL_NAMES:
         has_config = bool(settings.get("hasConfigurationFile"))
         uses_config = bool(settings.get("usesConfigurationFile"))
-        if not uses_config:
+        if has_config and not uses_config:
             payload["useConfigurationFile"] = True
-        if not has_config:
-            notes.append(f"{tool_name}: configuration file not detected by Codacy yet; requesting config-file mode anyway")
+        elif not has_config:
+            notes.append(f"{tool_name}: configuration file not detected by Codacy; skipping config-file mode request")
 
     return (payload or None), notes
 

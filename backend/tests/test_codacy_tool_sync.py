@@ -24,8 +24,8 @@ def test_planned_tool_payload_disables_legacy_tools():
 
     payload, notes = module._planned_tool_payload('ESLint', {'isEnabled': True})
 
-    assert payload == {'enabled': False, 'useConfigurationFile': True}
-    assert notes == ['ESLint: configuration file not detected by Codacy yet; requesting config-file mode anyway']
+    assert payload == {'enabled': False}
+    assert notes == ['ESLint: configuration file not detected by Codacy; skipping config-file mode request']
 
 
 
@@ -55,7 +55,7 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
 
 
 
-def test_planned_tool_payload_requests_missing_configuration_files_anyway():
+def test_planned_tool_payload_skips_missing_configuration_files():
     module = _load_module()
 
     payload, notes = module._planned_tool_payload(
@@ -63,8 +63,8 @@ def test_planned_tool_payload_requests_missing_configuration_files_anyway():
         {'isEnabled': True, 'hasConfigurationFile': False, 'usesConfigurationFile': False},
     )
 
-    assert payload == {'useConfigurationFile': True}
-    assert notes == ['Stylelint: configuration file not detected by Codacy yet; requesting config-file mode anyway']
+    assert payload is None
+    assert notes == ['Stylelint: configuration file not detected by Codacy; skipping config-file mode request']
 
 
 
@@ -157,8 +157,7 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
 
     assert payload['status'] == 'pass'
     assert payload['tool_changes'] == [
-        {'tool': 'ESLint', 'payload': {'enabled': False, 'useConfigurationFile': True}},
-        {'tool': 'Pylint', 'payload': {'useConfigurationFile': True}},
+        {'tool': 'ESLint', 'payload': {'enabled': False}},
     ]
     assert payload['pattern_changes'] == [{'tool': 'Pylint', 'pattern_id': 'PyLint_W1618'}]
     assert payload['failures'] == []
@@ -173,7 +172,7 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
         'ESLint': {
             'name': 'ESLint',
             'uuid': 'eslint-uuid',
-            'settings': {'isEnabled': True},
+            'settings': {'isEnabled': True, 'hasConfigurationFile': True, 'usesConfigurationFile': False},
         }
     }
     calls = []
@@ -201,10 +200,7 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
     assert tool_changes == [{'tool': 'ESLint', 'payload': {'enabled': False, 'useConfigurationFile': True}}]
     assert failures == []
     assert calls == [{'enabled': False, 'useConfigurationFile': True}, {'useConfigurationFile': True}]
-    assert notes == [
-        'ESLint: configuration file not detected by Codacy yet; requesting config-file mode anyway',
-        'ESLint: managed by Codacy standard; retrying config-file mode without disable request',
-    ]
+    assert notes == ['ESLint: managed by Codacy standard; retrying config-file mode without disable request']
 
 
 

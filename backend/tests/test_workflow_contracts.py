@@ -4,6 +4,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 QUALITY_GATE = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-gate.yml'
 DEEPSCAN_ZERO = REPO_ROOT / '.github' / 'workflows' / 'deepscan-zero.yml'
 SEMGREP_ZERO = REPO_ROOT / '.github' / 'workflows' / 'semgrep-zero.yml'
+SNYK_ZERO = REPO_ROOT / '.github' / 'workflows' / 'snyk-zero.yml'
 WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
     REPO_ROOT / '.github' / 'workflows' / 'ci.yml',
     REPO_ROOT / '.github' / 'workflows' / 'coverage-100.yml',
@@ -14,7 +15,6 @@ WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
     REPO_ROOT / '.github' / 'workflows' / 'deepscan-zero.yml',
     REPO_ROOT / '.github' / 'workflows' / 'sentry-zero.yml',
     REPO_ROOT / '.github' / 'workflows' / 'sonar-zero.yml',
-    REPO_ROOT / '.github' / 'workflows' / 'snyk-zero.yml',
 ]
 
 
@@ -33,6 +33,10 @@ def test_semgrep_zero_workflow_exists_and_supports_pr_and_dispatch() -> None:
     assert 'pull_request:' in content
     assert 'workflow_dispatch:' in content
     assert 'name: Semgrep Zero' in content
+
+
+def test_snyk_zero_workflow_has_been_removed() -> None:
+    assert not SNYK_ZERO.exists()
 
 
 def test_selected_workflows_define_top_level_permissions_floor() -> None:
