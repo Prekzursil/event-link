@@ -17,6 +17,7 @@ jobs:
       contents: read
     env:
       SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}
+      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
       - name: Assert Sonar zero-open gate
@@ -33,6 +34,7 @@ jobs:
           python3 scripts/quality/check_sonar_zero.py \
             --project-key "Prekzursil_event-link" \
             "${scope_args[@]}" \
+            --expected-commit "${TARGET_SHA}" \
             --out-json "sonar-zero/sonar.json" \
             --out-md "sonar-zero/sonar.md"
       - name: Upload Sonar artifacts

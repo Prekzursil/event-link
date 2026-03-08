@@ -5,6 +5,7 @@ import argparse
 import base64
 import os
 import sys
+import time
 import urllib.parse
 from datetime import datetime, timezone
 from typing import Any
@@ -13,6 +14,7 @@ from _security_import import load_security_helpers
 
 _security_helpers = load_security_helpers(__file__)
 normalize_https_url = _security_helpers.normalize_https_url
+validate_commit_sha = _security_helpers.validate_commit_sha
 validate_slug = _security_helpers.validate_slug
 request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
@@ -28,6 +30,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--token", default="", help="Sonar token (falls back to SONAR_TOKEN env)")
     parser.add_argument("--branch", default="", help="Optional branch scope")
     parser.add_argument("--pull-request", default="", help="Optional PR scope")
+    parser.add_argument("--expected-commit", default="", help="Optional commit SHA that Sonar must have analyzed")
+    parser.add_argument("--timeout-seconds", type=int, default=180, help="Max seconds to wait for Sonar analysis")
+    parser.add_argument("--poll-seconds", type=int, default=5, help="Polling interval while waiting for analysis")
     parser.add_argument("--out-json", default="sonar-zero/sonar.json", help="Output JSON path")
     parser.add_argument("--out-md", default="sonar-zero/sonar.md", help="Output markdown path")
     return parser.parse_args()
@@ -103,10 +108,17 @@ def _validated_scope(args: argparse.Namespace) -> tuple[str, str, str, str, str,
         except ValueError as exc:
             findings.append(str(exc))
 
+    expected_commit = args.expected_commit.strip()
+    if expected_commit:
+        try:
+            expected_commit = validate_commit_sha(expected_commit)
+        except ValueError as exc:
+            findings.append(str(exc))
+
     if not token:
         findings.append("SONAR_TOKEN is missing.")
 
-    return token, api_base, project_key, branch, pull_request, findings
+    return token, api_base, project_key, branch, pull_request, expected_commit, findings
 
 
 def _issues_query(project_key: str, branch: str, pull_request: str) -> str:
@@ -131,6 +143,104 @@ def _gate_query(project_key: str, branch: str, pull_request: str) -> str:
     return urllib.parse.urlencode(gate_query)
 
 
+def _status_issue_count(status: dict[str, Any]) -> int:
+    return sum(int(status.get(key) or 0) for key in ("bugs", "vulnerabilities", "codeSmells"))
+
+
+def _summary_from_entry(entry: dict[str, Any]) -> tuple[int, str, str]:
+    status = entry.get("status") if isinstance(entry.get("status"), dict) else {}
+    commit = entry.get("commit") if isinstance(entry.get("commit"), dict) else {}
+    return _status_issue_count(status), str(status.get("qualityGateStatus") or "UNKNOWN"), str(commit.get("sha") or "")
+
+
+def _pull_request_summary(*, api_base: str, auth: str, project_key: str, pull_request: str) -> tuple[int, str, str]:
+    query = urllib.parse.urlencode({"project": project_key})
+    payload = _request_json(f"{api_base}/api/project_pull_requests/list?{query}", auth)
+    for entry in payload.get("pullRequests") or []:
+        if isinstance(entry, dict) and str(entry.get("key") or "") == pull_request:
+            return _summary_from_entry(entry)
+    raise RuntimeError(f"Sonar PR summary not found for pull request {pull_request}")
+
+
+def _branch_summary(*, api_base: str, auth: str, project_key: str, branch: str) -> tuple[int, str, str]:
+    query = urllib.parse.urlencode({"project": project_key})
+    payload = _request_json(f"{api_base}/api/project_branches/list?{query}", auth)
+    for entry in payload.get("branches") or []:
+        if isinstance(entry, dict) and str(entry.get("name") or "") == branch:
+            return _summary_from_entry(entry)
+    raise RuntimeError(f"Sonar branch summary not found for branch {branch}")
+
+
+def _scoped_summary(
+    *,
+    api_base: str,
+    auth: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+) -> tuple[int, str, str]:
+    if pull_request:
+        return _pull_request_summary(
+            api_base=api_base,
+            auth=auth,
+            project_key=project_key,
+            pull_request=pull_request,
+        )
+    if branch:
+        return _branch_summary(
+            api_base=api_base,
+            auth=auth,
+            project_key=project_key,
+            branch=branch,
+        )
+    raise RuntimeError("Sonar branch or pull-request scope is required for summary checks")
+
+
+def _legacy_summary(
+    *,
+    api_base: str,
+    auth: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+) -> tuple[int, str, str]:
+    issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
+    issues_payload = _request_json(issues_url, auth)
+    paging = issues_payload.get("paging") or {}
+    open_issues = int(paging.get("total") or 0)
+
+    gate_url = f"{api_base}/api/qualitygates/project_status?{_gate_query(project_key, branch, pull_request)}"
+    gate_payload = _request_json(gate_url, auth)
+    project_status = gate_payload.get("projectStatus") or {}
+    quality_gate = str(project_status.get("status") or "UNKNOWN")
+    return open_issues, quality_gate, ""
+
+
+def _current_summary(
+    *,
+    api_base: str,
+    auth: str,
+    project_key: str,
+    branch: str,
+    pull_request: str,
+) -> tuple[int, str, str]:
+    if branch or pull_request:
+        return _scoped_summary(
+            api_base=api_base,
+            auth=auth,
+            project_key=project_key,
+            branch=branch,
+            pull_request=pull_request,
+        )
+    return _legacy_summary(
+        api_base=api_base,
+        auth=auth,
+        project_key=project_key,
+        branch=branch,
+        pull_request=pull_request,
+    )
+
+
 def _evaluate_sonar(
     *,
     token: str,
@@ -138,22 +248,37 @@ def _evaluate_sonar(
     project_key: str,
     branch: str,
     pull_request: str,
+    expected_commit: str,
+    timeout_seconds: int,
+    poll_seconds: int,
     findings: list[str],
 ) -> tuple[str, int | None, str | None, list[str]]:
     if findings:
         return "fail", None, None, findings
 
     auth = _auth_header(token)
-    try:
-        issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
-        issues_payload = _request_json(issues_url, auth)
-        paging = issues_payload.get("paging") or {}
-        open_issues = int(paging.get("total") or 0)
+    open_issues: int | None = None
+    quality_gate: str | None = None
+    analyzed_commit = ""
+    deadline = time.time() + max(timeout_seconds, 1)
 
-        gate_url = f"{api_base}/api/qualitygates/project_status?{_gate_query(project_key, branch, pull_request)}"
-        gate_payload = _request_json(gate_url, auth)
-        project_status = gate_payload.get("projectStatus") or {}
-        quality_gate = str(project_status.get("status") or "UNKNOWN")
+    try:
+        while True:
+            open_issues, quality_gate, analyzed_commit = _current_summary(
+                api_base=api_base,
+                auth=auth,
+                project_key=project_key,
+                branch=branch,
+                pull_request=pull_request,
+            )
+            if not expected_commit or analyzed_commit == expected_commit:
+                break
+            if time.time() > deadline:
+                findings.append(
+                    f"Sonar has not analyzed commit {expected_commit}; latest analyzed commit is {analyzed_commit or 'unknown'}."
+                )
+                return "fail", open_issues, quality_gate, findings
+            time.sleep(max(poll_seconds, 1))
     except Exception as exc:  # pragma: no cover - network/runtime surface
         return "fail", None, None, [*findings, f"Sonar API request failed: {exc}"]
 
@@ -167,13 +292,16 @@ def _evaluate_sonar(
 
 def main() -> int:
     args = _parse_args()
-    token, api_base, project_key, branch, pull_request, findings = _validated_scope(args)
+    token, api_base, project_key, branch, pull_request, expected_commit, findings = _validated_scope(args)
     status, open_issues, quality_gate, findings = _evaluate_sonar(
         token=token,
         api_base=api_base,
         project_key=project_key,
         branch=branch,
         pull_request=pull_request,
+        expected_commit=expected_commit,
+        timeout_seconds=args.timeout_seconds,
+        poll_seconds=args.poll_seconds,
         findings=findings,
     )
     payload = {

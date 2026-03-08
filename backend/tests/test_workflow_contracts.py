@@ -68,3 +68,10 @@ def test_deepscan_zero_workflow_has_github_status_fallback_inputs() -> None:
     assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
     assert '--repo "${GITHUB_REPOSITORY}"' in content
     assert '--sha "${TARGET_SHA}"' in content
+
+
+def test_sonar_zero_workflow_waits_for_the_current_commit_analysis() -> None:
+    content = (REPO_ROOT / '.github' / 'workflows' / 'sonar-zero.yml').read_text(encoding='utf-8')
+
+    assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
+    assert '--expected-commit "${TARGET_SHA}"' in content
