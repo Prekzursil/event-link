@@ -42,4 +42,13 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
+  {
+    files: [
+      'tests/high-impact-pages-coverage.fixtures.tsx',
+      'tests/mega-pages-branches.fixtures.tsx',
+    ],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
 )

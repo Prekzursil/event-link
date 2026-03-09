@@ -106,6 +106,31 @@ def _collect_projects(args: argparse.Namespace) -> list[str]:
     return projects
 
 
+def _validated_org(org_input: str, findings: list[str]) -> str:
+    if not org_input:
+        findings.append("SENTRY_ORG is missing.")
+        return ""
+    try:
+        return validate_slug(org_input, field_name="sentry org")
+    except ValueError as exc:
+        findings.append(str(exc))
+        return ""
+
+
+def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
+    if not projects:
+        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT).")
+        return []
+
+    safe_projects: list[str] = []
+    for project in projects:
+        try:
+            safe_projects.append(validate_slug(project, field_name="sentry project"))
+        except ValueError as exc:
+            findings.append(str(exc))
+    return safe_projects
+
+
 def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], str, list[str]]:
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org_input = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
@@ -114,26 +139,8 @@ def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], st
     if not token:
         findings.append("SENTRY_AUTH_TOKEN is missing.")
 
-    org = ""
-    if not org_input:
-        findings.append("SENTRY_ORG is missing.")
-    else:
-        try:
-            org = validate_slug(org_input, field_name="sentry org")
-        except ValueError as exc:
-            findings.append(str(exc))
-
-    safe_projects: list[str] = []
-    projects = _collect_projects(args)
-    if not projects:
-        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT).")
-    else:
-        for project in projects:
-            try:
-                safe_projects.append(validate_slug(project, field_name="sentry project"))
-            except ValueError as exc:
-                findings.append(str(exc))
-
+    org = _validated_org(org_input, findings)
+    safe_projects = _validated_projects(_collect_projects(args), findings)
     api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={SENTRY_HOST}).rstrip("/")
     return token, org, safe_projects, api_base, findings
 

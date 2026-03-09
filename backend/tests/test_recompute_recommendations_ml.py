@@ -133,6 +133,25 @@ def _seed_training_rows(db_session):
     return student, events["candidate"]
 
 
+def _warning_path_query_error(args: tuple[object, ...], state: dict[str, bool]) -> str | None:
+    if args and args[0] is models.UserImplicitInterestCategory.user_id and not state["category"]:
+        state["category"] = True
+        return "category boom"
+    if args and args[0] is models.UserImplicitInterestCity.user_id and not state["city"]:
+        state["city"] = True
+        return "city boom"
+    is_interaction_query = (
+        len(args) == 3
+        and args[0] is models.EventInteraction.user_id
+        and args[1] is models.EventInteraction.interaction_type
+        and args[2] is models.EventInteraction.meta
+    )
+    if is_interaction_query and not state["interaction"]:
+        state["interaction"] = True
+        return "interaction boom"
+    return None
+
+
 def _build_helper_user_and_events(module, now: datetime):
     user = module._UserFeatures(
         city="cluj",
@@ -439,21 +458,8 @@ def test_main_training_warning_paths_continue_on_query_failures(monkeypatch, db_
     state = {"category": False, "city": False, "interaction": False}
 
     def _query(*args, **kwargs):
-        if args and args[0] is models.UserImplicitInterestCategory.user_id and not state["category"]:
-            state["category"] = True
-            raise RuntimeError("category boom")
-        if args and args[0] is models.UserImplicitInterestCity.user_id and not state["city"]:
-            state["city"] = True
-            raise RuntimeError("city boom")
-        if (
-            len(args) == 3
-            and args[0] is models.EventInteraction.user_id
-            and args[1] is models.EventInteraction.interaction_type
-            and args[2] is models.EventInteraction.meta
-            and not state["interaction"]
-        ):
-            state["interaction"] = True
-            raise RuntimeError("interaction boom")
+        if message := _warning_path_query_error(args, state):
+            raise RuntimeError(message)
         return real_query(*args, **kwargs)
 
     monkeypatch.setattr(db_session, "query", _query)

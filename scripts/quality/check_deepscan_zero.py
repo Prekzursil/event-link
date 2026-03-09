@@ -235,21 +235,44 @@ def _render_md(payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _validated_inputs(args: argparse.Namespace) -> tuple[str, str | None, str, str, str, list[str]]:
-    token = (args.token or os.environ.get("DEEPSCAN_API_TOKEN", "")).strip()
-    raw_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
-    repo = (args.repo or os.environ.get("GITHUB_REPOSITORY", "")).strip()
-    sha = (args.sha or os.environ.get("TARGET_SHA", "") or os.environ.get("GITHUB_SHA", "")).strip()
-    github_token = (args.github_token or os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
-    findings: list[str] = []
-    safe_url: str | None = None
+def _preferred_value(arg_value: str, *env_names: str) -> str:
+    if arg_value:
+        return arg_value.strip()
+    for env_name in env_names:
+        value = os.environ.get(env_name, "").strip()
+        if value:
+            return value
+    return ""
 
-    if raw_url:
-        try:
-            safe_url = normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST})
-        except ValueError as exc:
-            findings.append(str(exc))
-    if safe_url is None and not (repo and sha and github_token):
+
+def _validated_open_issues_url(raw_url: str, findings: list[str]) -> str | None:
+    if not raw_url:
+        return None
+    try:
+        return normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST})
+    except ValueError as exc:
+        findings.append(str(exc))
+        return None
+
+
+def _github_status_fallback_configured(*, repo: str, sha: str, github_token: str) -> bool:
+    return all((repo, sha, github_token))
+
+
+def _validated_inputs(args: argparse.Namespace) -> tuple[str, str | None, str, str, str, list[str]]:
+    token = _preferred_value(args.token, "DEEPSCAN_API_TOKEN")
+    raw_url = os.environ.get("DEEPSCAN_OPEN_ISSUES_URL", "").strip()
+    repo = _preferred_value(args.repo, "GITHUB_REPOSITORY")
+    sha = _preferred_value(args.sha, "TARGET_SHA", "GITHUB_SHA")
+    github_token = _preferred_value(args.github_token, "GITHUB_TOKEN", "GH_TOKEN")
+    findings: list[str] = []
+    safe_url = _validated_open_issues_url(raw_url, findings)
+
+    if safe_url is None and not _github_status_fallback_configured(
+        repo=repo,
+        sha=sha,
+        github_token=github_token,
+    ):
         findings.append(
             "DeepScan open-issues URL is missing and GitHub status fallback is not fully configured."
         )
@@ -322,5 +345,4 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-
 
