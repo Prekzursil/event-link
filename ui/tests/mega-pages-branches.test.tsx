@@ -16,6 +16,11 @@ import {
 const { adminServiceMock, authState, eventServiceMock, navigateSpy, toastSpy } =
   getMegaPageFixtures();
 
+function requireEnabledButton(buttons: HTMLElement[], label: string) {
+  const button = buttons.find((candidate) => !candidate.hasAttribute('disabled'));
+  return requireElement(button, label);
+}
+
 describe('mega pages branch matrix', () => {
   it('covers admin dashboard queue/users/events action branches', async () => {
     renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
@@ -179,10 +184,13 @@ describe('mega pages branch matrix', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Reload/i }));
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalledTimes(2));
+    await waitFor(() =>
+      expect(screen.queryByText(/Loading admin dashboard|Se încarcă tabloul de bord/i)).not.toBeInTheDocument(),
+    );
 
-    fireEvent.click(screen.getByRole('button', { name: /Retrain/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Digest/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Filling-fast/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Retrain/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Digest/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Filling-fast/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     const usersTab = screen.getByRole('tab', { name: /Users/i });
@@ -225,18 +233,21 @@ describe('mega pages branch matrix', () => {
       page_size: 20,
     });
 
-    const usersNextButton = screen.getByRole('button', { name: /Next|Urm|Înainte/i });
+    const usersNextButton = requireEnabledButton(
+      screen.getAllByRole('button', { name: /Next|Urm|Înainte/i }),
+      'users next button',
+    );
     fireEvent.click(usersNextButton);
     await waitFor(() =>
       expect(adminServiceMock.getUsers).toHaveBeenCalledWith(expect.objectContaining({ page: 2 })),
     );
 
-    await waitFor(() =>
-      expect(screen.queryByText(/Loading users|Se încarcă utilizatorii/i)).not.toBeInTheDocument(),
+    const usersPrevButton = requireEnabledButton(
+      await screen.findAllByRole('button', {
+        name: /Back|Prev|Previous|Înapoi|Anterior/i,
+      }),
+      'users previous button',
     );
-    const usersPrevButton = screen.getByRole('button', {
-      name: /Back|Prev|Previous|Înapoi|Anterior/i,
-    });
     fireEvent.click(usersPrevButton);
     await waitFor(() =>
       expect(adminServiceMock.getUsers).toHaveBeenCalledWith(expect.objectContaining({ page: 1 })),
