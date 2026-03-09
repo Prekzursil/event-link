@@ -1,3 +1,5 @@
+/* eslint-disable react-refresh/only-export-components */
+
 import { cleanup } from '@testing-library/react';
 import { beforeEach, vi } from 'vitest';
 
