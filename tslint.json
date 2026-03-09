@@ -1,0 +1,7 @@
+{
+  "defaultSeverity": "error",
+  "extends": [],
+  "rules": {
+    "no-default-export": false
+  }
+}

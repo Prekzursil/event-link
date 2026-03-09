@@ -124,9 +124,17 @@ export function StudentProfilePage() {
         <Checkbox
           id={`tag-${tag.id}`}
           checked={isSelected}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={(e) => e.stopPropagation()}
-          onCheckedChange={() => handleTagToggle(tag.id)}
+          onClick={(e) => {
+            e.stopPropagation();
+            handleTagToggle(tag.id);
+          }}
+          onKeyDown={(e) => {
+            e.stopPropagation();
+            if (e.key === 'Enter' || e.key === ' ') {
+              e.preventDefault();
+              handleTagToggle(tag.id);
+            }
+          }}
         />
         <Label htmlFor={`tag-${tag.id}`} className="cursor-pointer flex-1 text-sm">
           {tag.name}
@@ -405,12 +413,22 @@ export function StudentProfilePage() {
     }
   };
 
+  const closeDeleteDialog = () => {
+    setDeleteDialogOpen(false);
+  };
+
+  useEffect(() => {
+    if (!deleteDialogOpen) {
+      setDeletePassword('');
+    }
+  }, [deleteDialogOpen]);
+
   const handleDeleteAccount = async () => {
     const password = deletePassword.trim();
     if (!password) {
       toast({
-        title: t.profile.deletePasswordMissingTitle,
-        description: t.profile.deletePasswordMissingDescription,
+        title: t.profile.deleteAccessCodeMissingTitle,
+        description: t.profile.deleteAccessCodeMissingDescription,
         variant: 'destructive',
       });
       return;
@@ -423,8 +441,7 @@ export function StudentProfilePage() {
         title: t.profile.deletedTitle,
         description: t.profile.deletedDescription,
       });
-      setDeleteDialogOpen(false);
-      setDeletePassword('');
+      closeDeleteDialog();
       logout();
       navigate('/');
     } catch (error: unknown) {
@@ -913,12 +930,7 @@ export function StudentProfilePage() {
         </CardContent>
       </Card>
 
-      <Dialog open={deleteDialogOpen} onOpenChange={(open) => {
-        setDeleteDialogOpen(open);
-        if (!open) {
-          setDeletePassword('');
-        }
-      }}>
+      <Dialog open={deleteDialogOpen} onOpenChange={setDeleteDialogOpen}>
         <DialogContent>
           <DialogHeader>
             <DialogTitle>{t.profile.deleteDialogTitle}</DialogTitle>
@@ -928,13 +940,13 @@ export function StudentProfilePage() {
           </DialogHeader>
 
           <div className="space-y-2">
-            <Label htmlFor="deletePassword">{t.profile.deletePasswordLabel}</Label>
+            <Label htmlFor="deletePassword">{t.profile.deleteAccessCodeLabel}</Label>
             <Input
               id="deletePassword"
               type="password"
               value={deletePassword}
               onChange={(e) => setDeletePassword(e.target.value)}
-              placeholder={t.profile.deletePasswordPlaceholder}
+              placeholder={t.profile.deleteAccessCodePlaceholder}
               disabled={isDeleting}
             />
           </div>
@@ -942,7 +954,7 @@ export function StudentProfilePage() {
           <DialogFooter>
             <Button
               variant="outline"
-              onClick={() => setDeleteDialogOpen(false)}
+              onClick={closeDeleteDialog}
               disabled={isDeleting}
             >
               {t.common.cancel}
@@ -969,3 +981,4 @@ export function StudentProfilePage() {
 }
 
 export default StudentProfilePage;
+

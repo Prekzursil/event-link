@@ -2,17 +2,20 @@
 from __future__ import annotations
 
 import argparse
-import json
 import os
 import sys
 from datetime import datetime, timezone
-from pathlib import Path
+
+from _security_import import load_security_helpers
+
+_security_helpers = load_security_helpers(__file__)
+write_workspace_json = _security_helpers.write_workspace_json
+write_workspace_text = _security_helpers.write_workspace_text
 
 DEFAULT_REQUIRED_SECRETS = [
     "SONAR_TOKEN",
     "CODACY_API_TOKEN",
     "SENTRY_AUTH_TOKEN",
-    "APPLITOOLS_API_KEY",
 ]
 
 DEFAULT_REQUIRED_VARS = [
@@ -42,11 +45,21 @@ def _dedupe(items: list[str]) -> list[str]:
     return out
 
 
+def _is_present(name: str) -> bool:
+    return bool(str(os.environ.get(name, "")).strip())
+
+
+def _partition_present_and_missing(names: list[str]) -> tuple[list[str], list[str]]:
+    missing: list[str] = []
+    present: list[str] = []
+    for name in names:
+        (present if _is_present(name) else missing).append(name)
+    return missing, present
+
+
 def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
-    missing_secrets = [name for name in required_secrets if not str(os.environ.get(name, "")).strip()]
-    missing_vars = [name for name in required_vars if not str(os.environ.get(name, "")).strip()]
-    present_secrets = [name for name in required_secrets if name not in missing_secrets]
-    present_vars = [name for name in required_vars if name not in missing_vars]
+    missing_secrets, present_secrets = _partition_present_and_missing(required_secrets)
+    missing_vars, present_vars = _partition_present_and_missing(required_vars)
     return {
         "missing_secrets": missing_secrets,
         "missing_vars": missing_vars,
@@ -80,19 +93,6 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
-
-
 def main() -> int:
     args = _parse_args()
     required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
@@ -109,17 +109,20 @@ def main() -> int:
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "quality-secrets/secrets.json")
-        out_md = _safe_output_path(args.out_md, "quality-secrets/secrets.md")
+        write_workspace_json(
+            raw_path=args.out_json,
+            fallback="quality-secrets/secrets.json",
+            payload=payload,
+        )
+        out_md = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="quality-secrets/secrets.md",
+            text=_render_md(payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
 
     return 0 if status == "pass" else 1

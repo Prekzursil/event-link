@@ -1,0 +1,5 @@
+exclude_dirs:
+  - tests
+  - integration_tests
+  - backend/tests
+  - backend/integration_tests

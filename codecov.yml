@@ -1,6 +1,41 @@
 codecov:
   require_ci_to_pass: true
 
+ignore:
+  - .bandit
+  - .codacy.yml
+  - .eslintrc.cjs
+  - .github/**
+  - .prospector.yaml
+  - .pylintrc
+  - .stylelintrc.cjs
+  - .stylelintrc.json
+  - backend/alembic/**
+  - backend/Dockerfile
+  - backend/fixture_helpers.py
+  - backend/main.py
+  - backend/scripts/**
+  - backend/seed_data.py
+  - backend/tests/**
+  - backend/integration_tests/**
+  - contracts/openapi.json
+  - docker-compose.yml
+  - eslint.config.mjs
+  - loadtests/**
+  - scripts/**
+  - scripts/quality/**
+  - sonar-project.properties
+  - tslint.json
+  - ui/.eslintrc.cjs
+  - ui/.stylelintrc.cjs
+  - ui/Dockerfile
+  - ui/e2e/**
+  - ui/eslint.config.js
+  - ui/nginx.conf
+  - ui/tests/**
+  - ui/package.json
+  - ui/package-lock.json
+
 coverage:
   precision: 2
   round: down

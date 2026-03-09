@@ -1,4 +1,4 @@
-export { OrganizerDashboardPage } from './OrganizerDashboardPage';
 export { EventFormPage } from './EventFormPage';
-export { ParticipantsPage } from './ParticipantsPage';
+export { OrganizerDashboardPage } from './OrganizerDashboardPage';
 export { OrganizerProfilePage } from './OrganizerProfilePage';
+export { ParticipantsPage } from './ParticipantsPage';

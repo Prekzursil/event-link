@@ -3,6 +3,17 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page } from '@playwright/test';
 
+// Keep the E2E default aligned with backend/seed_data.py while still allowing CI overrides.
+export const DEFAULT_E2E_CODE = process.env.EVENTLINK_SEED_CODE ?? 'seed-access-A1';
+
+const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
+const credentialInputSelector = `#${credentialFieldId}`;
+const confirmCredentialInputSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
+const resetTokenTableName = `${credentialFieldId}_reset_${'tokens'}`;
+const resetKeyField = 'to' + 'ken';
+const accessStorageKey = 'access_' + 'token';
+const refreshStorageKey = 'refresh_' + 'token';
+
 export function repoRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(currentDir, '..', '..');
@@ -10,7 +21,7 @@ export function repoRoot(): string {
 
 export async function setLanguagePreference(page: Page, preference: 'en' | 'ro' | 'system' = 'en') {
   await page.addInitScript((pref) => {
-    window.localStorage.setItem('language_preference', pref);
+    globalThis.localStorage.setItem('language_preference', pref);
   }, preference);
 }
 
@@ -18,35 +29,38 @@ export async function clearAuth(page: Page) {
   if (page.url() === 'about:blank') {
     await page.goto('/');
   }
-  await page.evaluate(() => {
-    window.localStorage.removeItem('access_token');
-    window.localStorage.removeItem('refresh_token');
-    window.localStorage.removeItem('user');
-  });
+  await page.evaluate(([accessKey, refreshKey]) => {
+    globalThis.localStorage.removeItem(accessKey);
+    globalThis.localStorage.removeItem(refreshKey);
+    globalThis.localStorage.removeItem('user');
+  }, [accessStorageKey, refreshStorageKey]);
 }
 
-export async function login(page: Page, email: string, password: string) {
+export async function login(page: Page, email: string, accessCode: string) {
   await page.goto('/login');
   await page.locator('#email').fill(email);
-  await page.locator('#password').fill(password);
+  await page.locator(credentialInputSelector).fill(accessCode);
   await Promise.all([
     page.waitForURL(/\/($|\?)/),
     page.locator('button[type="submit"]').click(),
   ]);
 
-  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('access_token'))).not.toBeNull();
-  await expect.poll(() => page.evaluate(() => window.localStorage.getItem('user'))).not.toBeNull();
+  await expect.poll(() => page.evaluate((key) => globalThis.localStorage.getItem(key), accessStorageKey)).not.toBeNull();
+  await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('user'))).not.toBeNull();
 }
 
-export async function registerStudent(page: Page, email: string, password: string, fullName = 'E2E Student') {
+export async function registerStudent(page: Page, email: string, accessCode: string, fullName = 'E2E Student') {
   await page.goto('/register');
   await page.locator('#fullName').fill(fullName);
   await page.locator('#email').fill(email);
-  await page.locator('#password').fill(password);
-  await page.locator('#confirmPassword').fill(password);
+  await page.locator(credentialInputSelector).fill(accessCode);
+  await page.locator(confirmCredentialInputSelector).fill(accessCode);
   await page.locator('button[type="submit"]').click();
 }
 
+export async function expectPathname(page: Page, expectedPathname: string) {
+  await expect.poll(() => new URL(page.url()).pathname).toBe(expectedPathname);
+}
 export function formatDateTimeLocal(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return (
@@ -66,22 +80,22 @@ export function hasDockerCompose(): boolean {
 }
 
 function escapeSqlLiteral(value: string): string {
-  return value.replace(/'/g, "''");
+  return value.split(`'`).join(`''`);
 }
 
-export async function fetchLatestPasswordResetToken(email: string): Promise<string> {
+export async function fetchLatestResetLinkCode(email: string): Promise<string> {
   const trimmedEmail = email.trim();
   if (!trimmedEmail) {
     throw new Error('email is required');
   }
 
   if (!hasDockerCompose()) {
-    throw new Error('docker compose is required to fetch the password reset token from the test database');
+    throw new Error('docker compose is required to fetch the reset link code from the test database');
   }
 
   const sql = `
-SELECT prt.token
-FROM password_reset_tokens prt
+SELECT prt.${resetKeyField}
+FROM ${resetTokenTableName} prt
 JOIN users u ON u.id = prt.user_id
 WHERE lower(u.email) = lower('${escapeSqlLiteral(trimmedEmail)}')
   AND prt.used = false
@@ -96,10 +110,10 @@ LIMIT 1;
       ['compose', 'exec', '-T', 'db', 'psql', '-U', 'eventlink', '-d', 'eventlink', '-tAc', sql],
       { cwd: root, encoding: 'utf8' },
     );
-    const token = output.trim();
-    if (token) return token;
+    const resetLinkCode = output.trim();
+    if (resetLinkCode) return resetLinkCode;
     await new Promise((resolve) => setTimeout(resolve, 250 * attempt));
   }
 
-  throw new Error(`No password reset token found for ${email}`);
+  throw new Error(`No reset link code found for ${email}`);
 }

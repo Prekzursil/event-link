@@ -12,12 +12,12 @@ export function normalizeLanguagePreference(value: unknown): LanguagePreference 
 
 export function getStoredLanguagePreference(): LanguagePreference {
   if (typeof window === 'undefined') return 'system';
-  return normalizeLanguagePreference(window.localStorage.getItem(STORAGE_KEY));
+  return normalizeLanguagePreference(globalThis.localStorage.getItem(STORAGE_KEY));
 }
 
 export function storeLanguagePreference(preference: LanguagePreference) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, preference);
+  globalThis.localStorage.setItem(STORAGE_KEY, preference);
 }
 
 export function getSystemLanguage(): ResolvedLanguage {

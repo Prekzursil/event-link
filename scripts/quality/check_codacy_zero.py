@@ -3,24 +3,24 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
-import urllib.error
-import urllib.parse
-import urllib.request
+import time
 from datetime import datetime, timezone
-from pathlib import Path
 from typing import Any
 
-_SCRIPT_DIR = Path(__file__).resolve().parent
-_HELPER_ROOT = _SCRIPT_DIR if (_SCRIPT_DIR / "security_helpers.py").exists() else _SCRIPT_DIR.parent
-if str(_HELPER_ROOT) not in sys.path:
-    sys.path.insert(0, str(_HELPER_ROOT))
+from _security_import import load_security_helpers
 
-from security_helpers import normalize_https_url
-
+_security_helpers = load_security_helpers(__file__)
+build_https_url = _security_helpers.build_https_url
+validate_commit_sha = _security_helpers.validate_commit_sha
+validate_slug = _security_helpers.validate_slug
+request_https_json = _security_helpers.request_https_json
+write_workspace_json = _security_helpers.write_workspace_json
+write_workspace_text = _security_helpers.write_workspace_text
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
-CODACY_API_BASE = "https://api.codacy.com"
+_CODACY_PROVIDERS = {"gh", "github"}
 
 
 def _parse_args() -> argparse.Namespace:
@@ -28,50 +28,77 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--provider", default="gh", help="Organization provider, for example gh")
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
+    parser.add_argument("--pr-number", default="", help="Optional pull request number")
+    parser.add_argument("--commit", default="", help="Optional commit SHA")
+    parser.add_argument("--timeout-seconds", type=int, default=180, help="Max seconds to wait for Codacy analysis")
+    parser.add_argument("--poll-seconds", type=int, default=5, help="Polling interval while waiting for analysis")
     parser.add_argument("--token", default="", help="Codacy API token (falls back to CODACY_API_TOKEN env)")
     parser.add_argument("--out-json", default="codacy-zero/codacy.json", help="Output JSON path")
     parser.add_argument("--out-md", default="codacy-zero/codacy.md", help="Output markdown path")
     return parser.parse_args()
 
 
-def _request_json(url: str, token: str, *, method: str = "GET", data: dict[str, Any] | None = None) -> dict[str, Any]:
-    safe_url = normalize_https_url(url, allowed_host_suffixes={"codacy.com"}).rstrip("/")
-    body = None
-    headers = {
-        "Accept": "application/json",
-        "api-token": token,
-        "User-Agent": "reframe-codacy-zero-gate",
-    }
-    if data is not None:
-        body = json.dumps(data).encode("utf-8")
-        headers["Content-Type"] = "application/json"
-    req = urllib.request.Request(
-        safe_url,
-        headers=headers,
+def _request_json(
+    *,
+    path: str,
+    token: str,
+    method: str = "GET",
+    body: dict[str, Any] | None = None,
+) -> tuple[int, dict[str, Any]]:
+    url = build_https_url(host="api.codacy.com", path=path)
+    payload_bytes = None if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    payload, _headers, status = request_https_json(
+        url,
+        headers={
+            "Accept": "application/json",
+            "api-token": token,
+            "User-Agent": "event-link-codacy-zero-gate",
+            "Content-Type": "application/json",
+        },
         method=method,
-        data=body,
+        body=payload_bytes,
+        timeout=30,
+        allowed_hosts={"api.codacy.com"},
     )
-    with urllib.request.urlopen(req, timeout=30) as resp:
-        return json.loads(resp.read().decode("utf-8"))
+    if not isinstance(payload, dict):
+        raise RuntimeError("Unexpected Codacy response payload")
+    return status, payload
+
+
+def _issues_search_request(*, provider: str, owner: str, repo: str, token: str) -> tuple[int, dict[str, Any]]:
+    return _request_json(
+        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/issues/search?limit=1",
+        token=token,
+        method="POST",
+        body={},
+    )
+
+
+def _extract_total_from_mapping(payload: dict[str, Any]) -> int | None:
+    for key, value in payload.items():
+        if key in TOTAL_KEYS and isinstance(value, (int, float)):
+            return int(value)
+    for key in ("pagination", "page", "meta"):
+        total = extract_total_open(payload.get(key))
+        if total is not None:
+            return total
+    return None
+
+
+def _extract_total_from_values(payload: dict[str, Any]) -> int | None:
+    for value in payload.values():
+        total = extract_total_open(value)
+        if total is not None:
+            return total
+    return None
 
 
 def extract_total_open(payload: Any) -> int | None:
     if isinstance(payload, dict):
-        for key, value in payload.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
-                return int(value)
-
-        # common pagination structures
-        for key in ("pagination", "page", "meta"):
-            nested = payload.get(key)
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
-
-        for value in payload.values():
-            total = extract_total_open(value)
-            if total is not None:
-                return total
+        direct_total = _extract_total_from_mapping(payload)
+        if direct_total is not None:
+            return direct_total
+        return _extract_total_from_values(payload)
 
     if isinstance(payload, list):
         for item in payload:
@@ -101,95 +128,258 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _safe_output_path(raw: str, fallback: str, base: Path | None = None) -> Path:
-    root = (base or Path.cwd()).resolve()
-    candidate = Path((raw or "").strip() or fallback).expanduser()
-    if not candidate.is_absolute():
-        candidate = root / candidate
-    resolved = candidate.resolve(strict=False)
-    try:
-        resolved.relative_to(root)
-    except ValueError as exc:
-        raise ValueError(f"Output path escapes workspace root: {candidate}") from exc
-    return resolved
+def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, str, str]:
+    owner = validate_slug(args.owner, field_name="owner")
+    repo = validate_slug(args.repo, field_name="repo")
+    provider = validate_slug(args.provider.lower(), field_name="provider")
+    if provider not in _CODACY_PROVIDERS:
+        raise ValueError(f"Unsupported Codacy provider: {provider}")
+    token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
+    return token, owner, repo, provider
+
+
+def _provider_candidates(provider: str) -> list[str]:
+    candidates: list[str] = []
+    for candidate in (provider, "gh", "github"):
+        if candidate in _CODACY_PROVIDERS and candidate not in candidates:
+            candidates.append(candidate)
+    return candidates
+
+
+def _validated_pr_number(pr_number: str) -> str:
+    value = pr_number.strip()
+    if not value:
+        return ""
+    return validate_slug(value, field_name="pull request number")
+
+
+def _quality_new_issues(payload: dict[str, Any]) -> int | None:
+    quality = payload.get("quality")
+    if isinstance(quality, dict):
+        value = quality.get("newIssues")
+        if isinstance(value, (int, float)):
+            return int(value)
+    value = payload.get("newIssues")
+    if isinstance(value, (int, float)):
+        return int(value)
+    return extract_total_open(payload)
+
+
+def _evaluate_repo_total(*, provider: str, owner: str, repo: str, token: str) -> tuple[str, int | None, list[str]]:
+    status_code, payload = _issues_search_request(provider=provider, owner=owner, repo=repo, token=token)
+    if status_code == 404:
+        return "retry", None, []
+    if not 200 <= status_code < 300:
+        return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
+
+    open_issues = extract_total_open(payload)
+    if open_issues is None:
+        return "fail", None, ["Codacy response did not include a parseable total issue count."]
+    if open_issues != 0:
+        return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
+    return "pass", open_issues, []
+
+
+def _pr_analysis_state(payload: dict[str, Any]) -> tuple[str, bool, int | None]:
+    pull_request = payload.get("pullRequest") if isinstance(payload.get("pullRequest"), dict) else {}
+    return (
+        str(pull_request.get("headCommitSha") or ""),
+        bool(payload.get("isAnalysing")),
+        _quality_new_issues(payload),
+    )
+
+
+def _pr_analysis_result(*, analyzed_commit: str, is_analysing: bool, open_issues: int | None, commit_sha: str) -> tuple[str, int | None, list[str]] | None:
+    if analyzed_commit != commit_sha or is_analysing:
+        return None
+    if open_issues is None:
+        return "fail", None, ["Codacy PR response did not include a parseable new issue count."]
+    if open_issues != 0:
+        return "fail", open_issues, [f"Codacy reports {open_issues} PR new issues (expected 0)."]
+    return "pass", open_issues, []
+
+
+def _wait_for_pr_analysis(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    pr_number: str,
+    commit_sha: str,
+    timeout_seconds: int,
+    poll_seconds: int,
+) -> tuple[str, int | None, list[str]]:
+    path = f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/pull-requests/{pr_number}"
+    deadline = time.time() + max(timeout_seconds, 1)
+
+    while True:
+        status_code, payload = _request_json(path=path, token=token)
+        if status_code == 404:
+            return "retry", None, []
+        if not 200 <= status_code < 300:
+            return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
+
+        analyzed_commit, is_analysing, open_issues = _pr_analysis_state(payload)
+        result = _pr_analysis_result(
+            analyzed_commit=analyzed_commit,
+            is_analysing=is_analysing,
+            open_issues=open_issues,
+            commit_sha=commit_sha,
+        )
+        if result is not None:
+            return result
+
+        if time.time() > deadline:
+            return (
+                "fail",
+                None,
+                [
+                    f"Codacy has not finished PR analysis for commit {commit_sha}; latest analyzed head is {analyzed_commit or 'unknown'}."
+                ],
+            )
+        time.sleep(max(poll_seconds, 1))
+
+
+def _evaluate_commit_analysis(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    commit_sha: str,
+) -> tuple[str, int | None, list[str]]:
+    path = f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/commits/{commit_sha}"
+    status_code, payload = _request_json(path=path, token=token)
+    if status_code == 404:
+        return "retry", None, []
+    if not 200 <= status_code < 300:
+        return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
+
+    open_issues = _quality_new_issues(payload)
+    if open_issues is None:
+        return "fail", None, ["Codacy commit response did not include a parseable new issue count."]
+    if open_issues != 0:
+        return "fail", open_issues, [f"Codacy reports {open_issues} commit new issues (expected 0)."]
+    return "pass", open_issues, []
+
+
+def _evaluate_candidate(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    pr_number: str,
+    commit_sha: str,
+    timeout_seconds: int,
+    poll_seconds: int,
+) -> tuple[str, int | None, list[str]]:
+    if pr_number and commit_sha:
+        return _wait_for_pr_analysis(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            pr_number=pr_number,
+            commit_sha=commit_sha,
+            timeout_seconds=timeout_seconds,
+            poll_seconds=poll_seconds,
+        )
+    if commit_sha:
+        return _evaluate_commit_analysis(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            commit_sha=commit_sha,
+        )
+    return _evaluate_repo_total(provider=provider, owner=owner, repo=repo, token=token)
+
+
+def _evaluate_codacy(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    pr_number: str,
+    commit_sha: str,
+    timeout_seconds: int,
+    poll_seconds: int,
+) -> tuple[str, int | None, list[str]]:
+    if not token:
+        return "fail", None, ["CODACY_API_TOKEN is missing."]
+
+    last_exc: Exception | None = None
+    for candidate in _provider_candidates(provider):
+        try:
+            status, open_issues, findings = _evaluate_candidate(
+                provider=candidate,
+                owner=owner,
+                repo=repo,
+                token=token,
+                pr_number=pr_number,
+                commit_sha=commit_sha,
+                timeout_seconds=timeout_seconds,
+                poll_seconds=poll_seconds,
+            )
+        except Exception as exc:  # pragma: no cover - network/runtime surface
+            last_exc = exc
+            return "fail", None, [f"Codacy API request failed: {exc}"]
+        if status == "retry":
+            continue
+        return status, open_issues, findings
+
+    findings = [f"Codacy API endpoint was not found for provider(s): {provider}, gh, github."]
+    if last_exc is not None:
+        findings.append(f"Last Codacy API error: {last_exc}")
+    return "fail", None, findings
 
 
 def main() -> int:
-    import os
-
     args = _parse_args()
-    token = (args.token or os.environ.get("CODACY_API_TOKEN", "")).strip()
-    api_base = normalize_https_url(CODACY_API_BASE, allowed_hosts={"api.codacy.com"}).rstrip("/")
-    owner = urllib.parse.quote(args.owner.strip(), safe="")
-    repo = urllib.parse.quote(args.repo.strip(), safe="")
+    try:
+        token, owner, repo, provider = _validated_inputs(args)
+        pr_number = _validated_pr_number(args.pr_number)
+        commit_sha = validate_commit_sha(args.commit) if args.commit.strip() else ""
+    except ValueError as exc:
+        print(str(exc), file=sys.stderr)
+        return 1
 
-    findings: list[str] = []
-    open_issues: int | None = None
-
-    if not token:
-        findings.append("CODACY_API_TOKEN is missing.")
-        status = "fail"
-    else:
-        query = urllib.parse.urlencode({"limit": "1"})
-        provider_candidates = [args.provider, "gh", "github"]
-        provider_candidates = list(dict.fromkeys(p for p in provider_candidates if p))
-
-        last_exc: Exception | None = None
-        for provider in provider_candidates:
-            url = (
-                f"{api_base}/api/v3/analysis/organizations/{provider}/"
-                f"{owner}/repositories/{repo}/issues/search?{query}"
-            )
-            try:
-                payload = _request_json(url, token, method="POST", data={})
-                open_issues = extract_total_open(payload)
-                if open_issues is None:
-                    findings.append("Codacy response did not include a parseable total issue count.")
-                elif open_issues != 0:
-                    findings.append(f"Codacy reports {open_issues} open issues (expected 0).")
-                status = "pass" if not findings else "fail"
-                break
-            except urllib.error.HTTPError as exc:
-                last_exc = exc
-                if exc.code == 404:
-                    continue
-                findings.append(f"Codacy API request failed: HTTP {exc.code}")
-                status = "fail"
-                break
-            except Exception as exc:  # pragma: no cover - network/runtime surface
-                last_exc = exc
-                findings.append(f"Codacy API request failed: {exc}")
-                status = "fail"
-                break
-        else:
-            findings.append(
-                f"Codacy API endpoint was not found for provider(s): {', '.join(provider_candidates)}."
-            )
-            if last_exc is not None:
-                findings.append(f"Last Codacy API error: {last_exc}")
-            status = "fail"
-
+    status, open_issues, findings = _evaluate_codacy(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        pr_number=pr_number,
+        commit_sha=commit_sha,
+        timeout_seconds=args.timeout_seconds,
+        poll_seconds=args.poll_seconds,
+    )
     payload = {
         "status": status,
-        "owner": args.owner,
-        "repo": args.repo,
-        "provider": args.provider,
+        "owner": owner,
+        "repo": repo,
+        "provider": provider,
+        "pr_number": pr_number,
+        "commit": commit_sha,
         "open_issues": open_issues,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
     }
 
     try:
-        out_json = _safe_output_path(args.out_json, "codacy-zero/codacy.json")
-        out_md = _safe_output_path(args.out_md, "codacy-zero/codacy.md")
+        write_workspace_json(raw_path=args.out_json, fallback="codacy-zero/codacy.json", payload=payload)
+        out_md = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="codacy-zero/codacy.md",
+            text=_render_md(payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
     print(out_md.read_text(encoding="utf-8"), end="")
     return 0 if status == "pass" else 1
 

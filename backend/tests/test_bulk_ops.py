@@ -1,7 +1,7 @@
 def test_organizer_bulk_update_status(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
     base_payload = {
         "description": "Desc",
@@ -40,7 +40,7 @@ def test_organizer_bulk_update_status(helpers):
 def test_organizer_bulk_update_tags(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
-    organizer_token = helpers["login"]("org@test.ro", "organizer123")
+    organizer_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
     base_payload = {
         "description": "Desc",
@@ -72,10 +72,10 @@ def test_organizer_bulk_update_tags(helpers):
 
 def test_organizer_bulk_ops_forbidden_for_other_organizer(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    owner_token = helpers["login"]("owner@test.ro", "ownerpass")
-    helpers["make_organizer"]("other@test.ro", "otherpass")
-    other_token = helpers["login"]("other@test.ro", "otherpass")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("other@test.ro", "other-fixture-A1")
+    other_token = helpers["login"]("other@test.ro", "other-fixture-A1")
 
     event = client.post(
         "/api/events",
@@ -109,8 +109,8 @@ def test_organizer_bulk_ops_forbidden_for_other_organizer(helpers):
 
 def test_organizer_email_participants(helpers):
     client = helpers["client"]
-    helpers["make_organizer"]("owner@test.ro", "ownerpass")
-    organizer_token = helpers["login"]("owner@test.ro", "ownerpass")
+    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    organizer_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
 
     event = client.post(
         "/api/events",

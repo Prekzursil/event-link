@@ -48,8 +48,9 @@ echo "Restoring backup..."
 if [[ "$backup_file" == *.gz ]]; then
   gunzip -c "$backup_file" | docker compose exec -T db psql -U "$db_user" -d "$db_name" -v ON_ERROR_STOP=1
 else
-  cat "$backup_file" | docker compose exec -T db psql -U "$db_user" -d "$db_name" -v ON_ERROR_STOP=1
+  docker compose exec -T db psql -U "$db_user" -d "$db_name" -v ON_ERROR_STOP=1 < "$backup_file"
 fi
 
 echo "Restore complete."
 echo "Next: run migrations if needed (backend runs Alembic on startup when AUTO_RUN_MIGRATIONS=true)."
+

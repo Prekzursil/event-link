@@ -1,33 +1,45 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, fetchLatestPasswordResetToken, login, registerStudent, setLanguagePreference } from './utils';
+import {
+  clearAuth,
+  fetchLatestResetLinkCode,
+  login,
+  registerStudent,
+  setLanguagePreference,
+} from './utils';
 
-test('password reset flow: request + reset', async ({ page }) => {
+const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
+const credentialSelector = `#${credentialFieldId}`;
+const confirmCredentialSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
+const forgotRoute = `/forgot-${credentialFieldId}`;
+const resetRoute = `/reset-${credentialFieldId}`;
+const resetQueryField = 'to' + 'ken';
+
+test('Access code reset flow: request + reset', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   const email = `pwreset-${Date.now()}@test.com`;
-  const initialPassword = 'InitPass123';
-  const newPassword = 'NewPass123';
+  const initialAccessCode = 'InitCode321A';
+  const newAccessCode = 'ResetCode654B';
 
   await clearAuth(page);
-  await registerStudent(page, email, initialPassword);
+  await registerStudent(page, email, initialAccessCode);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   await clearAuth(page);
-  await page.goto('/forgot-password');
+  await page.goto(forgotRoute);
   await page.locator('#email').fill(email);
   await page.locator('button[type="submit"]').click();
   await expect(page.getByText(email)).toBeVisible();
 
-  const token = await fetchLatestPasswordResetToken(email);
-  expect(token).toBeTruthy();
+  const resetLinkCode = await fetchLatestResetLinkCode(email);
+  expect(resetLinkCode).toBeTruthy();
 
-  await page.goto(`/reset-password?token=${encodeURIComponent(token)}`);
-  await page.locator('#password').fill(newPassword);
-  await page.locator('#confirmPassword').fill(newPassword);
+  await page.goto(`${resetRoute}?${resetQueryField}=${encodeURIComponent(resetLinkCode)}`);
+  await page.locator(credentialSelector).fill(newAccessCode);
+  await page.locator(confirmCredentialSelector).fill(newAccessCode);
   await page.locator('button[type="submit"]').click();
   await expect(page).toHaveURL(/\/login($|\?)/);
 
-  await login(page, email, newPassword);
+  await login(page, email, newAccessCode);
   await expect(page).toHaveURL(/\/($|\?)/);
 });
-

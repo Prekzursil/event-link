@@ -104,14 +104,6 @@ export function OrganizerDashboardPage() {
   };
 
   const handleBulkStatusUpdate = async (status: 'draft' | 'published') => {
-    if (selectedEventIds.size === 0) {
-      toast({
-        title: t.common.error,
-        description: t.organizerDashboard.bulk.noSelection,
-        variant: 'destructive',
-      });
-      return;
-    }
     if (status === 'draft' && !confirm(t.organizerDashboard.bulk.confirmDraft)) return;
 
     setIsBulkUpdating(true);
@@ -140,14 +132,6 @@ export function OrganizerDashboardPage() {
   };
 
   const openBulkTags = () => {
-    if (selectedEventIds.size === 0) {
-      toast({
-        title: t.common.error,
-        description: t.organizerDashboard.bulk.noSelection,
-        variant: 'destructive',
-      });
-      return;
-    }
     setBulkTags([]);
     setBulkTagInput('');
     setBulkTagsOpen(true);
@@ -173,14 +157,6 @@ export function OrganizerDashboardPage() {
   };
 
   const applyBulkTags = async () => {
-    if (selectedEventIds.size === 0) {
-      toast({
-        title: t.common.error,
-        description: t.organizerDashboard.bulk.noSelection,
-        variant: 'destructive',
-      });
-      return;
-    }
     setIsBulkUpdating(true);
     try {
       await eventService.bulkUpdateEventTags(Array.from(selectedEventIds), bulkTags);

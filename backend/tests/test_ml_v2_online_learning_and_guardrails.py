@@ -28,7 +28,7 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
 
     organizer = models.User(
         email="org-implicit@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     tag = models.Tag(name="rock")
@@ -91,12 +91,12 @@ def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
 
     user = models.User(
         email="guardrails@test.ro",
-        password_hash=auth.get_password_hash("password123"),
+        password_hash=auth.get_password_hash("student-fixture-A1"),
         role=models.UserRole.student,
     )
     org = models.User(
         email="org-guard@test.ro",
-        password_hash=auth.get_password_hash("organizer123"),
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
     event1 = models.Event(
@@ -209,8 +209,8 @@ def test_admin_personalization_status_includes_active_model_version(helpers):
     client = helpers["client"]
     db = helpers["db"]
 
-    helpers["make_admin"]("admin-status@test.ro", "admin123")
-    admin_token = helpers["login"]("admin-status@test.ro", "admin123")
+    helpers["make_admin"]("admin-status@test.ro", "admin-fixture-A1")
+    admin_token = helpers["login"]("admin-status@test.ro", "admin-fixture-A1")
 
     db.add(
         models.RecommenderModel(

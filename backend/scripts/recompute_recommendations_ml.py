@@ -4,11 +4,35 @@ from __future__ import annotations
 import argparse
 import math
 import os
-import random
 import sys
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
+
+
+class _DeterministicRng:
+    def __init__(self, seed: int) -> None:
+        seed_value = int(seed) & ((1 << 64) - 1)
+        self._state = seed_value or 0xA5A5A5A5A5A5A5A5
+
+    def _next_u64(self) -> int:
+        self._state = (6364136223846793005 * self._state + 1442695040888963407) & ((1 << 64) - 1)
+        return self._state
+
+    def randbelow(self, upper_bound: int) -> int:
+        if upper_bound <= 0:
+            raise ValueError("upper bound must be positive")
+        return self._next_u64() % upper_bound
+
+    def choice(self, items):
+        if not items:
+            raise IndexError("cannot choose from an empty sequence")
+        return items[self.randbelow(len(items))]
+
+    def shuffle(self, items) -> None:
+        for index in range(len(items) - 1, 0, -1):
+            swap_index = self.randbelow(index + 1)
+            items[index], items[swap_index] = items[swap_index], items[index]
 
 
 def _sigmoid(z: float) -> float:
@@ -76,6 +100,14 @@ def _normalize_category(name: str | None) -> str | None:
         return None
     name = name.strip()
     return name.lower() or None
+
+
+def _coerce_utc(value: datetime | None) -> datetime | None:
+    if value is None:
+        return None
+    if value.tzinfo is None:
+        return value.replace(tzinfo=timezone.utc)
+    return value
 
 
 def _build_feature_vector(
@@ -152,12 +184,12 @@ def _train_log_regression_sgd(
     l2: float,
     seed: int,
 ) -> list[float]:
-    random.seed(seed)
+    rng = _DeterministicRng(seed)
     weights = [0.0] * n_features
     eps = 1e-12
 
     for epoch in range(1, epochs + 1):
-        random.shuffle(examples)
+        rng.shuffle(examples)
         total_loss = 0.0
         for x, y, w in examples:
             z = _dot(weights, x)
@@ -198,7 +230,7 @@ def _evaluate_hitrate_at_k(
     negatives_per_user: int,
     seed: int,
 ) -> float:
-    rng = random.Random(seed)
+    rng = _DeterministicRng(seed)
     hits = 0
     total = 0
 
@@ -329,11 +361,11 @@ def main() -> int:
                 category=_normalize_category(ev.category),
                 city=_normalize_city(ev.city),
                 owner_id=int(ev.owner_id),
-                start_time=ev.start_time,
+                start_time=_coerce_utc(ev.start_time),
                 seats_taken=int(seats_taken_by_event.get(event_id, 0)),
                 max_seats=ev.max_seats,
                 status=str(ev.status or "published"),
-                publish_at=ev.publish_at,
+                publish_at=_coerce_utc(ev.publish_at),
             )
 
         all_event_ids = list(events.keys())
@@ -539,25 +571,20 @@ def main() -> int:
                     key = (user_id_int, event_id_int)
                     negative_weights[key] = max(negative_weights.get(key, 0.0), 2.0)
                     continue
-                weight = 0.0
-                if itype == "click":
-                    weight = 0.4
-                elif itype == "view":
-                    weight = 0.25
-                elif itype == "dwell":
+                if itype == "dwell":
                     weight = 0.35
                     if isinstance(meta, dict):
                         seconds = meta.get("seconds")
                         if isinstance(seconds, (int, float)) and seconds > 0:
                             weight = min(0.8, weight + (float(seconds) / 120.0) * 0.25)
-                elif itype == "share":
-                    weight = 0.6
-                elif itype == "favorite":
-                    weight = 1.2
-                elif itype == "register":
-                    weight = 1.0
                 else:
-                    continue
+                    weight = {
+                        "click": 0.4,
+                        "view": 0.25,
+                        "share": 0.6,
+                        "favorite": 1.2,
+                        "register": 1.0,
+                    }[itype]
 
                 key = (user_id_int, event_id_int)
                 positive_weights[key] = max(positive_weights.get(key, 0.0), weight)
@@ -574,7 +601,7 @@ def main() -> int:
         users: dict[int, _UserFeatures] = {}
         user_lang: dict[int, str] = {}
         holdout: dict[int, int] = {}
-        rng = random.Random(args.seed)
+        rng = _DeterministicRng(args.seed)
 
         for student in students:
             user_id = int(student.id)
@@ -632,7 +659,7 @@ def main() -> int:
                 model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
             if model_row is None:
                 model_row = (
-                    model_query.filter(models.RecommenderModel.is_active.is_(True))
+                    model_query.filter(getattr(models.RecommenderModel, "is_active").is_(True))
                     .order_by(models.RecommenderModel.id.desc())
                     .first()
                 )
@@ -666,6 +693,7 @@ def main() -> int:
                 impression_candidates = [
                     (event_id, impression_position_by_user_event.get((user_id, event_id), 999))
                     for event_id in (seen_by_user.get(user_id, set()) - user_positive_ids)
+                    if event_id in events
                 ]
                 impression_candidates.sort(key=lambda item: item[1])
                 impression_negatives = [event_id for event_id, _pos in impression_candidates[:50]]
@@ -689,9 +717,7 @@ def main() -> int:
                             neg_event_id = rng.choice(all_event_ids)
                         if neg_event_id in user_positive_ids:
                             continue
-                        neg_ev = events.get(neg_event_id)
-                        if not neg_ev:
-                            continue
+                        neg_ev = events[neg_event_id]
                         x_neg = _build_feature_vector(user=user, event=neg_ev, now=now)
                         examples.append((x_neg, 0, float(neg_weight)))
                         neg_added += 1
@@ -707,9 +733,7 @@ def main() -> int:
                         cand_id = rng.choice(all_event_ids)
                         if cand_id in user_positive_ids:
                             continue
-                        cand_ev = events.get(cand_id)
-                        if not cand_ev:
-                            continue
+                        cand_ev = events[cand_id]
                         match = False
                         if weak_city and cand_ev.city and _normalize_city(cand_ev.city) == weak_city:
                             match = True
@@ -795,7 +819,7 @@ def main() -> int:
                 existing_model.feature_names = list(FEATURE_NAMES)
                 existing_model.weights = [float(w) for w in weights]
                 existing_model.meta = meta
-                existing_model.is_active = True
+                setattr(existing_model, "is_active", True)
 
             db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version != model_version).update(
                 {"is_active": False},
@@ -824,10 +848,7 @@ def main() -> int:
 
         inserts: list[models.UserRecommendation] = []
         for user_id in user_ids:
-            user = users.get(user_id)
-            if not user:
-                continue
-
+            user = users[user_id]
             registered_ids = registered_event_ids_by_user.get(user_id, set())
 
             scored: list[tuple[float, int]] = []

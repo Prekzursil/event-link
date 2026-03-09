@@ -1,9 +1,15 @@
 from __future__ import annotations
 
+import contextlib
+import io
+import multiprocessing
 import os
-import subprocess
+import queue
+import runpy
 import sys
 import time
+import traceback
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 from typing import Any
@@ -22,6 +28,93 @@ JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML = "refresh_user_recommendations_ml"
 JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS = "evaluate_personalization_guardrails"
 JOB_TYPE_SEND_WEEKLY_DIGEST = "send_weekly_digest"
 JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
+
+
+@dataclass
+class _PythonRunResult:
+    returncode: int
+    stdout: str
+    stderr: str
+
+
+def _run_python_entrypoint_worker(
+    script_path: str,
+    argv: list[str],
+    cwd: str,
+    env_overrides: dict[str, str],
+    result_queue,
+) -> None:
+    stdout_buffer = io.StringIO()
+    stderr_buffer = io.StringIO()
+    original_cwd = os.getcwd()
+    original_argv = list(sys.argv)
+    previous_env: dict[str, str | None] = {}
+    returncode = 0
+    try:
+        os.chdir(cwd)
+        for key, value in env_overrides.items():
+            previous_env[key] = os.environ.get(key)
+            os.environ[key] = value
+        sys.argv = list(argv)
+        with contextlib.redirect_stdout(stdout_buffer), contextlib.redirect_stderr(stderr_buffer):
+            runpy.run_path(script_path, run_name="__main__")
+    except SystemExit as exc:  # pragma: no cover - exercised via parent result handling
+        code = exc.code
+        returncode = code if isinstance(code, int) else 1
+        raise
+    except Exception:  # noqa: BLE001
+        traceback.print_exc(file=stderr_buffer)
+        returncode = 1
+    finally:
+        sys.argv = original_argv
+        os.chdir(original_cwd)
+        for key, previous in previous_env.items():
+            if previous is None:
+                os.environ.pop(key, None)
+            else:
+                os.environ[key] = previous
+        result_queue.put(
+            {
+                "returncode": returncode,
+                "stdout": stdout_buffer.getvalue(),
+                "stderr": stderr_buffer.getvalue(),
+            }
+        )
+
+
+def _execute_python_script(
+    *,
+    script_path: Path,
+    argv: list[str],
+    cwd: Path,
+    env_overrides: dict[str, str],
+    timeout_seconds: int,
+) -> _PythonRunResult:
+    ctx = multiprocessing.get_context("spawn")
+    result_queue = ctx.Queue()
+    process = ctx.Process(
+        target=_run_python_entrypoint_worker,
+        args=(str(script_path), list(argv), str(cwd), dict(env_overrides), result_queue),
+    )
+    process.start()
+    process.join(timeout_seconds)
+    if process.is_alive():
+        process.terminate()
+        process.join()
+        return _PythonRunResult(
+            returncode=124,
+            stdout="",
+            stderr=f"trainer timed out after {timeout_seconds} seconds",
+        )
+    try:
+        payload = result_queue.get(timeout=1)
+    except queue.Empty:
+        payload = {
+            "returncode": process.exitcode or 1,
+            "stdout": "",
+            "stderr": "trainer process exited without emitting a result",
+        }
+    return _PythonRunResult(**payload)
 
 
 def enqueue_job(
@@ -207,34 +300,32 @@ def _run_recompute_recommendations_ml(*, payload: dict[str, Any]) -> None:
     if not script_path.exists():
         raise RuntimeError(f"Missing trainer script at {script_path}")
 
-    cmd = [sys.executable, str(script_path)]
+    argv = [str(script_path)]
     if payload.get("top_n") is not None:
-        cmd.extend(["--top-n", str(int(payload["top_n"]))])
+        argv.extend(["--top-n", str(int(payload["top_n"]))])
     if payload.get("user_id") is not None:
-        cmd.extend(["--user-id", str(int(payload["user_id"]))])
+        argv.extend(["--user-id", str(int(payload["user_id"]))])
     if payload.get("skip_training"):
-        cmd.append("--skip-training")
+        argv.append("--skip-training")
     if payload.get("epochs") is not None:
-        cmd.extend(["--epochs", str(int(payload["epochs"]))])
+        argv.extend(["--epochs", str(int(payload["epochs"]))])
     if payload.get("lr") is not None:
-        cmd.extend(["--lr", str(float(payload["lr"]))])
+        argv.extend(["--lr", str(float(payload["lr"]))])
     if payload.get("l2") is not None:
-        cmd.extend(["--l2", str(float(payload["l2"]))])
+        argv.extend(["--l2", str(float(payload["l2"]))])
     if payload.get("seed") is not None:
-        cmd.extend(["--seed", str(int(payload["seed"]))])
+        argv.extend(["--seed", str(int(payload["seed"]))])
 
-    env = os.environ.copy()
+    env_overrides: dict[str, str] = {}
     if payload.get("model_version"):
-        env["RECOMMENDER_MODEL_VERSION"] = str(payload["model_version"])
+        env_overrides["RECOMMENDER_MODEL_VERSION"] = str(payload["model_version"])
 
-    proc = subprocess.run(
-        cmd,
-        cwd=str(backend_root),
-        env=env,
-        capture_output=True,
-        text=True,
-        timeout=int(payload.get("timeout_seconds") or 60 * 30),
-        check=False,
+    proc = _execute_python_script(
+        script_path=script_path,
+        argv=argv,
+        cwd=backend_root,
+        env_overrides=env_overrides,
+        timeout_seconds=int(payload.get("timeout_seconds") or 60 * 30),
     )
     if proc.returncode != 0:
         combined = "\n".join([proc.stdout.strip(), proc.stderr.strip()]).strip()
@@ -579,7 +670,7 @@ def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]
 
     active = (
         db.query(models.RecommenderModel)
-        .filter(models.RecommenderModel.is_active.is_(True))
+        .filter(getattr(models.RecommenderModel, "is_active").is_(True))
         .order_by(models.RecommenderModel.id.desc())
         .first()
     )
@@ -599,8 +690,8 @@ def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]
         result["action"] = "no_previous_model"
         return result
 
-    active.is_active = False
-    previous.is_active = True
+    setattr(active, "is_active", False)
+    setattr(previous, "is_active", True)
     db.add_all([active, previous])
     db.commit()
     log_warning(

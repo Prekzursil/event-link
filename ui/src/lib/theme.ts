@@ -9,12 +9,12 @@ export function normalizeThemePreference(value: unknown): ThemePreference {
 
 export function getStoredThemePreference(): ThemePreference {
   if (typeof window === 'undefined') return 'system';
-  return normalizeThemePreference(window.localStorage.getItem(STORAGE_KEY));
+  return normalizeThemePreference(globalThis.localStorage.getItem(STORAGE_KEY));
 }
 
 export function storeThemePreference(preference: ThemePreference) {
   if (typeof window === 'undefined') return;
-  window.localStorage.setItem(STORAGE_KEY, preference);
+  globalThis.localStorage.setItem(STORAGE_KEY, preference);
 }
 
 export function getSystemTheme(): 'light' | 'dark' {

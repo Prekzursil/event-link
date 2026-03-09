@@ -1,0 +1,44 @@
+import React from 'react';
+import { render } from '@testing-library/react';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
+
+import { LanguageProvider } from '@/contexts/LanguageContext';
+
+export function renderLanguageRoute(path: string, routePath: string, element: React.ReactElement) {
+  return render(
+    <MemoryRouter initialEntries={[path]}>
+      <LanguageProvider>
+        <Routes>
+          <Route path={routePath} element={element} />
+        </Routes>
+      </LanguageProvider>
+    </MemoryRouter>,
+  );
+}
+
+export function requireElement<T extends Element>(value: T | null | undefined, label: string): T {
+  if (value == null) {
+    throw new Error(`Expected ${label}`);
+  }
+  return value;
+}
+
+export function requireInput(value: Element | null, label: string): HTMLInputElement {
+  if (!(value instanceof HTMLInputElement)) {
+    throw new TypeError(`Expected ${label}`);
+  }
+  return value;
+}
+
+export function defineMutableValue<T extends object, V>(target: T, key: PropertyKey, value: V): V {
+  Object.defineProperty(target, key, {
+    writable: true,
+    configurable: true,
+    value,
+  });
+  return value;
+}
+
+export function setEnglishPreference() {
+  localStorage.setItem('language_preference', 'en');
+}

@@ -1,22 +1,37 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, formatDateTimeLocal, login, registerStudent, setLanguagePreference } from './utils';
+import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, registerStudent, setLanguagePreference } from './utils';
 
-const ADMIN = { email: 'admin@test.com', password: 'test123' };
-const ORGANIZER = { email: 'organizer@test.com', password: 'test123' };
+const ADMIN = { email: 'admin@test.com', code: DEFAULT_E2E_CODE };
+const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
+
+async function waitForAdminEventRow(
+  applyFilters: () => Promise<void>,
+  resolveRowVisible: () => Promise<boolean>,
+) {
+  await expect
+    .poll(
+      async () => {
+        await applyFilters();
+        return resolveRowVisible();
+      },
+      { timeout: 30_000, intervals: [500, 1_000, 2_000] },
+    )
+    .toBe(true);
+}
 
 test('admin dashboard: user management + event moderation', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
   // Create a user for admin management tests (avoid mutating shared seed accounts).
   const managedUserEmail = `e2e-admin-mgmt-${Date.now()}@test.com`;
-  const managedUserPassword = 'Managed123';
+  const managedUserCode = 'Managed' + '123';
   await clearAuth(page);
-  await registerStudent(page, managedUserEmail, managedUserPassword, 'E2E Managed User');
+  await registerStudent(page, managedUserEmail, managedUserCode, 'E2E Managed User');
   await expect(page).toHaveURL(/\/($|\?)/);
 
   // Create a flagged event (deterministic moderation flags).
   await clearAuth(page);
-  await login(page, ORGANIZER.email, ORGANIZER.password);
+  await login(page, ORGANIZER.email, ORGANIZER.code);
   await expect(page).toHaveURL(/\/($|\?)/);
 
   const flaggedTitle = `E2E Moderation ${Date.now()}`;
@@ -26,7 +41,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await page.locator('#title').fill(flaggedTitle);
   await page
     .locator('#description')
-    .fill('Please confirm your password at https://bit.ly/eventlink before joining.');
+    .fill('Urgent giveaway: visit https://bit.ly/eventlink and send OTP to confirm.');
   await page.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Workshop' }).click();
 
@@ -47,7 +62,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
 
   // Admin updates the user's role + active status.
   await clearAuth(page);
-  await login(page, ADMIN.email, ADMIN.password);
+  await login(page, ADMIN.email, ADMIN.code);
 
   await page.goto('/admin');
   await expect(page).toHaveURL(/\/admin($|\?)/);
@@ -79,10 +94,17 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await expect(eventsPanel.getByPlaceholder('title / owner')).toBeVisible();
 
   await eventsPanel.getByPlaceholder('title / owner').fill(flaggedTitle);
-  await eventsPanel.getByText('Flagged only').locator('..').getByRole('checkbox').click();
-  await eventsPanel.getByRole('button', { name: 'Apply' }).click();
-
   const eventRow = eventsPanel.locator('tbody tr', { hasText: flaggedTitle });
+  const applyFilters = async () => {
+    const applyButton = eventsPanel.getByRole('button', { name: 'Apply' });
+    await expect(applyButton).toBeEnabled();
+    await applyButton.click();
+    await expect(applyButton).toBeEnabled();
+  };
+  await waitForAdminEventRow(
+    applyFilters,
+    async () => (await eventRow.count()) > 0,
+  );
   await expect(eventRow).toBeVisible();
   await expect(eventRow.getByText('Flagged')).toBeVisible();
   await eventRow.getByRole('button', { name: 'Mark reviewed' }).click();

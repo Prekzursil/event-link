@@ -5,7 +5,7 @@ from app import models
 
 def test_personalization_hide_tag_excludes_events(client, helpers):
     helpers["make_organizer"]("org@test.ro")
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
     resp = client.post(
         "/api/events",
@@ -61,8 +61,8 @@ def test_personalization_hide_tag_excludes_events(client, helpers):
 def test_personalization_blocked_organizer_excludes_events(client, helpers):
     helpers["make_organizer"]("org1@test.ro")
     helpers["make_organizer"]("org2@test.ro")
-    org1_token = helpers["login"]("org1@test.ro", "organizer123")
-    org2_token = helpers["login"]("org2@test.ro", "organizer123")
+    org1_token = helpers["login"]("org1@test.ro", "organizer-fixture-A1")
+    org2_token = helpers["login"]("org2@test.ro", "organizer-fixture-A1")
 
     resp = client.post(
         "/api/events",
@@ -118,7 +118,7 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
 
 def test_personalization_settings_endpoint_lists_hidden_and_blocked(client, helpers):
     helpers["make_organizer"]("org@test.ro")
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
     resp = client.post(
         "/api/events",
@@ -164,7 +164,7 @@ def test_personalization_settings_endpoint_lists_hidden_and_blocked(client, help
 
 def test_event_detail_includes_recommendation_reason_for_student(client, helpers):
     helpers["make_organizer"]("org@test.ro")
-    org_token = helpers["login"]("org@test.ro", "organizer123")
+    org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
     resp = client.post(
         "/api/events",
@@ -217,7 +217,7 @@ def test_event_detail_includes_recommendation_reason_for_student(client, helpers
 
 def test_admin_personalization_metrics_uses_interactions(client, helpers):
     helpers["make_admin"]("admin@test.ro")
-    admin_token = helpers["login"]("admin@test.ro", "admin123")
+    admin_token = helpers["login"]("admin@test.ro", "admin-fixture-A1")
 
     db = helpers["db"]
     now = datetime.now(timezone.utc)

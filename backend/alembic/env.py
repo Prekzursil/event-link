@@ -3,7 +3,7 @@ import os
 import sys
 
 from alembic import context
-from sqlalchemy import Column, MetaData, String, Table, engine_from_config, inspect, pool, text
+from sqlalchemy import Column, MetaData, String, Table, engine_from_config, inspect, pool
 
 # add app path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
@@ -24,6 +24,10 @@ target_metadata = models.Base.metadata
 
 
 ALEMBIC_VERSION_NUM_LENGTH = 255
+ALTER_VERSION_NUM_SQL = (
+    'ALTER TABLE alembic_version '
+    f'ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})'
+)
 
 
 def ensure_alembic_version_table(connection):
@@ -58,21 +62,11 @@ def ensure_alembic_version_table(connection):
         return
 
     if connection.dialect.name == "postgresql":
-        connection.execute(
-            text(
-                "ALTER TABLE alembic_version "
-                f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
-            )
-        )
+        connection.exec_driver_sql(ALTER_VERSION_NUM_SQL)
         return
 
     try:
-        connection.execute(
-            text(
-                "ALTER TABLE alembic_version "
-                f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
-            )
-        )
+        connection.exec_driver_sql(ALTER_VERSION_NUM_SQL)
     except Exception:
         return
 

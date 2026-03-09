@@ -1,0 +1,6 @@
+[MAIN]
+py-version=3.11
+
+[MESSAGES CONTROL]
+disable=
+    W1618

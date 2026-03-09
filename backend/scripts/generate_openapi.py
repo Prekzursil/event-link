@@ -12,7 +12,7 @@ def main() -> int:
     sys.path.insert(0, str(backend_root))
 
     os.environ.setdefault("DATABASE_URL", "sqlite:///:memory:")
-    os.environ.setdefault("SECRET_KEY", "contract-test-secret")
+    os.environ.setdefault("SECRET_KEY", "contract-signing-key-material-1234")
     os.environ.setdefault("EMAIL_ENABLED", "false")
 
     from app.api import app  # noqa: PLC0415
