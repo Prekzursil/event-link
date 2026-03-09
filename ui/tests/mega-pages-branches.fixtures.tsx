@@ -98,15 +98,23 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
-export { AdminDashboardPage } from '@/pages/admin/AdminDashboardPage';
-export { EventDetailPage } from '@/pages/events/EventDetailPage';
-export { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
-export { ParticipantsPage } from '@/pages/organizer/ParticipantsPage';
-export { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
-
 export function getMegaPageFixtures() {
   return megaPageFixtures;
 }
+
+const { AdminDashboardPage } = await import('@/pages/admin/AdminDashboardPage');
+const { EventDetailPage } = await import('@/pages/events/EventDetailPage');
+const { OrganizerDashboardPage } = await import('@/pages/organizer/OrganizerDashboardPage');
+const { ParticipantsPage } = await import('@/pages/organizer/ParticipantsPage');
+const { StudentProfilePage } = await import('@/pages/profile/StudentProfilePage');
+
+export {
+  AdminDashboardPage,
+  EventDetailPage,
+  OrganizerDashboardPage,
+  ParticipantsPage,
+  StudentProfilePage,
+};
 
 const {
   makeAdminEventPage,

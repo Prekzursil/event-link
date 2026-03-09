@@ -112,13 +112,15 @@ vi.mock('@/components/events/EventCard', () => ({
   ),
 }));
 
-export { EventsPage } from '@/pages/events/EventsPage';
-export { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
-export { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
-
 export function getHighImpactPageFixtures() {
   return highImpactPageFixtures;
 }
+
+const { EventsPage } = await import('@/pages/events/EventsPage');
+const { OrganizerDashboardPage } = await import('@/pages/organizer/OrganizerDashboardPage');
+const { StudentProfilePage } = await import('@/pages/profile/StudentProfilePage');
+
+export { EventsPage, OrganizerDashboardPage, StudentProfilePage };
 
 const {
   makeEvent,
