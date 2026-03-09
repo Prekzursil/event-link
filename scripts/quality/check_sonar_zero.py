@@ -70,6 +70,7 @@ def _render_md(payload: dict) -> str:
         f"- Status: `{payload['status']}`",
         f"- Project: `{payload['project_key']}`",
         f"- Open issues: `{payload.get('open_issues')}`",
+        f"- Open hotspots: `{payload.get('open_hotspots')}`",
         f"- Quality gate: `{payload.get('quality_gate')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -150,6 +151,18 @@ def _gate_query(project_key: str, branch: str, pull_request: str) -> str:
     return urllib.parse.urlencode(gate_query)
 
 
+def _hotspots_query(project_key: str, branch: str, pull_request: str) -> str:
+    hotspots_query = {
+        "projectKey": project_key,
+        "ps": "1",
+    }
+    if branch:
+        hotspots_query["branch"] = branch
+    if pull_request:
+        hotspots_query["pullRequest"] = pull_request
+    return urllib.parse.urlencode(hotspots_query)
+
+
 def _status_issue_count(status: dict[str, Any]) -> int:
     return sum(int(status.get(key) or 0) for key in ("bugs", "vulnerabilities", "codeSmells"))
 
@@ -160,21 +173,54 @@ def _summary_from_entry(entry: dict[str, Any]) -> tuple[int, str, str]:
     return _status_issue_count(status), str(status.get("qualityGateStatus") or "UNKNOWN"), str(commit.get("sha") or "")
 
 
-def _pull_request_summary(*, api_base: str, auth: str, project_key: str, pull_request: str) -> tuple[int, str, str]:
+def _hotspot_total(*, api_base: str, auth: str, project_key: str, branch: str, pull_request: str) -> int:
+    payload = _request_json(f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}", auth)
+    return int((payload.get("paging") or {}).get("total") or 0)
+
+
+def _pull_request_summary(
+    *,
+    api_base: str,
+    auth: str,
+    project_key: str,
+    pull_request: str,
+) -> tuple[int, str, int, str]:
     query = urllib.parse.urlencode({"project": project_key})
     payload = _request_json(f"{api_base}/api/project_pull_requests/list?{query}", auth)
     for entry in payload.get("pullRequests") or []:
         if isinstance(entry, dict) and str(entry.get("key") or "") == pull_request:
-            return _summary_from_entry(entry)
+            open_issues, quality_gate, analyzed_commit = _summary_from_entry(entry)
+            open_hotspots = _hotspot_total(
+                api_base=api_base,
+                auth=auth,
+                project_key=project_key,
+                branch="",
+                pull_request=pull_request,
+            )
+            return open_issues, quality_gate, open_hotspots, analyzed_commit
     raise RuntimeError(f"Sonar PR summary not found for pull request {pull_request}")
 
 
-def _branch_summary(*, api_base: str, auth: str, project_key: str, branch: str) -> tuple[int, str, str]:
+def _branch_summary(
+    *,
+    api_base: str,
+    auth: str,
+    project_key: str,
+    branch: str,
+) -> tuple[int, str, int, str]:
     query = urllib.parse.urlencode({"project": project_key})
     payload = _request_json(f"{api_base}/api/project_branches/list?{query}", auth)
     for entry in payload.get("branches") or []:
         if isinstance(entry, dict) and str(entry.get("name") or "") == branch:
-            return _summary_from_entry(entry)
+            open_issues, quality_gate, analyzed_commit = _summary_from_entry(entry)
+            open_hotspots = _hotspot_total(
+                api_base=api_base,
+                auth=auth,
+                project_key=project_key,
+                branch=branch,
+                pull_request="",
+            )
+            return open_issues, quality_gate, open_hotspots, analyzed_commit
     raise RuntimeError(f"Sonar branch summary not found for branch {branch}")
 
 
@@ -185,7 +231,7 @@ def _scoped_summary(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int, str, str]:
+) -> tuple[int, str, int, str]:
     if pull_request:
         return _pull_request_summary(
             api_base=api_base,
@@ -210,7 +256,7 @@ def _legacy_summary(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int, str, str]:
+) -> tuple[int, str, int, str]:
     issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
     issues_payload = _request_json(issues_url, auth)
     paging = issues_payload.get("paging") or {}
@@ -220,7 +266,13 @@ def _legacy_summary(
     gate_payload = _request_json(gate_url, auth)
     project_status = gate_payload.get("projectStatus") or {}
     quality_gate = str(project_status.get("status") or "UNKNOWN")
-    return open_issues, quality_gate, ""
+
+    hotspots_url = f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}"
+    hotspots_payload = _request_json(hotspots_url, auth)
+    hotspots_paging = hotspots_payload.get("paging") or {}
+    open_hotspots = int(hotspots_paging.get("total") or 0)
+
+    return open_issues, quality_gate, open_hotspots, ""
 
 
 def _current_summary(
@@ -230,7 +282,7 @@ def _current_summary(
     project_key: str,
     branch: str,
     pull_request: str,
-) -> tuple[int, str, str]:
+) -> tuple[int, str, int, str]:
     if branch or pull_request:
         return _scoped_summary(
             api_base=api_base,
@@ -254,11 +306,11 @@ def _await_current_analysis(
     auth: str,
     timeout_seconds: int,
     poll_seconds: int,
-) -> tuple[int, str]:
+) -> tuple[int, str, int]:
     deadline = time.time() + max(timeout_seconds, 1)
 
     while True:
-        open_issues, quality_gate, analyzed_commit = _current_summary(
+        open_issues, quality_gate, open_hotspots, analyzed_commit = _current_summary(
             api_base=runtime["api_base"],
             auth=auth,
             project_key=runtime["project_key"],
@@ -267,7 +319,7 @@ def _await_current_analysis(
         )
         expected_commit = runtime["expected_commit"]
         if not expected_commit or analyzed_commit == expected_commit:
-            return open_issues, quality_gate
+            return open_issues, quality_gate, open_hotspots
         if time.time() > deadline:
             raise RuntimeError(
                 f"Sonar has not analyzed commit {expected_commit}; latest analyzed commit is {analyzed_commit or 'unknown'}."
@@ -283,30 +335,32 @@ def _evaluate_sonar(
     findings: list[str],
 ) -> tuple[str, int | None, str | None, list[str]]:
     if findings:
-        return "fail", None, None, findings
+        return "fail", None, None, None, findings
 
     try:
-        open_issues, quality_gate = _await_current_analysis(
+        open_issues, quality_gate, open_hotspots = _await_current_analysis(
             runtime=runtime,
             auth=_auth_header(runtime["token"]),
             timeout_seconds=timeout_seconds,
             poll_seconds=poll_seconds,
         )
     except Exception as exc:  # pragma: no cover - network/runtime surface
-        return "fail", None, None, [*findings, f"Sonar API request failed: {exc}"]
+        return "fail", None, None, None, [*findings, f"Sonar API request failed: {exc}"]
 
     if open_issues != 0:
         findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
+    if open_hotspots != 0:
+        findings.append(f"Sonar reports {open_hotspots} open security hotspots (expected 0).")
     if quality_gate != "OK":
         findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
     status = "pass" if not findings else "fail"
-    return status, open_issues, quality_gate, findings
+    return status, open_issues, quality_gate, open_hotspots, findings
 
 
 def main() -> int:
     args = _parse_args()
     runtime, findings = _validated_scope(args)
-    status, open_issues, quality_gate, findings = _evaluate_sonar(
+    status, open_issues, quality_gate, open_hotspots, findings = _evaluate_sonar(
         runtime=runtime,
         timeout_seconds=args.timeout_seconds,
         poll_seconds=args.poll_seconds,
@@ -316,6 +370,7 @@ def main() -> int:
         "status": status,
         "project_key": runtime["project_key"],
         "open_issues": open_issues,
+        "open_hotspots": open_hotspots,
         "quality_gate": quality_gate,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,

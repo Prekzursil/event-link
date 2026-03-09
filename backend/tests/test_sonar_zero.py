@@ -35,21 +35,26 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
     module = _load_module()
 
     def fake_request_json(url: str, auth_header: str):
-        assert "project_pull_requests/list" in url
+        if "project_pull_requests/list" in url:
+            assert auth_header == "auth"
+            return {
+                "pullRequests": [
+                    {
+                        "key": "97",
+                        "status": {"qualityGateStatus": "OK", "bugs": 0, "vulnerabilities": 0, "codeSmells": 0},
+                        "commit": {"sha": "abc123abc123abc123abc123abc123abc123abcd"},
+                    }
+                ]
+            }
+        assert "hotspots/search" in url
         assert auth_header == "auth"
         return {
-            "pullRequests": [
-                {
-                    "key": "97",
-                    "status": {"qualityGateStatus": "OK", "bugs": 0, "vulnerabilities": 0, "codeSmells": 0},
-                    "commit": {"sha": "abc123abc123abc123abc123abc123abc123abcd"},
-                }
-            ]
+            "paging": {"total": 2}
         }
 
     module._request_json = fake_request_json
 
-    open_issues, quality_gate, commit_sha = module._pull_request_summary(
+    open_issues, quality_gate, open_hotspots, commit_sha = module._pull_request_summary(
         api_base="https://sonarcloud.io",
         auth="auth",
         project_key="Prekzursil_event-link",
@@ -58,21 +63,22 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
 
     assert open_issues == 0
     assert quality_gate == "OK"
+    assert open_hotspots == 2
     assert commit_sha == "abc123abc123abc123abc123abc123abc123abcd"
 
 
 def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
     summaries = [
-        (1, "ERROR", "oldoldoldoldoldoldoldoldoldoldoldoldoldold"),
-        (0, "OK", "0123456789abcdef0123456789abcdef01234567"),
+        (1, "ERROR", 3, "oldoldoldoldoldoldoldoldoldoldoldoldoldold"),
+        (0, "OK", 0, "0123456789abcdef0123456789abcdef01234567"),
     ]
     sleeps: list[int] = []
 
     monkeypatch.setattr(module, "_current_summary", lambda **_kwargs: summaries.pop(0))
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
 
-    status, open_issues, quality_gate, findings = module._evaluate_sonar(
+    status, open_issues, quality_gate, open_hotspots, findings = module._evaluate_sonar(
         runtime={
             "token": "token",
             "api_base": "https://sonarcloud.io",
@@ -89,20 +95,21 @@ def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatc
     assert status == "pass"
     assert open_issues == 0
     assert quality_gate == "OK"
+    assert open_hotspots == 0
     assert findings == []
     assert sleeps == [7]
 
 
 def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
-    summaries = [(0, "OK", "feedfeedfeedfeedfeedfeedfeedfeedfeedfeed")] * 2
+    summaries = [(0, "OK", 1, "feedfeedfeedfeedfeedfeedfeedfeedfeedfeed")] * 2
     timestamps = iter([0, 2, 4])
 
     monkeypatch.setattr(module, "_current_summary", lambda **_kwargs: summaries.pop(0))
     monkeypatch.setattr(module.time, "sleep", lambda _seconds: None)
     monkeypatch.setattr(module.time, "time", lambda: next(timestamps))
 
-    status, open_issues, quality_gate, findings = module._evaluate_sonar(
+    status, open_issues, quality_gate, open_hotspots, findings = module._evaluate_sonar(
         runtime={
             "token": "token",
             "api_base": "https://sonarcloud.io",
@@ -119,6 +126,37 @@ def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: py
     assert status == "fail"
     assert open_issues is None
     assert quality_gate is None
+    assert open_hotspots is None
     assert findings == [
         "Sonar API request failed: Sonar has not analyzed commit 0123456789abcdef0123456789abcdef01234567; latest analyzed commit is feedfeedfeedfeedfeedfeedfeedfeedfeedfeed."
     ]
+
+
+def test_evaluate_sonar_fails_when_hotspots_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+
+    monkeypatch.setattr(
+        module,
+        "_current_summary",
+        lambda **_kwargs: (0, "OK", 2, "0123456789abcdef0123456789abcdef01234567"),
+    )
+
+    status, open_issues, quality_gate, open_hotspots, findings = module._evaluate_sonar(
+        runtime={
+            "token": "token",
+            "api_base": "https://sonarcloud.io",
+            "project_key": "Prekzursil_event-link",
+            "branch": "main",
+            "pull_request": "",
+            "expected_commit": "",
+        },
+        timeout_seconds=30,
+        poll_seconds=5,
+        findings=[],
+    )
+
+    assert status == "fail"
+    assert open_issues == 0
+    assert quality_gate == "OK"
+    assert open_hotspots == 2
+    assert findings == ["Sonar reports 2 open security hotspots (expected 0)."]
