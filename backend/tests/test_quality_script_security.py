@@ -96,6 +96,26 @@ def test_collect_contexts_captures_check_runs_and_statuses() -> None:
     }
 
 
+def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    responses = [
+        ({"message": "slow down"}, {}, 429),
+        ({"check_runs": []}, {}, 200),
+    ]
+    sleeps: list[int] = []
+
+    monkeypatch.setattr(
+        check_required_checks,
+        "request_https_json",
+        lambda *_args, **_kwargs: responses.pop(0),
+    )
+    monkeypatch.setattr(check_required_checks.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    payload = check_required_checks._api_get("https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs", "token")
+
+    assert payload == {"check_runs": []}
+    assert sleeps == [2]
+
+
 
 def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch) -> None:
     calls: dict[str, object] = {}
@@ -151,4 +171,3 @@ def test_request_https_json_rejects_non_https_url() -> None:
     with pytest.raises(ValueError, match="Only https URLs are allowed"):
         insecure_url = "http" + "://api.github.com/repos/Prekzursil/event-link"
         security_helpers.request_https_json(insecure_url)
-

@@ -33,23 +33,37 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _api_get(url: str, token: str) -> dict[str, Any]:
-    payload, _headers, status = request_https_json(
-        url,
-        headers={
-            "Accept": "application/vnd.github+json",
-            "Authorization": f"Bearer {token}",
-            "X-GitHub-Api-Version": "2022-11-28",
-            "User-Agent": "event-link-quality-zero-gate",
-        },
-        method="GET",
-        timeout=30,
-        allowed_hosts={"api.github.com"},
-    )
-    if not 200 <= status < 300:
-        raise RuntimeError(f"GitHub API request failed: HTTP {status}")
-    if not isinstance(payload, dict):
-        raise RuntimeError("Unexpected GitHub API response payload")
-    return payload
+    retries = 4
+    delay_seconds = 2
+    last_error = "GitHub API request exhausted retries"
+
+    for attempt in range(1, retries + 1):
+        payload, _headers, status = request_https_json(
+            url,
+            headers={
+                "Accept": "application/vnd.github+json",
+                "Authorization": f"Bearer {token}",
+                "X-GitHub-Api-Version": "2022-11-28",
+                "User-Agent": "event-link-quality-zero-gate",
+            },
+            method="GET",
+            timeout=30,
+            allowed_hosts={"api.github.com"},
+        )
+        if 200 <= status < 300:
+            if not isinstance(payload, dict):
+                raise RuntimeError("Unexpected GitHub API response payload")
+            return payload
+
+        retryable = status in {429, 500, 502, 503, 504}
+        last_error = f"GitHub API request failed: HTTP {status}"
+        if not retryable or attempt == retries:
+            raise RuntimeError(last_error)
+
+        time.sleep(delay_seconds)
+        delay_seconds *= 2
+
+    raise RuntimeError(last_error)
 
 
 def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
@@ -280,4 +294,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

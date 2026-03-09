@@ -21,6 +21,7 @@ WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
 def test_quality_zero_gate_requires_semgrep_zero_not_snyk_zero() -> None:
     content = QUALITY_GATE.read_text(encoding='utf-8')
 
+    assert '--required-context "codecov/patch"' in content
     assert '--required-context "Semgrep Zero"' in content
     assert '--required-context "Snyk Zero"' not in content
 
@@ -43,6 +44,16 @@ def test_selected_workflows_define_top_level_permissions_floor() -> None:
     for workflow in WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS:
         content = workflow.read_text(encoding='utf-8')
         assert 'permissions: {}' in content, workflow.name
+
+
+def test_quality_zero_gate_and_codacy_zero_workflows_enable_concurrency() -> None:
+    quality_content = QUALITY_GATE.read_text(encoding='utf-8')
+    codacy_content = (REPO_ROOT / '.github' / 'workflows' / 'codacy-zero.yml').read_text(encoding='utf-8')
+
+    assert 'concurrency:' in quality_content
+    assert "group: ${{ github.workflow }}-${{ github.ref }}" in quality_content
+    assert 'concurrency:' in codacy_content
+    assert "group: ${{ github.workflow }}-${{ github.ref }}" in codacy_content
 
 
 def test_codacy_tool_sync_workflow_dispatch_has_no_inputs() -> None:
@@ -77,12 +88,15 @@ def test_sonar_zero_workflow_waits_for_the_current_commit_analysis() -> None:
     assert '--expected-commit "${TARGET_SHA}"' in content
 
 
-def test_codacy_zero_workflow_uses_pr_or_commit_scoped_analysis() -> None:
+def test_codacy_zero_workflow_uses_branch_scoped_analysis_and_provider_precheck() -> None:
     content = (REPO_ROOT / '.github' / 'workflows' / 'codacy-zero.yml').read_text(encoding='utf-8')
 
-    assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
-    assert 'scope_args+=(--pr-number "${{ github.event.pull_request.number }}")' in content
-    assert '--commit "${TARGET_SHA}"' in content
+    assert 'CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
+    assert 'CODACY_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}' in content
+    assert '--required-context "Codacy Static Code Analysis"' in content
+    assert '--branch "${CODACY_BRANCH}"' in content
+    assert '--pr-number' not in content
+    assert '--commit "${CHECK_SHA}"' not in content
 
 
 def test_e2e_default_access_code_matches_seed_default() -> None:

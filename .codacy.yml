@@ -1,13 +1,4 @@
 ---
-exclude_paths:
-  - backend/tests/test_recompute_recommendations_ml.py
-  - backend/tests/test_task_queue_unit.py
-  - ui/tests/event-detail-branches.test.tsx
-  - ui/tests/high-impact-pages-coverage.test.tsx
-  - ui/tests/layout-and-ui-smoke.test.tsx
-  - ui/tests/mega-pages-branches.test.tsx
-  - ui/tests/mega-pages-smoke.test.tsx
-
 engines:
   bandit:
     exclude_paths:
