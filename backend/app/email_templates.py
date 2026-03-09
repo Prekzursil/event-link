@@ -184,44 +184,28 @@ def _filling_fast_copy(
 ) -> tuple[str, str, str]:
     if lang == "en":
         subject = f"Filling fast: {event.title}"
-        intro = (
-            f"Hi {name},\n\n"
-            f"'{event.title}' is filling up.\n"
-            f"Starts: {start_text}\n"
-            f"Location: {location}\n"
-            f"{seats_line}\n\n"
-        )
-        html_intro = (
-            f"<p>Hi {name},</p>"
-            f"<p><strong>{event.title}</strong> is filling up.</p>"
-            f"<p><strong>Starts:</strong> {start_text}<br>"
-            f"<strong>Location:</strong> {location}<br>"
-            f"<strong>{seats_line}</strong></p>"
-        )
-        link_text = "View event"
+        headline = f"<strong>{event.title}</strong> is filling up."
+        intro = f"Hi {name},\n\n'{event.title}' is filling up.\n"
+        labels = {"start": "Starts", "location": "Location", "link": "View event"}
         outro = "You can update notification preferences in your profile."
     else:
         subject = f"Se ocupă rapid: {event.title}"
-        intro = (
-            f"Salut {name},\n\n"
-            f"Evenimentul '{event.title}' se ocupă rapid.\n"
-            f"Începe: {start_text}\n"
-            f"Locație: {location}\n"
-            f"{seats_line}\n\n"
-        )
-        html_intro = (
-            f"<p>Salut {name},</p>"
-            f"<p>Evenimentul <strong>{event.title}</strong> se ocupă rapid.</p>"
-            f"<p><strong>Începe:</strong> {start_text}<br>"
-            f"<strong>Locație:</strong> {location}<br>"
-            f"<strong>{seats_line}</strong></p>"
-        )
-        link_text = "Vezi evenimentul"
+        headline = f"Evenimentul <strong>{event.title}</strong> se ocupă rapid."
+        intro = f"Salut {name},\n\nEvenimentul '{event.title}' se ocupă rapid.\n"
+        labels = {"start": "Începe", "location": "Locație", "link": "Vezi evenimentul"}
         outro = "Poți schimba preferințele de notificări în profil."
 
-    link_body = f"{link_text}: {link}\n\n" if link else ""
-    link_html = f"<p><a href=\"{link}\">{link_text}</a></p>" if link else ""
-    body = intro + link_body + outro
+    body = intro + f"{labels['start']}: {start_text}\n{labels['location']}: {location}\n{seats_line}\n\n"
+    html_intro = (
+        f"<p>{'Hi' if lang == 'en' else 'Salut'} {name},</p>"
+        f"<p>{headline}</p>"
+        f"<p><strong>{labels['start']}:</strong> {start_text}<br>"
+        f"<strong>{labels['location']}:</strong> {location}<br>"
+        f"<strong>{seats_line}</strong></p>"
+    )
+    link_body = f"{labels['link']}: {link}\n\n" if link else ""
+    link_html = f"<p><a href=\"{link}\">{labels['link']}</a></p>" if link else ""
+    body += link_body + outro
     html = html_intro + link_html + f"<p>{outro}</p>"
     return subject, body, html
 

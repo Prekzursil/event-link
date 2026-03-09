@@ -32,10 +32,14 @@ const PASSWORD_SEGMENT = 'pass' + 'word';
 const PASSWORD_FORGOT_PATH = `/${PASSWORD_SEGMENT}/forgot`;
 const PASSWORD_RESET_PATH = `/${PASSWORD_SEGMENT}/reset`;
 
-describe('services', () => {
+function resetServiceMocks() {
+  vi.clearAllMocks();
+  localStorage.clear();
+}
+
+describe('auth service', () => {
   beforeEach(() => {
-    vi.clearAllMocks();
-    localStorage.clear();
+    resetServiceMocks();
   });
 
   it('covers authService methods and storage helpers', async () => {
@@ -97,8 +101,14 @@ describe('services', () => {
     expect(authService.isAuthenticated()).toBe(false);
     expect(authService.getStoredUser()).toBeNull();
   });
+});
 
-  it('covers eventService methods and query assembly', async () => {
+describe('event service', () => {
+  beforeEach(() => {
+    resetServiceMocks();
+  });
+
+  it('covers event lookup, registration, favorites, and account routes', async () => {
     apiMock.get.mockResolvedValue({ data: { items: [], total: 0, page: 1, page_size: 20 } });
     await eventService.getEvents({
       search: 'abc',
@@ -151,7 +161,9 @@ describe('services', () => {
 
     await eventService.deleteMyAccount(ACCOUNT_CONFIRMATION);
     expect(apiMock.delete).toHaveBeenLastCalledWith('/api/me', { data: { [ACCESS_CODE_FIELD]: ACCOUNT_CONFIRMATION } });
+  });
 
+  it('covers event recommendations, organizer, and participant routes', async () => {
     apiMock.get.mockResolvedValueOnce({ data: [{ id: 3 }] });
     expect((await eventService.getRecommendations())).toHaveLength(1);
 
@@ -179,7 +191,9 @@ describe('services', () => {
 
     await eventService.updateParticipantAttendance(17, 33, true);
     expect(apiMock.put).toHaveBeenLastCalledWith('/api/organizer/events/17/participants/33?attended=true');
+  });
 
+  it('covers event mutations, profile, personalization, and notification routes', async () => {
     apiMock.post.mockResolvedValueOnce({ data: { updated: 5 } });
     expect((await eventService.bulkUpdateEventStatus([1, 2], 'draft')).updated).toBe(5);
 
@@ -231,6 +245,12 @@ describe('services', () => {
     apiMock.post.mockResolvedValueOnce({ data: { suggested_tags: [] } });
     expect((await eventService.suggestEvent({ title: 'x' })).suggested_tags).toEqual([]);
   });
+});
+
+describe('admin service', () => {
+  beforeEach(() => {
+    resetServiceMocks();
+  });
 
   it('covers adminService methods and filters', async () => {
     apiMock.get.mockResolvedValueOnce({ data: { total_users: 1 } });
@@ -271,6 +291,12 @@ describe('services', () => {
 
     apiMock.post.mockResolvedValueOnce({ data: { job_id: 3 } });
     expect((await adminService.enqueueFillingFast({ threshold_abs: 2 })).job_id).toBe(3);
+  });
+});
+
+describe('analytics service', () => {
+  beforeEach(() => {
+    resetServiceMocks();
   });
 
   it('covers analytics best-effort behavior', async () => {

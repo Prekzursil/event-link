@@ -4,8 +4,8 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { defineMutableValue, renderLanguageRoute, requireElement, setEnglishPreference } from './page-test-helpers';
 
-const { eventServiceMock, recordInteractionsSpy, authState, toastSpy, navigateSpy } = vi.hoisted(() => ({
-  eventServiceMock: {
+function createEventServiceMock() {
+  return {
     getEvent: vi.fn(),
     registerForEvent: vi.fn(),
     unregisterFromEvent: vi.fn(),
@@ -15,9 +15,11 @@ const { eventServiceMock, recordInteractionsSpy, authState, toastSpy, navigateSp
     cloneEvent: vi.fn(),
     hideTag: vi.fn(),
     blockOrganizer: vi.fn(),
-  },
-  recordInteractionsSpy: vi.fn(),
-  authState: {
+  };
+}
+
+function createAuthState() {
+  return {
     isAuthenticated: true,
     isOrganizer: false,
     isAdmin: false,
@@ -25,7 +27,13 @@ const { eventServiceMock, recordInteractionsSpy, authState, toastSpy, navigateSp
     user: { id: 1, role: 'student', email: 'student@test.local' },
     logout: vi.fn(),
     refreshUser: vi.fn(),
-  },
+  };
+}
+
+const { eventServiceMock, recordInteractionsSpy, authState, toastSpy, navigateSpy } = vi.hoisted(() => ({
+  eventServiceMock: createEventServiceMock(),
+  recordInteractionsSpy: vi.fn(),
+  authState: createAuthState(),
   toastSpy: vi.fn(),
   navigateSpy: vi.fn(),
 }));
