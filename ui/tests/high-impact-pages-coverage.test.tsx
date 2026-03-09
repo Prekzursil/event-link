@@ -12,8 +12,6 @@ import {
   eventServiceMock,
   makeEvent,
   mediaAddListenerSpy,
-  mediaRemoveListenerSpy,
-  navigateSpy,
   recordInteractionsSpy,
   toastSpy,
 } from './high-impact-pages-coverage.fixtures';
