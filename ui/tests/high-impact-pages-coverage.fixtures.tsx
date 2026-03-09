@@ -6,7 +6,7 @@ import { beforeEach, vi } from 'vitest';
 
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
-export const {
+const highImpactPageFixtures = vi.hoisted(() => ({
   toastSpy,
   navigateSpy,
   recordInteractionsSpy,
@@ -16,7 +16,6 @@ export const {
   themeState,
   mediaAddListenerSpy,
   mediaRemoveListenerSpy,
-} = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   navigateSpy: vi.fn(),
   recordInteractionsSpy: vi.fn(),
@@ -61,6 +60,18 @@ export const {
   mediaAddListenerSpy: vi.fn(),
   mediaRemoveListenerSpy: vi.fn(),
 }));
+
+const {
+  toastSpy,
+  navigateSpy,
+  recordInteractionsSpy,
+  eventServiceMock,
+  authServiceMock,
+  authState,
+  themeState,
+  mediaAddListenerSpy,
+  mediaRemoveListenerSpy,
+} = highImpactPageFixtures;
 
 vi.mock('@/services/event.service', () => ({ default: eventServiceMock }));
 vi.mock('@/services/auth.service', () => ({ default: authServiceMock }));
@@ -113,6 +124,11 @@ vi.mock('@/components/events/EventCard', () => ({
 export { EventsPage } from '@/pages/events/EventsPage';
 export { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
 export { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
+
+export function getHighImpactPageFixtures() {
+  return highImpactPageFixtures;
+}
+
 const {
   makeEvent,
   makeNotificationPreferences,

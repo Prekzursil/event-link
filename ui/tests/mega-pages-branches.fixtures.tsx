@@ -5,7 +5,7 @@ import { beforeEach, vi } from 'vitest';
 
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
-export const {
+const megaPageFixtures = vi.hoisted(() => ({
   toastSpy,
   navigateSpy,
   eventServiceMock,
@@ -13,7 +13,6 @@ export const {
   authServiceMock,
   authState,
   themeState,
-} = vi.hoisted(() => ({
   toastSpy: vi.fn(),
   navigateSpy: vi.fn(),
   eventServiceMock: {
@@ -76,6 +75,16 @@ export const {
   },
 }));
 
+const {
+  toastSpy,
+  navigateSpy,
+  eventServiceMock,
+  adminServiceMock,
+  authServiceMock,
+  authState,
+  themeState,
+} = megaPageFixtures;
+
 vi.mock('@/services/event.service', () => ({ default: eventServiceMock }));
 vi.mock('@/services/admin.service', () => ({ default: adminServiceMock }));
 vi.mock('@/services/auth.service', () => ({ default: authServiceMock }));
@@ -101,6 +110,11 @@ export { EventDetailPage } from '@/pages/events/EventDetailPage';
 export { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
 export { ParticipantsPage } from '@/pages/organizer/ParticipantsPage';
 export { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
+
+export function getMegaPageFixtures() {
+  return megaPageFixtures;
+}
+
 const {
   makeAdminEventPage,
   makeAdminStats,

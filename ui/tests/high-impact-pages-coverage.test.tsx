@@ -7,14 +7,18 @@ import {
   EventsPage,
   OrganizerDashboardPage,
   StudentProfilePage,
+  getHighImpactPageFixtures,
+  makeEvent,
+} from './high-impact-pages-coverage.fixtures';
+
+const {
   authServiceMock,
   authState,
   eventServiceMock,
-  makeEvent,
   mediaAddListenerSpy,
   recordInteractionsSpy,
   toastSpy,
-} from './high-impact-pages-coverage.fixtures';
+} = getHighImpactPageFixtures();
 
 describe('high-impact page coverage', () => {
   it('covers EventsPage filter/pagination handlers and favorite remove error branch', async () => {

@@ -9,13 +9,12 @@ import {
   OrganizerDashboardPage,
   ParticipantsPage,
   StudentProfilePage,
-  adminServiceMock,
-  authState,
-  eventServiceMock,
+  getMegaPageFixtures,
   makeEventDetail,
-  navigateSpy,
-  toastSpy,
 } from './mega-pages-branches.fixtures';
+
+const { adminServiceMock, authState, eventServiceMock, navigateSpy, toastSpy } =
+  getMegaPageFixtures();
 
 describe('mega pages branch matrix', () => {
   it('covers admin dashboard queue/users/events action branches', async () => {
