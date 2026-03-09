@@ -38,6 +38,46 @@ def _event_payload(*, start_time: str, **overrides):
     return payload
 
 
+def _event_crud_context(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("owner-a@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"]("owner-b@test.ro", "other-fixture-A1")
+    return (
+        client,
+        helpers["login"]("owner-a@test.ro", "owner-fixture-A1"),
+        helpers["login"]("owner-b@test.ro", "other-fixture-A1"),
+    )
+
+
+def _create_owned_event(helpers, owner_token: str, **overrides) -> int:
+    client = helpers["client"]
+    created = client.post(
+        "/api/events",
+        json=_event_payload(start_time=helpers["future_time"](), **overrides),
+        headers=helpers["auth_header"](owner_token),
+    )
+    assert created.status_code == 201
+    return int(created.json()["id"])
+
+
+def _admin_student_context(helpers):
+    client = helpers["client"]
+    db = helpers["db"]
+    helpers["make_admin"]("admin-edge@test.ro", "admin-fixture-A1")
+    admin_token = helpers["login"]("admin-edge@test.ro", "admin-fixture-A1")
+    student_token = helpers["register_student"]("edge-student@test.ro")
+    student = db.query(models.User).filter(models.User.email == "edge-student@test.ro").first()
+    assert student is not None
+    return client, db, admin_token, student_token, student
+
+
+def _blocked_organizer_context(helpers, db):
+    helpers["make_organizer"]("blocked-org@test.ro", "organizer-fixture-A1")
+    org = db.query(models.User).filter(models.User.email == "blocked-org@test.ro").first()
+    assert org is not None
+    return org, helpers["login"]("blocked-org@test.ro", "organizer-fixture-A1")
+
+
 def test_public_events_and_event_detail_branch_guards(helpers):
     client = helpers["client"]
     db = helpers["db"]
@@ -88,274 +128,123 @@ def test_public_events_and_event_detail_branch_guards(helpers):
     assert hidden_auth_detail.status_code == 404
 
 
-def test_event_crud_validation_bulk_and_suggest_branches(helpers):
-    client = helpers["client"]
+def test_event_create_validation_branches(helpers):
+    client, owner_token, _other_token = _event_crud_context(helpers)
+    invalid_payloads = [
+        _event_payload(start_time=helpers["future_time"](days=3), end_time=helpers["future_time"](days=2)),
+        _event_payload(start_time=helpers["future_time"](), max_seats=0),
+        _event_payload(start_time=helpers["future_time"](), cover_url="https://example.com/" + ("a" * 520)),
+    ]
+    for payload in invalid_payloads:
+        response = client.post("/api/events", json=payload, headers=helpers["auth_header"](owner_token))
+        assert response.status_code == 400
+
+
+def test_event_update_validation_and_permission_branches(helpers):
+    client, owner_token, other_token = _event_crud_context(helpers)
+    event_id = _create_owned_event(helpers, owner_token, tags=["dup", ""])
+    requests = [
+        ("PUT", "/api/events/999999", {"title": "x"}, owner_token, 404),
+        ("PUT", f"/api/events/{event_id}", {"title": "forbidden"}, other_token, 403),
+        ("PUT", f"/api/events/{event_id}", {"end_time": datetime.now(timezone.utc).isoformat()}, owner_token, 400),
+        ("PUT", f"/api/events/{event_id}", {"max_seats": -1}, owner_token, 400),
+        ("PUT", f"/api/events/{event_id}", {"cover_url": "https://example.com/" + ("a" * 520)}, owner_token, 400),
+    ]
+    for method, path, payload, token, status in requests:
+        response = client.request(method, path, json=payload, headers=helpers["auth_header"](token))
+        assert response.status_code == status
+
+
+def test_bulk_validation_and_suggest_branches(helpers):
+    client, owner_token, _other_token = _event_crud_context(helpers)
     db = helpers["db"]
-
-    helpers["make_organizer"]("owner-a@test.ro", "owner-fixture-A1")
-    helpers["make_organizer"]("owner-b@test.ro", "other-fixture-A1")
-    owner_token = helpers["login"]("owner-a@test.ro", "owner-fixture-A1")
-    other_token = helpers["login"]("owner-b@test.ro", "other-fixture-A1")
-
-    start_after = helpers["future_time"](days=3)
-    end_before_start = helpers["future_time"](days=2)
-    end_before = client.post(
-        "/api/events",
-        json=_event_payload(
-            start_time=start_after,
-            end_time=end_before_start,
-        ),
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert end_before.status_code == 400
-
-    bad_seats = client.post(
-        "/api/events",
-        json=_event_payload(start_time=helpers["future_time"](), max_seats=0),
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert bad_seats.status_code == 400
-
-    too_long_cover = client.post(
-        "/api/events",
-        json=_event_payload(start_time=helpers["future_time"](), cover_url="https://example.com/" + ("a" * 520)),
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert too_long_cover.status_code == 400
-
-    created = client.post(
-        "/api/events",
-        json=_event_payload(start_time=helpers["future_time"](), tags=["dup", ""]),
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert created.status_code == 201
-    event_id = created.json()["id"]
-
-    missing_update = client.put(
-        "/api/events/999999",
-        json={"title": "x"},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert missing_update.status_code == 404
-
-    forbidden_update = client.put(
-        f"/api/events/{event_id}",
-        json={"title": "forbidden"},
-        headers=helpers["auth_header"](other_token),
-    )
-    assert forbidden_update.status_code == 403
-
-    bad_end_update = client.put(
-        f"/api/events/{event_id}",
-        json={"end_time": datetime.now(timezone.utc).isoformat()},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert bad_end_update.status_code == 400
-
-    bad_seats_update = client.put(
-        f"/api/events/{event_id}",
-        json={"max_seats": -1},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert bad_seats_update.status_code == 400
-
-    bad_cover_update = client.put(
-        f"/api/events/{event_id}",
-        json={"cover_url": "https://example.com/" + ("a" * 520)},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert bad_cover_update.status_code == 400
-
-    empty_bulk_status = client.post(
-        "/api/organizer/events/bulk/status",
-        json={"event_ids": [], "status": "draft"},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert empty_bulk_status.status_code == 422
-
-    missing_bulk_status = client.post(
-        "/api/organizer/events/bulk/status",
-        json={"event_ids": [999999], "status": "draft"},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert missing_bulk_status.status_code == 404
-
-    empty_bulk_tags = client.post(
-        "/api/organizer/events/bulk/tags",
-        json={"event_ids": [], "tags": ["x"]},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert empty_bulk_tags.status_code == 422
-
-    missing_bulk_tags = client.post(
-        "/api/organizer/events/bulk/tags",
-        json={"event_ids": [999999], "tags": ["x"]},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert missing_bulk_tags.status_code == 404
-
-    long_tag_bulk = client.post(
-        "/api/organizer/events/bulk/tags",
-        json={"event_ids": [event_id], "tags": ["x" * 101]},
-        headers=helpers["auth_header"](owner_token),
-    )
-    assert long_tag_bulk.status_code == 400
-
-    # Suggest endpoint branches: city inference, blank tag skip, date-window duplicate filter.
+    event_id = _create_owned_event(helpers, owner_token, tags=["dup", ""])
+    bulk_requests = [
+        ("/api/organizer/events/bulk/status", {"event_ids": [], "status": "draft"}, 422),
+        ("/api/organizer/events/bulk/status", {"event_ids": [999999], "status": "draft"}, 404),
+        ("/api/organizer/events/bulk/tags", {"event_ids": [], "tags": ["x"]}, 422),
+        ("/api/organizer/events/bulk/tags", {"event_ids": [999999], "tags": ["x"]}, 404),
+        ("/api/organizer/events/bulk/tags", {"event_ids": [event_id], "tags": ["x" * 101]}, 400),
+    ]
+    for path, payload, status in bulk_requests:
+        response = client.post(path, json=payload, headers=helpers["auth_header"](owner_token))
+        assert response.status_code == status
     db.add(models.Tag(name=""))
     db.commit()
     suggest = client.post(
         "/api/organizer/events/suggest",
-        json={
-            "title": "Branch Event Cluj",
-            "description": "music",
-            "location": "Hall",
-            "start_time": helpers["future_time"](),
-        },
+        json={"title": "Branch Event Cluj", "description": "music", "location": "Hall", "start_time": helpers["future_time"]()},
         headers=helpers["auth_header"](owner_token),
     )
     assert suggest.status_code == 200
 
 
-def test_profile_personalization_registration_admin_and_auth_branches(monkeypatch, helpers):
-    client = helpers["client"]
-    db = helpers["db"]
-
-    helpers["make_admin"]("admin-edge@test.ro", "admin-fixture-A1")
-    admin_token = helpers["login"]("admin-edge@test.ro", "admin-fixture-A1")
-
-    student_token = helpers["register_student"]("edge-student@test.ro")
-    student = db.query(models.User).filter(models.User.email == "edge-student@test.ro").first()
-    assert student is not None
-
-    profile = client.get("/api/me/profile", headers=helpers["auth_header"](student_token))
-    assert profile.status_code == 200
-
-    # Hidden/block add branches.
-    hidden_missing = client.post("/api/me/personalization/hidden-tags/999999", headers=helpers["auth_header"](student_token))
-    assert hidden_missing.status_code == 404
-
+def test_personalization_hidden_and_blocked_branches(helpers):
+    client, db, _admin_token, student_token, _student = _admin_student_context(helpers)
+    assert client.get("/api/me/profile", headers=helpers["auth_header"](student_token)).status_code == 200
+    assert client.post("/api/me/personalization/hidden-tags/999999", headers=helpers["auth_header"](student_token)).status_code == 404
     tag = models.Tag(name="edge-tag")
     db.add(tag)
     db.commit()
     db.refresh(tag)
+    first_hidden = client.post(f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token))
+    second_hidden = client.post(f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token))
+    assert first_hidden.status_code == 201
+    assert second_hidden.status_code == 201
+    assert second_hidden.json()["status"] == "exists"
+    assert client.post("/api/me/personalization/blocked-organizers/999999", headers=helpers["auth_header"](student_token)).status_code == 404
+    org, _org_token = _blocked_organizer_context(helpers, db)
+    first_block = client.post(f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token))
+    second_block = client.post(f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token))
+    assert first_block.status_code == 201
+    assert second_block.status_code == 201
+    assert second_block.json()["status"] == "exists"
 
-    hidden_add = client.post(f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token))
-    assert hidden_add.status_code == 201
-    hidden_exists = client.post(f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token))
-    assert hidden_exists.status_code == 201
-    assert hidden_exists.json()["status"] == "exists"
 
-    block_missing = client.post("/api/me/personalization/blocked-organizers/999999", headers=helpers["auth_header"](student_token))
-    assert block_missing.status_code == 404
+def test_registration_restore_and_metric_validation_branches(helpers):
+    client, db, admin_token, student_token, _student = _admin_student_context(helpers)
+    _org, org_token = _blocked_organizer_context(helpers, db)
+    requests = [
+        ("GET", "/api/organizer/events/999999/participants", None, org_token, 404),
+        ("PUT", "/api/organizer/events/999999/participants/1", None, org_token, 404),
+        ("POST", "/api/events/999999/register", None, student_token, 404),
+        ("POST", "/api/events/999999/register/resend", None, student_token, 404),
+        ("DELETE", "/api/events/999999/register", None, student_token, 404),
+        ("POST", "/api/admin/events/1/registrations/1/restore", None, student_token, 403),
+        ("POST", "/api/admin/events/1/registrations/1/restore", None, admin_token, 404),
+    ]
+    for method, path, params, token, status in requests:
+        response = client.request(method, path, params={"attended": True} if method == "PUT" else params, headers=helpers["auth_header"](token))
+        assert response.status_code == status
+    for path, params in [
+        ("/api/admin/stats", {"days": 0}),
+        ("/api/admin/stats", {"days": 7, "top_tags_limit": 0}),
+        ("/api/admin/personalization/metrics", {"days": 0}),
+    ]:
+        response = client.get(path, params=params, headers=helpers["auth_header"](admin_token))
+        assert response.status_code == 400
 
-    helpers["make_organizer"]("blocked-org@test.ro", "organizer-fixture-A1")
-    org = db.query(models.User).filter(models.User.email == "blocked-org@test.ro").first()
-    assert org is not None
-    block_add = client.post(
-        f"/api/me/personalization/blocked-organizers/{int(org.id)}",
-        headers=helpers["auth_header"](student_token),
-    )
-    assert block_add.status_code == 201
-    block_exists = client.post(
-        f"/api/me/personalization/blocked-organizers/{int(org.id)}",
-        headers=helpers["auth_header"](student_token),
-    )
-    assert block_exists.status_code == 201
-    assert block_exists.json()["status"] == "exists"
 
-    # Registration/error branches.
-    missing_participants = client.get(
-        "/api/organizer/events/999999/participants",
-        headers=helpers["auth_header"](helpers["login"]("blocked-org@test.ro", "organizer-fixture-A1")),
-    )
-    assert missing_participants.status_code == 404
-
-    missing_attendance = client.put(
-        "/api/organizer/events/999999/participants/1",
-        params={"attended": True},
-        headers=helpers["auth_header"](helpers["login"]("blocked-org@test.ro", "organizer-fixture-A1")),
-    )
-    assert missing_attendance.status_code == 404
-
-    register_missing = client.post("/api/events/999999/register", headers=helpers["auth_header"](student_token))
-    assert register_missing.status_code == 404
-
-    resend_missing = client.post("/api/events/999999/register/resend", headers=helpers["auth_header"](student_token))
-    assert resend_missing.status_code == 404
-
-    unregister_missing = client.delete("/api/events/999999/register", headers=helpers["auth_header"](student_token))
-    assert unregister_missing.status_code == 404
-
-    non_admin_restore = client.post(
-        "/api/admin/events/1/registrations/1/restore",
-        headers=helpers["auth_header"](student_token),
-    )
-    assert non_admin_restore.status_code == 403
-
-    admin_restore_missing = client.post(
-        "/api/admin/events/1/registrations/1/restore",
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert admin_restore_missing.status_code == 404
-
-    bad_stats_days = client.get("/api/admin/stats", params={"days": 0}, headers=helpers["auth_header"](admin_token))
-    assert bad_stats_days.status_code == 400
-    bad_stats_tags = client.get(
-        "/api/admin/stats",
-        params={"days": 7, "top_tags_limit": 0},
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert bad_stats_tags.status_code == 400
-
-    bad_metrics_days = client.get(
-        "/api/admin/personalization/metrics",
-        params={"days": 0},
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert bad_metrics_days.status_code == 400
-
-    bad_users_page = client.get("/api/admin/users", params={"page": 0}, headers=helpers["auth_header"](admin_token))
-    assert bad_users_page.status_code == 400
-    bad_users_page_size = client.get(
-        "/api/admin/users",
-        params={"page_size": 0},
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert bad_users_page_size.status_code == 400
-
+def test_admin_listing_review_and_placeholder_delete_branches(helpers):
+    client, db, admin_token, _student_token, _student = _admin_student_context(helpers)
+    listing_requests = [
+        ("/api/admin/users", {"page": 0}, 400),
+        ("/api/admin/users", {"page_size": 0}, 400),
+        ("/api/admin/events", {"page": 0}, 400),
+        ("/api/admin/events", {"page_size": 0}, 400),
+        ("/api/admin/events", {"status": "invalid", "category": "edu", "city": "clu", "search": "edge"}, 400),
+    ]
+    for path, params, status in listing_requests:
+        response = client.get(path, params=params, headers=helpers["auth_header"](admin_token))
+        assert response.status_code == status
     users_filtered = client.get(
         "/api/admin/users",
         params={"search": "edge", "role": "student", "is_active": True},
         headers=helpers["auth_header"](admin_token),
     )
     assert users_filtered.status_code == 200
-
-    user_missing = client.patch(
-        "/api/admin/users/999999",
-        json={"is_active": False},
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert user_missing.status_code == 404
-
-    bad_events_page = client.get("/api/admin/events", params={"page": 0}, headers=helpers["auth_header"](admin_token))
-    assert bad_events_page.status_code == 400
-    bad_events_page_size = client.get("/api/admin/events", params={"page_size": 0}, headers=helpers["auth_header"](admin_token))
-    assert bad_events_page_size.status_code == 400
-    bad_events_status = client.get(
-        "/api/admin/events",
-        params={"status": "invalid", "category": "edu", "city": "clu", "search": "edge"},
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert bad_events_status.status_code == 400
-
-    missing_review = client.post(
-        "/api/admin/events/999999/moderation/review",
-        headers=helpers["auth_header"](admin_token),
-    )
-    assert missing_review.status_code == 404
-
-    # Placeholder organizer cannot be deleted.
+    assert client.patch("/api/admin/users/999999", json={"is_active": False}, headers=helpers["auth_header"](admin_token)).status_code == 404
+    assert client.post("/api/admin/events/999999/moderation/review", headers=helpers["auth_header"](admin_token)).status_code == 404
     placeholder_access_code = "placeholder-code-A1"
     placeholder = models.User(
         email="deleted-organizer@eventlink.invalid",
@@ -364,7 +253,6 @@ def test_profile_personalization_registration_admin_and_auth_branches(monkeypatc
     )
     db.add(placeholder)
     db.commit()
-
     placeholder_token = auth.create_access_token({"sub": str(placeholder.id), "email": placeholder.email, "role": placeholder.role.value})
     blocked_delete = client.request(
         "DELETE",

@@ -56,6 +56,242 @@ def test_backend_root_points_to_backend_directory() -> None:
     assert backend_root.name == "backend"
     assert (backend_root / "app" / "task_queue.py").exists()
 
+
+def _make_user(email: str, password: str, role: models.UserRole, **overrides):
+    return models.User(
+        email=email,
+        password_hash=auth.get_password_hash(password),
+        role=role,
+        **overrides,
+    )
+
+
+def _make_event(title: str, owner, *, when: datetime, max_seats: int | None, **overrides):
+    return models.Event(
+        title=title,
+        description="desc",
+        category="Edu",
+        start_time=when,
+        city="Cluj",
+        location="Hall",
+        max_seats=max_seats,
+        owner=owner,
+        status="published",
+        **overrides,
+    )
+
+
+def _interaction(*, user_id: int, event_id: int, kind: str, occurred_at: datetime, meta=None):
+    payload = {
+        "user_id": user_id,
+        "event_id": event_id,
+        "interaction_type": kind,
+        "occurred_at": occurred_at,
+    }
+    if meta is not None:
+        payload["meta"] = meta
+    return models.EventInteraction(**payload)
+
+
+def _reset_guardrail_state(db_session) -> None:
+    db_session.query(models.EventInteraction).delete()
+    db_session.query(models.RecommenderModel).delete()
+    db_session.commit()
+
+
+def _add_balanced_guardrail_rows(db_session, *, user_id: int, event_id: int, now: datetime) -> None:
+    rows = []
+    for sort in ("recommended", "time"):
+        rows.extend(
+            [
+                _interaction(user_id=user_id, event_id=event_id, kind="impression", occurred_at=now, meta={"source": "events_list", "sort": sort}),
+                _interaction(
+                    user_id=user_id,
+                    event_id=event_id,
+                    kind="click",
+                    occurred_at=now + timedelta(minutes=1),
+                    meta={"source": "events_list", "sort": sort},
+                ),
+                _interaction(user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(minutes=5)),
+            ]
+        )
+    db_session.add_all(rows)
+    db_session.commit()
+
+
+def _seed_weekly_digest_fixture(db_session):
+    now = datetime.now(timezone.utc)
+    users = {
+        name: _make_user(email, "student-fixture-A1", models.UserRole.student, **overrides)
+        for name, email, overrides in [
+            ("active", "digest-active@test.ro", {"is_active": True, "email_digest_enabled": True, "language_preference": "system"}),
+            ("inactive", "digest-inactive@test.ro", {"is_active": False, "email_digest_enabled": True, "language_preference": "system"}),
+            ("disabled", "digest-disabled@test.ro", {"is_active": True, "email_digest_enabled": False, "language_preference": "system"}),
+        ]
+    }
+    organizer = _make_user("digest-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator)
+    event = _make_event("Digest Event", organizer, when=now + timedelta(days=2), max_seats=20)
+    db_session.add_all([*users.values(), organizer, event])
+    db_session.commit()
+    db_session.add(
+        models.UserRecommendation(
+            user_id=int(users["active"].id),
+            event_id=int(event.id),
+            score=0.87,
+            rank=1,
+            model_version="test",
+            reason=None,
+            generated_at=now,
+        )
+    )
+    db_session.commit()
+    return users, event
+
+
+def _seed_filling_fast_branch_matrix(db_session):
+    now = datetime.now(timezone.utc)
+    organizer = _make_user("branch-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator)
+    hidden_tag = models.Tag(name="hidden-branch")
+    events = {
+        name: _make_event(title, organizer, when=now + timedelta(days=days), max_seats=seats)
+        for name, title, seats, days in [
+            ("limit_first", "limit-first", 4, 2),
+            ("limit_second", "limit-second", 4, 3),
+            ("blocked", "blocked", 10, 2),
+            ("hidden", "hidden", 10, 2),
+            ("full", "full", 1, 2),
+            ("abundant", "abundant", 100, 2),
+            ("system", "system", 2, 2),
+        ]
+    }
+    events["hidden"].tags.append(hidden_tag)
+    users = {
+        name: _make_user(email, "student-fixture-A1", models.UserRole.student, **overrides)
+        for name, email, overrides in [
+            ("inactive", "inactive@test.ro", {"is_active": False, "email_filling_fast_enabled": True, "language_preference": "en"}),
+            ("disabled", "disabled@test.ro", {"is_active": True, "email_filling_fast_enabled": False, "language_preference": "en"}),
+            ("limited", "limited@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
+            ("blocked", "blocked@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
+            ("hidden", "hidden@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
+            ("full", "full@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
+            ("abundant", "abundant@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
+            ("system", "system@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "system"}),
+        ]
+    }
+    db_session.add_all([organizer, hidden_tag, *events.values(), *users.values()])
+    db_session.commit()
+    favorites = [
+        ("inactive", "limit_first"),
+        ("disabled", "limit_first"),
+        ("limited", "limit_first"),
+        ("limited", "limit_second"),
+        ("blocked", "blocked"),
+        ("hidden", "hidden"),
+        ("full", "full"),
+        ("abundant", "abundant"),
+        ("system", "system"),
+    ]
+    db_session.add_all(
+        models.FavoriteEvent(user_id=int(users[user_name].id), event_id=int(events[event_name].id))
+        for user_name, event_name in favorites
+    )
+    db_session.add(models.Registration(user_id=int(users["full"].id), event_id=int(events["full"].id)))
+    db_session.commit()
+    return SimpleNamespace(organizer=organizer, hidden_tag=hidden_tag, users=users, events=events)
+
+
+def _patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
+    def _exclusions(*, user_id: int, **_kwargs):
+        if int(user_id) == int(setup.users["blocked"].id):
+            return set(), {int(setup.organizer.id)}
+        if int(user_id) == int(setup.users["hidden"].id):
+            return {int(setup.hidden_tag.id)}, set()
+        return set(), set()
+
+    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", _exclusions)
+    monkeypatch.setattr(task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload))
+
+    import app.email_templates as tpl
+
+    monkeypatch.setattr(
+        tpl,
+        "render_filling_fast_email",
+        lambda user, event, *, available_seats, lang: langs.append((user.email, lang, available_seats, event.title)) or ("sub", "txt", "html"),
+    )
+
+
+def _seed_guardrail_window_rows(db_session, *, user_id: int, event_id: int, now: datetime) -> None:
+    db_session.add_all(
+        [
+            _interaction(user_id=user_id, event_id=event_id, kind="impression", occurred_at=now, meta={"source": "events_list", "sort": "recommended"}),
+            _interaction(user_id=user_id, event_id=event_id, kind="impression", occurred_at=now, meta={"source": "events_list", "sort": "time"}),
+            _interaction(user_id=user_id, event_id=event_id, kind="click", occurred_at=now + timedelta(minutes=1), meta={"source": "other", "sort": "recommended"}),
+            _interaction(user_id=user_id, event_id=event_id, kind="click", occurred_at=now + timedelta(minutes=2), meta={"source": "events_list", "sort": "recommended"}),
+            _interaction(user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(hours=5)),
+        ]
+    )
+    db_session.commit()
+
+
+def _seed_guardrail_rollback_state(db_session, *, user_id: int, event_id: int, now: datetime):
+    _add_balanced_guardrail_rows(db_session, user_id=user_id, event_id=event_id, now=now)
+    db_session.add(
+        _interaction(
+            user_id=user_id,
+            event_id=event_id,
+            kind="impression",
+            occurred_at=now,
+            meta={"source": "events_list", "sort": "recommended"},
+        )
+    )
+    previous = models.RecommenderModel(model_version="model-prev", feature_names=["bias"], weights=[0.0], meta={}, is_active=False)
+    active = models.RecommenderModel(model_version="model-active", feature_names=["bias"], weights=[0.1], meta={}, is_active=True)
+    db_session.add_all([previous, active])
+    db_session.commit()
+    return previous, active
+
+
+class _ChainQuery:
+    def __init__(self, *, rows=None, first_result=None, subquery_result=None):
+        self._rows = rows if rows is not None else []
+        self._first_result = first_result
+        self._subquery_result = subquery_result
+
+    def filter(self, *_args, **_kwargs):
+        return self
+
+    def group_by(self, *_args, **_kwargs):
+        return self
+
+    def select_from(self, *_args, **_kwargs):
+        return self
+
+    def join(self, *_args, **_kwargs):
+        return self
+
+    def outerjoin(self, *_args, **_kwargs):
+        return self
+
+    def order_by(self, *_args, **_kwargs):
+        return self
+
+    def subquery(self):
+        return self._subquery_result
+
+    def all(self):
+        return self._rows
+
+    def first(self):
+        return self._first_result
+
+
+class _FakeFillingFastDb:
+    def __init__(self, *queries):
+        self._queries = list(queries)
+
+    def query(self, *_args, **_kwargs):
+        return self._queries.pop(0)
+
 def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
     stale_job = _mk_job(
         db_session,
@@ -100,19 +336,11 @@ def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
 
 
 def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
-    missing_backend_root = tmp_path / "missing-backend"
-    monkeypatch.setattr(task_queue, "_backend_root", lambda: missing_backend_root)
-    with pytest.raises(RuntimeError, match="Missing trainer script"):
-        task_queue._run_recompute_recommendations_ml(payload={})
-
     backend_root = tmp_path / "backend"
-    script_dir = backend_root / "scripts"
-    script_dir.mkdir(parents=True)
-    script_path = script_dir / "recompute_recommendations_ml.py"
+    script_path = backend_root / "scripts" / "recompute_recommendations_ml.py"
+    script_path.parent.mkdir(parents=True)
     script_path.write_text("print('ok')", encoding="utf-8")
-
     monkeypatch.setattr(task_queue, "_backend_root", lambda: backend_root)
-
     observed = {}
 
     def _run_script(**kwargs):
@@ -143,11 +371,11 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
     assert "--l2 0.001" in argv
     assert "--seed 42" in argv
     assert observed["env_overrides"]["RECOMMENDER_MODEL_VERSION"] == "m2"
-
-    def _run_fail(**_kwargs):
-        return SimpleNamespace(returncode=2, stdout="oops", stderr="bad")
-
-    monkeypatch.setattr(task_queue, "_execute_python_script", _run_fail)
+    monkeypatch.setattr(
+        task_queue,
+        "_execute_python_script",
+        lambda **_kwargs: SimpleNamespace(returncode=2, stdout="oops", stderr="bad"),
+    )
     with pytest.raises(RuntimeError):
         task_queue._run_recompute_recommendations_ml(payload={"timeout_seconds": 5})
 
@@ -308,71 +536,11 @@ def test_apply_personalization_exclusions_applies_both_filters():
 
 
 def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_session):
-    now = datetime.now(timezone.utc)
-    active = models.User(
-        email="digest-active@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_digest_enabled=True,
-        language_preference="system",
-    )
-    inactive = models.User(
-        email="digest-inactive@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=False,
-        email_digest_enabled=True,
-        language_preference="system",
-    )
-    disabled = models.User(
-        email="digest-disabled@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_digest_enabled=False,
-        language_preference="system",
-    )
-    organizer = models.User(
-        email="digest-org@test.ro",
-        password_hash=auth.get_password_hash("organizer-fixture-A1"),
-        role=models.UserRole.organizator,
-    )
-    event = models.Event(
-        title="Digest Event",
-        description="desc",
-        category="Edu",
-        start_time=now + timedelta(days=2),
-        city="Cluj",
-        location="Hall",
-        max_seats=20,
-        owner=organizer,
-        status="published",
-    )
-    db_session.add_all([active, inactive, disabled, organizer, event])
-    db_session.commit()
-    db_session.refresh(active)
-    db_session.refresh(event)
-
-    db_session.add(
-        models.UserRecommendation(
-            user_id=int(active.id),
-            event_id=int(event.id),
-            score=0.87,
-            rank=1,
-            model_version="test",
-            reason=None,
-            generated_at=now,
-        )
-    )
-    db_session.commit()
-
+    _seed_weekly_digest_fixture(db_session)
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
     enqueued = []
     monkeypatch.setattr(task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload))
-
     result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 3})
-
     assert result["users"] == 1
     assert result["emails"] == 1
     assert enqueued and "Salut" in enqueued[0]["body_text"]
@@ -476,377 +644,131 @@ def _seed_guardrail_user_event(db_session):
 def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, db_session):
     user, event = _seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-
     db_session.add_all(
         [
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta="not-a-dict",
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "other", "sort": "time"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="click",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": "unknown"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="register",
-                occurred_at=now + timedelta(hours=5),
-            ),
+            _interaction(user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta="not-a-dict"),
+            _interaction(user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta={"source": "events_list"}),
+            _interaction(user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta={"source": "other", "sort": "time"}),
+            _interaction(user_id=int(user.id), event_id=int(event.id), kind="click", occurred_at=now, meta={"source": "events_list", "sort": "unknown"}),
+            _interaction(user_id=int(user.id), event_id=int(event.id), kind="register", occurred_at=now + timedelta(hours=5)),
         ]
     )
     db_session.commit()
-
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_days", 7)
-
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
         payload={"days": 0, "min_impressions": 10, "click_to_register_window_hours": 1},
     )
-
     assert result["enabled"] is True
     assert result["days"] == 7
     assert result["action"] == "skip_low_volume"
 
 
-def test_guardrails_ok_no_active_and_no_previous_paths(monkeypatch, db_session):
-    db_session.query(models.EventInteraction).delete()
-    db_session.query(models.RecommenderModel).delete()
-    db_session.commit()
-
+def test_guardrails_returns_ok_for_balanced_metrics(monkeypatch, db_session):
+    _reset_guardrail_state(db_session)
     user, event = _seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-
-    # Balanced interactions to hit the "ok" path.
-    for sort in ("recommended", "time"):
-        db_session.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": sort},
-            )
-        )
-        db_session.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="click",
-                occurred_at=now + timedelta(minutes=1),
-                meta={"source": "events_list", "sort": sort},
-            )
-        )
-        db_session.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="register",
-                occurred_at=now + timedelta(minutes=5),
-            )
-        )
-    db_session.commit()
-
+    _add_balanced_guardrail_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
-    ok_result = task_queue._evaluate_personalization_guardrails(
+    result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
         payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.5, "conversion_drop_ratio": 0.5},
     )
-    assert ok_result["action"] == "ok"
+    assert result["action"] == "ok"
 
-    # Force no_active_model by making recommended quality collapse.
+def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(monkeypatch, db_session):
+    _reset_guardrail_state(db_session)
+    user, event = _seed_guardrail_user_event(db_session)
+    now = datetime.now(timezone.utc)
+    _add_balanced_guardrail_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
     db_session.add(
-        models.EventInteraction(
+        _interaction(
             user_id=int(user.id),
             event_id=int(event.id),
-            interaction_type="impression",
+            kind="impression",
             occurred_at=now,
             meta={"source": "events_list", "sort": "recommended"},
         )
     )
     db_session.commit()
-
-    no_active = task_queue._evaluate_personalization_guardrails(
+    monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
+    result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
         payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
     )
-    assert no_active["action"] == "no_active_model"
+    assert result["action"] == "no_active_model"
 
-    active_model = models.RecommenderModel(
-        model_version="active-only",
-        feature_names=["bias"],
-        weights=[0.0],
-        meta={},
-        is_active=True,
+def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch, db_session):
+    _reset_guardrail_state(db_session)
+    user, event = _seed_guardrail_user_event(db_session)
+    now = datetime.now(timezone.utc)
+    _add_balanced_guardrail_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
+    db_session.add(
+        _interaction(
+            user_id=int(user.id),
+            event_id=int(event.id),
+            kind="impression",
+            occurred_at=now,
+            meta={"source": "events_list", "sort": "recommended"},
+        )
     )
+    active_model = models.RecommenderModel(model_version="active-only", feature_names=["bias"], weights=[0.0], meta={}, is_active=True)
     db_session.add(active_model)
     db_session.commit()
-
-    no_previous = task_queue._evaluate_personalization_guardrails(
+    monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
+    result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
         payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
     )
-    assert no_previous["action"] == "no_previous_model"
+    assert result["action"] == "no_previous_model"
 
 
 
-def test_send_filling_fast_alerts_branch_matrix(monkeypatch, db_session):
-    now = datetime.now(timezone.utc)
-
-    organizer = models.User(
-        email="branch-org@test.ro",
-        password_hash=auth.get_password_hash("organizer-fixture-A1"),
-        role=models.UserRole.organizator,
-    )
-    hidden_tag = models.Tag(name="hidden-branch")
-
-    def _event(title: str, seats: int | None, days: int = 2):
-        return models.Event(
-            title=title,
-            description="desc",
-            category="Edu",
-            start_time=now + timedelta(days=days),
-            city="Cluj",
-            location="Hall",
-            max_seats=seats,
-            owner=organizer,
-            status="published",
-        )
-
-    event_limit_first = _event("limit-first", 4)
-    event_limit_second = _event("limit-second", 4, days=3)
-    event_blocked = _event("blocked", 10)
-    event_hidden = _event("hidden", 10)
-    event_full = _event("full", 1)
-    event_abundant = _event("abundant", 100)
-    event_system = _event("system", 2)
-
-    event_hidden.tags.append(hidden_tag)
-
-    inactive = models.User(
-        email="inactive@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=False,
-        email_filling_fast_enabled=True,
-        language_preference="en",
-    )
-    disabled = models.User(
-        email="disabled@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=False,
-        language_preference="en",
-    )
-    limited = models.User(
-        email="limited@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=True,
-        language_preference="en",
-    )
-    blocked = models.User(
-        email="blocked@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=True,
-        language_preference="en",
-    )
-    hidden = models.User(
-        email="hidden@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=True,
-        language_preference="en",
-    )
-    full = models.User(
-        email="full@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=True,
-        language_preference="en",
-    )
-    abundant = models.User(
-        email="abundant@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=True,
-        language_preference="en",
-    )
-    system_lang = models.User(
-        email="system@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-        is_active=True,
-        email_filling_fast_enabled=True,
-        language_preference="system",
-    )
-
-    db_session.add_all(
-        [
-            organizer,
-            hidden_tag,
-            event_limit_first,
-            event_limit_second,
-            event_blocked,
-            event_hidden,
-            event_full,
-            event_abundant,
-            event_system,
-            inactive,
-            disabled,
-            limited,
-            blocked,
-            hidden,
-            full,
-            abundant,
-            system_lang,
-        ]
-    )
-    db_session.commit()
-
-    db_session.add_all(
-        [
-            models.FavoriteEvent(user_id=int(inactive.id), event_id=int(event_limit_first.id)),
-            models.FavoriteEvent(user_id=int(disabled.id), event_id=int(event_limit_first.id)),
-            models.FavoriteEvent(user_id=int(limited.id), event_id=int(event_limit_first.id)),
-            models.FavoriteEvent(user_id=int(limited.id), event_id=int(event_limit_second.id)),
-            models.FavoriteEvent(user_id=int(blocked.id), event_id=int(event_blocked.id)),
-            models.FavoriteEvent(user_id=int(hidden.id), event_id=int(event_hidden.id)),
-            models.FavoriteEvent(user_id=int(full.id), event_id=int(event_full.id)),
-            models.FavoriteEvent(user_id=int(abundant.id), event_id=int(event_abundant.id)),
-            models.FavoriteEvent(user_id=int(system_lang.id), event_id=int(event_system.id)),
-        ]
-    )
-    db_session.add(models.Registration(user_id=int(full.id), event_id=int(event_full.id)))
-    db_session.commit()
-
-    def _exclusions(*, user_id: int, **_kwargs):
-        if int(user_id) == int(blocked.id):
-            return set(), {int(organizer.id)}
-        if int(user_id) == int(hidden.id):
-            return {int(hidden_tag.id)}, set()
-        return set(), set()
-
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", _exclusions)
-
+def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(monkeypatch, db_session):
+    setup = _seed_filling_fast_branch_matrix(db_session)
     enqueued = []
-    monkeypatch.setattr(task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload))
-
     langs = []
-    import app.email_templates as tpl
-
-    def _render(user, event, *, available_seats: int, lang: str):
-        langs.append((user.email, lang, available_seats, event.title))
-        return "sub", "txt", "html"
-
-    monkeypatch.setattr(tpl, "render_filling_fast_email", _render)
-
+    _patch_filling_fast_alerts(monkeypatch, setup, enqueued=enqueued, langs=langs)
     result = task_queue._send_filling_fast_alerts(
         db=db_session,
         payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
     )
-
     assert result["pairs"] >= 7
     assert result["emails"] == 2
     assert len(enqueued) == 2
+
+
+def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(monkeypatch, db_session):
+    setup = _seed_filling_fast_branch_matrix(db_session)
+    enqueued = []
+    langs = []
+    _patch_filling_fast_alerts(monkeypatch, setup, enqueued=enqueued, langs=langs)
+    task_queue._send_filling_fast_alerts(
+        db=db_session,
+        payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
+    )
     assert any(email == "system@test.ro" and lang == "ro" for email, lang, _available, _title in langs)
 
 
 def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
     user = SimpleNamespace(id=11, is_active=True, email_filling_fast_enabled=True, language_preference="en", email="user@test.ro")
     event = SimpleNamespace(id=21, owner_id=31, tags=[], max_seats=None, title="No seats")
-
-    class _SeatsQuery:
-        def filter(self, *_args, **_kwargs):
-            return self
-
-        def group_by(self, *_args, **_kwargs):
-            return self
-
-        def subquery(self):
-            return SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))
-
-    class _RowsQuery:
-        def select_from(self, *_args, **_kwargs):
-            return self
-
-        def join(self, *_args, **_kwargs):
-            return self
-
-        def outerjoin(self, *_args, **_kwargs):
-            return self
-
-        def filter(self, *_args, **_kwargs):
-            return self
-
-        def order_by(self, *_args, **_kwargs):
-            return self
-
-        def all(self):
-            return [(user, event, 0)]
-
-    class _DedupeQuery:
-        def filter(self, *_args, **_kwargs):
-            return self
-
-        def first(self):
-            return None
-
-    class _FakeDb:
-        def __init__(self):
-            self.query_calls = 0
-
-        def query(self, *_args, **_kwargs):
-            self.query_calls += 1
-            if self.query_calls == 1:
-                return _SeatsQuery()
-            if self.query_calls == 2:
-                return _RowsQuery()
-            return _DedupeQuery()
-
-    fake_db = _FakeDb()
+    fake_db = _FakeFillingFastDb(
+        _ChainQuery(subquery_result=SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))),
+        _ChainQuery(rows=[(user, event, 0)]),
+        _ChainQuery(first_result=None),
+        _ChainQuery(first_result=None),
+    )
     render_calls = []
-
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
     monkeypatch.setattr(task_queue, "enqueue_job", _unexpected_enqueue)
-
     import app.email_templates as tpl
-
     monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: render_calls.append("rendered"))
-
     result = task_queue._send_filling_fast_alerts(
         db=fake_db,
         payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
     )
-
     assert result == {"pairs": 1, "emails": 0}
     assert render_calls == []
     assert fake_db.query().filter().first() is None
@@ -854,56 +776,12 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
 
 
 def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch, db_session):
-    db_session.query(models.EventInteraction).delete()
-    db_session.query(models.RecommenderModel).delete()
-    db_session.commit()
-
+    _reset_guardrail_state(db_session)
     user, event = _seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-
-    db_session.add_all(
-        [
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": "recommended"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": "time"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="click",
-                occurred_at=now + timedelta(minutes=1),
-                meta={"source": "other", "sort": "recommended"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="click",
-                occurred_at=now + timedelta(minutes=2),
-                meta={"source": "events_list", "sort": "recommended"},
-            ),
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="register",
-                occurred_at=now + timedelta(hours=5),
-            ),
-        ]
-    )
-    db_session.commit()
-
+    _seed_guardrail_window_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_days", 7)
-
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
         payload={
@@ -914,7 +792,6 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
             "conversion_drop_ratio": 0.5,
         },
     )
-
     assert result["days"] == 7
     assert result["enabled"] is True
 
@@ -1180,77 +1057,22 @@ def test_send_weekly_digest_skips_already_sent_delivery(monkeypatch, db_session)
 
 
 def test_guardrails_rollback_reactivates_previous_model(monkeypatch, db_session):
-    db_session.query(models.EventInteraction).delete()
-    db_session.query(models.RecommenderModel).delete()
-    db_session.commit()
-
+    _reset_guardrail_state(db_session)
     user, event = _seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-
-    for sort in ("recommended", "time"):
-        db_session.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": sort},
-            )
-        )
-        db_session.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="click",
-                occurred_at=now + timedelta(minutes=1),
-                meta={"source": "events_list", "sort": sort},
-            )
-        )
-        db_session.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                interaction_type="register",
-                occurred_at=now + timedelta(minutes=5),
-            )
-        )
-
-    db_session.add(
-        models.EventInteraction(
-            user_id=int(user.id),
-            event_id=int(event.id),
-            interaction_type="impression",
-            occurred_at=now,
-            meta={"source": "events_list", "sort": "recommended"},
-        )
+    previous, active = _seed_guardrail_rollback_state(
+        db_session,
+        user_id=int(user.id),
+        event_id=int(event.id),
+        now=now,
     )
-
-    previous = models.RecommenderModel(
-        model_version="model-prev",
-        feature_names=["bias"],
-        weights=[0.0],
-        meta={},
-        is_active=False,
-    )
-    active = models.RecommenderModel(
-        model_version="model-active",
-        feature_names=["bias"],
-        weights=[0.1],
-        meta={},
-        is_active=True,
-    )
-    db_session.add_all([previous, active])
-    db_session.commit()
-
     enqueued = []
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     monkeypatch.setattr(task_queue, "enqueue_job", lambda *args, **kwargs: enqueued.append((args, kwargs)))
-
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
         payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
     )
-
     db_session.refresh(previous)
     db_session.refresh(active)
     assert result["action"] == "rollback"

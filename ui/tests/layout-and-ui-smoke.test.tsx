@@ -6,8 +6,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 
-const { authState, toastSpy, toastState, authServiceMock } = vi.hoisted(() => ({
-  authState: {
+function createAuthState() {
+  return {
     isAuthenticated: false,
     isOrganizer: false,
     isAdmin: false,
@@ -15,9 +15,11 @@ const { authState, toastSpy, toastState, authServiceMock } = vi.hoisted(() => ({
     user: null as { full_name?: string | null; email?: string; role?: string } | null,
     logout: vi.fn(),
     refreshUser: vi.fn(),
-  },
-  toastSpy: vi.fn(),
-  toastState: {
+  };
+}
+
+function createToastState() {
+  return {
     toasts: [] as Array<{
       id: string;
       open: boolean;
@@ -25,11 +27,21 @@ const { authState, toastSpy, toastState, authServiceMock } = vi.hoisted(() => ({
       description?: string;
       variant?: 'default' | 'destructive' | 'success';
     }>,
-  },
-  authServiceMock: {
+  };
+}
+
+function createAuthServiceMock() {
+  return {
     updateThemePreference: vi.fn(),
     updateLanguagePreference: vi.fn(),
-  },
+  };
+}
+
+const { authState, toastSpy, toastState, authServiceMock } = vi.hoisted(() => ({
+  authState: createAuthState(),
+  toastSpy: vi.fn(),
+  toastState: createToastState(),
+  authServiceMock: createAuthServiceMock(),
 }));
 
 vi.mock('@/contexts/AuthContext', () => ({
@@ -64,6 +76,13 @@ function requireValue<T>(value: T | null | undefined, label: string): T {
     throw new Error(`Expected ${label}`);
   }
   return value;
+}
+
+function getEnabledButton(name: Parameters<typeof screen.getAllByRole>[1]['name'], label: string) {
+  return requireValue(
+    screen.getAllByRole('button', { name }).find((button) => !button.hasAttribute('disabled')),
+    label,
+  );
 }
 
 describe('layout and ui smoke', () => {
@@ -185,13 +204,22 @@ describe('layout and ui smoke', () => {
     });
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    fireEvent.mouseDown(screen.getAllByRole('button', { name: /Language|Limba/i })[0]);
-    fireEvent.click(screen.getAllByRole('button', { name: /Romanian|Română/i })[0]);
-    await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalledWith('ro'));
+    fireEvent.mouseDown(getEnabledButton(/Language|Limba/i, 'enabled language trigger'));
+    fireEvent.click(getEnabledButton(/Romanian|Română/i, 'enabled Romanian button'));
+    await waitFor(() => {
+      const hasRomanian = authServiceMock.updateLanguagePreference.mock.calls.some(([value]) => value === 'ro');
+      expect(hasRomanian).toBe(true);
+    });
 
-    fireEvent.mouseDown(screen.getAllByRole('button', { name: /Language|Limba/i })[0]);
-    fireEvent.click(screen.getAllByRole('button', { name: /^English$/i })[0]);
-    await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalledWith('en'));
+    await waitFor(() => {
+      expect(getEnabledButton(/Language|Limba/i, 'enabled language trigger after Romanian save')).toBeDefined();
+    });
+    fireEvent.mouseDown(getEnabledButton(/Language|Limba/i, 'enabled language trigger after Romanian save'));
+    fireEvent.click(getEnabledButton(/^English$/i, 'enabled English button'));
+    await waitFor(() => {
+      const hasEnglish = authServiceMock.updateLanguagePreference.mock.calls.some(([value]) => value === 'en');
+      expect(hasEnglish).toBe(true);
+    });
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   }, 15000);
 
