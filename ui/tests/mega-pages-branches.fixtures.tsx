@@ -4,21 +4,6 @@ import { cleanup } from '@testing-library/react';
 import { beforeEach, vi } from 'vitest';
 
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
-import {
-  makeAdminEventPage,
-  makeAdminStats,
-  makeAdminUser,
-  makeAdminUserPage,
-  makeEventDetail,
-  makeNotificationPreferences,
-  makeOrganizerEvent,
-  makeParticipantsPage,
-  makePersonalizationMetrics,
-  makePersonalizationSettings,
-  makeStudentProfile,
-  makeUniversityCatalog,
-  makeUpdatedStudentProfile,
-} from './page-test-data';
 
 export const {
   toastSpy,
@@ -116,7 +101,23 @@ export { EventDetailPage } from '@/pages/events/EventDetailPage';
 export { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
 export { ParticipantsPage } from '@/pages/organizer/ParticipantsPage';
 export { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
-export { makeEventDetail } from './page-test-data';
+const {
+  makeAdminEventPage,
+  makeAdminStats,
+  makeAdminUser,
+  makeAdminUserPage,
+  makeEventDetail,
+  makeNotificationPreferences,
+  makeOrganizerEvent,
+  makeParticipantsPage,
+  makePersonalizationMetrics,
+  makePersonalizationSettings,
+  makeStudentProfile,
+  makeUniversityCatalog,
+  makeUpdatedStudentProfile,
+} = await import('./page-test-data');
+
+export { makeEventDetail };
 
 function seedCoreAuthAndGlobals() {
   defineMutableValue(globalThis, 'confirm', vi.fn().mockReturnValue(true));

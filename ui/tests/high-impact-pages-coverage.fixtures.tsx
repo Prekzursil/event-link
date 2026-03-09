@@ -5,14 +5,6 @@ import { cleanup } from '@testing-library/react';
 import { beforeEach, vi } from 'vitest';
 
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
-import {
-  makeEvent,
-  makeNotificationPreferences,
-  makePersonalizationSettings,
-  makeStudentProfile,
-  makeUniversityCatalog,
-  makeUpdatedStudentProfile,
-} from './page-test-data';
 
 export const {
   toastSpy,
@@ -121,7 +113,16 @@ vi.mock('@/components/events/EventCard', () => ({
 export { EventsPage } from '@/pages/events/EventsPage';
 export { OrganizerDashboardPage } from '@/pages/organizer/OrganizerDashboardPage';
 export { StudentProfilePage } from '@/pages/profile/StudentProfilePage';
-export { makeEvent } from './page-test-data';
+const {
+  makeEvent,
+  makeNotificationPreferences,
+  makePersonalizationSettings,
+  makeStudentProfile,
+  makeUniversityCatalog,
+  makeUpdatedStudentProfile,
+} = await import('./page-test-data');
+
+export { makeEvent };
 
 function seedBrowserGlobals() {
   defineMutableValue(
