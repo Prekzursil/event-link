@@ -3,7 +3,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page } from '@playwright/test';
 
-export const DEFAULT_E2E_CODE = 'test' + '123';
+// Keep the E2E default aligned with backend/seed_data.py while still allowing CI overrides.
+export const DEFAULT_E2E_CODE = process.env.EVENTLINK_SEED_CODE ?? 'seed-access-A1';
 
 const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
 const credentialInputSelector = `#${credentialFieldId}`;
@@ -116,4 +117,3 @@ LIMIT 1;
 
   throw new Error(`No reset link code found for ${email}`);
 }
-

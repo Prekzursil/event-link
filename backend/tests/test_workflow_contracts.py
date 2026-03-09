@@ -83,3 +83,11 @@ def test_codacy_zero_workflow_uses_pr_or_commit_scoped_analysis() -> None:
     assert 'TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}' in content
     assert 'scope_args+=(--pr-number "${{ github.event.pull_request.number }}")' in content
     assert '--commit "${TARGET_SHA}"' in content
+
+
+def test_e2e_default_access_code_matches_seed_default() -> None:
+    seed_content = (REPO_ROOT / 'backend' / 'seed_data.py').read_text(encoding='utf-8')
+    e2e_utils_content = (REPO_ROOT / 'ui' / 'e2e' / 'utils.ts').read_text(encoding='utf-8')
+
+    assert 'seed-access-A1' in seed_content
+    assert 'seed-access-A1' in e2e_utils_content

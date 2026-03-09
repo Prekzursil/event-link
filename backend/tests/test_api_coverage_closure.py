@@ -391,6 +391,11 @@ def test_event_mutation_branches_cover_get_update_and_delete(helpers):
 
 def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
     ctx = _mutation_context(helpers)
+    event = ctx.db.query(models.Event).filter(models.Event.id == ctx.event_id).first()
+    assert event is not None
+    event.status = "draft"
+    ctx.db.add(event)
+    ctx.db.commit()
     same_status_early = ctx.client.post(
         "/api/organizer/events/bulk/status",
         json={"event_ids": [ctx.event_id], "status": "draft"},
@@ -527,7 +532,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 

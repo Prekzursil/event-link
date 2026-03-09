@@ -58,7 +58,9 @@ function showToast(
   toast({ title, description, variant });
 }
 
-function ResetAccessCodeRequirements({ requirements }: { requirements: PasswordRequirement[] }) {
+function ResetAccessCodeRequirements({
+  requirements,
+}: Readonly<{ requirements: PasswordRequirement[] }>) {
   return (
     <div className="space-y-1 pt-2">
       {requirements.map((requirement, index) => (
@@ -82,11 +84,11 @@ function ResetAccessCodeInvalidLink({
   invalidTitle,
   invalidDescription,
   requestNewLink,
-}: {
+}: Readonly<{
   invalidTitle: string;
   invalidDescription: string;
   requestNewLink: string;
-}) {
+}>) {
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
@@ -232,4 +234,3 @@ export function ResetPasswordPage() {
     </div>
   );
 }
-
