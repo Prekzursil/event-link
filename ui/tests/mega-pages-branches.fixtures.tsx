@@ -6,13 +6,6 @@ import { beforeEach, vi } from 'vitest';
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
 const megaPageFixtures = vi.hoisted(() => ({
-  toastSpy,
-  navigateSpy,
-  eventServiceMock,
-  adminServiceMock,
-  authServiceMock,
-  authState,
-  themeState,
   toastSpy: vi.fn(),
   navigateSpy: vi.fn(),
   eventServiceMock: {

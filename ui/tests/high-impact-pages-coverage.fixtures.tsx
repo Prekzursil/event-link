@@ -7,15 +7,6 @@ import { beforeEach, vi } from 'vitest';
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
 const highImpactPageFixtures = vi.hoisted(() => ({
-  toastSpy,
-  navigateSpy,
-  recordInteractionsSpy,
-  eventServiceMock,
-  authServiceMock,
-  authState,
-  themeState,
-  mediaAddListenerSpy,
-  mediaRemoveListenerSpy,
   toastSpy: vi.fn(),
   navigateSpy: vi.fn(),
   recordInteractionsSpy: vi.fn(),
