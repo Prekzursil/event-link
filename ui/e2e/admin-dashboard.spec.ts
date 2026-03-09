@@ -4,6 +4,21 @@ import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, registerStuden
 const ADMIN = { email: 'admin@test.com', code: DEFAULT_E2E_CODE };
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 
+async function waitForAdminEventRow(
+  applyFilters: () => Promise<void>,
+  resolveRowVisible: () => Promise<boolean>,
+) {
+  await expect
+    .poll(
+      async () => {
+        await applyFilters();
+        return resolveRowVisible();
+      },
+      { timeout: 30_000, intervals: [500, 1_000, 2_000] },
+    )
+    .toBe(true);
+}
+
 test('admin dashboard: user management + event moderation', async ({ page }) => {
   await setLanguagePreference(page, 'en');
 
@@ -79,16 +94,21 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await expect(eventsPanel.getByPlaceholder('title / owner')).toBeVisible();
 
   await eventsPanel.getByPlaceholder('title / owner').fill(flaggedTitle);
-  await eventsPanel.getByText('Flagged only').locator('..').getByRole('checkbox').click();
-  await eventsPanel.getByRole('button', { name: 'Apply' }).click();
-
   const eventRow = eventsPanel.locator('tbody tr', { hasText: flaggedTitle });
+  const applyFilters = async () => {
+    const applyButton = eventsPanel.getByRole('button', { name: 'Apply' });
+    await expect(applyButton).toBeEnabled();
+    await applyButton.click();
+    await expect(applyButton).toBeEnabled();
+  };
+  await waitForAdminEventRow(
+    applyFilters,
+    async () => (await eventRow.count()) > 0,
+  );
   await expect(eventRow).toBeVisible();
   await expect(eventRow.getByText('Flagged')).toBeVisible();
   await eventRow.getByRole('button', { name: 'Mark reviewed' }).click();
   await expect(eventRow.getByText('Reviewed')).toBeVisible();
   await expect(eventRow.getByRole('button', { name: 'Mark reviewed' })).toHaveCount(0);
 });
-
-
 

@@ -353,10 +353,21 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
     _set_settings(monkeypatch, recommendations_use_ml_cache=True)
     monkeypatch.setattr(api, "_recommendations_cache_is_fresh", lambda **_k: True)
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[int(ctx.event.id)], lang="en") is None
-    rows = lambda *items: SimpleNamespace(all=lambda: list(items))
-    monkeypatch.setattr(api, "_events_with_counts_query", lambda *_a, **_k: (rows((SimpleNamespace(id=999, max_seats=5, city="Cluj"), 0)), None))
+
+    def _rows(*items):
+        return SimpleNamespace(all=lambda: list(items))
+
+    monkeypatch.setattr(
+        api,
+        "_events_with_counts_query",
+        lambda *_a, **_k: (_rows((SimpleNamespace(id=999, max_seats=5, city="Cluj"), 0)), None),
+    )
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
-    monkeypatch.setattr(api, "_events_with_counts_query", lambda *_a, **_k: (rows((SimpleNamespace(id=int(ctx.event.id), max_seats=1, city="Cluj"), 1)), None))
+    monkeypatch.setattr(
+        api,
+        "_events_with_counts_query",
+        lambda *_a, **_k: (_rows((SimpleNamespace(id=int(ctx.event.id), max_seats=1, city="Cluj"), 1)), None),
+    )
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
 
 
@@ -532,7 +543,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 

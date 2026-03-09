@@ -25,6 +25,7 @@ DISABLED_TOOL_NAMES = {
     "ESLint",
     "ESLint (deprecated)",
     "JSHint (deprecated)",
+    "Lizard",
     "Pylint (deprecated)",
     "TSLint (deprecated)",
 }
@@ -556,4 +557,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

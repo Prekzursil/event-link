@@ -38,14 +38,31 @@ function constantTimeEquals(left: string, right: string): boolean {
   return mismatch === 0;
 }
 
+function containsAsciiLetter(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) || 0;
+    return (
+      (codePoint >= 65 && codePoint <= 90) ||
+      (codePoint >= 97 && codePoint <= 122)
+    );
+  });
+}
+
+function containsDigit(value: string): boolean {
+  return Array.from(value).some((character) => {
+    const codePoint = character.codePointAt(0) || 0;
+    return codePoint >= 48 && codePoint <= 57;
+  });
+}
+
 function buildPasswordRequirements(
   password: string,
   resetStrings: ReturnType<typeof useI18n>['t']['auth']['resetAccessCode'],
 ): PasswordRequirement[] {
   return [
     { label: resetStrings.accessCodeRequirementMin, met: password.length >= 8 },
-    { label: resetStrings.accessCodeRequirementLetters, met: /[a-zA-Z]/.test(password) },
-    { label: resetStrings.accessCodeRequirementNumbers, met: /\d/.test(password) },
+    { label: resetStrings.accessCodeRequirementLetters, met: containsAsciiLetter(password) },
+    { label: resetStrings.accessCodeRequirementNumbers, met: containsDigit(password) },
   ];
 }
 

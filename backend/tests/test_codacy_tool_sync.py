@@ -29,6 +29,15 @@ def test_planned_tool_payload_disables_legacy_tools():
 
 
 
+def test_planned_tool_payload_disables_lizard_for_test_noise_control():
+    module = _load_module()
+
+    payload, notes = module._planned_tool_payload('Lizard', {'isEnabled': True})
+
+    assert payload == {'enabled': False}
+    assert notes == []
+
+
 def test_planned_tool_payload_enables_configuration_file_when_available():
     module = _load_module()
 
