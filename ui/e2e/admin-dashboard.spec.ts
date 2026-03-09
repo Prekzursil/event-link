@@ -41,7 +41,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await page.locator('#title').fill(flaggedTitle);
   await page
     .locator('#description')
-    .fill('Please confirm your access code at https://bit.ly/eventlink before joining.');
+    .fill('Urgent giveaway: visit https://bit.ly/eventlink and send OTP to confirm.');
   await page.getByRole('combobox').first().click();
   await page.getByRole('option', { name: 'Workshop' }).click();
 
@@ -111,4 +111,3 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
   await expect(eventRow.getByText('Reviewed')).toBeVisible();
   await expect(eventRow.getByRole('button', { name: 'Mark reviewed' })).toHaveCount(0);
 });
-

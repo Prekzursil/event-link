@@ -505,7 +505,7 @@ describe('high-impact page coverage', () => {
     renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
 
-    const checkboxes = screen.getAllByRole('checkbox');
+    const checkboxes = await screen.findAllByRole('checkbox');
     fireEvent.click(checkboxes[1]);
     const publishButton = screen.getByRole('button', { name: /Publish/i });
     const bulkContainer = publishButton.parentElement;
