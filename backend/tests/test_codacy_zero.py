@@ -31,86 +31,50 @@ def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.Monk
         _load_module()
 
 
-def test_quality_new_issues_prefers_quality_section() -> None:
+def test_issues_search_request_scopes_results_by_branch() -> None:
     module = _load_module()
+    captured: dict[str, object] = {}
 
-    assert module._quality_new_issues(
-        {
-            "newIssues": 99,
-            "quality": {"newIssues": 4},
-        }
-    ) == 4
+    def _fake_request_json(**kwargs):
+        captured.update(kwargs)
+        return 200, {"total": 0}
 
+    monkeypatch = pytest.MonkeyPatch()
+    monkeypatch.setattr(module, "_request_json", _fake_request_json)
+    try:
+        status_code, payload = module._issues_search_request(
+            provider="gh",
+            owner="Prekzursil",
+            repo="event-link",
+            token="token",
+            branch="fix/true-zero-and-coverage-100-v3",
+        )
+    finally:
+        monkeypatch.undo()
 
-def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest.MonkeyPatch) -> None:
-    module = _load_module()
-    payloads = [
-        (
-            200,
-            {
-                "isAnalysing": True,
-                "pullRequest": {"headCommitSha": "oldoldoldoldoldoldoldoldoldoldoldoldoldold"},
-                "quality": {"newIssues": 12},
-            },
-        ),
-        (
-            200,
-            {
-                "isAnalysing": False,
-                "pullRequest": {"headCommitSha": "0123456789abcdef0123456789abcdef01234567"},
-                "quality": {"newIssues": 0},
-            },
-        ),
-    ]
-    sleeps: list[int] = []
-
-    monkeypatch.setattr(module, "_request_json", lambda **_kwargs: payloads.pop(0))
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
-
-    status, open_issues, findings = module._wait_for_pr_analysis(
-        provider="gh",
-        owner="Prekzursil",
-        repo="event-link",
-        token="token",
-        pr_number="97",
-        commit_sha="0123456789abcdef0123456789abcdef01234567",
-        timeout_seconds=30,
-        poll_seconds=6,
-    )
-
-    assert status == "pass"
-    assert open_issues == 0
-    assert findings == []
-    assert sleeps == [6]
+    assert status_code == 200
+    assert payload == {"total": 0}
+    assert captured["path"].endswith("/issues/search?limit=1")
+    assert captured["body"] == {"branchName": "fix/true-zero-and-coverage-100-v3"}
 
 
-def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_candidate_reports_branch_open_issues(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
 
     monkeypatch.setattr(
         module,
-        "_request_json",
-        lambda **_kwargs: (
-            200,
-            {
-                "isAnalysing": False,
-                "pullRequest": {"headCommitSha": "0123456789abcdef0123456789abcdef01234567"},
-                "quality": {"newIssues": 43},
-            },
-        ),
+        "_issues_search_request",
+        lambda **_kwargs: (200, {"total": 43}),
     )
 
-    status, open_issues, findings = module._wait_for_pr_analysis(
+    status, open_issues, findings = module._evaluate_candidate(
         provider="gh",
         owner="Prekzursil",
         repo="event-link",
         token="token",
-        pr_number="97",
-        commit_sha="0123456789abcdef0123456789abcdef01234567",
-        timeout_seconds=30,
-        poll_seconds=5,
+        branch="fix/true-zero-and-coverage-100-v3",
     )
 
     assert status == "fail"
     assert open_issues == 43
-    assert findings == ["Codacy reports 43 PR new issues (expected 0)."]
+    assert findings == ["Codacy reports 43 open issues (expected 0)."]

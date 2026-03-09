@@ -9,31 +9,52 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   codacy-zero:
     name: Codacy Zero
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: read
+      statuses: read
     env:
-      TARGET_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      CHECK_SHA: ${{ github.event.pull_request.head.sha || github.sha }}
+      CODACY_BRANCH: ${{ github.event.pull_request.head.ref || github.ref_name }}
     steps:
       - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+      - name: Assert Codacy PR analysis context is green
+        id: codacy_provider_context
+        if: ${{ github.event_name == 'pull_request' }}
+        continue-on-error: true
+        run: |
+          python3 scripts/quality/check_required_checks.py \
+            --repo "${GITHUB_REPOSITORY}" \
+            --sha "${CHECK_SHA}" \
+            --required-context "Codacy Static Code Analysis" \
+            --timeout-seconds 1200 \
+            --poll-seconds 20 \
+            --out-json "codacy-zero/codacy-provider.json" \
+            --out-md "codacy-zero/codacy-provider.md"
       - name: Assert Codacy zero-open gate
         env:
           CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
         run: |
-          scope_args=()
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            scope_args+=(--pr-number "${{ github.event.pull_request.number }}")
-          fi
           python3 scripts/quality/check_codacy_zero.py \
             --owner "${GITHUB_REPOSITORY_OWNER}" \
             --repo "${GITHUB_REPOSITORY#*/}" \
-            --commit "${TARGET_SHA}" \
-            "${scope_args[@]}" \
+            --branch "${CODACY_BRANCH}" \
             --out-json "codacy-zero/codacy.json" \
             --out-md "codacy-zero/codacy.md"
+      - name: Fail when Codacy provider context is not green
+        if: ${{ github.event_name == 'pull_request' && steps.codacy_provider_context.outcome != 'success' }}
+        run: |
+          echo "Codacy Static Code Analysis did not conclude successfully." >&2
+          exit 1
       - name: Upload Codacy artifacts
         if: always()
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4

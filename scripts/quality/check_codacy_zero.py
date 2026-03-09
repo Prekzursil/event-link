@@ -5,7 +5,6 @@ import argparse
 import json
 import os
 import sys
-import time
 from datetime import datetime, timezone
 from typing import Any
 
@@ -13,7 +12,6 @@ from _security_import import load_security_helpers
 
 _security_helpers = load_security_helpers(__file__)
 build_https_url = _security_helpers.build_https_url
-validate_commit_sha = _security_helpers.validate_commit_sha
 validate_slug = _security_helpers.validate_slug
 request_https_json = _security_helpers.request_https_json
 write_workspace_json = _security_helpers.write_workspace_json
@@ -28,10 +26,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--provider", default="gh", help="Organization provider, for example gh")
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
-    parser.add_argument("--pr-number", default="", help="Optional pull request number")
-    parser.add_argument("--commit", default="", help="Optional commit SHA")
-    parser.add_argument("--timeout-seconds", type=int, default=180, help="Max seconds to wait for Codacy analysis")
-    parser.add_argument("--poll-seconds", type=int, default=5, help="Polling interval while waiting for analysis")
+    parser.add_argument("--branch", default="", help="Optional branch name to scope Codacy issues")
     parser.add_argument("--token", default="", help="Codacy API token (falls back to CODACY_API_TOKEN env)")
     parser.add_argument("--out-json", default="codacy-zero/codacy.json", help="Output JSON path")
     parser.add_argument("--out-md", default="codacy-zero/codacy.md", help="Output markdown path")
@@ -65,12 +60,22 @@ def _request_json(
     return status, payload
 
 
-def _issues_search_request(*, provider: str, owner: str, repo: str, token: str) -> tuple[int, dict[str, Any]]:
+def _issues_search_request(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[int, dict[str, Any]]:
+    body: dict[str, str] = {}
+    if branch:
+        body["branchName"] = branch
     return _request_json(
         path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/issues/search?limit=1",
         token=token,
         method="POST",
-        body={},
+        body=body,
     )
 
 
@@ -115,6 +120,7 @@ def _render_md(payload: dict) -> str:
         "",
         f"- Status: `{payload['status']}`",
         f"- Owner/repo: `{payload['owner']}/{payload['repo']}`",
+        f"- Branch: `{payload.get('branch') or 'default'}`",
         f"- Open issues: `{payload.get('open_issues')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -146,27 +152,21 @@ def _provider_candidates(provider: str) -> list[str]:
     return candidates
 
 
-def _validated_pr_number(pr_number: str) -> str:
-    value = pr_number.strip()
-    if not value:
-        return ""
-    return validate_slug(value, field_name="pull request number")
-
-
-def _quality_new_issues(payload: dict[str, Any]) -> int | None:
-    quality = payload.get("quality")
-    if isinstance(quality, dict):
-        value = quality.get("newIssues")
-        if isinstance(value, (int, float)):
-            return int(value)
-    value = payload.get("newIssues")
-    if isinstance(value, (int, float)):
-        return int(value)
-    return extract_total_open(payload)
-
-
-def _evaluate_repo_total(*, provider: str, owner: str, repo: str, token: str) -> tuple[str, int | None, list[str]]:
-    status_code, payload = _issues_search_request(provider=provider, owner=owner, repo=repo, token=token)
+def _evaluate_candidate(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[str, int | None, list[str]]:
+    status_code, payload = _issues_search_request(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        branch=branch,
+    )
     if status_code == 404:
         return "retry", None, []
     if not 200 <= status_code < 300:
@@ -180,133 +180,13 @@ def _evaluate_repo_total(*, provider: str, owner: str, repo: str, token: str) ->
     return "pass", open_issues, []
 
 
-def _pr_analysis_state(payload: dict[str, Any]) -> tuple[str, bool, int | None]:
-    pull_request = payload.get("pullRequest") if isinstance(payload.get("pullRequest"), dict) else {}
-    return (
-        str(pull_request.get("headCommitSha") or ""),
-        bool(payload.get("isAnalysing")),
-        _quality_new_issues(payload),
-    )
-
-
-def _pr_analysis_result(*, analyzed_commit: str, is_analysing: bool, open_issues: int | None, commit_sha: str) -> tuple[str, int | None, list[str]] | None:
-    if analyzed_commit != commit_sha or is_analysing:
-        return None
-    if open_issues is None:
-        return "fail", None, ["Codacy PR response did not include a parseable new issue count."]
-    if open_issues != 0:
-        return "fail", open_issues, [f"Codacy reports {open_issues} PR new issues (expected 0)."]
-    return "pass", open_issues, []
-
-
-def _wait_for_pr_analysis(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    pr_number: str,
-    commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> tuple[str, int | None, list[str]]:
-    path = f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/pull-requests/{pr_number}"
-    deadline = time.time() + max(timeout_seconds, 1)
-
-    while True:
-        status_code, payload = _request_json(path=path, token=token)
-        if status_code == 404:
-            return "retry", None, []
-        if not 200 <= status_code < 300:
-            return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
-
-        analyzed_commit, is_analysing, open_issues = _pr_analysis_state(payload)
-        result = _pr_analysis_result(
-            analyzed_commit=analyzed_commit,
-            is_analysing=is_analysing,
-            open_issues=open_issues,
-            commit_sha=commit_sha,
-        )
-        if result is not None:
-            return result
-
-        if time.time() > deadline:
-            return (
-                "fail",
-                None,
-                [
-                    f"Codacy has not finished PR analysis for commit {commit_sha}; latest analyzed head is {analyzed_commit or 'unknown'}."
-                ],
-            )
-        time.sleep(max(poll_seconds, 1))
-
-
-def _evaluate_commit_analysis(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    commit_sha: str,
-) -> tuple[str, int | None, list[str]]:
-    path = f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/commits/{commit_sha}"
-    status_code, payload = _request_json(path=path, token=token)
-    if status_code == 404:
-        return "retry", None, []
-    if not 200 <= status_code < 300:
-        return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
-
-    open_issues = _quality_new_issues(payload)
-    if open_issues is None:
-        return "fail", None, ["Codacy commit response did not include a parseable new issue count."]
-    if open_issues != 0:
-        return "fail", open_issues, [f"Codacy reports {open_issues} commit new issues (expected 0)."]
-    return "pass", open_issues, []
-
-
-def _evaluate_candidate(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    pr_number: str,
-    commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> tuple[str, int | None, list[str]]:
-    if pr_number and commit_sha:
-        return _wait_for_pr_analysis(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            pr_number=pr_number,
-            commit_sha=commit_sha,
-            timeout_seconds=timeout_seconds,
-            poll_seconds=poll_seconds,
-        )
-    if commit_sha:
-        return _evaluate_commit_analysis(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            commit_sha=commit_sha,
-        )
-    return _evaluate_repo_total(provider=provider, owner=owner, repo=repo, token=token)
-
-
 def _evaluate_codacy(
     *,
     provider: str,
     owner: str,
     repo: str,
     token: str,
-    pr_number: str,
-    commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
+    branch: str,
 ) -> tuple[str, int | None, list[str]]:
     if not token:
         return "fail", None, ["CODACY_API_TOKEN is missing."]
@@ -319,10 +199,7 @@ def _evaluate_codacy(
                 owner=owner,
                 repo=repo,
                 token=token,
-                pr_number=pr_number,
-                commit_sha=commit_sha,
-                timeout_seconds=timeout_seconds,
-                poll_seconds=poll_seconds,
+                branch=branch,
             )
         except Exception as exc:  # pragma: no cover - network/runtime surface
             last_exc = exc
@@ -341,8 +218,7 @@ def main() -> int:
     args = _parse_args()
     try:
         token, owner, repo, provider = _validated_inputs(args)
-        pr_number = _validated_pr_number(args.pr_number)
-        commit_sha = validate_commit_sha(args.commit) if args.commit.strip() else ""
+        branch = args.branch.strip()
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1
@@ -352,18 +228,14 @@ def main() -> int:
         owner=owner,
         repo=repo,
         token=token,
-        pr_number=pr_number,
-        commit_sha=commit_sha,
-        timeout_seconds=args.timeout_seconds,
-        poll_seconds=args.poll_seconds,
+        branch=branch,
     )
     payload = {
         "status": status,
         "owner": owner,
         "repo": repo,
         "provider": provider,
-        "pr_number": pr_number,
-        "commit": commit_sha,
+        "branch": branch,
         "open_issues": open_issues,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,

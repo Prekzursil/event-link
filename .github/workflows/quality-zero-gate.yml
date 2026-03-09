@@ -9,6 +9,10 @@ on:
 
 permissions: {}
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   secrets-preflight:
     name: Quality Secrets Preflight
@@ -47,6 +51,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      checks: read
+      statuses: read
     needs:
       - secrets-preflight
     env:
@@ -67,6 +73,7 @@ jobs:
             --sha "${TARGET_SHA}" \
             --required-context "Coverage 100 Gate" \
             --required-context "Codecov Analytics" \
+            --required-context "codecov/patch" \
             --required-context "Sonar Zero" \
             --required-context "Codacy Zero" \
             --required-context "Semgrep Zero" \
@@ -85,5 +92,4 @@ jobs:
         with:
           name: quality-zero-gate
           path: quality-zero-gate
-
 
