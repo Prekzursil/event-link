@@ -1,6 +1,15 @@
 codecov:
   require_ci_to_pass: true
 
+ignore:
+  - .github/**
+  - backend/tests/**
+  - backend/integration_tests/**
+  - contracts/openapi.json
+  - scripts/quality/**
+  - ui/tests/**
+  - ui/package-lock.json
+
 coverage:
   precision: 2
   round: down
