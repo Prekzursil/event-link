@@ -1,0 +1,22 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+python -m pip install --upgrade pip setuptools wheel
+pip install -r backend/requirements.txt
+
+(
+  cd backend
+  pytest --cov-report=xml:coverage.xml --cov-fail-under=70
+)
+
+if [[ -f ui/package-lock.json ]]; then
+  (
+    cd ui
+    npm ci
+  )
+fi
+
+(
+  cd ui
+  npm test
+)
