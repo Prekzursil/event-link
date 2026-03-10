@@ -1,7 +1,10 @@
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+QUALITY_PLATFORM = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-platform.yml'
 QUALITY_GATE = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-gate.yml'
+QUALITY_REMEDIATION = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-remediation.yml'
+QUALITY_BACKLOG = REPO_ROOT / '.github' / 'workflows' / 'quality-zero-backlog.yml'
 DEEPSCAN_ZERO = REPO_ROOT / '.github' / 'workflows' / 'deepscan-zero.yml'
 SEMGREP_ZERO = REPO_ROOT / '.github' / 'workflows' / 'semgrep-zero.yml'
 SNYK_ZERO = REPO_ROOT / '.github' / 'workflows' / 'snyk-zero.yml'
@@ -9,7 +12,6 @@ WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
     REPO_ROOT / '.github' / 'workflows' / 'ci.yml',
     REPO_ROOT / '.github' / 'workflows' / 'coverage-100.yml',
     REPO_ROOT / '.github' / 'workflows' / 'codecov-analytics.yml',
-    REPO_ROOT / '.github' / 'workflows' / 'quality-zero-gate.yml',
     REPO_ROOT / '.github' / 'workflows' / 'codacy-zero.yml',
     REPO_ROOT / '.github' / 'workflows' / 'codacy-tool-sync.yml',
     REPO_ROOT / '.github' / 'workflows' / 'deepscan-zero.yml',
@@ -18,12 +20,23 @@ WORKFLOWS_WITH_EXPLICIT_TOP_LEVEL_PERMISSIONS = [
 ]
 
 
-def test_quality_zero_gate_requires_semgrep_zero_not_snyk_zero() -> None:
-    content = QUALITY_GATE.read_text(encoding='utf-8')
+def test_quality_zero_wrappers_delegate_to_quality_zero_platform() -> None:
+    platform_content = QUALITY_PLATFORM.read_text(encoding='utf-8')
+    gate_content = QUALITY_GATE.read_text(encoding='utf-8')
+    remediation_content = QUALITY_REMEDIATION.read_text(encoding='utf-8')
+    backlog_content = QUALITY_BACKLOG.read_text(encoding='utf-8')
 
-    assert '--required-context "codecov/patch"' in content
-    assert '--required-context "Semgrep Zero"' in content
-    assert '--required-context "Snyk Zero"' not in content
+    assert 'uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-scanner-matrix.yml@main' in platform_content
+    assert 'uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality-zero-gate.yml@main' in gate_content
+    assert 'uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-remediation-loop.yml@main' in remediation_content
+    assert 'uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-backlog-sweep.yml@main' in backlog_content
+    assert 'repo_slug: ${{ github.repository }}' in gate_content
+    assert 'event_name: ${{ github.event_name }}' in gate_content
+    assert 'sha: ${{ github.event.pull_request.head.sha || github.sha }}' in gate_content
+    assert 'secrets: inherit' in platform_content
+    assert 'secrets: inherit' in gate_content
+    assert 'secrets: inherit' in remediation_content
+    assert 'secrets: inherit' in backlog_content
 
 
 def test_semgrep_zero_workflow_exists_and_supports_pr_and_dispatch() -> None:
@@ -46,12 +59,9 @@ def test_selected_workflows_define_top_level_permissions_floor() -> None:
         assert 'permissions: {}' in content, workflow.name
 
 
-def test_quality_zero_gate_and_codacy_zero_workflows_enable_concurrency() -> None:
-    quality_content = QUALITY_GATE.read_text(encoding='utf-8')
+def test_codacy_zero_workflow_enables_concurrency() -> None:
     codacy_content = (REPO_ROOT / '.github' / 'workflows' / 'codacy-zero.yml').read_text(encoding='utf-8')
 
-    assert 'concurrency:' in quality_content
-    assert "group: ${{ github.workflow }}-${{ github.ref }}" in quality_content
     assert 'concurrency:' in codacy_content
     assert "group: ${{ github.workflow }}-${{ github.ref }}" in codacy_content
 
