@@ -21,6 +21,20 @@ import { useI18n } from '@/contexts/LanguageContext';
 import { ArrowLeft, Save, X, Sparkles, AlertTriangle } from 'lucide-react';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
+type EventFormState = {
+  title: string;
+  description: string;
+  category: string;
+  start_time: string;
+  end_time: string;
+  city: string;
+  location: string;
+  max_seats: number | undefined;
+  cover_url: string;
+  tags: string[];
+  status: 'draft' | 'published';
+};
+
 const formatDateTimeLocal = (dateString: string) => {
   const date = new Date(dateString);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000)
@@ -40,7 +54,7 @@ export function EventFormPage() {
   const { toast } = useToast();
   const { language, t } = useI18n();
 
-  const [formData, setFormData] = useState<EventFormData>({
+  const [formData, setFormData] = useState<EventFormState>({
     title: '',
     description: '',
     category: '',
@@ -61,16 +75,16 @@ export function EventFormPage() {
         const event = await eventService.getEvent(eventId);
         setFormData({
           title: event.title,
-          description: event.description || '',
-          category: event.category || '',
+          description: event.description ?? '',
+          category: event.category ?? '',
           start_time: formatDateTimeLocal(event.start_time),
           end_time: event.end_time ? formatDateTimeLocal(event.end_time) : '',
-          city: event.city || '',
-          location: event.location || '',
-          max_seats: event.max_seats || undefined,
-          cover_url: event.cover_url || '',
+          city: event.city ?? '',
+          location: event.location ?? '',
+          max_seats: event.max_seats ?? undefined,
+          cover_url: event.cover_url ?? '',
           tags: event.tags.map((t) => t.name),
-          status: (event.status as 'draft' | 'published') || 'published',
+          status: (event.status as 'draft' | 'published') ?? 'published',
         });
       } catch {
         toast({
@@ -93,15 +107,14 @@ export function EventFormPage() {
   }, [id, isEditing, loadEvent]);
 
   const handleSuggest = async () => {
-    if (!formData.title.trim() || isSuggesting) return;
     setIsSuggesting(true);
     try {
         const payload = {
           title: formData.title.trim(),
-          description: formData.description?.trim() || undefined,
+          description: formData.description.trim() || undefined,
           category: formData.category || undefined,
-          city: formData.city?.trim() || undefined,
-          location: formData.location?.trim() || undefined,
+          city: formData.city.trim() || undefined,
+          location: formData.location.trim() || undefined,
           start_time: formData.start_time ? new Date(formData.start_time).toISOString() : undefined,
         };
       const res = await eventService.suggestEvent(payload);
@@ -124,15 +137,15 @@ export function EventFormPage() {
   };
 
   const applySuggestion = () => {
-    if (!suggestion) return;
+    const currentSuggestion = suggestion!;
     setFormData((prev) => {
       const nextTags = Array.from(
-        new Set([...(prev.tags ?? []), ...(suggestion.suggested_tags ?? [])].map((t) => t.trim()).filter(Boolean)),
+        new Set([...prev.tags, ...currentSuggestion.suggested_tags].map((t) => t.trim()).filter(Boolean)),
       );
       return {
         ...prev,
-        category: prev.category || suggestion.suggested_category || prev.category,
-        city: prev.city || suggestion.suggested_city || prev.city,
+        category: prev.category || currentSuggestion.suggested_category || '',
+        city: prev.city || currentSuggestion.suggested_city || '',
         tags: nextTags,
       };
     });
@@ -210,7 +223,7 @@ export function EventFormPage() {
         start_time: new Date(formData.start_time).toISOString(),
         max_seats: formData.max_seats,
         status: formData.status,
-        tags: formData.tags || [],
+        tags: formData.tags,
       };
 
       // Only add optional fields if they have values
@@ -255,10 +268,10 @@ export function EventFormPage() {
 
   const addTag = () => {
     const tag = tagInput.trim();
-    if (tag && formData.tags && !formData.tags.includes(tag)) {
+    if (tag && !formData.tags.includes(tag)) {
       setFormData((prev) => ({
         ...prev,
-        tags: [...(prev.tags || []), tag],
+        tags: [...prev.tags, tag],
       }));
     }
     setTagInput('');
@@ -267,7 +280,7 @@ export function EventFormPage() {
   const removeTag = (tagToRemove: string) => {
     setFormData((prev) => ({
       ...prev,
-      tags: prev.tags?.filter((t) => t !== tagToRemove),
+      tags: prev.tags.filter((t) => t !== tagToRemove),
     }));
   };
 
@@ -569,7 +582,7 @@ export function EventFormPage() {
                   {t.eventForm.addTag}
                 </Button>
               </div>
-              {formData.tags && formData.tags.length > 0 && (
+              {formData.tags.length > 0 && (
                 <div className="flex flex-wrap gap-2 mt-2">
                   {formData.tags.map((tag) => (
                     <Badge key={tag} variant="secondary" className="gap-1">

@@ -12,6 +12,14 @@ import {
   getMegaPageFixtures,
   makeEventDetail,
 } from './mega-pages-branches.fixtures';
+import {
+  makeAdminEvent,
+  makeAdminUser,
+  makeOrganizerEvent,
+  makeParticipant,
+  makeParticipantsPage,
+  makePersonalizationMetrics,
+} from './page-test-data';
 
 const { adminServiceMock, authState, eventServiceMock, navigateSpy, toastSpy } =
   getMegaPageFixtures();
@@ -588,5 +596,223 @@ describe('mega pages branch matrix', () => {
     await waitFor(() =>
       expect(screen.queryByRole('button', { name: /Publish|Public/i })).not.toBeInTheDocument(),
     );
+  }, 20000);
+
+  it('covers admin dashboard loading and display fallback branches', async () => {
+    let resolveMetrics: ((value: ReturnType<typeof makePersonalizationMetrics>) => void) | undefined;
+    adminServiceMock.getPersonalizationMetrics.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveMetrics = resolve as (value: ReturnType<typeof makePersonalizationMetrics>) => void;
+      }),
+    );
+
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
+    await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
+    expect(screen.getByText(/Loading personalization metrics/i)).toBeInTheDocument();
+    resolveMetrics?.(makePersonalizationMetrics());
+    await waitFor(() => expect(screen.queryByText(/Loading personalization metrics/i)).not.toBeInTheDocument());
+
+    cleanup();
+    adminServiceMock.getUsers.mockResolvedValueOnce({
+      items: [
+        makeAdminUser(1, { role: 'organizator', last_seen_at: null }),
+        makeAdminUser(2, { email: 'second@test.local', role: 'student' }),
+      ],
+      total: 2,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
+    const usersTab = await screen.findByRole('tab', { name: /Users/i });
+    fireEvent.mouseDown(usersTab);
+    fireEvent.click(usersTab);
+    await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
+    expect(screen.getAllByText(/Organizer|Organizator/i).length).toBeGreaterThan(0);
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+
+    const organizerRow = screen.getByText(/student@test.local/i).closest('tr');
+    fireEvent.click(
+      within(requireElement(organizerRow, 'organizer user row')).getByRole('button', { name: /^Admin$/i }),
+    );
+    await waitFor(() => expect(adminServiceMock.updateUser).toHaveBeenCalled());
+
+    cleanup();
+    adminServiceMock.getEvents.mockResolvedValueOnce({
+      items: [
+        makeAdminEvent(31, {
+          moderation_status: undefined,
+          city: '',
+          moderation_flags: ['spam', 'fraud', 'scam', 'abuse'],
+          max_seats: undefined,
+          deleted_at: null,
+        }),
+      ],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
+    const eventsTab = await screen.findByRole('tab', { name: /Events/i });
+    fireEvent.mouseDown(eventsTab);
+    fireEvent.click(eventsTab);
+    await waitFor(() => expect(adminServiceMock.getEvents).toHaveBeenCalled());
+    expect(document.body.textContent).toContain('spam, fraud, scam');
+    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+
+    vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
+    fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+    expect(eventServiceMock.deleteEvent).not.toHaveBeenCalled();
+  }, 20000);
+
+  it('covers organizer dashboard and participants display edge branches', async () => {
+    eventServiceMock.getOrganizerEvents.mockResolvedValueOnce([
+      makeOrganizerEvent(3),
+      makeOrganizerEvent(4, {
+        start_time: new Date(Date.now() - 3_600_000).toISOString(),
+      }),
+    ]);
+
+    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+    await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
+    expect(screen.getByText(/Ended/i)).toBeInTheDocument();
+
+    const organizerCheckboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(organizerCheckboxes[organizerCheckboxes.length - 1]);
+    expect(screen.getAllByRole('checkbox')[0]).toHaveAttribute('data-state', 'indeterminate');
+
+    vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
+    fireEvent.click(screen.getByRole('button', { name: /Unpublish|Set as draft|Draft/i }));
+    expect(eventServiceMock.bulkUpdateEventStatus).not.toHaveBeenCalledWith([3], 'draft');
+
+    fireEvent.click(screen.getByRole('button', { name: /Set tags/i }));
+    const bulkTagsDialog = await screen.findByRole('dialog');
+    fireEvent.click(within(bulkTagsDialog).getByRole('button', { name: /Add/i }));
+    expect(screen.queryByText('bulk-tag')).not.toBeInTheDocument();
+
+    const bulkTagInput = screen.getByPlaceholderText(/Add a tag/i);
+    fireEvent.change(bulkTagInput, { target: { value: 'bulk-tag' } });
+    fireEvent.click(within(bulkTagsDialog).getByRole('button', { name: /Add/i }));
+    expect(await screen.findByText('bulk-tag')).toBeInTheDocument();
+    fireEvent.change(bulkTagInput, { target: { value: 'bulk-tag' } });
+    fireEvent.click(within(bulkTagsDialog).getByRole('button', { name: /Add/i }));
+    expect(screen.getAllByText('bulk-tag')).toHaveLength(1);
+    fireEvent.click(within(bulkTagsDialog).getByRole('button', { name: /Cancel/i }));
+
+    fireEvent.click(screen.getByRole('button', { name: /Publish|Public/i }));
+    await waitFor(() =>
+      expect(eventServiceMock.bulkUpdateEventStatus).toHaveBeenCalledWith([4], 'published'),
+    );
+
+    cleanup();
+    renderLanguageRoute('/organizer/events/participants', '/organizer/events/participants', <ParticipantsPage />);
+    expect(eventServiceMock.getEventParticipants).not.toHaveBeenCalled();
+
+    cleanup();
+    eventServiceMock.getEventParticipants.mockResolvedValueOnce({
+      event_id: 3,
+      title: 'Organizer event',
+      seats_taken: 1,
+      max_seats: 30,
+      participants: [
+        makeParticipant(10, { attended: true, full_name: '' }),
+      ],
+      total: 1,
+      page: 1,
+      page_size: 20,
+    });
+
+    renderLanguageRoute(
+      '/organizer/events/3/participants',
+      '/organizer/events/:id/participants',
+      <ParticipantsPage />,
+    );
+    await waitFor(() => expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 1, 20, 'registration_time', 'asc'));
+    expect(screen.getByText('-')).toBeInTheDocument();
+
+    const pendingAttendance = new Promise<void>(() => {});
+    eventServiceMock.updateParticipantAttendance.mockReturnValueOnce(pendingAttendance);
+    const participantCheckboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(participantCheckboxes[participantCheckboxes.length - 1]);
+    fireEvent.click(participantCheckboxes[participantCheckboxes.length - 1]);
+    expect(eventServiceMock.updateParticipantAttendance).toHaveBeenCalledTimes(1);
+
+    fireEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
+    expect(URL.createObjectURL).toHaveBeenCalled();
+
+    const participantsTable = screen.getByRole('table');
+    const emailSortButton = within(participantsTable).getByRole('button', { name: /Email/i });
+    fireEvent.click(emailSortButton);
+    fireEvent.click(emailSortButton);
+    fireEvent.click(emailSortButton);
+
+    cleanup();
+    eventServiceMock.getEventParticipants.mockResolvedValueOnce({
+      event_id: 3,
+      title: 'Organizer event',
+      seats_taken: 0,
+      max_seats: 30,
+      participants: [],
+      total: 0,
+      page: 1,
+      page_size: 20,
+    });
+    renderLanguageRoute(
+      '/organizer/events/3/participants',
+      '/organizer/events/:id/participants',
+      <ParticipantsPage />,
+    );
+    await waitFor(() => expect(screen.getByText(/No participants/i)).toBeInTheDocument());
+  }, 20000);
+
+  it('covers participants attendance clearing and mixed CSV export branches', async () => {
+    eventServiceMock.getEventParticipants.mockResolvedValueOnce(
+      makeParticipantsPage(3, {
+        participants: [
+          makeParticipant(10, {
+            attended: true,
+            email: 'first@test.local',
+            full_name: 'First Participant',
+          }),
+          makeParticipant(11, {
+            attended: false,
+            email: 'second@test.local',
+            full_name: '',
+          }),
+        ],
+        total: 2,
+        page: 1,
+        page_size: 20,
+      }),
+    );
+
+    renderLanguageRoute(
+      '/organizer/events/3/participants',
+      '/organizer/events/:id/participants',
+      <ParticipantsPage />,
+    );
+    await waitFor(() =>
+      expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(
+        3,
+        1,
+        20,
+        'registration_time',
+        'asc',
+      ),
+    );
+
+    fireEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
+    expect(URL.createObjectURL).toHaveBeenCalled();
+
+    const participantCheckboxes = screen.getAllByRole('checkbox');
+    fireEvent.click(participantCheckboxes[participantCheckboxes.length - 2]);
+    await waitFor(() =>
+      expect(eventServiceMock.updateParticipantAttendance).toHaveBeenCalledWith(3, 10, false),
+    );
+
+    eventServiceMock.updateParticipantAttendance.mockRejectedValueOnce(new Error('attendance-fail'));
+    fireEvent.click(participantCheckboxes[participantCheckboxes.length - 1]);
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   }, 20000);
 });

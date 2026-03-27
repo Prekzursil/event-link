@@ -85,20 +85,22 @@ export function EventDetailPage() {
       navigate('/login', { state: { from: { pathname: `/events/${id}` } } });
       return;
     }
-    if (!event) return;
+    const currentEvent = event!;
 
     setIsRegistering(true);
-    const previous = event;
+    const previous = currentEvent;
     setEvent({
-      ...event,
+      ...currentEvent,
       is_registered: true,
-      seats_taken: event.seats_taken + 1,
+      seats_taken: currentEvent.seats_taken + 1,
       available_seats:
-        typeof event.available_seats === 'number' ? event.available_seats - 1 : event.available_seats,
+        typeof currentEvent.available_seats === 'number'
+          ? currentEvent.available_seats - 1
+          : currentEvent.available_seats,
     });
     try {
-      await eventService.registerForEvent(event.id);
-      void recordInteractions([{ interaction_type: 'register', event_id: event.id, meta: { source: 'event_detail' } }]);
+      await eventService.registerForEvent(currentEvent.id);
+      void recordInteractions([{ interaction_type: 'register', event_id: currentEvent.id, meta: { source: 'event_detail' } }]);
       toast({
         title: t.eventDetail.registerSuccessTitle,
         description: t.eventDetail.registerSuccessDescription,
@@ -118,20 +120,22 @@ export function EventDetailPage() {
   };
 
   const handleUnregister = async () => {
-    if (!event) return;
+    const currentEvent = event!;
 
     setIsRegistering(true);
-    const previous = event;
+    const previous = currentEvent;
     setEvent({
-      ...event,
+      ...currentEvent,
       is_registered: false,
-      seats_taken: Math.max(0, event.seats_taken - 1),
+      seats_taken: Math.max(0, currentEvent.seats_taken - 1),
       available_seats:
-        typeof event.available_seats === 'number' ? event.available_seats + 1 : event.available_seats,
+        typeof currentEvent.available_seats === 'number'
+          ? currentEvent.available_seats + 1
+          : currentEvent.available_seats,
     });
     try {
-      await eventService.unregisterFromEvent(event.id);
-      void recordInteractions([{ interaction_type: 'unregister', event_id: event.id, meta: { source: 'event_detail' } }]);
+      await eventService.unregisterFromEvent(currentEvent.id);
+      void recordInteractions([{ interaction_type: 'unregister', event_id: currentEvent.id, meta: { source: 'event_detail' } }]);
       toast({
         title: t.eventDetail.unregisterSuccessTitle,
         description: t.eventDetail.unregisterSuccessDescription,
@@ -150,11 +154,11 @@ export function EventDetailPage() {
   };
 
   const handleResendRegistrationEmail = async () => {
-    if (!event) return;
+    const currentEvent = event!;
 
     setIsResendingEmail(true);
     try {
-      await eventService.resendRegistrationEmail(event.id);
+      await eventService.resendRegistrationEmail(currentEvent.id);
       toast({
         title: t.eventDetail.resendSuccessTitle,
         description: t.eventDetail.resendSuccessDescription,
@@ -177,18 +181,18 @@ export function EventDetailPage() {
       navigate('/login', { state: { from: { pathname: `/events/${id}` } } });
       return;
     }
-    if (!event) return;
+    const currentEvent = event!;
 
     setIsFavoriting(true);
     try {
-      if (event.is_favorite) {
-        await eventService.removeFromFavorites(event.id);
-        void recordInteractions([{ interaction_type: 'favorite', event_id: event.id, meta: { action: 'remove' } }]);
+      if (currentEvent.is_favorite) {
+        await eventService.removeFromFavorites(currentEvent.id);
+        void recordInteractions([{ interaction_type: 'favorite', event_id: currentEvent.id, meta: { action: 'remove' } }]);
       } else {
-        await eventService.addToFavorites(event.id);
-        void recordInteractions([{ interaction_type: 'favorite', event_id: event.id, meta: { action: 'add' } }]);
+        await eventService.addToFavorites(currentEvent.id);
+        void recordInteractions([{ interaction_type: 'favorite', event_id: currentEvent.id, meta: { action: 'add' } }]);
       }
-      setEvent((prev) => (prev ? { ...prev, is_favorite: !prev.is_favorite } : null));
+      setEvent({ ...currentEvent, is_favorite: !currentEvent.is_favorite });
     } catch {
       toast({
         title: t.eventDetail.favoritesErrorTitle,
@@ -201,17 +205,16 @@ export function EventDetailPage() {
   };
 
   const handleShare = async () => {
+    const currentEvent = event!;
     const url = window.location.href;
     if (navigator.share) {
       try {
         await navigator.share({
-          title: event?.title,
-          text: event?.description,
+          title: currentEvent.title,
+          text: currentEvent.description,
           url,
         });
-        if (event) {
-          void recordInteractions([{ interaction_type: 'share', event_id: event.id, meta: { channel: 'native' } }]);
-        }
+        void recordInteractions([{ interaction_type: 'share', event_id: currentEvent.id, meta: { channel: 'native' } }]);
       } catch {
         // User cancelled
       }
@@ -221,23 +224,21 @@ export function EventDetailPage() {
         title: t.eventDetail.shareCopiedTitle,
         description: t.eventDetail.shareCopiedDescription,
       });
-      if (event) {
-        void recordInteractions([{ interaction_type: 'share', event_id: event.id, meta: { channel: 'copy' } }]);
-      }
+      void recordInteractions([{ interaction_type: 'share', event_id: currentEvent.id, meta: { channel: 'copy' } }]);
     }
   };
 
   const handleExportCalendar = () => {
-    if (!event) return;
-    window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/events/${event.id}/ics`);
+    const currentEvent = event!;
+    window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/events/${currentEvent.id}/ics`);
   };
 
   const handleClone = async () => {
-    if (!event) return;
+    const currentEvent = event!;
 
     setIsCloning(true);
     try {
-      const clonedEvent = await eventService.cloneEvent(event.id);
+      const clonedEvent = await eventService.cloneEvent(currentEvent.id);
       toast({
         title: t.eventDetail.cloneSuccessTitle,
         description: t.eventDetail.cloneSuccessDescription,
@@ -258,9 +259,7 @@ export function EventDetailPage() {
   };
 
   const handleHideTag = async () => {
-    if (!isStudent) return;
     const tagId = parseInt(hideTagId);
-    if (!tagId || !event) return;
 
     setIsHidingTag(true);
     try {
@@ -284,10 +283,10 @@ export function EventDetailPage() {
   };
 
   const handleBlockOrganizer = async () => {
-    if (!isStudent || !event) return;
+    const currentEvent = event!;
     setIsBlockingOrganizer(true);
     try {
-      await eventService.blockOrganizer(event.owner_id);
+      await eventService.blockOrganizer(currentEvent.owner_id);
       toast({
         title: t.personalization.organizerBlockedTitle,
         description: t.personalization.organizerBlockedDescription,

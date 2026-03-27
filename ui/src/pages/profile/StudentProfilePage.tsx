@@ -179,11 +179,11 @@ export function StudentProfilePage() {
         eventService.getAllTags(),
       ]);
       setProfile(profileData);
-      setFullName(profileData.full_name || '');
-      setCity(profileData.city || '');
-      setUniversity(profileData.university || '');
-      setFaculty(profileData.faculty || '');
-      setStudyLevel(profileData.study_level || '');
+      setFullName(profileData.full_name ?? '');
+      setCity(profileData.city ?? '');
+      setUniversity(profileData.university ?? '');
+      setFaculty(profileData.faculty ?? '');
+      setStudyLevel(profileData.study_level ?? '');
       setStudyYear(profileData.study_year ?? undefined);
       setSelectedTagIds(profileData.interest_tags.map(t => t.id));
       setAllTags(tagsData);
@@ -246,11 +246,11 @@ export function StudentProfilePage() {
         interest_tag_ids: selectedTagIds,
       });
       setProfile(updatedProfile);
-      setFullName(updatedProfile.full_name || '');
-      setCity(updatedProfile.city || '');
-      setUniversity(updatedProfile.university || '');
-      setFaculty(updatedProfile.faculty || '');
-      setStudyLevel(updatedProfile.study_level || '');
+      setFullName(updatedProfile.full_name ?? '');
+      setCity(updatedProfile.city ?? '');
+      setUniversity(updatedProfile.university ?? '');
+      setFaculty(updatedProfile.faculty ?? '');
+      setStudyLevel(updatedProfile.study_level ?? '');
       setStudyYear(updatedProfile.study_year ?? undefined);
       toast({
         title: t.profile.saveSuccessTitle,
@@ -317,10 +317,8 @@ export function StudentProfilePage() {
   const handleNotificationPreferenceChange = async (
     patch: Partial<NotificationPreferences>,
   ) => {
-    if (!isStudent || !notificationPrefs) return;
-
-    const previous = notificationPrefs;
-    const next = { ...notificationPrefs, ...patch };
+    const previous = notificationPrefs!;
+    const next = { ...previous, ...patch };
     setNotificationPrefs(next);
     setIsSavingNotifications(true);
     try {
@@ -343,12 +341,13 @@ export function StudentProfilePage() {
   };
 
   const handleUnhideTag = async (tagId: number) => {
-    if (!isStudent || !personalization) return;
+    const currentPersonalization = personalization!;
     try {
       await eventService.unhideTag(tagId);
-      setPersonalization((prev) =>
-        prev ? { ...prev, hidden_tags: prev.hidden_tags.filter((tag) => tag.id !== tagId) } : prev,
-      );
+      setPersonalization({
+        ...currentPersonalization,
+        hidden_tags: currentPersonalization.hidden_tags.filter((tag) => tag.id !== tagId),
+      });
       toast({
         title: t.personalization.tagUnhiddenTitle,
         description: t.personalization.tagUnhiddenDescription,
@@ -363,14 +362,13 @@ export function StudentProfilePage() {
   };
 
   const handleUnblockOrganizer = async (organizerId: number) => {
-    if (!isStudent || !personalization) return;
+    const currentPersonalization = personalization!;
     try {
       await eventService.unblockOrganizer(organizerId);
-      setPersonalization((prev) =>
-        prev
-          ? { ...prev, blocked_organizers: prev.blocked_organizers.filter((org) => org.id !== organizerId) }
-          : prev,
-      );
+      setPersonalization({
+        ...currentPersonalization,
+        blocked_organizers: currentPersonalization.blocked_organizers.filter((org) => org.id !== organizerId),
+      });
       toast({
         title: t.personalization.organizerUnblockedTitle,
         description: t.personalization.organizerUnblockedDescription,
@@ -791,8 +789,11 @@ export function StudentProfilePage() {
                 <Checkbox
                   checked={Boolean(notificationPrefs?.email_digest_enabled)}
                   disabled={isSavingNotifications || !notificationPrefs}
-                  onCheckedChange={(checked) =>
-                    handleNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
+                  onCheckedChange={
+                    notificationPrefs
+                      ? (checked) =>
+                          handleNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
+                      : undefined
                   }
                 />
               </div>
@@ -805,8 +806,11 @@ export function StudentProfilePage() {
                 <Checkbox
                   checked={Boolean(notificationPrefs?.email_filling_fast_enabled)}
                   disabled={isSavingNotifications || !notificationPrefs}
-                  onCheckedChange={(checked) =>
-                    handleNotificationPreferenceChange({ email_filling_fast_enabled: Boolean(checked) })
+                  onCheckedChange={
+                    notificationPrefs
+                      ? (checked) =>
+                          handleNotificationPreferenceChange({ email_filling_fast_enabled: Boolean(checked) })
+                      : undefined
                   }
                 />
               </div>
@@ -981,4 +985,3 @@ export function StudentProfilePage() {
 }
 
 export default StudentProfilePage;
-

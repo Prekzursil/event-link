@@ -98,6 +98,14 @@ describe('auth pages', () => {
     authState.login.mockRejectedValueOnce({ response: { data: { detail: 'bad creds' } } });
     fireEvent.submit(requireForm(/Sign in/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+
+    authState.login.mockRejectedValueOnce({ response: { data: { error: { message: 'nested login error' } } } });
+    fireEvent.submit(requireForm(/Sign in/i));
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+
+    authState.login.mockRejectedValueOnce(new Error('plain login failure'));
+    fireEvent.submit(requireForm(/Sign in/i));
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 
   it('covers RegisterPage mismatch, invalid password, success, and failure', async () => {
@@ -124,6 +132,14 @@ describe('auth pages', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/');
 
     authState.register.mockRejectedValueOnce({ response: { data: { detail: 'register error' } } });
+    fireEvent.submit(requireForm(/Create account/i));
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+
+    authState.register.mockRejectedValueOnce({ response: { data: { error: { message: 'nested register error' } } } });
+    fireEvent.submit(requireForm(/Create account/i));
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+
+    authState.register.mockRejectedValueOnce(new Error('plain register failure'));
     fireEvent.submit(requireForm(/Create account/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
@@ -160,6 +176,16 @@ describe('auth pages', () => {
     fireEvent.submit(requireForm(/Reset access code/i));
     expect(toastSpy).toHaveBeenCalled();
 
+    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: '12345678' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: '12345678' } });
+    fireEvent.submit(requireForm(/Reset access code/i));
+    expect(toastSpy).toHaveBeenCalled();
+
+    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'OnlyLetters' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'OnlyLetters' } });
+    fireEvent.submit(requireForm(/Reset access code/i));
+    expect(toastSpy).toHaveBeenCalled();
+
     const toggleButton = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
     expect(toggleButton).not.toBeNull();
     fireEvent.click(toggleButton);
@@ -171,6 +197,10 @@ describe('auth pages', () => {
     expect(navigateSpy).toHaveBeenCalledWith('/login');
 
     authServiceMock.resetPassword.mockRejectedValueOnce({ response: { data: { detail: 'bad token' } } });
+    fireEvent.submit(requireForm(/Reset access code/i));
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+
+    authServiceMock.resetPassword.mockRejectedValueOnce(new Error('reset-fallback'));
     fireEvent.submit(requireForm(/Reset access code/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });

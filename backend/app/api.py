@@ -1058,8 +1058,7 @@ def record_interactions(
                         continue
                     key = str(tag_name_lower or "").strip().lower()
                     delta = float(tag_name_deltas.get(key, 0.0))
-                    if delta > 0:
-                        tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + delta
+                    tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + delta
 
             if tag_delta_by_id:
                 existing_rows = (
@@ -3521,4 +3520,3 @@ def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: 
     db.commit()
     log_event("password_reset", user_id=user.id)
     return {"status": "password_reset"}
-

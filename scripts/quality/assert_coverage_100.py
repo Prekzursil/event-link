@@ -16,9 +16,7 @@ resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_p
 
 
 @dataclass
-class CoverageStats:
-    name: str
-    path: str
+class MetricStats:
     covered: int
     total: int
 
@@ -29,10 +27,21 @@ class CoverageStats:
         return (self.covered / self.total) * 100.0
 
 
+@dataclass
+class CoverageStats:
+    name: str
+    path: str
+    lines: MetricStats
+    branches: MetricStats
+
+
 _PAIR_RE = re.compile(r"^(?P<name>[^=]+)=(?P<path>.+)$")
 _XML_LINES_VALID_RE = re.compile(r'lines-valid="([0-9]+(?:\\.[0-9]+)?)"')
 _XML_LINES_COVERED_RE = re.compile(r'lines-covered="([0-9]+(?:\\.[0-9]+)?)"')
+_XML_BRANCHES_VALID_RE = re.compile(r'branches-valid="([0-9]+(?:\\.[0-9]+)?)"')
+_XML_BRANCHES_COVERED_RE = re.compile(r'branches-covered="([0-9]+(?:\\.[0-9]+)?)"')
 _XML_LINE_HITS_RE = re.compile(r"<line\\b[^>]*\\bhits=\"([0-9]+(?:\\.[0-9]+)?)\"")
+_XML_CONDITION_COVERAGE_RE = re.compile(r'condition-coverage="([0-9]+)% \(([0-9]+)/([0-9]+)\)"')
 
 
 def _parse_args() -> argparse.Namespace:
@@ -67,51 +76,101 @@ def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
     text = path.read_text(encoding="utf-8")
     lines_valid_match = _XML_LINES_VALID_RE.search(text)
     lines_covered_match = _XML_LINES_COVERED_RE.search(text)
+    branches_valid_match = _XML_BRANCHES_VALID_RE.search(text)
+    branches_covered_match = _XML_BRANCHES_COVERED_RE.search(text)
 
-    if lines_valid_match and lines_covered_match:
-        total = int(float(lines_valid_match.group(1)))
-        covered = int(float(lines_covered_match.group(1)))
-        return CoverageStats(name=name, path=str(path), covered=covered, total=total)
+    if lines_valid_match and lines_covered_match and branches_valid_match and branches_covered_match:
+        return CoverageStats(
+            name=name,
+            path=str(path),
+            lines=MetricStats(
+                covered=int(float(lines_covered_match.group(1))),
+                total=int(float(lines_valid_match.group(1))),
+            ),
+            branches=MetricStats(
+                covered=int(float(branches_covered_match.group(1))),
+                total=int(float(branches_valid_match.group(1))),
+            ),
+        )
 
-    total = 0
-    covered = 0
+    line_total = 0
+    line_covered = 0
+    branch_total = 0
+    branch_covered = 0
     for hits_raw in _XML_LINE_HITS_RE.findall(text):
-        total += 1
+        line_total += 1
         try:
             if int(float(hits_raw)) > 0:
-                covered += 1
+                line_covered += 1
         except ValueError:
             continue
 
-    return CoverageStats(name=name, path=str(path), covered=covered, total=total)
+    for _percent_raw, covered_raw, total_raw in _XML_CONDITION_COVERAGE_RE.findall(text):
+        branch_covered += int(covered_raw)
+        branch_total += int(total_raw)
+
+    return CoverageStats(
+        name=name,
+        path=str(path),
+        lines=MetricStats(covered=line_covered, total=line_total),
+        branches=MetricStats(covered=branch_covered, total=branch_total),
+    )
 
 
 def parse_lcov(name: str, path: Path) -> CoverageStats:
-    total = 0
-    covered = 0
+    line_total = 0
+    line_covered = 0
+    branch_total = 0
+    branch_covered = 0
 
     for raw in path.read_text(encoding="utf-8").splitlines():
         line = raw.strip()
         if line.startswith("LF:"):
-            total += int(line.split(":", 1)[1])
+            line_total += int(line.split(":", 1)[1])
         elif line.startswith("LH:"):
-            covered += int(line.split(":", 1)[1])
+            line_covered += int(line.split(":", 1)[1])
+        elif line.startswith("BRF:"):
+            branch_total += int(line.split(":", 1)[1])
+        elif line.startswith("BRH:"):
+            branch_covered += int(line.split(":", 1)[1])
 
-    return CoverageStats(name=name, path=str(path), covered=covered, total=total)
+    return CoverageStats(
+        name=name,
+        path=str(path),
+        lines=MetricStats(covered=line_covered, total=line_total),
+        branches=MetricStats(covered=branch_covered, total=branch_total),
+    )
 
 
 def evaluate(stats: list[CoverageStats]) -> tuple[str, list[str]]:
     findings: list[str] = []
     for item in stats:
-        if item.percent < 100.0:
-            findings.append(f"{item.name} coverage below 100%: {item.percent:.2f}% ({item.covered}/{item.total})")
+        if item.lines.percent < 100.0:
+            findings.append(
+                f"{item.name} line coverage below 100%: {item.lines.percent:.2f}% ({item.lines.covered}/{item.lines.total})"
+            )
+        if item.branches.percent < 100.0:
+            findings.append(
+                f"{item.name} branch coverage below 100%: {item.branches.percent:.2f}% ({item.branches.covered}/{item.branches.total})"
+            )
 
-    combined_total = sum(item.total for item in stats)
-    combined_covered = sum(item.covered for item in stats)
-    combined = 100.0 if combined_total <= 0 else (combined_covered / combined_total) * 100.0
+    combined_lines_total = sum(item.lines.total for item in stats)
+    combined_lines_covered = sum(item.lines.covered for item in stats)
+    combined_branches_total = sum(item.branches.total for item in stats)
+    combined_branches_covered = sum(item.branches.covered for item in stats)
+    combined_lines = 100.0 if combined_lines_total <= 0 else (combined_lines_covered / combined_lines_total) * 100.0
+    combined_branches = (
+        100.0 if combined_branches_total <= 0 else (combined_branches_covered / combined_branches_total) * 100.0
+    )
 
-    if combined < 100.0:
-        findings.append(f"combined coverage below 100%: {combined:.2f}% ({combined_covered}/{combined_total})")
+    if combined_lines < 100.0:
+        findings.append(
+            f"combined line coverage below 100%: {combined_lines:.2f}% ({combined_lines_covered}/{combined_lines_total})"
+        )
+    if combined_branches < 100.0:
+        findings.append(
+            f"combined branch coverage below 100%: {combined_branches:.2f}% ({combined_branches_covered}/{combined_branches_total})"
+        )
 
     status = "pass" if not findings else "fail"
     return status, findings
@@ -129,7 +188,9 @@ def _render_md(payload: dict) -> str:
 
     for item in payload.get("components", []):
         lines.append(
-            f"- `{item['name']}`: `{item['percent']:.2f}%` ({item['covered']}/{item['total']}) from `{item['path']}`"
+            f"- `{item['name']}`: lines `{item['lines']['percent']:.2f}%` ({item['lines']['covered']}/{item['lines']['total']}), "
+            f"branches `{item['branches']['percent']:.2f}%` ({item['branches']['covered']}/{item['branches']['total']}) "
+            f"from `{item['path']}`"
         )
 
     if not payload.get("components"):
@@ -171,9 +232,16 @@ def main() -> int:
             {
                 "name": item.name,
                 "path": item.path,
-                "covered": item.covered,
-                "total": item.total,
-                "percent": item.percent,
+                "lines": {
+                    "covered": item.lines.covered,
+                    "total": item.lines.total,
+                    "percent": item.lines.percent,
+                },
+                "branches": {
+                    "covered": item.branches.covered,
+                    "total": item.branches.total,
+                    "percent": item.branches.percent,
+                },
             }
             for item in stats
         ],
@@ -198,4 +266,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

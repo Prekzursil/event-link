@@ -49,6 +49,7 @@ import { formatDateTime } from '@/lib/utils';
 
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
+  const eventId = Number(id);
   const navigate = useNavigate();
   const [data, setData] = useState<ParticipantList | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -65,11 +66,15 @@ export function ParticipantsPage() {
   const { language, t } = useI18n();
 
   const loadParticipants = useCallback(async () => {
-    if (!id) return;
+    if (!eventId) {
+      setData(null);
+      setIsLoading(false);
+      return;
+    }
     setIsLoading(true);
     try {
       const response = await eventService.getEventParticipants(
-        parseInt(id),
+        eventId,
         page,
         pageSize,
         sortBy,
@@ -85,15 +90,14 @@ export function ParticipantsPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [id, page, pageSize, sortBy, sortDir, t, toast]);
+  }, [eventId, page, pageSize, sortBy, sortDir, t, toast]);
 
   useEffect(() => {
     loadParticipants();
   }, [loadParticipants]);
 
   const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
-    if (!id) return;
-    if (updatingAttendance.has(participant.id)) return;
+    const currentData = data!;
     const previous = participant.attended;
 
     setUpdatingAttendance((prev) => {
@@ -101,31 +105,23 @@ export function ParticipantsPage() {
       next.add(participant.id);
       return next;
     });
-    setData((prev) =>
-      prev
-        ? {
-            ...prev,
-            participants: prev.participants.map((p) => (p.id === participant.id ? { ...p, attended } : p)),
-          }
-        : null
-    );
+    setData({
+      ...currentData,
+      participants: currentData.participants.map((p) => (p.id === participant.id ? { ...p, attended } : p)),
+    });
     try {
-      await eventService.updateParticipantAttendance(parseInt(id), participant.id, attended);
+      await eventService.updateParticipantAttendance(eventId, participant.id, attended);
       toast({
         title: t.common.success,
         description: attended ? t.participants.attendanceConfirmed : t.participants.attendanceCleared,
       });
     } catch {
-      setData((prev) =>
-        prev
-          ? {
-              ...prev,
-              participants: prev.participants.map((p) =>
-                p.id === participant.id ? { ...p, attended: previous } : p
-              ),
-            }
-          : null
-      );
+      setData({
+        ...currentData,
+        participants: currentData.participants.map((p) =>
+          p.id === participant.id ? { ...p, attended: previous } : p
+        ),
+      });
       toast({
         title: t.common.error,
         description: t.participants.attendanceUpdateErrorDescription,
@@ -150,7 +146,7 @@ export function ParticipantsPage() {
   };
 
   const exportToCSV = () => {
-    if (!data) return;
+    const currentData = data!;
 
     const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
 
@@ -160,7 +156,7 @@ export function ParticipantsPage() {
       t.participants.csvHeaders.registrationDate,
       t.participants.csvHeaders.attended,
     ];
-    const rows = data.participants.map((p) => [
+    const rows = currentData.participants.map((p) => [
       p.email,
       p.full_name || '',
       formatDateTime(p.registration_time, language),
@@ -173,12 +169,11 @@ export function ParticipantsPage() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${t.participants.csvFilePrefix}-${data.title.replace(/\s+/g, '-')}.csv`;
+    link.download = `${t.participants.csvFilePrefix}-${currentData.title.replace(/\s+/g, '-')}.csv`;
     link.click();
   };
 
   const sendEmailToParticipants = async () => {
-    if (!id) return;
     const subject = emailSubject.trim();
     const message = emailMessage.trim();
     if (!subject) {
@@ -200,7 +195,7 @@ export function ParticipantsPage() {
 
     setIsEmailing(true);
     try {
-      const res = await eventService.emailEventParticipants(parseInt(id), subject, message);
+      const res = await eventService.emailEventParticipants(eventId, subject, message);
       toast({
         title: t.common.success,
         description: t.participants.emailSuccess.replace('{count}', String(res.recipients)),

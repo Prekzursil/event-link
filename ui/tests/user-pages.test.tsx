@@ -178,7 +178,24 @@ describe('favorites and my-events pages', () => {
     renderWithProviders(<MyEventsPage />, '/my-events');
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
+
+  it('covers MyEventsPage empty organizer and upcoming states', async () => {
+    authState.isOrganizer = true;
+    eventServiceMock.getMyEvents.mockResolvedValueOnce([makeEvent(9, -1)]);
+    eventServiceMock.getOrganizerEvents.mockResolvedValueOnce([]);
+    eventServiceMock.getFavorites.mockResolvedValueOnce({ items: [] });
+
+    renderWithProviders(<MyEventsPage />, '/my-events');
+
+    expect(await screen.findByText(/You haven't created any events/i)).toBeInTheDocument();
+    expect(screen.getByText(/Create event/i)).toBeInTheDocument();
+
+    cleanup();
+    authState.isOrganizer = false;
+    eventServiceMock.getMyEvents.mockResolvedValueOnce([makeEvent(10, -2)]);
+    eventServiceMock.getFavorites.mockResolvedValueOnce({ items: [] });
+
+    renderWithProviders(<MyEventsPage />, '/my-events');
+    expect(await screen.findByText(/No upcoming events/i)).toBeInTheDocument();
+  });
 });
-
-
-

@@ -33,6 +33,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import { Separator } from '@/components/ui/separator';
 import {
   Table,
   TableBody,
@@ -161,6 +162,23 @@ describe('shared component coverage matrix', () => {
     expect(screen.getAllByText(/Event title/i).length).toBeGreaterThan(0);
   });
 
+  it('covers EventCard full badge when seats are exhausted before the event ends', () => {
+    render(
+      <MemoryRouter>
+        <LanguageProvider>
+          <EventCard
+            event={makeEvent({
+              seats_taken: 10,
+              max_seats: 10,
+            })}
+          />
+        </LanguageProvider>
+      </MemoryRouter>,
+    );
+
+    expect(screen.getByText(/Full/i)).toBeInTheDocument();
+  });
+
   it('covers Calendar custom props and chevron rendering', () => {
     const onSelect = vi.fn();
     renderWithLanguage(
@@ -221,6 +239,7 @@ describe('shared component coverage matrix', () => {
   it('covers select and table wrappers including label/separator/footer/caption', () => {
     render(
       <div>
+        <Separator orientation="vertical" />
         <Select value="one" onValueChange={() => undefined}>
           <SelectTrigger aria-label="coverage-select">
             <SelectValue placeholder="Choose one" />
@@ -259,6 +278,7 @@ describe('shared component coverage matrix', () => {
     expect(screen.getByLabelText('coverage-select')).toBeInTheDocument();
     expect(screen.getByText('Coverage caption')).toBeInTheDocument();
     expect(screen.getByText('Footer')).toBeInTheDocument();
+    expect(document.querySelector('.h-full.w-\\[1px\\]')).toBeInTheDocument();
   });
 
   it('covers loading spinner/page/overlay branches', () => {
@@ -278,7 +298,6 @@ describe('shared component coverage matrix', () => {
     expect(screen.getByText(/Overlay message/i)).toBeInTheDocument();
   });
 });
-
 
 
 

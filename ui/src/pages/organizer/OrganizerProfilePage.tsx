@@ -46,9 +46,14 @@ export function OrganizerProfilePage() {
   );
 
   useEffect(() => {
-    if (id) {
-      loadProfile(parseInt(id));
+    const organizerId = Number(id);
+    if (!Number.isFinite(organizerId) || organizerId <= 0) {
+      setProfile(null);
+      setHasError(false);
+      setIsLoading(false);
+      return;
     }
+    loadProfile(organizerId);
   }, [id, loadProfile]);
 
   if (isLoading) {

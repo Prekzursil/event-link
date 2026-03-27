@@ -105,17 +105,22 @@ export function createCheckboxMockModule() {
 export function createCalendarMockModule() {
   return {
     Calendar: ({ onSelect }: { onSelect?: (range: { from?: Date; to?: Date }) => void }) => (
-      <button
-        type="button"
-        onClick={() =>
-          onSelect?.({
-            from: new Date('2026-03-10T00:00:00Z'),
-            to: new Date('2026-03-11T00:00:00Z'),
-          })
-        }
-      >
-        Pick range
-      </button>
+      <div>
+        <button
+          type="button"
+          onClick={() =>
+            onSelect?.({
+              from: new Date('2026-03-10T00:00:00Z'),
+              to: new Date('2026-03-11T00:00:00Z'),
+            })
+          }
+        >
+          Pick range
+        </button>
+        <button type="button" onClick={() => onSelect?.({})}>
+          Clear range
+        </button>
+      </div>
     ),
   }
 }

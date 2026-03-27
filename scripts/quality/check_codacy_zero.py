@@ -28,6 +28,7 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--provider", default="gh", help="Organization provider, for example gh")
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
+    parser.add_argument("--branch", default="", help="Optional branch name to scope Codacy issues")
     parser.add_argument("--pr-number", default="", help="Optional pull request number")
     parser.add_argument("--commit", default="", help="Optional commit SHA")
     parser.add_argument("--timeout-seconds", type=int, default=180, help="Max seconds to wait for Codacy analysis")
@@ -65,12 +66,22 @@ def _request_json(
     return status, payload
 
 
-def _issues_search_request(*, provider: str, owner: str, repo: str, token: str) -> tuple[int, dict[str, Any]]:
+def _issues_search_request(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[int, dict[str, Any]]:
+    body: dict[str, str] = {}
+    if branch:
+        body["branchName"] = branch
     return _request_json(
         path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/issues/search?limit=1",
         token=token,
         method="POST",
-        body={},
+        body=body,
     )
 
 
@@ -115,6 +126,7 @@ def _render_md(payload: dict) -> str:
         "",
         f"- Status: `{payload['status']}`",
         f"- Owner/repo: `{payload['owner']}/{payload['repo']}`",
+        f"- Branch: `{payload.get('branch') or 'default'}`",
         f"- Open issues: `{payload.get('open_issues')}`",
         f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
         "",
@@ -165,8 +177,21 @@ def _quality_new_issues(payload: dict[str, Any]) -> int | None:
     return extract_total_open(payload)
 
 
-def _evaluate_repo_total(*, provider: str, owner: str, repo: str, token: str) -> tuple[str, int | None, list[str]]:
-    status_code, payload = _issues_search_request(provider=provider, owner=owner, repo=repo, token=token)
+def _evaluate_repo_total(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[str, int | None, list[str]]:
+    status_code, payload = _issues_search_request(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        token=token,
+        branch=branch,
+    )
     if status_code == 404:
         return "retry", None, []
     if not 200 <= status_code < 300:
@@ -270,11 +295,20 @@ def _evaluate_candidate(
     owner: str,
     repo: str,
     token: str,
+    branch: str,
     pr_number: str,
     commit_sha: str,
     timeout_seconds: int,
     poll_seconds: int,
 ) -> tuple[str, int | None, list[str]]:
+    if branch:
+        return _evaluate_repo_total(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            branch=branch,
+        )
     if pr_number and commit_sha:
         return _wait_for_pr_analysis(
             provider=provider,
@@ -294,7 +328,7 @@ def _evaluate_candidate(
             token=token,
             commit_sha=commit_sha,
         )
-    return _evaluate_repo_total(provider=provider, owner=owner, repo=repo, token=token)
+    return _evaluate_repo_total(provider=provider, owner=owner, repo=repo, token=token, branch=branch)
 
 
 def _evaluate_codacy(
@@ -303,6 +337,7 @@ def _evaluate_codacy(
     owner: str,
     repo: str,
     token: str,
+    branch: str,
     pr_number: str,
     commit_sha: str,
     timeout_seconds: int,
@@ -319,6 +354,7 @@ def _evaluate_codacy(
                 owner=owner,
                 repo=repo,
                 token=token,
+                branch=branch,
                 pr_number=pr_number,
                 commit_sha=commit_sha,
                 timeout_seconds=timeout_seconds,
@@ -341,6 +377,7 @@ def main() -> int:
     args = _parse_args()
     try:
         token, owner, repo, provider = _validated_inputs(args)
+        branch = args.branch.strip()
         pr_number = _validated_pr_number(args.pr_number)
         commit_sha = validate_commit_sha(args.commit) if args.commit.strip() else ""
     except ValueError as exc:
@@ -352,6 +389,7 @@ def main() -> int:
         owner=owner,
         repo=repo,
         token=token,
+        branch=branch,
         pr_number=pr_number,
         commit_sha=commit_sha,
         timeout_seconds=args.timeout_seconds,
@@ -362,6 +400,7 @@ def main() -> int:
         "owner": owner,
         "repo": repo,
         "provider": provider,
+        "branch": branch,
         "pr_number": pr_number,
         "commit": commit_sha,
         "open_issues": open_issues,

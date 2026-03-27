@@ -624,3 +624,183 @@ def test_main_training_weak_city_match_branch(monkeypatch, db_session) -> None:
     _student, event_city = _seed_weak_city_fixture(db_session, now)
     _patch_rng_for_choices(monkeypatch, module, [int(event_city.id)])
     assert _run_main(module, monkeypatch, "--dry-run", "--top-n", "1", "--negatives-per-positive", "1", "--eval-negatives", "0") == 0
+
+
+def test_patch_rng_choices_falls_back_when_requested_choice_is_missing(monkeypatch) -> None:
+    module = _load_script_module()
+    _patch_rng_for_choices(monkeypatch, module, [999])
+    rng = module._DeterministicRng(7)
+    assert rng.choice([11, 22]) == 11
+    assert rng.choice([11, 22]) == 22
+
+
+def test_helper_feature_vector_handles_missing_city_and_start_time() -> None:
+    module = _load_script_module()
+    now = datetime.now(timezone.utc)
+    user = module._UserFeatures(
+        city=None,
+        interest_tag_weights={},
+        history_tags=set(),
+        history_categories=set(),
+        history_organizer_ids=set(),
+        category_weights={"seminar": 0.3},
+        city_weights={"iasi": 0.4},
+    )
+    event = module._EventFeatures(
+        tags=set(),
+        category="seminar",
+        city=None,
+        owner_id=9,
+        start_time=None,
+        seats_taken=0,
+        max_seats=10,
+        status="published",
+        publish_at=None,
+    )
+
+    vector = module._build_feature_vector(user=user, event=event, now=now)
+    assert vector[3] == pytest.approx(0.0)
+    assert vector[4] == pytest.approx(0.3)
+    assert vector[7] == pytest.approx(0.0)
+
+
+def test_evaluate_hitrate_can_miss_positive(monkeypatch) -> None:
+    module = _load_script_module()
+    now = datetime.now(timezone.utc)
+    user, pos_event, neg_event = _build_helper_user_and_events(module, now)
+
+    monkeypatch.setattr(
+        module,
+        "_build_feature_vector",
+        lambda *, user, event, now: [0.0] if event is pos_event else [1.0],
+    )
+
+    hitrate = module._evaluate_hitrate_at_k(
+        weights=[1.0],
+        users={1: user},
+        events={10: pos_event, 11: neg_event},
+        positives_holdout={1: 10},
+        all_event_ids=[11],
+        now=now,
+        k=1,
+        negatives_per_user=1,
+        seed=1,
+    )
+    assert hitrate == pytest.approx(0.0)
+
+
+def test_main_training_covers_sparse_meta_and_nondecayed_paths(monkeypatch, db_session) -> None:
+    module = _load_script_module()
+    now = datetime.now(timezone.utc)
+    monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
+    import app.database as database_module
+
+    class _SessionContext:
+        def __init__(self, session):
+            self._session = session
+
+        def __enter__(self):
+            return self._session
+
+        def __exit__(self, exc_type, exc, tb):
+            return False
+
+    monkeypatch.setattr(database_module, "SessionLocal", lambda: _SessionContext(db_session))
+    student, candidate = _seed_training_rows(db_session)
+    organizer = candidate.owner
+    assert organizer is not None
+
+    no_category_positive = _make_event(
+        owner=organizer,
+        title="No Category Positive",
+        now=now,
+        days=6,
+        category=None,
+        city="Cluj",
+        location="Hall C",
+        end_hours=2,
+    )
+    db_session.add(no_category_positive)
+    db_session.commit()
+    db_session.refresh(no_category_positive)
+
+    python_tag = db_session.query(models.Tag).filter(models.Tag.name == "Python").first()
+    assert python_tag is not None
+    future_seen = now + timedelta(hours=2)
+    existing_tag_row = (
+        db_session.query(models.UserImplicitInterestTag)
+        .filter(models.UserImplicitInterestTag.user_id == int(student.id), models.UserImplicitInterestTag.tag_id == int(python_tag.id))
+        .first()
+    )
+    existing_category_row = (
+        db_session.query(models.UserImplicitInterestCategory)
+        .filter(models.UserImplicitInterestCategory.user_id == int(student.id), models.UserImplicitInterestCategory.category == "Workshop")
+        .first()
+    )
+    existing_city_row = (
+        db_session.query(models.UserImplicitInterestCity)
+        .filter(models.UserImplicitInterestCity.user_id == int(student.id), models.UserImplicitInterestCity.city == "Cluj")
+        .first()
+    )
+    assert existing_tag_row is not None
+    assert existing_category_row is not None
+    assert existing_city_row is not None
+    existing_tag_row.last_seen_at = future_seen
+    existing_category_row.last_seen_at = future_seen
+    existing_city_row.last_seen_at = future_seen
+    real_query = db_session.query
+
+    class _InterceptQuery:
+        def __init__(self, rows):
+            self._rows = rows
+
+        def join(self, *_args, **_kwargs):
+            return self
+
+        def filter(self, *_args, **_kwargs):
+            return self
+
+        def all(self):
+            return list(self._rows)
+
+    def _query(*args, **kwargs):
+        is_implicit_tag_query = (
+            len(args) == 4
+            and args[0] is models.UserImplicitInterestTag.user_id
+            and args[1] is models.Tag.name
+            and args[2] is models.UserImplicitInterestTag.score
+            and args[3] is models.UserImplicitInterestTag.last_seen_at
+        )
+        if is_implicit_tag_query:
+            return _InterceptQuery([(int(student.id), "Python", 0.4, future_seen)])
+        return real_query(*args, **kwargs)
+
+    monkeypatch.setattr(db_session, "query", _query)
+    db_session.add_all(
+        [
+            models.Registration(user_id=int(student.id), event_id=int(no_category_positive.id), attended=True),
+            models.EventInteraction(user_id=int(student.id), event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "   ", "city": "   "}),
+            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta="bad-meta"),
+            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta={"position": "x"}),
+            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta={"position": 1}),
+            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta={"position": 2}),
+            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="dwell", meta="bad-meta"),
+            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="dwell", meta={"seconds": 0}),
+        ]
+    )
+    db_session.commit()
+
+    assert (
+        _run_main(
+            module,
+            monkeypatch,
+            "--dry-run",
+            "--top-n",
+            "2",
+            "--eval-negatives",
+            "0",
+            "--user-id",
+            str(student.id),
+        )
+        == 0
+    )

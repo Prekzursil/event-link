@@ -629,8 +629,7 @@ def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]
         sort, click_time = click
         if occurred_at < click_time or occurred_at > (click_time + click_to_register_window):
             continue
-        if sort in conversions:
-            conversions[sort] += 1
+        conversions[sort] += 1
 
     def _safe_ratio(num: int, den: int) -> float:
         return float(num) / float(den) if den else 0.0

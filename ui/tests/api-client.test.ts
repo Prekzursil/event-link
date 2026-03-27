@@ -48,6 +48,19 @@ describe('api client interceptors', () => {
     expect(headers['Accept-Language']).toBe('ro');
   }, 15000);
 
+  it('creates request headers and skips auth when no token is stored', async () => {
+    localStorage.setItem('language_preference', 'en');
+
+    const module = await import('@/services/api');
+    const handler = getRequestHandlers(module.api);
+
+    const result = await handler.fulfilled({});
+    const headers = result.headers as Record<string, string>;
+
+    expect(headers.Authorization).toBeUndefined();
+    expect(headers['Accept-Language']).toBe('en');
+  });
+
   it('passes through response success and request rejection', async () => {
     const module = await import('@/services/api');
     const reqHandler = getRequestHandlers(module.api);
@@ -93,6 +106,39 @@ describe('api client interceptors', () => {
     expect((result as { data: { ok: boolean } }).data).toEqual({ ok: true });
   });
 
+  it('retries 401 requests without replacing refresh token or auth header when absent', async () => {
+    localStorage.setItem('refresh_token', 'refresh-token');
+
+    const module = await import('@/services/api');
+    const respHandler = getResponseHandlers(module.api);
+
+    const postSpy = vi.spyOn(axios, 'post').mockResolvedValue({
+      data: { access_token: 'new-access' },
+    });
+
+    const adapterSpy = vi.fn().mockResolvedValue({
+      data: { ok: true },
+      status: 200,
+      statusText: 'OK',
+      headers: {},
+      config: {},
+    });
+    module.api.defaults.adapter = adapterSpy as typeof module.api.defaults.adapter;
+
+    const error = {
+      config: {},
+      response: { status: 401 },
+    } as unknown as AxiosError;
+
+    const result = await respHandler.rejected(error);
+
+    expect(postSpy).toHaveBeenCalled();
+    expect(adapterSpy).toHaveBeenCalled();
+    expect(localStorage.getItem('access_token')).toBe('new-access');
+    expect(localStorage.getItem('refresh_token')).toBe('refresh-token');
+    expect((result as { data: { ok: boolean } }).data).toEqual({ ok: true });
+  });
+
   it('fails closed on refresh failure and clears session', async () => {
     localStorage.setItem('access_token', 'stale-access');
     localStorage.setItem('refresh_token', 'stale-refresh');
@@ -122,6 +168,18 @@ describe('api client interceptors', () => {
     const error = {
       config: { headers: {} },
       response: { status: 500 },
+    } as unknown as AxiosError;
+
+    await expect(respHandler.rejected(error)).rejects.toEqual(error);
+  });
+
+  it('propagates 401 errors when no refresh token is available', async () => {
+    const module = await import('@/services/api');
+    const respHandler = getResponseHandlers(module.api);
+
+    const error = {
+      config: { headers: {} },
+      response: { status: 401 },
     } as unknown as AxiosError;
 
     await expect(respHandler.rejected(error)).rejects.toEqual(error);

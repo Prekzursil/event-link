@@ -229,6 +229,7 @@ def test_fake_session_add_all_executes_add_path():
 def test_fake_helpers_cover_scalar_and_host_allow_path(monkeypatch):
     assert _FakeResult(5).scalar() == 5
     fake = _FakeSession(user_count=7)
+    assert fake.execute("SELECT 1").scalar() == 0
     assert fake.scalar("SELECT count(*) FROM users") == 7
     assert fake.scalar("SELECT 1") == 0
 
@@ -247,3 +248,54 @@ def test_fake_helpers_cover_scalar_and_host_allow_path(monkeypatch):
 
     assert calls and calls[0][1] == "dev.local"
     assert calls[0][2] == 9002
+
+
+def test_backend_main_import_without_main_guard_does_not_run(monkeypatch):
+    calls = []
+
+    import uvicorn
+
+    monkeypatch.setattr(uvicorn, "run", lambda *_args, **_kwargs: calls.append("run"))
+    main_path = Path(__file__).resolve().parents[1] / "main.py"
+    spec = importlib.util.spec_from_file_location("backend_main_import_only", main_path)
+    assert spec is not None and spec.loader is not None
+    module = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(module)
+    assert calls == []
+
+
+def test_seed_database_skips_missing_event_tags(monkeypatch):
+    seed_data = _prepare_seed(monkeypatch)
+    fake = _FakeSession(user_count=0)
+    monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
+    monkeypatch.setattr(seed_data, "TAGS", ["Programare"])
+    monkeypatch.setattr(seed_data, "LOCATIONS", ["Room"])
+    monkeypatch.setattr(seed_data, "COVER_IMAGES", ["https://example.com/cover.png"])
+    monkeypatch.setattr(
+        seed_data,
+        "STUDENTS",
+        [{"email": "student@test.ro", "full_name": "Student Tester", "password": "student-pass"}],
+    )
+    monkeypatch.setattr(
+        seed_data,
+        "ORGANIZERS",
+        [
+            {
+                "email": "organizer@test.ro",
+                "full_name": "Organizer Tester",
+                "password": "organizer-pass",
+                "org_name": "Org",
+                "org_description": "Desc",
+            }
+        ],
+    )
+    monkeypatch.setattr(seed_data, "ADMINS", [{"email": "admin@test.ro", "full_name": "Admin Tester", "password": "admin-pass"}])
+    monkeypatch.setattr(
+        seed_data,
+        "SAMPLE_EVENTS",
+        [{"title": "Tagged Event", "description": "desc", "category": "Workshop", "tags": ["Programare", "Missing"], "max_seats": 10}],
+    )
+
+    seed_data.seed_database()
+
+    assert fake.closed is True

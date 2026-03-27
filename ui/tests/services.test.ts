@@ -100,6 +100,14 @@ describe('auth service', () => {
     authService.logout();
     expect(authService.isAuthenticated()).toBe(false);
     expect(authService.getStoredUser()).toBeNull();
+
+    authService.setTokens({
+      [PRIMARY_SESSION_KEY]: 'access-only',
+      [SESSION_TYPE_KEY]: 'bearer',
+      role: 'student',
+      user_id: 11,
+    });
+    expect(localStorage.getItem(SECONDARY_SESSION_KEY)).toBeNull();
   });
 });
 
@@ -109,6 +117,10 @@ describe('event service', () => {
   });
 
   it('covers event lookup, registration, favorites, and account routes', async () => {
+    apiMock.get.mockResolvedValueOnce({ data: { items: [], total: 0, page: 1, page_size: 20 } });
+    await eventService.getEvents();
+    expect(apiMock.get).toHaveBeenCalledWith('/api/events?');
+
     apiMock.get.mockResolvedValue({ data: { items: [], total: 0, page: 1, page_size: 20 } });
     await eventService.getEvents({
       search: 'abc',
@@ -258,11 +270,19 @@ describe('admin service', () => {
     expect(apiMock.get).toHaveBeenLastCalledWith('/api/admin/stats?days=10&top_tags_limit=5');
 
     apiMock.get.mockResolvedValueOnce({ data: { items: [] } });
+    await adminService.getUsers();
+    expect(apiMock.get).toHaveBeenLastCalledWith('/api/admin/users?');
+
+    apiMock.get.mockResolvedValueOnce({ data: { items: [] } });
     await adminService.getUsers({ search: 'q', role: 'admin', is_active: true, page: 2, page_size: 10 });
     expect(apiMock.get).toHaveBeenLastCalledWith(expect.stringContaining('is_active=true'));
 
     apiMock.patch.mockResolvedValueOnce({ data: { id: 9 } });
     expect((await adminService.updateUser(9, { is_active: true })).id).toBe(9);
+
+    apiMock.get.mockResolvedValueOnce({ data: { items: [] } });
+    await adminService.getEvents();
+    expect(apiMock.get).toHaveBeenLastCalledWith('/api/admin/events?');
 
     apiMock.get.mockResolvedValueOnce({ data: { items: [] } });
     await adminService.getEvents({
@@ -291,6 +311,14 @@ describe('admin service', () => {
 
     apiMock.post.mockResolvedValueOnce({ data: { job_id: 3 } });
     expect((await adminService.enqueueFillingFast({ threshold_abs: 2 })).job_id).toBe(3);
+
+    apiMock.post.mockResolvedValueOnce({ data: { job_id: 4 } });
+    expect((await adminService.enqueueWeeklyDigest()).job_id).toBe(4);
+    expect(apiMock.post).toHaveBeenLastCalledWith('/api/admin/notifications/weekly-digest', {});
+
+    apiMock.post.mockResolvedValueOnce({ data: { job_id: 5 } });
+    expect((await adminService.enqueueFillingFast()).job_id).toBe(5);
+    expect(apiMock.post).toHaveBeenLastCalledWith('/api/admin/notifications/filling-fast', {});
   });
 });
 

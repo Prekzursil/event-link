@@ -105,6 +105,51 @@ describe('lib helpers', () => {
     expect(legacyRemove).toHaveBeenCalledWith(legacyHandler);
   });
 
+  it('covers language and theme guards outside browser globals', () => {
+    const originalWindow = globalThis.window;
+    const originalDocument = globalThis.document;
+    const originalNavigator = globalThis.navigator;
+
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: undefined });
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: undefined });
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: undefined });
+
+    expect(getStoredLanguagePreference()).toBe('system');
+    expect(getSystemLanguage()).toBe('en');
+    expect(getStoredThemePreference()).toBe('system');
+    expect(getSystemTheme()).toBe('light');
+    expect(subscribeToSystemThemeChanges(() => undefined)()).toBeUndefined();
+
+    expect(() => storeLanguagePreference('en')).not.toThrow();
+    expect(() => applyLanguagePreference('en')).not.toThrow();
+    expect(() => storeThemePreference('dark')).not.toThrow();
+    expect(() => applyThemePreference('dark')).not.toThrow();
+
+    Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow });
+    Object.defineProperty(globalThis, 'document', { configurable: true, value: originalDocument });
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: originalNavigator });
+
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { language: 'en-US' },
+    });
+    expect(getSystemLanguage()).toBe('en');
+
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { language: '' },
+    });
+    expect(getSystemLanguage()).toBe('en');
+
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: { language: 'ro-RO' },
+    });
+    expect(getSystemLanguage()).toBe('ro');
+
+    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: originalNavigator });
+  });
+
   it('covers formatting utilities and category label lookup', () => {
     expect(cn('a', undefined, 'c')).toContain('a');
 

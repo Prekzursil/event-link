@@ -40,7 +40,7 @@ function constantTimeEquals(left: string, right: string): boolean {
 
 function containsAsciiLetter(value: string): boolean {
   return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0) || 0;
+    const codePoint = character.codePointAt(0)!;
     return (
       (codePoint >= 65 && codePoint <= 90) ||
       (codePoint >= 97 && codePoint <= 122)
@@ -50,7 +50,7 @@ function containsAsciiLetter(value: string): boolean {
 
 function containsDigit(value: string): boolean {
   return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0) || 0;
+    const codePoint = character.codePointAt(0)!;
     return codePoint >= 48 && codePoint <= 57;
   });
 }

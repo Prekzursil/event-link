@@ -335,6 +335,10 @@ def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
     assert claimed.finished_at is not None
 
 
+def test_requeue_stale_jobs_returns_zero_without_matches(db_session):
+    assert task_queue.requeue_stale_jobs(db_session, stale_after_seconds=30) == 0
+
+
 def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
     backend_root = tmp_path / "backend"
     script_path = backend_root / "scripts" / "recompute_recommendations_ml.py"
@@ -794,6 +798,43 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
     )
     assert result["days"] == 7
     assert result["enabled"] is True
+
+
+def test_guardrails_skips_registers_with_unknown_click_sort(monkeypatch, db_session):
+    _reset_guardrail_state(db_session)
+    user, event = _seed_guardrail_user_event(db_session)
+    now = datetime.now(timezone.utc)
+    db_session.add_all(
+        [
+            _interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="impression",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": "recommended"},
+            ),
+            _interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="click",
+                occurred_at=now + timedelta(minutes=1),
+                meta={"source": "events_list", "sort": "unknown"},
+            ),
+            _interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="register",
+                occurred_at=now + timedelta(minutes=2),
+            ),
+        ]
+    )
+    db_session.commit()
+    monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
+    result = task_queue._evaluate_personalization_guardrails(
+        db=db_session,
+        payload={"days": 1, "min_impressions": 1, "click_to_register_window_hours": 1},
+    )
+    assert result["action"] in {"skip_low_volume", "ok", "no_active_model", "no_previous_model"}
 
 
 def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):

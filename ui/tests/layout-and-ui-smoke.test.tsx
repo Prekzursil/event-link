@@ -168,6 +168,28 @@ describe('layout and ui smoke', () => {
     expect(authState.logout).toHaveBeenCalled();
   });
 
+  it('keeps guest preference changes local without persisting through auth service', async () => {
+    render(
+      <MemoryRouter>
+        <ThemeProvider>
+          <LanguageProvider>
+            <Navbar />
+          </LanguageProvider>
+        </ThemeProvider>
+      </MemoryRouter>,
+    );
+
+    fireEvent.mouseDown(getEnabledButton(/Theme|Tema/i, 'guest theme trigger'));
+    fireEvent.click(getEnabledButton(/Dark|Întunecat/i, 'guest dark option'));
+    await waitFor(() => expect(document.documentElement.classList.contains('dark')).toBe(true));
+    expect(authServiceMock.updateThemePreference).not.toHaveBeenCalled();
+
+    fireEvent.mouseDown(getEnabledButton(/Language|Limba/i, 'guest language trigger'));
+    fireEvent.click(getEnabledButton(/Romanian|Română/i, 'guest Romanian option'));
+    await waitFor(() => expect(document.documentElement.lang).toBe('ro'));
+    expect(authServiceMock.updateLanguagePreference).not.toHaveBeenCalled();
+  });
+
   it('covers desktop theme/language preference save success and failure paths', async () => {
     authState.isAuthenticated = true;
     authState.isOrganizer = false;
@@ -450,4 +472,3 @@ describe('layout and ui smoke', () => {
     await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalled());
   }, 20000);
 });
-

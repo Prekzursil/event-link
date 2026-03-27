@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
-import { defineMutableValue, renderLanguageRoute, setEnglishPreference } from './page-test-helpers';
+import { defineMutableValue, renderLanguageRoute, requireElement, setEnglishPreference } from './page-test-helpers';
 
 const {
   toastSpy,
@@ -50,6 +50,9 @@ vi.mock('react-router-dom', async () => {
 
 vi.mock('@/components/ui/select', () =>
   import('./mock-component-modules').then((module) => module.createSelectMockModule()),
+);
+vi.mock('@/components/ui/calendar', () =>
+  import('./mock-component-modules').then((module) => module.createCalendarMockModule()),
 );
 
 vi.mock('@/components/events/EventCard', () => ({
@@ -194,6 +197,115 @@ describe('events page and event form branch coverage', () => {
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 
+  it('covers EventsPage media fallbacks, delayed cleanup, and blank interaction metadata branches', async () => {
+    defineMutableValue(globalThis, 'matchMedia', undefined);
+
+    let rejectLateRequest: ((error: Error) => void) | undefined;
+    eventServiceMock.getEvents.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectLateRequest = reject as (error: Error) => void;
+      }),
+    );
+    const pendingRender = renderLanguageRoute('/events?search=late', '/events', <EventsPage />);
+    await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
+
+    pendingRender.unmount();
+    rejectLateRequest?.(new Error('late-fail'));
+    await Promise.resolve();
+    expect(toastSpy).not.toHaveBeenCalled();
+
+    cleanup();
+    eventServiceMock.getEvents.mockResolvedValueOnce({
+      items: [makeEvent(30, 'Search only event')],
+      total: 1,
+      page: 1,
+      page_size: 12,
+      total_pages: 1,
+    });
+    renderLanguageRoute('/events?search=solo&page=1', '/events', <EventsPage />);
+    await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(
+      recordInteractionsSpy.mock.calls.some(([payload]) =>
+        Array.isArray(payload) &&
+        payload.some(
+          (item: {
+            interaction_type?: string;
+            meta?: { category?: string; city?: string; location?: string };
+          }) =>
+            item?.interaction_type === 'search' &&
+            item.meta?.category === undefined &&
+            item.meta?.city === undefined &&
+            item.meta?.location === undefined,
+        ),
+      ),
+    ).toBe(true);
+
+    cleanup();
+    eventServiceMock.getEvents.mockResolvedValueOnce({
+      items: [makeEvent(31, 'City filtered event')],
+      total: 1,
+      page: 1,
+      page_size: 12,
+      total_pages: 1,
+    });
+    renderLanguageRoute('/events?city=Cluj&page=1&category=Technical', '/events', <EventsPage />);
+    await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
+    screen.getAllByRole('button', { name: /^All$/i }).forEach((button) => fireEvent.click(button));
+    await waitFor(() =>
+      expect(eventServiceMock.getEvents).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: '' }),
+      ),
+    );
+    await new Promise((resolve) => setTimeout(resolve, 450));
+    expect(
+      recordInteractionsSpy.mock.calls.some(([payload]) =>
+        Array.isArray(payload) &&
+        payload.some(
+          (item: {
+            interaction_type?: string;
+            meta?: { category?: string; city?: string; location?: string };
+          }) =>
+            item?.interaction_type === 'filter' &&
+            item.meta?.category === undefined &&
+            item.meta?.city === 'Cluj' &&
+            item.meta?.location === undefined,
+        ),
+      ),
+    ).toBe(true);
+
+    cleanup();
+    eventServiceMock.getEvents.mockResolvedValueOnce({
+      items: [makeEvent(31, 'Category selected event')],
+      total: 1,
+      page: 1,
+      page_size: 12,
+      total_pages: 1,
+    });
+    renderLanguageRoute('/events?page=1', '/events', <EventsPage />);
+    await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
+    fireEvent.click(screen.getAllByRole('button', { name: /Technical|Tehnic/i })[0]);
+    await waitFor(() =>
+      expect(eventServiceMock.getEvents).toHaveBeenLastCalledWith(
+        expect.objectContaining({ category: 'Technical' }),
+      ),
+    );
+
+    cleanup();
+    eventServiceMock.getEvents.mockResolvedValueOnce({
+      items: [makeEvent(32, 'Date filtered event')],
+      total: 1,
+      page: 1,
+      page_size: 12,
+      total_pages: 1,
+    });
+    renderLanguageRoute('/events?start_date=2026-03-10&page=1', '/events', <EventsPage />);
+    await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
+    expect(screen.getByText(/10 Mar 2026/i)).toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /10 Mar 2026/i }));
+    fireEvent.click(requireElement(screen.queryByRole('button', { name: /Clear range/i }), 'clear range button'));
+  }, 20000);
+
   it('covers EventFormPage create flow with suggest/apply and validation branches', async () => {
     renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
@@ -318,5 +430,160 @@ describe('events page and event form branch coverage', () => {
 
     fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
     expect(navigateSpy).toHaveBeenCalledWith('/organizer');
+  });
+
+  it('covers EventFormPage sparse edit defaults and suggestion fallback rendering', async () => {
+    eventServiceMock.getEvent.mockResolvedValueOnce({
+      ...makeEvent(44, 'Sparse event'),
+      description: undefined,
+      category: undefined,
+      end_time: undefined,
+      city: undefined,
+      location: undefined,
+      max_seats: undefined,
+      cover_url: undefined,
+      status: undefined,
+      tags: [],
+    });
+
+    renderLanguageRoute('/organizer/events/44/edit', '/organizer/events/:id/edit', <EventFormPage />);
+    await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(44));
+    expect(screen.getByLabelText(/Description/i)).toHaveValue('');
+    expect(screen.getByLabelText(/City/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Location/i)).toHaveValue('');
+    expect(screen.getByLabelText(/Max seats/i)).toHaveValue(null);
+
+    cleanup();
+    eventServiceMock.suggestEvent.mockResolvedValueOnce({
+      suggested_category: '',
+      suggested_city: '',
+      suggested_tags: [],
+      duplicates: [
+        {
+          id: 201,
+          title: 'Possible duplicate',
+          start_time: new Date().toISOString(),
+          city: '',
+          similarity: 0.33,
+        },
+      ],
+      moderation_score: 0,
+      moderation_flags: [],
+      moderation_status: 'clear',
+    });
+
+    renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
+    fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Fallback event' } });
+    fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
+    await waitFor(() => expect(eventServiceMock.suggestEvent).toHaveBeenCalled());
+    expect(screen.getAllByText('—').length).toBeGreaterThan(1);
+    expect(screen.getByText(/- • 33%/i)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/i }));
+    expect(screen.getByLabelText(/City/i)).toHaveValue('');
+
+    const tagInput = screen.getByPlaceholderText(/tag/i);
+    fireEvent.keyDown(tagInput, { key: 'Escape' });
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(screen.queryByText(/^AI$/i)).not.toBeInTheDocument();
+
+    fireEvent.change(tagInput, { target: { value: 'AI' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    fireEvent.change(tagInput, { target: { value: 'AI' } });
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    expect(screen.getAllByText('AI')).toHaveLength(1);
+
+    fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '' } });
+    expect(screen.getByLabelText(/Max seats/i)).toHaveValue(null);
+  });
+
+  it('covers EventFormPage suggest payload timestamps, duplicate-apply retention, and max-seats reset', async () => {
+    let resolveSuggestion: ((value: Awaited<ReturnType<typeof eventServiceMock.suggestEvent>>) => void) | undefined;
+    eventServiceMock.suggestEvent.mockReturnValueOnce(
+      new Promise((resolve) => {
+        resolveSuggestion = resolve as (value: Awaited<ReturnType<typeof eventServiceMock.suggestEvent>>) => void;
+      }),
+    );
+
+    renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
+
+    fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Suggest payload event' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Braila' } });
+    fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: '2026-03-10T10:00' } });
+    fireEvent.click(screen.getAllByRole('button', { name: /Technical|Tehnic/i })[0]);
+
+    fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
+    await waitFor(() =>
+      expect(eventServiceMock.suggestEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Suggest payload event',
+          city: 'Braila',
+          start_time: new Date('2026-03-10T10:00').toISOString(),
+        }),
+      ),
+    );
+
+    resolveSuggestion?.({
+      suggested_category: 'Social',
+      suggested_city: 'Iasi',
+      suggested_tags: ['AI'],
+      duplicates: [],
+      moderation_score: 0,
+      moderation_flags: [],
+      moderation_status: 'clear',
+    });
+    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/i }));
+
+    expect(screen.getByLabelText(/City/i)).toHaveValue('Braila');
+    expect(screen.getAllByText('AI').length).toBeGreaterThan(0);
+
+    const maxSeatsInput = screen.getByLabelText(/Max seats/i);
+    fireEvent.change(maxSeatsInput, { target: { value: '12' } });
+    fireEvent.change(maxSeatsInput, { target: { value: '' } });
+    expect(maxSeatsInput).toHaveValue(null);
+
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Hall A' } });
+    fireEvent.change(maxSeatsInput, { target: { value: '24' } });
+    fireEvent.submit(requireForm(/Create event/i));
+    await waitFor(() =>
+      expect(eventServiceMock.createEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          category: 'Technical',
+          city: 'Braila',
+          max_seats: 24,
+        }),
+      ),
+    );
+  }, 20000);
+
+  it('covers EventFormPage generic suggestion and submit fallback errors', async () => {
+    eventServiceMock.suggestEvent.mockRejectedValueOnce(new Error('plain-suggest-error'));
+    eventServiceMock.createEvent.mockRejectedValueOnce(new Error('plain-create-error'));
+
+    renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
+
+    fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Fallback create event' } });
+    fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
+    await waitFor(() =>
+      expect(eventServiceMock.suggestEvent).toHaveBeenCalledWith(
+        expect.objectContaining({
+          title: 'Fallback create event',
+          description: undefined,
+          city: undefined,
+          location: undefined,
+          start_time: undefined,
+        }),
+      ),
+    );
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+
+    fireEvent.click(screen.getAllByRole('button', { name: /Technical|Tehnic/i })[0]);
+    fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Aula Magna' } });
+    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Cluj' } });
+    fireEvent.change(screen.getByLabelText(/Start date/i), { target: { value: '2026-03-10T10:00' } });
+    fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '25' } });
+
+    fireEvent.submit(requireForm(/Create event/i));
+    await waitFor(() => expect(eventServiceMock.createEvent).toHaveBeenCalled());
+    await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
 });

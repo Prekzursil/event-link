@@ -74,7 +74,7 @@ export function EventsPage() {
       { value: ALL_CATEGORIES_VALUE, label: t.events.allCategories },
       ...EVENT_CATEGORIES.map((cat) => ({
         value: cat,
-        label: getEventCategoryLabel(cat, language) ?? cat,
+        label: getEventCategoryLabel(cat, language),
       })),
     ],
     [language, t],
@@ -98,7 +98,7 @@ export function EventsPage() {
         ? 'recommended'
         : 'time';
 
-  const filters: EventFilters = useMemo(() => ({
+  const filters = useMemo(() => ({
     search,
     category,
     start_date,
@@ -118,14 +118,14 @@ export function EventsPage() {
     filters.end_date ||
     filters.city ||
     filters.location ||
-    (filters.tags && filters.tags.length > 0);
+    filters.tags.length > 0;
 
   const updateFilters = useCallback(
     (newFilters: Partial<EventFilters>) => {
       const params = new URLSearchParams(searchParams);
 
       Object.entries(newFilters).forEach(([key, value]) => {
-        if (value === '' || value === null || (Array.isArray(value) && value.length === 0)) {
+        if (value === '' || value === null) {
           params.delete(key);
           return;
         }
@@ -152,7 +152,7 @@ export function EventsPage() {
         if (!cancelled) {
           setEvents(response.items);
           setTotalEvents(response.total);
-          setTotalPages(Math.ceil(response.total / (filters.page_size || 12)));
+          setTotalPages(Math.ceil(response.total / filters.page_size));
         }
       } catch {
         if (!cancelled) {
@@ -182,41 +182,41 @@ export function EventsPage() {
       const interactions: InteractionEventIn[] = events.map((event, index) => ({
         interaction_type: 'impression',
         event_id: event.id,
-        meta: {
-          source: 'events_list',
-          position: index,
-          page: filters.page ?? 1,
-          sort: filters.sort ?? 'time',
-        },
-      }));
+          meta: {
+            source: 'events_list',
+            position: index,
+            page: filters.page,
+            sort: filters.sort,
+          },
+        }));
 
-      if ((filters.page ?? 1) === 1 && hasActiveFilters) {
-        if (filters.search) {
-          interactions.unshift({
-            interaction_type: 'search',
-            meta: {
-              query: filters.search,
-              category: filters.category || undefined,
-              city: filters.city || undefined,
-              location: filters.location || undefined,
-              tags: filters.tags?.slice(0, 10),
-              sort: filters.sort ?? 'time',
-            },
-          });
-        } else {
+      if (filters.page === 1 && hasActiveFilters) {
+          if (filters.search) {
+            interactions.unshift({
+              interaction_type: 'search',
+              meta: {
+                query: filters.search,
+                category: filters.category || undefined,
+                city: filters.city || undefined,
+                location: filters.location || undefined,
+                tags: filters.tags.slice(0, 10),
+                sort: filters.sort,
+              },
+            });
+          } else {
           interactions.unshift({
             interaction_type: 'filter',
-            meta: {
-              category: filters.category || undefined,
-              city: filters.city || undefined,
-              location: filters.location || undefined,
-              tags: filters.tags?.slice(0, 10),
-              start_date: filters.start_date || undefined,
-              end_date: filters.end_date || undefined,
-              sort: filters.sort ?? 'time',
-            },
-          });
-        }
+              meta: {
+                category: filters.category || undefined,
+                city: filters.city || undefined,
+                location: filters.location || undefined,
+                tags: filters.tags.slice(0, 10),
+                start_date: filters.start_date || undefined,
+                end_date: filters.end_date || undefined,
+                sort: filters.sort,
+              },
+            });
+          }
       }
 
       void recordInteractions(interactions);
@@ -478,7 +478,7 @@ export function EventsPage() {
         <div className="flex items-center gap-2">
           {isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED && (
             <Select
-              value={filters.sort || 'time'}
+              value={filters.sort}
               onValueChange={(value) => updateFilters({ sort: value as EventFilters['sort'] })}
             >
               <SelectTrigger className="w-[160px]">
@@ -491,7 +491,7 @@ export function EventsPage() {
             </Select>
           )}
           <Select
-            value={String(filters.page_size || 12)}
+            value={String(filters.page_size)}
             onValueChange={(value) => updateFilters({ page_size: parseInt(value) })}
           >
             <SelectTrigger className="w-[100px]">
@@ -540,7 +540,7 @@ export function EventsPage() {
                     {
                       interaction_type: 'click',
                       event_id: eventId,
-                      meta: { source: 'events_list', sort: filters.sort ?? 'time', page: filters.page ?? 1 },
+                      meta: { source: 'events_list', sort: filters.sort, page: filters.page },
                     },
                   ])
                 }
@@ -555,7 +555,7 @@ export function EventsPage() {
                 variant="outline"
                 size="icon"
                 disabled={filters.page === 1}
-                onClick={() => updateFilters({ page: (filters.page || 1) - 1 })}
+                onClick={() => updateFilters({ page: filters.page - 1 })}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -566,7 +566,7 @@ export function EventsPage() {
                 variant="outline"
                 size="icon"
                 disabled={filters.page === totalPages}
-                onClick={() => updateFilters({ page: (filters.page || 1) + 1 })}
+                onClick={() => updateFilters({ page: filters.page + 1 })}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>

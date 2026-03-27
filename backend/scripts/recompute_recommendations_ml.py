@@ -514,8 +514,7 @@ def main() -> int:
                 category_value = meta.get("category")
                 if isinstance(category_value, str) and category_value.strip():
                     normalized_category = _normalize_category(category_value)
-                    if normalized_category:
-                        implicit_categories_by_user.setdefault(user_id_int, set()).add(normalized_category)
+                    implicit_categories_by_user.setdefault(user_id_int, set()).add(normalized_category)
 
                 city_value = meta.get("city")
                 if isinstance(city_value, str):

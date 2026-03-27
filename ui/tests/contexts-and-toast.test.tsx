@@ -195,6 +195,27 @@ describe('contexts and toast hook', () => {
     expect(authServiceMock.logout).toHaveBeenCalled();
   });
 
+  it('covers auth refresh skip path and users without stored preferences', async () => {
+    renderProviders();
+    expect(await screen.findByTestId('auth-state')).toHaveTextContent('false');
+    expect(authServiceMock.getMe).not.toHaveBeenCalled();
+
+    cleanup();
+    authServiceMock.isAuthenticated.mockReturnValue(true);
+    authServiceMock.getMe.mockResolvedValue({
+      id: 2,
+      email: 'noprefs@test.ro',
+      role: 'student',
+      theme_preference: '',
+      language_preference: '',
+    });
+
+    renderProviders();
+    await waitFor(() => expect(screen.getByTestId('auth-state')).toHaveTextContent('true'));
+    expect(document.documentElement.lang).toBe('en');
+    expect(screen.getByTestId('role-state')).toHaveTextContent('false|false');
+  });
+
   it('covers toast reducer and hook lifecycle', () => {
     vi.useFakeTimers();
 
@@ -235,6 +256,18 @@ describe('contexts and toast hook', () => {
     );
     expect(removedAll.toasts).toEqual([]);
 
+    const unchangedUpdate = reducer(
+      { toasts: [{ id: '1', open: true, title: 'kept' }] } as never,
+      { type: 'UPDATE_TOAST', toast: { id: 'missing', title: 'ignored' } } as never,
+    );
+    expect(unchangedUpdate.toasts[0].title).toBe('kept');
+
+    const unchangedDismiss = reducer(
+      { toasts: [{ id: '1', open: true }] } as never,
+      { type: 'DISMISS_TOAST', toastId: 'missing' } as never,
+    );
+    expect(unchangedDismiss.toasts[0].open).toBe(true);
+
     const { result, unmount } = renderHook(() => useToast());
     let toastId = '';
     act(() => {
@@ -244,6 +277,40 @@ describe('contexts and toast hook', () => {
 
     act(() => {
       result.current.toasts[0]?.onOpenChange?.(false);
+      vi.advanceTimersByTime(5000);
+    });
+
+    let openToastId = '';
+    act(() => {
+      openToastId = result.current.toast({ title: 'still-open' }).id;
+    });
+    const openToast = result.current.toasts.find((item) => item.id === openToastId);
+    expect(openToast).toBeDefined();
+    act(() => {
+      openToast?.onOpenChange?.(true);
+    });
+    expect(result.current.toasts[0]?.open).toBe(true);
+
+    let closableToastId = '';
+    act(() => {
+      closableToastId = result.current.toast({ title: 'close-me-explicitly' }).id;
+    });
+    const closableToast = result.current.toasts.find((item) => item.id === closableToastId);
+    expect(closableToast).toBeDefined();
+    act(() => {
+      closableToast?.onOpenChange?.(false);
+      vi.advanceTimersByTime(5000);
+    });
+
+    let explicitBranchToastId = '';
+    act(() => {
+      explicitBranchToastId = result.current.toast({ title: 'branch-check' }).id;
+    });
+    const explicitBranchToast = result.current.toasts.find((item) => item.id === explicitBranchToastId);
+    expect(explicitBranchToast).toBeDefined();
+    act(() => {
+      explicitBranchToast?.onOpenChange?.(true);
+      explicitBranchToast?.onOpenChange?.(false);
       vi.advanceTimersByTime(5000);
     });
 
@@ -259,9 +326,17 @@ describe('contexts and toast hook', () => {
       vi.advanceTimersByTime(5000);
     });
 
+    const originalIndexOf = Array.prototype.indexOf;
+    const indexOfSpy = vi.spyOn(Array.prototype, 'indexOf').mockImplementation(function (...args) {
+      const searchElement = args[0];
+      if (typeof searchElement === 'function') {
+        return -1;
+      }
+      return originalIndexOf.apply(this, args as [unknown, number?]);
+    });
+
     unmount();
+    indexOfSpy.mockRestore();
     vi.useRealTimers();
   });
 });
-
-
