@@ -46,6 +46,8 @@ const highImpactPageFixtures = vi.hoisted(() => ({
     preference: 'system',
     setPreference: vi.fn(),
   },
+  mediaAddEventListenerSpy: vi.fn(),
+  mediaRemoveEventListenerSpy: vi.fn(),
   mediaAddListenerSpy: vi.fn(),
   mediaRemoveListenerSpy: vi.fn(),
 }));
@@ -58,6 +60,8 @@ const {
   authServiceMock,
   authState,
   themeState,
+  mediaAddEventListenerSpy,
+  mediaRemoveEventListenerSpy,
   mediaAddListenerSpy,
   mediaRemoveListenerSpy,
 } = highImpactPageFixtures;
@@ -138,6 +142,8 @@ function seedBrowserGlobals() {
     vi.fn().mockImplementation(() => ({
       matches: false,
       media: '(min-width: 640px)',
+      addEventListener: mediaAddEventListenerSpy,
+      removeEventListener: mediaRemoveEventListenerSpy,
       addListener: mediaAddListenerSpy,
       removeListener: mediaRemoveListenerSpy,
     })),

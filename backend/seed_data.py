@@ -23,12 +23,13 @@ _SECRET_FIELD = "pass" + "word"
 _PASSWORD_HASH_FIELD = "pass" + "word_hash"
 _RESET_RECORD_TABLE = _SECRET_FIELD + "_reset_tokens"
 _DEFAULT_SEED_CODE = os.environ.get("EVENTLINK_SEED_CODE", "seed-access-A1")
+MUSIC_TAG = "Muzică"
 TAGS = [
     "Programare", "Design", "Business", "Marketing", "Startup",
     "AI & ML", "Web Development", "Mobile", "Cloud", "DevOps",
     "Data Science", "Cybersecurity", "Gaming", "Blockchain",
     "Career", "Networking", "Workshop", "Hackathon", "Conference",
-    "Social", "Sport", "Muzică", "Rock", "Pop", "Hip-Hop", "EDM", "Jazz", "Clasică", "Folk", "Metal",
+    "Social", "Sport", MUSIC_TAG, "Rock", "Pop", "Hip-Hop", "EDM", "Jazz", "Clasică", "Folk", "Metal",
     "Artă", "Voluntariat"
 ]
 
@@ -228,7 +229,7 @@ Bar cu băuturi și snacks disponibil.
 
 Dress code: smart casual 🎷""",
         "category": "Music",
-        "tags": ["Muzică", "Jazz", "Social", "Artă"],
+        "tags": [MUSIC_TAG, "Jazz", "Social", "Artă"],
         "max_seats": 120
     },
     {
@@ -241,7 +242,7 @@ Line-up:
 
 Intrare liberă. Vino devreme pentru locuri bune! 🤘""",
         "category": "Music",
-        "tags": ["Muzică", "Rock", "Social"],
+        "tags": [MUSIC_TAG, "Rock", "Social"],
         "max_seats": 200
     },
     {
@@ -252,7 +253,7 @@ Genuri: pop, EDM, dance
 
 Acces pe bază de bilet (reducere studenți). 🎧""",
         "category": "Festival",
-        "tags": ["Muzică", "Pop", "EDM", "Social"],
+        "tags": [MUSIC_TAG, "Pop", "EDM", "Social"],
         "max_seats": 800
     },
     {
@@ -558,4 +559,3 @@ def seed_database():
 
 if __name__ == "__main__":
     seed_database()
-

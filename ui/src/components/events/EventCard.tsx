@@ -8,7 +8,7 @@ import { formatDate, formatTime, cn } from '@/lib/utils';
 import { useI18n } from '@/contexts/LanguageContext';
 import { getEventCategoryLabel } from '@/lib/eventCategories';
 
-export interface EventCardProps {
+export type EventCardProps = Readonly<{
   event: Event;
   onFavoriteToggle?: (eventId: number, isFavorite: boolean) => void;
   isFavorite?: boolean;
@@ -16,7 +16,7 @@ export interface EventCardProps {
   isPast?: boolean;
   showEditButton?: boolean;
   onEventClick?: (eventId: number) => void;
-}
+}>;
 
 export function EventCard({
   event,

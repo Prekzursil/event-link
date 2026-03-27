@@ -50,18 +50,29 @@ def _parse_args() -> argparse.Namespace:
 
 def extract_total_open(payload: Any) -> int | None:
     if isinstance(payload, dict):
-        for key, value in payload.items():
-            if key in TOTAL_KEYS and isinstance(value, (int, float)):
-                return int(value)
-        for nested in payload.values():
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
-    elif isinstance(payload, list):
-        for nested in payload:
-            total = extract_total_open(nested)
-            if total is not None:
-                return total
+        direct_total = _extract_total_from_mapping(payload)
+        if direct_total is not None:
+            return direct_total
+        return _extract_total_from_iterable(payload.values())
+
+    if isinstance(payload, list):
+        return _extract_total_from_iterable(payload)
+
+    return None
+
+
+def _extract_total_from_mapping(payload: dict[str, Any]) -> int | None:
+    for key, value in payload.items():
+        if key in TOTAL_KEYS and isinstance(value, (int, float)):
+            return int(value)
+    return None
+
+
+def _extract_total_from_iterable(payload: Any) -> int | None:
+    for nested in payload:
+        total = extract_total_open(nested)
+        if total is not None:
+            return total
     return None
 
 
@@ -345,4 +356,3 @@ def main() -> int:
 
 if __name__ == "__main__":
     raise SystemExit(main())
-

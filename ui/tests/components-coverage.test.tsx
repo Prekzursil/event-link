@@ -278,7 +278,7 @@ describe('shared component coverage matrix', () => {
     expect(screen.getByLabelText('coverage-select')).toBeInTheDocument();
     expect(screen.getByText('Coverage caption')).toBeInTheDocument();
     expect(screen.getByText('Footer')).toBeInTheDocument();
-    expect(document.querySelector('.h-full.w-\\[1px\\]')).toBeInTheDocument();
+    expect(document.querySelector(String.raw`.h-full.w-\[1px\]`)).toBeInTheDocument();
   });
 
   it('covers loading spinner/page/overlay branches', () => {
@@ -298,7 +298,6 @@ describe('shared component coverage matrix', () => {
     expect(screen.getByText(/Overlay message/i)).toBeInTheDocument();
   });
 });
-
 
 
 

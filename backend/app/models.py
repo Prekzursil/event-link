@@ -17,6 +17,10 @@ from sqlalchemy import (
 from sqlalchemy.orm import relationship
 from .database import Base
 
+USER_ID_FK = "users.id"
+EVENT_ID_FK = "events.id"
+TAG_ID_FK = "tags.id"
+
 
 class UserRole(str, enum.Enum):
     student = "student"
@@ -82,7 +86,7 @@ class Event(Base):
     city = Column(String(100), index=True)
     max_seats = Column(Integer)
     cover_url = Column(String(500))
-    owner_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    owner_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     status = Column(String(20), nullable=False, server_default="published")
     publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
@@ -90,9 +94,9 @@ class Event(Base):
     moderation_flags = Column(JSON, nullable=True)
     moderation_status = Column(String(20), nullable=False, server_default="clean", default="clean")
     moderation_reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    moderation_reviewed_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    moderation_reviewed_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
-    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
     owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
     registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
@@ -107,12 +111,12 @@ class Registration(Base):
     __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_registration"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False)
     registration_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     attended = Column(Boolean, server_default="false", nullable=False)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
-    deleted_by_user_id = Column(Integer, ForeignKey("users.id"), nullable=True)
+    deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
     user = relationship("User", back_populates="registrations", foreign_keys=[user_id])
     event = relationship("Event", back_populates="registrations")
@@ -124,8 +128,8 @@ class FavoriteEvent(Base):
     __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_favorite_event"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
 
     user = relationship("User", back_populates="favorites")
@@ -136,7 +140,7 @@ class PasswordResetToken(Base):
     __tablename__ = "password_reset_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
     token = Column(String(255), unique=True, nullable=False)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
     used = Column(Boolean, server_default="false", nullable=False)
@@ -171,8 +175,8 @@ class NotificationDelivery(Base):
     id = Column(Integer, primary_key=True, index=True)
     dedupe_key = Column(String(200), nullable=False)
     notification_type = Column(String(50), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
     sent_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     meta = Column(JSON, nullable=True)
 
@@ -187,7 +191,7 @@ class AuditLog(Base):
     entity_type = Column(String(50), nullable=False, index=True)
     entity_id = Column(Integer, nullable=False, index=True)
     action = Column(String(50), nullable=False, index=True)
-    actor_user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    actor_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
     meta = Column(JSON, nullable=True)
 
@@ -199,8 +203,8 @@ class UserRecommendation(Base):
     __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False, index=True)
     score = Column(Float, nullable=False)
     rank = Column(Integer, nullable=False)
     model_version = Column(String(50), nullable=True)
@@ -228,8 +232,8 @@ class EventInteraction(Base):
     __tablename__ = "event_interactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
-    event_id = Column(Integer, ForeignKey("events.id"), nullable=True, index=True)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
     interaction_type = Column(String(50), nullable=False, index=True)
     occurred_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
     meta = Column(JSON, nullable=True)
@@ -243,8 +247,8 @@ class UserImplicitInterestTag(Base):
     __table_args__ = (UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
-    tag_id = Column(Integer, ForeignKey("tags.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
+    tag_id = Column(Integer, ForeignKey(TAG_ID_FK), nullable=False, index=True)
     score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
 
@@ -257,7 +261,7 @@ class UserImplicitInterestCategory(Base):
     __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_implicit_interest_category"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
     category = Column(String(100), nullable=False, index=True)
     score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
@@ -270,7 +274,7 @@ class UserImplicitInterestCity(Base):
     __table_args__ = (UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),)
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
     city = Column(String(100), nullable=False, index=True)
     score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False, index=True)
@@ -281,8 +285,8 @@ class UserImplicitInterestCity(Base):
 event_tags = Table(
     "event_tags",
     Base.metadata,
-    Column("event_id", Integer, ForeignKey("events.id"), primary_key=True),
-    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    Column("event_id", Integer, ForeignKey(EVENT_ID_FK), primary_key=True),
+    Column("tag_id", Integer, ForeignKey(TAG_ID_FK), primary_key=True),
 )
 
 
@@ -290,8 +294,8 @@ event_tags = Table(
 user_interest_tags = Table(
     "user_interest_tags",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey(USER_ID_FK), primary_key=True),
+    Column("tag_id", Integer, ForeignKey(TAG_ID_FK), primary_key=True),
 )
 
 
@@ -299,8 +303,8 @@ user_interest_tags = Table(
 user_hidden_tags = Table(
     "user_hidden_tags",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("tag_id", Integer, ForeignKey("tags.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey(USER_ID_FK), primary_key=True),
+    Column("tag_id", Integer, ForeignKey(TAG_ID_FK), primary_key=True),
 )
 
 
@@ -308,6 +312,6 @@ user_hidden_tags = Table(
 user_blocked_organizers = Table(
     "user_blocked_organizers",
     Base.metadata,
-    Column("user_id", Integer, ForeignKey("users.id"), primary_key=True),
-    Column("organizer_id", Integer, ForeignKey("users.id"), primary_key=True),
+    Column("user_id", Integer, ForeignKey(USER_ID_FK), primary_key=True),
+    Column("organizer_id", Integer, ForeignKey(USER_ID_FK), primary_key=True),
 )

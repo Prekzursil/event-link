@@ -42,7 +42,7 @@ def _make_event(
     now: datetime,
     days: int,
     hours: int = 0,
-    category: str = "Workshop",
+    category: str | None = "Workshop",
     city: str = "Cluj",
     location: str = "Hall",
     max_seats: int = 10,

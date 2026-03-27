@@ -2,11 +2,13 @@ import { useState, useEffect, useCallback, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import type {
+  LanguagePreference,
   NotificationPreferences,
   PersonalizationSettings,
   StudyLevel,
   Tag,
   StudentProfile,
+  ThemePreference,
   UniversityCatalogItem,
 } from '@/types';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -37,7 +39,6 @@ import {
 } from '@/components/ui/select';
 import { Download, Trash2, User, Tag as TagIcon, Save, Sparkles, GraduationCap, EyeOff, UserX, Mail } from 'lucide-react';
 import authService from '@/services/auth.service';
-import type { LanguagePreference, ThemePreference } from '@/types';
 
 const MAX_YEARS_BY_LEVEL: Record<StudyLevel, number> = {
   bachelor: 4,
@@ -45,6 +46,42 @@ const MAX_YEARS_BY_LEVEL: Record<StudyLevel, number> = {
   phd: 4,
   medicine: 6,
 };
+
+type TagOptionCardProps = Readonly<{
+  tag: Tag;
+  isSelected: boolean;
+  onToggle: (tagId: number) => void;
+}>;
+
+function TagOptionCard({ tag, isSelected, onToggle }: TagOptionCardProps) {
+  return (
+    <label
+      htmlFor={`tag-${tag.id}`}
+      className={`flex w-full items-center space-x-3 rounded-lg border p-3 text-left transition-colors ${
+        isSelected ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/50'
+      }`}
+    >
+      <Checkbox
+        id={`tag-${tag.id}`}
+        checked={isSelected}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggle(tag.id);
+        }}
+        onKeyDown={(e) => {
+          e.stopPropagation();
+          if (e.key === 'Enter' || e.key === ' ') {
+            e.preventDefault();
+            onToggle(tag.id);
+          }
+        }}
+      />
+      <Label htmlFor={`tag-${tag.id}`} className="cursor-pointer flex-1 text-sm">
+        {tag.name}
+      </Label>
+    </label>
+  );
+}
 
 export function StudentProfilePage() {
   const { toast } = useToast();
@@ -101,48 +138,6 @@ export function StudentProfilePage() {
     [allTags, musicInterestNames],
   );
 
-  const renderTagOption = (tag: Tag) => {
-    const isSelected = selectedTagIds.includes(tag.id);
-    return (
-      <div
-        key={tag.id}
-        className={`flex items-center space-x-3 rounded-lg border p-3 cursor-pointer transition-colors ${
-          isSelected
-            ? 'border-primary bg-primary/5'
-            : 'border-border hover:border-primary/50'
-        }`}
-        onClick={() => handleTagToggle(tag.id)}
-        role="button"
-        tabIndex={0}
-        onKeyDown={(e) => {
-          if (e.key === 'Enter' || e.key === ' ') {
-            e.preventDefault();
-            handleTagToggle(tag.id);
-          }
-        }}
-      >
-        <Checkbox
-          id={`tag-${tag.id}`}
-          checked={isSelected}
-          onClick={(e) => {
-            e.stopPropagation();
-            handleTagToggle(tag.id);
-          }}
-          onKeyDown={(e) => {
-            e.stopPropagation();
-            if (e.key === 'Enter' || e.key === ' ') {
-              e.preventDefault();
-              handleTagToggle(tag.id);
-            }
-          }}
-        />
-        <Label htmlFor={`tag-${tag.id}`} className="cursor-pointer flex-1 text-sm">
-          {tag.name}
-        </Label>
-      </div>
-    );
-  };
-
   const selectedUniversity = useMemo(() => {
     const normalized = university.trim().toLowerCase();
     if (!normalized) return null;
@@ -156,6 +151,8 @@ export function StudentProfilePage() {
     () => selectedUniversity?.faculties ?? [],
     [selectedUniversity],
   );
+  const hiddenTags = personalization?.hidden_tags ?? [];
+  const blockedOrganizers = personalization?.blocked_organizers ?? [];
 
   const cityOptions = useMemo(() => {
     const set = new Set<string>();
@@ -386,7 +383,7 @@ export function StudentProfilePage() {
     setIsExporting(true);
     try {
       const blob = await eventService.exportMyData();
-      const url = window.URL.createObjectURL(blob);
+      const url = globalThis.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
       const date = new Date().toISOString().slice(0, 10);
@@ -394,7 +391,7 @@ export function StudentProfilePage() {
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
+      globalThis.URL.revokeObjectURL(url);
       toast({
         title: t.profile.exportGeneratedTitle,
         description: t.profile.exportGeneratedDescription,
@@ -625,7 +622,7 @@ export function StudentProfilePage() {
               <Label>{t.profile.studyYearLabel}</Label>
               <Select
                 value={typeof studyYear === 'number' ? String(studyYear) : ''}
-                onValueChange={(value) => setStudyYear(parseInt(value))}
+                onValueChange={(value) => setStudyYear(Number.parseInt(value, 10))}
                 disabled={!studyLevel}
               >
                 <SelectTrigger className="max-w-xs" data-testid="study-year-trigger">
@@ -725,11 +722,11 @@ export function StudentProfilePage() {
                   <EyeOff className="h-4 w-4" />
                   {t.personalization.hiddenTagsTitle}
                 </div>
-                {!personalization?.hidden_tags?.length ? (
+                {hiddenTags.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t.personalization.hiddenTagsEmpty}</p>
                 ) : (
                   <div className="flex flex-wrap gap-2">
-                    {personalization.hidden_tags.map((tag) => (
+                    {hiddenTags.map((tag) => (
                       <Badge key={tag.id} variant="secondary" className="gap-2">
                         {tag.name}
                         <button
@@ -751,11 +748,11 @@ export function StudentProfilePage() {
                   <UserX className="h-4 w-4" />
                   {t.personalization.blockedOrganizersTitle}
                 </div>
-                {!personalization?.blocked_organizers?.length ? (
+                {blockedOrganizers.length === 0 ? (
                   <p className="text-sm text-muted-foreground">{t.personalization.blockedOrganizersEmpty}</p>
                 ) : (
                   <div className="space-y-2">
-                    {personalization.blocked_organizers.map((org) => (
+                    {blockedOrganizers.map((org) => (
                       <div key={org.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
                         <div className="min-w-0">
                           <div className="truncate text-sm font-medium">{org.org_name || org.full_name || org.email}</div>
@@ -848,7 +845,14 @@ export function StudentProfilePage() {
                 <div className="space-y-3">
                   <div className="text-sm font-medium">{t.profile.musicSection}</div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {musicTags.map(renderTagOption)}
+                    {musicTags.map((tag) => (
+                      <TagOptionCard
+                        key={tag.id}
+                        tag={tag}
+                        isSelected={selectedTagIds.includes(tag.id)}
+                        onToggle={handleTagToggle}
+                      />
+                    ))}
                   </div>
                 </div>
               )}
@@ -856,7 +860,14 @@ export function StudentProfilePage() {
                 <div className="space-y-3">
                   <div className="text-sm font-medium">{t.profile.otherInterestsSection}</div>
                   <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-                    {otherTags.map(renderTagOption)}
+                    {otherTags.map((tag) => (
+                      <TagOptionCard
+                        key={tag.id}
+                        tag={tag}
+                        isSelected={selectedTagIds.includes(tag.id)}
+                        onToggle={handleTagToggle}
+                      />
+                    ))}
                   </div>
                 </div>
               )}

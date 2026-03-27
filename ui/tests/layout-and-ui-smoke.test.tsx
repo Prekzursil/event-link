@@ -211,15 +211,15 @@ describe('layout and ui smoke', () => {
       </MemoryRouter>,
     );
 
-    fireEvent.mouseDown(screen.getAllByRole('button', { name: /Theme|Tema/i })[0]);
-    screen.getAllByRole('button', { name: /Light|Luminos/i }).forEach((button) => fireEvent.click(button));
+    fireEvent.mouseDown(getEnabledButton(/Theme|Tema/i, 'enabled theme trigger'));
+    fireEvent.click(getEnabledButton(/Light|Luminos/i, 'enabled light button'));
     await waitFor(() => {
       const hasLight = authServiceMock.updateThemePreference.mock.calls.some(([value]) => value === 'light');
       expect(hasLight).toBe(true);
     });
 
-    fireEvent.mouseDown(screen.getAllByRole('button', { name: /Theme|Tema/i })[0]);
-    screen.getAllByRole('button', { name: /Dark|Întunecat/i }).forEach((button) => fireEvent.click(button));
+    fireEvent.mouseDown(getEnabledButton(/Theme|Tema/i, 'enabled theme trigger after light save'));
+    fireEvent.click(getEnabledButton(/Dark|Întunecat/i, 'enabled dark button'));
     await waitFor(() => {
       const hasDark = authServiceMock.updateThemePreference.mock.calls.some(([value]) => value === 'dark');
       expect(hasDark).toBe(true);

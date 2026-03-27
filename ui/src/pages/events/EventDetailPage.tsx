@@ -53,7 +53,7 @@ export function EventDetailPage() {
       if (!id) return;
       setIsLoading(true);
       try {
-        const data = await eventService.getEvent(parseInt(id));
+        const data = await eventService.getEvent(Number.parseInt(id, 10));
         setEvent(data);
       } catch {
         toast({
@@ -206,7 +206,7 @@ export function EventDetailPage() {
 
   const handleShare = async () => {
     const currentEvent = event!;
-    const url = window.location.href;
+    const url = globalThis.location.href;
     if (navigator.share) {
       try {
         await navigator.share({
@@ -259,7 +259,7 @@ export function EventDetailPage() {
   };
 
   const handleHideTag = async () => {
-    const tagId = parseInt(hideTagId);
+    const tagId = Number.parseInt(hideTagId, 10);
 
     setIsHidingTag(true);
     try {
@@ -351,6 +351,56 @@ export function EventDetailPage() {
 
   const isPast = new Date(event.start_time) < new Date();
   const isFull = typeof event.available_seats === 'number' && event.available_seats <= 0;
+  let registrationActions = (
+    <Button
+      className="w-full"
+      onClick={handleRegister}
+      disabled={isRegistering}
+    >
+      {isRegistering ? t.eventDetail.registering : t.eventDetail.register}
+    </Button>
+  );
+  if (event.is_registered) {
+    registrationActions = (
+      <>
+        <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
+          <p className="font-medium text-green-700 dark:text-green-400">
+            {t.eventDetail.registeredOk}
+          </p>
+        </div>
+        <Button
+          variant="secondary"
+          className="w-full"
+          onClick={handleResendRegistrationEmail}
+          disabled={isResendingEmail}
+        >
+          {isResendingEmail ? t.eventDetail.resendingEmail : t.eventDetail.resendEmail}
+        </Button>
+        {!isPast && (
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleUnregister}
+            disabled={isRegistering}
+          >
+            {t.eventDetail.unregister}
+          </Button>
+        )}
+      </>
+    );
+  } else if (isPast) {
+    registrationActions = (
+      <p className="text-center text-muted-foreground">
+        {t.eventDetail.eventEndedText}
+      </p>
+    );
+  } else if (isFull) {
+    registrationActions = (
+      <p className="text-center text-destructive">
+        {t.eventDetail.eventFullText}
+      </p>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -506,49 +556,7 @@ export function EventDetailPage() {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {event.is_registered ? (
-                    <>
-                      <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
-                        <p className="font-medium text-green-700 dark:text-green-400">
-                          {t.eventDetail.registeredOk}
-                        </p>
-                      </div>
-                      <Button
-                        variant="secondary"
-                        className="w-full"
-                        onClick={handleResendRegistrationEmail}
-                        disabled={isResendingEmail}
-                      >
-                        {isResendingEmail ? t.eventDetail.resendingEmail : t.eventDetail.resendEmail}
-                      </Button>
-                      {!isPast && (
-                        <Button
-                          variant="outline"
-                          className="w-full"
-                          onClick={handleUnregister}
-                          disabled={isRegistering}
-                        >
-                          {t.eventDetail.unregister}
-                        </Button>
-                      )}
-                    </>
-                  ) : isPast ? (
-                    <p className="text-center text-muted-foreground">
-                      {t.eventDetail.eventEndedText}
-                    </p>
-                  ) : isFull ? (
-                    <p className="text-center text-destructive">
-                      {t.eventDetail.eventFullText}
-                    </p>
-                  ) : (
-                    <Button
-                      className="w-full"
-                      onClick={handleRegister}
-                      disabled={isRegistering}
-                    >
-                      {isRegistering ? t.eventDetail.registering : t.eventDetail.register}
-                    </Button>
-                  )}
+                  {registrationActions}
 
                   {/* Available Seats */}
                   {typeof event.available_seats === 'number' && !isPast && (

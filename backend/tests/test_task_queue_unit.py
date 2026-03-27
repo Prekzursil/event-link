@@ -498,7 +498,7 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
     from sqlalchemy.exc import IntegrityError
 
     def _commit_fail():
-        raise IntegrityError("stmt", {}, Exception("dup"))
+        raise IntegrityError("stmt", {}, RuntimeError("dup"))
 
     monkeypatch.setattr(db_session, "commit", _commit_fail)
 
@@ -1013,7 +1013,7 @@ def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
     db_session.refresh(existing)
 
     def _commit_fail():
-        raise IntegrityError("stmt", {}, Exception("dup"))
+        raise IntegrityError("stmt", {}, RuntimeError("dup"))
 
     monkeypatch.setattr(db_session, "commit", _commit_fail)
     deduped = task_queue.enqueue_job(db_session, "mail", {"x": 2}, dedupe_key="dup-key")

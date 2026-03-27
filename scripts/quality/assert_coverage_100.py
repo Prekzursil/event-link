@@ -36,12 +36,12 @@ class CoverageStats:
 
 
 _PAIR_RE = re.compile(r"^(?P<name>[^=]+)=(?P<path>.+)$")
-_XML_LINES_VALID_RE = re.compile(r'lines-valid="([0-9]+(?:\\.[0-9]+)?)"')
-_XML_LINES_COVERED_RE = re.compile(r'lines-covered="([0-9]+(?:\\.[0-9]+)?)"')
-_XML_BRANCHES_VALID_RE = re.compile(r'branches-valid="([0-9]+(?:\\.[0-9]+)?)"')
-_XML_BRANCHES_COVERED_RE = re.compile(r'branches-covered="([0-9]+(?:\\.[0-9]+)?)"')
-_XML_LINE_HITS_RE = re.compile(r"<line\\b[^>]*\\bhits=\"([0-9]+(?:\\.[0-9]+)?)\"")
-_XML_CONDITION_COVERAGE_RE = re.compile(r'condition-coverage="([0-9]+)% \(([0-9]+)/([0-9]+)\)"')
+_XML_LINES_VALID_RE = re.compile(r'lines-valid="(\d+(?:\.\d+)?)"')
+_XML_LINES_COVERED_RE = re.compile(r'lines-covered="(\d+(?:\.\d+)?)"')
+_XML_BRANCHES_VALID_RE = re.compile(r'branches-valid="(\d+(?:\.\d+)?)"')
+_XML_BRANCHES_COVERED_RE = re.compile(r'branches-covered="(\d+(?:\.\d+)?)"')
+_XML_LINE_HITS_RE = re.compile(r'<line\b[^>]*\bhits="(\d+(?:\.\d+)?)"')
+_XML_CONDITION_COVERAGE_RE = re.compile(r'condition-coverage="(\d+)% \((\d+)/(\d+)\)"')
 
 
 def _parse_args() -> argparse.Namespace:

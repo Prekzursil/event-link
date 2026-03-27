@@ -262,7 +262,7 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
     scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
     response = asyncio.run(api.http_exception_handler(Request(scope), HTTPException(status_code=418, detail="teapot")))
     assert response.status_code == 418
-    unhandled = asyncio.run(api.unhandled_exception_handler(Request(scope), Exception("boom")))
+    unhandled = asyncio.run(api.unhandled_exception_handler(Request(scope), RuntimeError("boom")))
     assert unhandled.status_code == 500
     mismatch = client.post(
         "/register",
@@ -543,7 +543,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 

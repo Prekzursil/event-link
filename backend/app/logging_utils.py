@@ -102,17 +102,18 @@ class RequestIdMiddleware:
 
 
 logger = logging.getLogger("event_link")
+_EVENT_LOG_TEMPLATE = "event=%s"
 
 
 def log_event(message: str, **_kwargs: Any) -> None:
     # Fixed-format logging avoids user-controlled format strings and avoids
     # leaking raw dynamic context data.
-    logger.info("event=%s", _sanitize_log_text(message))
+    logger.info(_EVENT_LOG_TEMPLATE, _sanitize_log_text(message))
 
 
 def log_warning(message: str, **_kwargs: Any) -> None:
-    logger.warning("event=%s", _sanitize_log_text(message))
+    logger.warning(_EVENT_LOG_TEMPLATE, _sanitize_log_text(message))
 
 
 def log_error(message: str, **_kwargs: Any) -> None:
-    logger.error("event=%s", _sanitize_log_text(message))
+    logger.error(_EVENT_LOG_TEMPLATE, _sanitize_log_text(message))

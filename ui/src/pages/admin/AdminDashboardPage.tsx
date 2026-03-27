@@ -18,11 +18,25 @@ import { formatDateTime } from '@/lib/utils';
 import { Bell, Edit, Mail, RefreshCw, RotateCcw, ShieldCheck, Sparkles, Trash2 } from 'lucide-react';
 
 type AdminTab = 'overview' | 'users' | 'events';
+type ModerationBadgeVariant = 'destructive' | 'secondary' | 'outline';
 
 function roleBadgeVariant(role: UserRole): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (role === 'admin') return 'destructive';
   if (role === 'organizator') return 'secondary';
   return 'outline';
+}
+
+function getModerationPresentation(
+  status: AdminEvent['moderation_status'],
+  labels: { flagged: string; reviewed: string; clean: string },
+): { label: string; variant: ModerationBadgeVariant } {
+  if (status === 'flagged') {
+    return { label: labels.flagged, variant: 'destructive' };
+  }
+  if (status === 'reviewed') {
+    return { label: labels.reviewed, variant: 'secondary' };
+  }
+  return { label: labels.clean, variant: 'outline' };
 }
 
 export function AdminDashboardPage() {
@@ -219,6 +233,31 @@ export function AdminDashboardPage() {
     }
   };
 
+  const handleReviewEvent = useCallback(
+    async (eventId: number) => {
+      setReviewingEventId(eventId);
+      try {
+        await adminService.reviewEventModeration(eventId);
+        setEvents((prev) =>
+          prev.map((row) => (row.id === eventId ? { ...row, moderation_status: 'reviewed' } : row)),
+        );
+        toast({
+          title: t.adminDashboard.events.moderation.reviewedTitle,
+          description: t.adminDashboard.events.moderation.reviewedDescription,
+        });
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.events.moderation.reviewErrorDescription,
+          variant: 'destructive',
+        });
+      } finally {
+        setReviewingEventId(null);
+      }
+    },
+    [t, toast],
+  );
+
   const handleEnqueueRetrain = async () => {
     setIsEnqueueingRetrain(true);
     try {
@@ -286,6 +325,346 @@ export function AdminDashboardPage() {
     organizator: t.adminDashboard.roles.organizer,
     admin: t.adminDashboard.roles.admin,
   };
+  const registrationsByDay = stats?.registrations_by_day?.slice(-14) ?? [];
+  const topTags = stats?.top_tags ?? [];
+  const personalizationRows = personalizationMetrics?.items?.slice(-14) ?? [];
+
+  let registrationsByDayContent = <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>;
+  if (registrationsByDay.length > 0) {
+    registrationsByDayContent = (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t.adminDashboard.registrationsByDay.day}</TableHead>
+            <TableHead className="text-right">{t.adminDashboard.registrationsByDay.registrations}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {registrationsByDay.map((row, index) => (
+            <TableRow key={`${row.date}-${index}`}>
+              <TableCell>{row.date}</TableCell>
+              <TableCell className="text-right">{row.registrations}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }
+
+  let topTagsContent = <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>;
+  if (topTags.length > 0) {
+    topTagsContent = (
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>{t.adminDashboard.topTags.tag}</TableHead>
+            <TableHead className="text-right">{t.adminDashboard.topTags.registrations}</TableHead>
+            <TableHead className="text-right">{t.adminDashboard.topTags.events}</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {topTags.map((row, index) => (
+            <TableRow key={`${row.name}-${index}`}>
+              <TableCell>{row.name}</TableCell>
+              <TableCell className="text-right">{row.registrations}</TableCell>
+              <TableCell className="text-right">{row.events}</TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    );
+  }
+
+  let personalizationContent = <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>;
+  if (isLoadingPersonalizationMetrics) {
+    personalizationContent = <LoadingPage message={t.adminDashboard.personalizationMetrics.loading} />;
+  } else if (personalizationRows.length > 0 && personalizationMetrics) {
+    personalizationContent = (
+      <div className="space-y-4">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
+          <div className="rounded-lg border p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              {t.adminDashboard.personalizationMetrics.totals.impressions}
+            </div>
+            <div className="text-lg font-bold">{personalizationMetrics.totals.impressions}</div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              {t.adminDashboard.personalizationMetrics.totals.clicks}
+            </div>
+            <div className="text-lg font-bold">{personalizationMetrics.totals.clicks}</div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              {t.adminDashboard.personalizationMetrics.totals.registrations}
+            </div>
+            <div className="text-lg font-bold">{personalizationMetrics.totals.registrations}</div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              {t.adminDashboard.personalizationMetrics.totals.ctr}
+            </div>
+            <div className="text-lg font-bold">{Math.round(personalizationMetrics.totals.ctr * 100)}%</div>
+          </div>
+          <div className="rounded-lg border p-3">
+            <div className="text-xs font-medium text-muted-foreground">
+              {t.adminDashboard.personalizationMetrics.totals.conversion}
+            </div>
+            <div className="text-lg font-bold">
+              {Math.round(personalizationMetrics.totals.registration_conversion * 100)}%
+            </div>
+          </div>
+        </div>
+
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t.adminDashboard.personalizationMetrics.table.day}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.impressions}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.clicks}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.registrations}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.ctr}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.conversion}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {personalizationRows.map((row, index) => (
+              <TableRow key={`${row.date}-${index}`}>
+                <TableCell>{row.date}</TableCell>
+                <TableCell className="text-right">{row.impressions}</TableCell>
+                <TableCell className="text-right">{row.clicks}</TableCell>
+                <TableCell className="text-right">{row.registrations}</TableCell>
+                <TableCell className="text-right">{Math.round(row.ctr * 100)}%</TableCell>
+                <TableCell className="text-right">{Math.round(row.registration_conversion * 100)}%</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </div>
+    );
+  }
+
+  let usersContent = <p className="text-sm text-muted-foreground">{t.adminDashboard.users.empty}</p>;
+  if (isLoadingUsers) {
+    usersContent = <LoadingPage message={t.adminDashboard.users.loading} />;
+  } else if (users.length > 0) {
+    usersContent = (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t.adminDashboard.users.table.email}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.role}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.active}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.created}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.lastSeen}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.users.table.registrations}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.users.table.attendances}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.users.table.events}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((u) => (
+              <TableRow key={u.id}>
+                <TableCell>
+                  <div className="font-medium">{u.email}</div>
+                  {u.full_name && <div className="text-xs text-muted-foreground">{u.full_name}</div>}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={roleBadgeVariant(u.role)}>{roleLabel[u.role]}</Badge>
+                    <Select value={u.role} onValueChange={(value) => handleUpdateUser(u.id, { role: value as UserRole })}>
+                      <SelectTrigger className="h-8 w-[150px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+                        <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+                        <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Checkbox
+                    checked={u.is_active}
+                    onCheckedChange={(checked) => handleUpdateUser(u.id, { is_active: Boolean(checked) })}
+                  />
+                </TableCell>
+                <TableCell>{formatDateTime(u.created_at, language)}</TableCell>
+                <TableCell>{u.last_seen_at ? formatDateTime(u.last_seen_at, language) : '-'}</TableCell>
+                <TableCell className="text-right">{u.registrations_count}</TableCell>
+                <TableCell className="text-right">{u.attended_count}</TableCell>
+                <TableCell className="text-right">{u.events_created_count}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t.adminDashboard.pagination.page} {usersPage} / {totalUserPages} • {t.adminDashboard.pagination.total} {usersTotal}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={usersPage <= 1}
+              onClick={loadUsers.bind(null, usersPage - 1)}
+            >
+              {t.adminDashboard.pagination.prev}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={usersPage >= totalUserPages}
+              onClick={loadUsers.bind(null, usersPage + 1)}
+            >
+              {t.adminDashboard.pagination.next}
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
+
+  let eventsContent = <p className="text-sm text-muted-foreground">{t.adminDashboard.events.empty}</p>;
+  if (isLoadingEvents) {
+    eventsContent = <LoadingPage message={t.adminDashboard.events.loading} />;
+  } else if (events.length > 0) {
+    eventsContent = (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t.adminDashboard.events.table.title}</TableHead>
+              <TableHead>{t.adminDashboard.events.table.city}</TableHead>
+              <TableHead>{t.adminDashboard.events.table.date}</TableHead>
+              <TableHead>{t.adminDashboard.events.table.owner}</TableHead>
+              <TableHead>{t.adminDashboard.events.table.status}</TableHead>
+              <TableHead>{t.adminDashboard.events.table.moderation}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.events.table.seats}</TableHead>
+              <TableHead className="w-[160px]"></TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {events.map((e) => {
+              const deleted = Boolean(e.deleted_at);
+              const statusLabel =
+                e.status === 'draft' ? t.adminDashboard.events.statusDraft : t.adminDashboard.events.statusPublished;
+              const moderationStatus = e.moderation_status || 'clean';
+              const moderation = getModerationPresentation(moderationStatus, t.adminDashboard.events.moderation);
+              const isReviewingCurrent = reviewingEventId === e.id;
+              const reviewActionLabel = isReviewingCurrent
+                ? t.adminDashboard.events.moderation.reviewing
+                : t.adminDashboard.events.moderation.markReviewed;
+
+              return (
+                <TableRow key={e.id} className={deleted ? 'opacity-70' : undefined}>
+                  <TableCell>
+                    <Link to={`/events/${e.id}`} className="font-medium hover:underline">
+                      {e.title}
+                    </Link>
+                    {deleted && (
+                      <Badge className="ml-2" variant="destructive">
+                        {t.adminDashboard.events.deletedBadge}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>{e.city || '-'}</TableCell>
+                  <TableCell>{formatDateTime(e.start_time, language)}</TableCell>
+                  <TableCell>
+                    <div className="text-sm">{e.owner_email}</div>
+                    {e.owner_name && <div className="text-xs text-muted-foreground">{e.owner_name}</div>}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant={e.status === 'draft' ? 'secondary' : 'default'}>
+                      {statusLabel}
+                    </Badge>
+                  </TableCell>
+                  <TableCell>
+                    <div className="space-y-1">
+                      <Badge variant={moderation.variant}>{moderation.label}</Badge>
+                      {typeof e.moderation_score === 'number' && (
+                        <div className="text-xs text-muted-foreground">
+                          {t.adminDashboard.events.moderation.scoreLabel} {e.moderation_score.toFixed(2)}
+                        </div>
+                      )}
+                      {e.moderation_flags?.length ? (
+                        <div className="text-xs text-muted-foreground">
+                          {e.moderation_flags.slice(0, 3).join(', ')}
+                          {e.moderation_flags.length > 3 ? '…' : ''}
+                        </div>
+                      ) : null}
+                    </div>
+                  </TableCell>
+                  <TableCell className="text-right">
+                    {e.seats_taken}/{e.max_seats ?? '-'}
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <div className="flex justify-end gap-2">
+                      <Button asChild variant="outline" size="sm" disabled={deleted}>
+                        <Link to={`/organizer/events/${e.id}/edit`}>
+                          <Edit className="mr-2 h-4 w-4" />
+                          {t.adminDashboard.events.actions.edit}
+                        </Link>
+                      </Button>
+                      {moderationStatus === 'flagged' && !deleted && (
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          disabled={isReviewingCurrent}
+                          onClick={() => void handleReviewEvent(e.id)}
+                        >
+                          <ShieldCheck className="mr-2 h-4 w-4" />
+                          {reviewActionLabel}
+                        </Button>
+                      )}
+                      {deleted ? (
+                        <Button variant="outline" size="sm" onClick={() => handleRestoreEvent(e.id)}>
+                          <RotateCcw className="mr-2 h-4 w-4" />
+                          {t.adminDashboard.events.actions.restore}
+                        </Button>
+                      ) : (
+                        <Button variant="destructive" size="sm" onClick={() => handleDeleteEvent(e.id)}>
+                          <Trash2 className="mr-2 h-4 w-4" />
+                          {t.adminDashboard.events.actions.delete}
+                        </Button>
+                      )}
+                    </div>
+                  </TableCell>
+                </TableRow>
+              );
+            })}
+          </TableBody>
+        </Table>
+
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t.adminDashboard.pagination.page} {eventsPage} / {totalEventPages} • {t.adminDashboard.pagination.total} {eventsTotal}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={eventsPage <= 1}
+              onClick={() => loadEvents(eventsPage - 1)}
+            >
+              {t.adminDashboard.pagination.prev}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={eventsPage >= totalEventPages}
+              onClick={() => loadEvents(eventsPage + 1)}
+            >
+              {t.adminDashboard.pagination.next}
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -340,58 +719,14 @@ export function AdminDashboardPage() {
               <CardHeader>
                 <CardTitle>{t.adminDashboard.registrationsByDay.title}</CardTitle>
               </CardHeader>
-              <CardContent>
-                {!stats?.registrations_by_day?.length ? (
-                  <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t.adminDashboard.registrationsByDay.day}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.registrationsByDay.registrations}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats.registrations_by_day.slice(-14).map((row) => (
-                        <TableRow key={row.date}>
-                          <TableCell>{row.date}</TableCell>
-                          <TableCell className="text-right">{row.registrations}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
+              <CardContent>{registrationsByDayContent}</CardContent>
             </Card>
 
             <Card>
               <CardHeader>
                 <CardTitle>{t.adminDashboard.topTags.title}</CardTitle>
               </CardHeader>
-              <CardContent>
-                {!stats?.top_tags?.length ? (
-                  <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>
-                ) : (
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t.adminDashboard.topTags.tag}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.topTags.registrations}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.topTags.events}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {stats.top_tags.map((row) => (
-                        <TableRow key={row.name}>
-                          <TableCell>{row.name}</TableCell>
-                          <TableCell className="text-right">{row.registrations}</TableCell>
-                          <TableCell className="text-right">{row.events}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                )}
-              </CardContent>
+              <CardContent>{topTagsContent}</CardContent>
             </Card>
           </div>
 
@@ -422,75 +757,7 @@ export function AdminDashboardPage() {
                 </Button>
               </div>
             </CardHeader>
-            <CardContent>
-              {isLoadingPersonalizationMetrics ? (
-                <LoadingPage message={t.adminDashboard.personalizationMetrics.loading} />
-              ) : !personalizationMetrics?.items?.length ? (
-                <p className="text-sm text-muted-foreground">{t.adminDashboard.noData}</p>
-              ) : (
-                <div className="space-y-4">
-                  <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-5">
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {t.adminDashboard.personalizationMetrics.totals.impressions}
-                      </div>
-                      <div className="text-lg font-bold">{personalizationMetrics.totals.impressions}</div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {t.adminDashboard.personalizationMetrics.totals.clicks}
-                      </div>
-                      <div className="text-lg font-bold">{personalizationMetrics.totals.clicks}</div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {t.adminDashboard.personalizationMetrics.totals.registrations}
-                      </div>
-                      <div className="text-lg font-bold">{personalizationMetrics.totals.registrations}</div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {t.adminDashboard.personalizationMetrics.totals.ctr}
-                      </div>
-                      <div className="text-lg font-bold">{Math.round(personalizationMetrics.totals.ctr * 100)}%</div>
-                    </div>
-                    <div className="rounded-lg border p-3">
-                      <div className="text-xs font-medium text-muted-foreground">
-                        {t.adminDashboard.personalizationMetrics.totals.conversion}
-                      </div>
-                      <div className="text-lg font-bold">
-                        {Math.round(personalizationMetrics.totals.registration_conversion * 100)}%
-                      </div>
-                    </div>
-                  </div>
-
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t.adminDashboard.personalizationMetrics.table.day}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.impressions}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.clicks}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.registrations}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.ctr}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.personalizationMetrics.table.conversion}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {personalizationMetrics.items.slice(-14).map((row) => (
-                        <TableRow key={row.date}>
-                          <TableCell>{row.date}</TableCell>
-                          <TableCell className="text-right">{row.impressions}</TableCell>
-                          <TableCell className="text-right">{row.clicks}</TableCell>
-                          <TableCell className="text-right">{row.registrations}</TableCell>
-                          <TableCell className="text-right">{Math.round(row.ctr * 100)}%</TableCell>
-                          <TableCell className="text-right">{Math.round(row.registration_conversion * 100)}%</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              )}
-            </CardContent>
+            <CardContent>{personalizationContent}</CardContent>
           </Card>
         </TabsContent>
 
@@ -542,95 +809,7 @@ export function AdminDashboardPage() {
                 </Button>
               </div>
 
-              {isLoadingUsers ? (
-                <LoadingPage message={t.adminDashboard.users.loading} />
-              ) : users.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t.adminDashboard.users.empty}</p>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t.adminDashboard.users.table.email}</TableHead>
-                        <TableHead>{t.adminDashboard.users.table.role}</TableHead>
-                        <TableHead>{t.adminDashboard.users.table.active}</TableHead>
-                        <TableHead>{t.adminDashboard.users.table.created}</TableHead>
-                        <TableHead>{t.adminDashboard.users.table.lastSeen}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.users.table.registrations}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.users.table.attendances}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.users.table.events}</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {users.map((u) => (
-                        <TableRow key={u.id}>
-                          <TableCell>
-                            <div className="font-medium">{u.email}</div>
-                            {u.full_name && <div className="text-xs text-muted-foreground">{u.full_name}</div>}
-                          </TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Badge variant={roleBadgeVariant(u.role)}>{roleLabel[u.role]}</Badge>
-                              <Select
-                                value={u.role}
-                                onValueChange={(value) =>
-                                  handleUpdateUser(u.id, { role: value as UserRole })
-                                }
-                              >
-                                <SelectTrigger className="h-8 w-[150px]">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-                                  <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-                                  <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Checkbox
-                              checked={u.is_active}
-                              onCheckedChange={(checked) =>
-                                handleUpdateUser(u.id, { is_active: Boolean(checked) })
-                              }
-                            />
-                          </TableCell>
-                          <TableCell>{formatDateTime(u.created_at, language)}</TableCell>
-                          <TableCell>{u.last_seen_at ? formatDateTime(u.last_seen_at, language) : '-'}</TableCell>
-                          <TableCell className="text-right">{u.registrations_count}</TableCell>
-                          <TableCell className="text-right">{u.attended_count}</TableCell>
-                          <TableCell className="text-right">{u.events_created_count}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      {t.adminDashboard.pagination.page} {usersPage} / {totalUserPages} • {t.adminDashboard.pagination.total} {usersTotal}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={usersPage <= 1}
-                        onClick={loadUsers.bind(null, usersPage - 1)}
-                      >
-                        {t.adminDashboard.pagination.prev}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={usersPage >= totalUserPages}
-                        onClick={loadUsers.bind(null, usersPage + 1)}
-                      >
-                        {t.adminDashboard.pagination.next}
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
+              {usersContent}
             </CardContent>
           </Card>
         </TabsContent>
@@ -683,182 +862,7 @@ export function AdminDashboardPage() {
                 </Button>
               </div>
 
-              {isLoadingEvents ? (
-                <LoadingPage message={t.adminDashboard.events.loading} />
-              ) : events.length === 0 ? (
-                <p className="text-sm text-muted-foreground">{t.adminDashboard.events.empty}</p>
-              ) : (
-                <>
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>{t.adminDashboard.events.table.title}</TableHead>
-                        <TableHead>{t.adminDashboard.events.table.city}</TableHead>
-                        <TableHead>{t.adminDashboard.events.table.date}</TableHead>
-                        <TableHead>{t.adminDashboard.events.table.owner}</TableHead>
-                        <TableHead>{t.adminDashboard.events.table.status}</TableHead>
-                        <TableHead>{t.adminDashboard.events.table.moderation}</TableHead>
-                        <TableHead className="text-right">{t.adminDashboard.events.table.seats}</TableHead>
-                        <TableHead className="w-[160px]"></TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {events.map((e) => {
-                        const deleted = Boolean(e.deleted_at);
-                        const statusLabel =
-                          e.status === 'draft' ? t.adminDashboard.events.statusDraft : t.adminDashboard.events.statusPublished;
-                        const moderationStatus = e.moderation_status || 'clean';
-                        const moderationLabel =
-                          moderationStatus === 'flagged'
-                            ? t.adminDashboard.events.moderation.flagged
-                            : moderationStatus === 'reviewed'
-                              ? t.adminDashboard.events.moderation.reviewed
-                              : t.adminDashboard.events.moderation.clean;
-                        const moderationVariant =
-                          moderationStatus === 'flagged'
-                            ? 'destructive'
-                            : moderationStatus === 'reviewed'
-                              ? 'secondary'
-                              : 'outline';
-                        return (
-                          <TableRow key={e.id} className={deleted ? 'opacity-70' : undefined}>
-                            <TableCell>
-                              <Link to={`/events/${e.id}`} className="font-medium hover:underline">
-                                {e.title}
-                              </Link>
-                              {deleted && (
-                                <Badge className="ml-2" variant="destructive">
-                                  {t.adminDashboard.events.deletedBadge}
-                                </Badge>
-                              )}
-                            </TableCell>
-                            <TableCell>{e.city || '-'}</TableCell>
-                            <TableCell>{formatDateTime(e.start_time, language)}</TableCell>
-                            <TableCell>
-                              <div className="text-sm">{e.owner_email}</div>
-                              {e.owner_name && (
-                                <div className="text-xs text-muted-foreground">{e.owner_name}</div>
-                              )}
-                            </TableCell>
-                            <TableCell>
-                              <Badge variant={e.status === 'draft' ? 'secondary' : 'default'}>
-                                {statusLabel}
-                              </Badge>
-                            </TableCell>
-                            <TableCell>
-                              <div className="space-y-1">
-                                <Badge variant={moderationVariant}>{moderationLabel}</Badge>
-                                {typeof e.moderation_score === 'number' && (
-                                  <div className="text-xs text-muted-foreground">
-                                    {t.adminDashboard.events.moderation.scoreLabel} {e.moderation_score.toFixed(2)}
-                                  </div>
-                                )}
-                                {e.moderation_flags?.length ? (
-                                  <div className="text-xs text-muted-foreground">
-                                    {e.moderation_flags.slice(0, 3).join(', ')}
-                                    {e.moderation_flags.length > 3 ? '…' : ''}
-                                  </div>
-                                ) : null}
-                              </div>
-                            </TableCell>
-                            <TableCell className="text-right">
-                              {e.seats_taken}/{e.max_seats ?? '-'}
-                            </TableCell>
-                            <TableCell className="text-right">
-                              <div className="flex justify-end gap-2">
-                                <Button asChild variant="outline" size="sm" disabled={deleted}>
-                                  <Link to={`/organizer/events/${e.id}/edit`}>
-                                    <Edit className="mr-2 h-4 w-4" />
-                                    {t.adminDashboard.events.actions.edit}
-                                  </Link>
-                                </Button>
-                                {moderationStatus === 'flagged' && !deleted && (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    disabled={reviewingEventId === e.id}
-                                    onClick={async () => {
-                                      setReviewingEventId(e.id);
-                                      try {
-                                        await adminService.reviewEventModeration(e.id);
-                                        setEvents((prev) =>
-                                          prev.map((row) =>
-                                            row.id === e.id ? { ...row, moderation_status: 'reviewed' } : row,
-                                          ),
-                                        );
-                                        toast({
-                                          title: t.adminDashboard.events.moderation.reviewedTitle,
-                                          description: t.adminDashboard.events.moderation.reviewedDescription,
-                                        });
-                                      } catch {
-                                        toast({
-                                          title: t.common.error,
-                                          description: t.adminDashboard.events.moderation.reviewErrorDescription,
-                                          variant: 'destructive',
-                                        });
-                                      } finally {
-                                        setReviewingEventId(null);
-                                      }
-                                    }}
-                                  >
-                                    <ShieldCheck className="mr-2 h-4 w-4" />
-                                    {reviewingEventId === e.id
-                                      ? t.adminDashboard.events.moderation.reviewing
-                                      : t.adminDashboard.events.moderation.markReviewed}
-                                  </Button>
-                                )}
-                                {deleted ? (
-                                  <Button
-                                    variant="outline"
-                                    size="sm"
-                                    onClick={() => handleRestoreEvent(e.id)}
-                                  >
-                                    <RotateCcw className="mr-2 h-4 w-4" />
-                                    {t.adminDashboard.events.actions.restore}
-                                  </Button>
-                                ) : (
-                                  <Button
-                                    variant="destructive"
-                                    size="sm"
-                                    onClick={() => handleDeleteEvent(e.id)}
-                                  >
-                                    <Trash2 className="mr-2 h-4 w-4" />
-                                    {t.adminDashboard.events.actions.delete}
-                                  </Button>
-                                )}
-                              </div>
-                            </TableCell>
-                          </TableRow>
-                        );
-                      })}
-                    </TableBody>
-                  </Table>
-
-                  <div className="mt-4 flex items-center justify-between">
-                    <p className="text-sm text-muted-foreground">
-                      {t.adminDashboard.pagination.page} {eventsPage} / {totalEventPages} • {t.adminDashboard.pagination.total} {eventsTotal}
-                    </p>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={eventsPage <= 1}
-                        onClick={() => loadEvents(eventsPage - 1)}
-                      >
-                        {t.adminDashboard.pagination.prev}
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        disabled={eventsPage >= totalEventPages}
-                        onClick={() => loadEvents(eventsPage + 1)}
-                      >
-                        {t.adminDashboard.pagination.next}
-                      </Button>
-                    </div>
-                  </div>
-                </>
-              )}
+              {eventsContent}
             </CardContent>
           </Card>
         </TabsContent>
@@ -866,4 +870,3 @@ export function AdminDashboardPage() {
     </div>
   );
 }
-

@@ -82,6 +82,12 @@ export function OrganizerDashboardPage() {
   const selectedCount = selectedEventIds.size;
   const isAllSelected = events.length > 0 && selectedEventIds.size === events.length;
   const isSomeSelected = selectedEventIds.size > 0 && selectedEventIds.size < events.length;
+  let selectAllState: boolean | 'indeterminate' = false;
+  if (isAllSelected) {
+    selectAllState = true;
+  } else if (isSomeSelected) {
+    selectAllState = 'indeterminate';
+  }
 
   const toggleSelected = (eventId: number, checked: boolean) => {
     setSelectedEventIds((prev) => {
@@ -386,7 +392,7 @@ export function OrganizerDashboardPage() {
                   <TableRow>
                     <TableHead className="w-[40px]">
                       <Checkbox
-                        checked={isAllSelected ? true : isSomeSelected ? 'indeterminate' : false}
+                        checked={selectAllState}
                         onCheckedChange={(checked) => toggleSelectAll(checked === true)}
                         aria-label={t.organizerDashboard.bulk.selectAllAria}
                       />

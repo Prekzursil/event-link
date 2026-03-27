@@ -38,6 +38,11 @@ const ALL_CATEGORIES_VALUE = '__all__';
 
 const RECOMMENDATIONS_ENABLED =
   (import.meta.env.VITE_FEATURE_RECOMMENDATIONS ?? 'true').toLowerCase() !== 'false';
+const CALENDAR_MEDIA_QUERY = '(min-width: 640px)';
+
+function readShowTwoMonthsCalendar() {
+  return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
+}
 
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
@@ -47,10 +52,7 @@ export function EventsPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [totalEvents, setTotalEvents] = useState(0);
-  const [showTwoMonthsCalendar, setShowTwoMonthsCalendar] = useState(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return true;
-    return window.matchMedia('(min-width: 640px)').matches;
-  });
+  const [showTwoMonthsCalendar, setShowTwoMonthsCalendar] = useState(readShowTwoMonthsCalendar);
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const { language, t } = useI18n();
@@ -58,15 +60,18 @@ export function EventsPage() {
   const dateFnsLocale = useMemo(() => getDateFnsLocale(language), [language]);
 
   useEffect(() => {
-    if (typeof window === 'undefined' || !window.matchMedia) return;
-    const media = window.matchMedia('(min-width: 640px)');
-    const handler = (e: MediaQueryListEvent) => setShowTwoMonthsCalendar(e.matches);
-    if (media.addEventListener) {
-      media.addEventListener('change', handler);
-      return () => media.removeEventListener('change', handler);
+    const media = globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY);
+    if (
+      !media ||
+      typeof media.addEventListener !== 'function' ||
+      typeof media.removeEventListener !== 'function'
+    ) {
+      return;
     }
-    media.addListener(handler);
-    return () => media.removeListener(handler);
+
+    const handler = (e: MediaQueryListEvent) => setShowTwoMonthsCalendar(e.matches);
+    media.addEventListener('change', handler);
+    return () => media.removeEventListener('change', handler);
   }, []);
 
   const categoryOptions = useMemo(
@@ -89,27 +94,44 @@ export function EventsPage() {
   const location = searchParams.get('location') || '';
   const tagsParam = searchParams.get('tags') || '';
   const sortParam = searchParams.get('sort') || '';
-  const page = parseInt(searchParams.get('page') || '1');
-  const page_size = parseInt(searchParams.get('page_size') || '12');
+  const page = Number.parseInt(searchParams.get('page') || '1', 10);
+  const page_size = Number.parseInt(searchParams.get('page_size') || '12', 10);
+  const defaultSort: EventFilters['sort'] =
+    isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED
+      ? 'recommended'
+      : 'time';
   const sort: EventFilters['sort'] =
-    sortParam === 'recommended' || sortParam === 'time'
-      ? sortParam
-      : isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED
-        ? 'recommended'
-        : 'time';
+    sortParam === 'recommended' || sortParam === 'time' ? sortParam : defaultSort;
 
-  const filters = useMemo(() => ({
-    search,
-    category,
-    start_date,
-    end_date,
-    city,
-    location,
-    tags: tagsParam ? tagsParam.split(',').filter(Boolean) : [],
-    sort,
-    page,
-    page_size,
-  }), [search, category, start_date, end_date, city, location, tagsParam, sort, page, page_size]);
+  const filters = useMemo(
+    () => ({
+      search,
+      category,
+      start_date,
+      end_date,
+      city,
+      location,
+      tags: tagsParam ? tagsParam.split(',').filter(Boolean) : [],
+      sort,
+      page,
+      page_size,
+    }),
+    [search, category, start_date, end_date, city, location, tagsParam, sort, page, page_size],
+  );
+  const dateRangeLabel = useMemo(() => {
+    if (!filters.start_date) {
+      return t.events.dateRangePlaceholder;
+    }
+    if (!filters.end_date) {
+      return format(new Date(filters.start_date), 'd MMM yyyy', { locale: dateFnsLocale });
+    }
+
+    return `${format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })} - ${format(
+      new Date(filters.end_date),
+      'd MMM',
+      { locale: dateFnsLocale },
+    )}`;
+  }, [dateFnsLocale, filters.end_date, filters.start_date, t.events.dateRangePlaceholder]);
 
   const hasActiveFilters =
     filters.search ||
@@ -119,6 +141,9 @@ export function EventsPage() {
     filters.city ||
     filters.location ||
     filters.tags.length > 0;
+  const handleCategoryChange = (value: string) => {
+    updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
+  };
 
   const updateFilters = useCallback(
     (newFilters: Partial<EventFilters>) => {
@@ -178,7 +203,7 @@ export function EventsPage() {
 
   useEffect(() => {
     if (!events.length) return;
-    const timer = window.setTimeout(() => {
+    const timer = globalThis.setTimeout(() => {
       const interactions: InteractionEventIn[] = events.map((event, index) => ({
         interaction_type: 'impression',
         event_id: event.id,
@@ -221,7 +246,7 @@ export function EventsPage() {
 
       void recordInteractions(interactions);
     }, 400);
-    return () => window.clearTimeout(timer);
+    return () => globalThis.clearTimeout(timer);
   }, [events, filters, hasActiveFilters]);
 
   useEffect(() => {
@@ -342,9 +367,7 @@ export function EventsPage() {
           {/* Category */}
           <Select
             value={filters.category || ALL_CATEGORIES_VALUE}
-            onValueChange={(value) =>
-              updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value })
-            }
+            onValueChange={handleCategoryChange}
           >
             <SelectTrigger className="w-full sm:w-[180px]">
               <SelectValue placeholder={t.events.categoryPlaceholder} />
@@ -363,11 +386,7 @@ export function EventsPage() {
             <PopoverTrigger asChild>
               <Button variant="outline" className="w-full justify-start sm:w-[240px]">
                 <CalendarIcon className="mr-2 h-4 w-4" />
-                {filters.start_date
-                  ? filters.end_date
-                    ? `${format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })} - ${format(new Date(filters.end_date), 'd MMM', { locale: dateFnsLocale })}`
-                    : format(new Date(filters.start_date), 'd MMM yyyy', { locale: dateFnsLocale })
-                  : t.events.dateRangePlaceholder}
+                {dateRangeLabel}
               </Button>
             </PopoverTrigger>
             <PopoverContent className="w-auto p-0" align="start">
@@ -492,7 +511,7 @@ export function EventsPage() {
           )}
           <Select
             value={String(filters.page_size)}
-            onValueChange={(value) => updateFilters({ page_size: parseInt(value) })}
+            onValueChange={(value) => updateFilters({ page_size: Number.parseInt(value, 10) })}
           >
             <SelectTrigger className="w-[100px]">
               <SelectValue />

@@ -21,6 +21,7 @@ const {
   authServiceMock,
   authState,
   eventServiceMock,
+  mediaAddEventListenerSpy,
   mediaAddListenerSpy,
   recordInteractionsSpy,
   toastSpy,
@@ -35,7 +36,7 @@ describe('high-impact page coverage', () => {
     );
 
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
-    expect(mediaAddListenerSpy).toHaveBeenCalled();
+    expect(mediaAddEventListenerSpy.mock.calls.length + mediaAddListenerSpy.mock.calls.length).toBeGreaterThan(0);
 
     fireEvent.change(screen.getByPlaceholderText(/Search events/i), {
       target: { value: 'new query' },
@@ -199,10 +200,14 @@ describe('high-impact page coverage', () => {
     renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
-    const musicTagButton = screen.getByRole('button', { name: /Muzică/i });
-    fireEvent.click(musicTagButton);
-    fireEvent.keyDown(musicTagButton, { key: 'Enter' });
-    fireEvent.keyDown(musicTagButton, { key: ' ' });
+    const musicTagLabel = requireElement(
+      screen.getByLabelText(/Muzică/i).closest('label'),
+      'music tag label',
+    );
+    const musicTagCheckbox = requireElement(document.getElementById('tag-1'), 'music tag checkbox');
+    fireEvent.click(musicTagLabel);
+    fireEvent.keyDown(musicTagCheckbox, { key: 'Enter' });
+    fireEvent.keyDown(musicTagCheckbox, { key: ' ' });
 
     fireEvent.change(screen.getByLabelText(/University/i), { target: { value: 'UTCN' } });
     fireEvent.change(screen.getByLabelText(/Faculty/i), { target: { value: 'AI' } });
@@ -396,7 +401,10 @@ describe('high-impact page coverage', () => {
     expect(screen.getByText('Fallback Organizer')).toBeInTheDocument();
     expect(screen.getAllByText('email-only@test.local').length).toBeGreaterThan(0);
 
-    const musicTagCard = screen.getByRole('button', { name: /Muzică/i });
+    const musicTagCard = requireElement(
+      screen.getByLabelText(/Muzică/i).closest('label'),
+      'music tag card',
+    );
     fireEvent.keyDown(musicTagCard, { key: 'Escape' });
     const musicCheckbox = requireElement(document.getElementById('tag-1'), 'music checkbox');
     fireEvent.keyDown(musicCheckbox, { key: 'Escape' });
@@ -455,9 +463,9 @@ describe('high-impact page coverage', () => {
     renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
-    const cityField = screen.getByLabelText(/City|Oraș/i);
-    const universityField = screen.getByLabelText(/University|Universitate/i);
-    const facultyField = screen.getByLabelText(/Faculty|Facultate/i);
+    const cityField = await screen.findByLabelText(/City|Oraș/i);
+    const universityField = await screen.findByLabelText(/University|Universitate/i);
+    const facultyField = await screen.findByLabelText(/Faculty|Facultate/i);
 
     const reactPropsKey = Object.keys(universityField).find((key) => key.startsWith('__reactProps$'));
     expect(reactPropsKey).toBeDefined();
@@ -576,8 +584,11 @@ describe('high-impact page coverage', () => {
     renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
     await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
 
-    const techTagCard = await screen.findByRole('button', { name: /Tech/i });
-    fireEvent.click(techTagCard);
-    fireEvent.click(techTagCard);
+    const techTagLabel = requireElement(
+      (await screen.findByText(/Tech/i)).closest('label'),
+      'tech tag label',
+    );
+    fireEvent.click(techTagLabel);
+    fireEvent.click(techTagLabel);
   });
 });

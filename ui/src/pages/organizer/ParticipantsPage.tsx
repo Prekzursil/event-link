@@ -148,7 +148,7 @@ export function ParticipantsPage() {
   const exportToCSV = () => {
     const currentData = data!;
 
-    const escapeCsv = (value: string) => `"${value.replace(/"/g, '""')}"`;
+    const escapeCsv = (value: string) => `"${value.replaceAll('"', '""')}"`;
 
     const headers = [
       t.participants.csvHeaders.email,
