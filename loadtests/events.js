@@ -10,8 +10,8 @@ export const options = {
   duration: DURATION,
   thresholds: {
     http_req_failed: ['rate<0.01'],
-    http_req_duration: ['p(95)<750'],
-  },
+    http_req_duration: ['p(95)<750']
+  }
 };
 
 export default function runEventsLoadtest() {
@@ -22,7 +22,7 @@ export default function runEventsLoadtest() {
   });
 
   const rec = http.get(`${BASE_URL}/api/events/recommended?page=1&page_size=5`, {
-    headers: { Authorization: __ENV.K6_TOKEN ? `Bearer ${__ENV.K6_TOKEN}` : '' },
+    headers: { Authorization: __ENV.K6_TOKEN ? `Bearer ${__ENV.K6_TOKEN}` : '' }
   });
   check(rec, {
     'rec returns 200/401': (r) => r.status === 200 || r.status === 401,

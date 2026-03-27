@@ -126,12 +126,9 @@ export function EventsPage() {
     if (!filters.end_date) {
       return format(new Date(filters.start_date), 'd MMM yyyy', { locale: dateFnsLocale });
     }
-
-    return `${format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })} - ${format(
-      new Date(filters.end_date),
-      'd MMM',
-      { locale: dateFnsLocale },
-    )}`;
+    const startLabel = format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale });
+    const endLabel = format(new Date(filters.end_date), 'd MMM', { locale: dateFnsLocale });
+    return `${startLabel} - ${endLabel}`;
   }, [dateFnsLocale, filters.end_date, filters.start_date, t.events.dateRangePlaceholder]);
 
   const hasActiveFilters =

@@ -233,7 +233,7 @@ body {
 
 .dark .rdp-today:not(.rdp-selected):not(.rdp-range_start):not(.rdp-range_end):not(.rdp-range_middle) button {
   background-color: #1e293b;
-  color: #3b82f6;
+  color: #bfdbfe;
 }
 
 .rdp-outside button {
