@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import date, datetime
 from typing import Any, List, Optional, Literal
 from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
 from .models import UserRole
@@ -213,6 +213,21 @@ class OrganizerProfileUpdate(OrganizerProfileBase):
 
 class FavoriteListResponse(BaseModel):
     items: List[EventResponse]
+
+
+class EventListQuery(BaseModel):
+    search: Optional[str] = None
+    category: Optional[str] = None
+    start_date: Optional[date] = None
+    end_date: Optional[date] = None
+    tags: List[str] = Field(default_factory=list)
+    tags_csv: Optional[str] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    include_past: bool = False
+    sort: Optional[str] = None
+    page: int = 1
+    page_size: int = 10
 
 
 class PaginatedEvents(BaseModel):

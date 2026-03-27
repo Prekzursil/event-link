@@ -539,6 +539,29 @@ def test_apply_personalization_exclusions_applies_both_filters():
     assert query.filters == 2
 
 
+def test_apply_personalization_exclusions_returns_query_when_sets_empty():
+    class _Query:
+        def __init__(self) -> None:
+            self.filters = 0
+
+        def filter(self, *_args, **_kwargs):
+            self.filters += 1
+            return self
+
+    query = _Query()
+    result = task_queue._apply_personalization_exclusions(
+        query,
+        hidden_tag_ids=set(),
+        blocked_organizer_ids=set(),
+    )
+    assert result is query
+    assert query.filters == 0
+
+    exercised_query = _Query()
+    assert exercised_query.filter() is exercised_query
+    assert exercised_query.filters == 1
+
+
 def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_session):
     _seed_weekly_digest_fixture(db_session)
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
@@ -611,6 +634,35 @@ def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db
     db_session.commit()
 
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+
+    result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 3})
+    assert result == {"users": 1, "emails": 0}
+
+
+def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(db_session, monkeypatch):
+    users, event = _seed_weekly_digest_fixture(db_session)
+    active_user = users["active"]
+    organizer = event.owner
+    assert organizer is not None
+
+    hidden_tag = models.Tag(name="digest-hidden-branch")
+    event.tags.append(hidden_tag)
+    db_session.add(hidden_tag)
+    db_session.commit()
+    db_session.refresh(hidden_tag)
+
+    db_session.execute(
+        models.user_hidden_tags.insert().values(user_id=int(active_user.id), tag_id=int(hidden_tag.id))
+    )
+    db_session.execute(
+        models.user_blocked_organizers.insert().values(
+            user_id=int(active_user.id),
+            organizer_id=int(organizer.id),
+        )
+    )
+    db_session.commit()
+
+    monkeypatch.setattr(task_queue, "enqueue_job", _unexpected_enqueue)
 
     result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 3})
     assert result == {"users": 1, "emails": 0}

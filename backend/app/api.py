@@ -771,14 +771,20 @@ def _load_event_for_owner_update(*, db: Session, event_id: int, current_user: mo
     return db_event
 
 
-def _apply_event_update_fields(*, db: Session, db_event: models.Event, update: schemas.EventUpdate) -> bool:
+def _apply_event_identity_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
     if update.title is not None:
         db_event.title = update.title
     if update.description is not None:
         db_event.description = update.description
     if update.category is not None:
         db_event.category = update.category
+    if update.city is not None:
+        db_event.city = update.city
+    if update.location is not None:
+        db_event.location = update.location
 
+
+def _apply_event_time_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
     normalized_start_time = _normalize_dt(db_event.start_time)
     if update.start_time is not None:
         update.start_time = _normalize_dt(update.start_time)
@@ -790,30 +796,42 @@ def _apply_event_update_fields(*, db: Session, db_event: models.Event, update: s
         if normalized_start_time and update.end_time and update.end_time <= normalized_start_time:
             raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
         db_event.end_time = update.end_time
+    if update.publish_at is not None:
+        db_event.publish_at = _normalize_dt(update.publish_at)
 
-    if update.city is not None:
-        db_event.city = update.city
-    if update.location is not None:
-        db_event.location = update.location
+
+def _apply_event_capacity_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
     if update.max_seats is not None:
         if update.max_seats <= 0:
             raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
         db_event.max_seats = update.max_seats
-    if update.cover_url is not None:
-        if update.cover_url:
-            if len(update.cover_url) > 500:
-                raise HTTPException(status_code=400, detail="Cover URL prea lung.")
-            _validate_cover_url(update.cover_url)
-        db_event.cover_url = update.cover_url
+
+
+def _apply_event_cover_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
+    if update.cover_url is None:
+        return
+    if update.cover_url:
+        if len(update.cover_url) > 500:
+            raise HTTPException(status_code=400, detail="Cover URL prea lung.")
+        _validate_cover_url(update.cover_url)
+    db_event.cover_url = update.cover_url
+
+
+def _apply_event_metadata_updates(*, db: Session, db_event: models.Event, update: schemas.EventUpdate) -> None:
     if update.tags is not None:
         _attach_tags(db, db_event, update.tags)
     if update.status is not None:
         if update.status not in ("draft", "published"):
             raise HTTPException(status_code=400, detail="Status invalid")
         db_event.status = update.status
-    if update.publish_at is not None:
-        db_event.publish_at = _normalize_dt(update.publish_at)
 
+
+def _apply_event_update_fields(*, db: Session, db_event: models.Event, update: schemas.EventUpdate) -> bool:
+    _apply_event_identity_updates(db_event=db_event, update=update)
+    _apply_event_time_updates(db_event=db_event, update=update)
+    _apply_event_capacity_updates(db_event=db_event, update=update)
+    _apply_event_cover_updates(db_event=db_event, update=update)
+    _apply_event_metadata_updates(db=db, db_event=db_event, update=update)
     return any(
         value is not None
         for value in (update.title, update.description, update.location)
@@ -1151,38 +1169,89 @@ def _ensure_registrations_enabled() -> None:
         )
 
 
-@app.get("/api/events", response_model=schemas.PaginatedEvents, responses=_responses(400))
-def get_events(
-    request: Request,
+def _event_list_search_filters(
     search: Optional[str] = None,
     category: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
+) -> dict[str, Optional[str] | date]:
+    return {
+        "search": search,
+        "category": category,
+        "start_date": start_date,
+        "end_date": end_date,
+    }
+
+
+def _event_list_tag_filters(
     tags: Annotated[Optional[list[str]], Query()] = None,
     tags_csv: Optional[str] = None,
+) -> dict[str, list[str] | str | None]:
+    return {
+        "tags": tags or [],
+        "tags_csv": tags_csv,
+    }
+
+
+def _event_list_location_filters(
     city: Optional[str] = None,
     location: Optional[str] = None,
     include_past: bool = False,
     sort: Optional[str] = None,
+) -> dict[str, str | bool | None]:
+    return {
+        "city": city,
+        "location": location,
+        "include_past": include_past,
+        "sort": sort,
+    }
+
+
+def _event_list_pagination_filters(
     page: int = 1,
     page_size: int = 10,
+) -> dict[str, int]:
+    return {
+        "page": page,
+        "page_size": page_size,
+    }
+
+
+def _build_event_list_query(
+    search_filters: Annotated[dict[str, Optional[str] | date], Depends(_event_list_search_filters)],
+    tag_filters: Annotated[dict[str, list[str] | str | None], Depends(_event_list_tag_filters)],
+    location_filters: Annotated[dict[str, str | bool | None], Depends(_event_list_location_filters)],
+    pagination_filters: Annotated[dict[str, int], Depends(_event_list_pagination_filters)],
+) -> schemas.EventListQuery:
+    return schemas.EventListQuery(
+        **search_filters,
+        **tag_filters,
+        **location_filters,
+        **pagination_filters,
+    )
+
+
+@app.get("/api/events", response_model=schemas.PaginatedEvents, responses=_responses(400))
+def get_events(
+    request: Request,
+    filters: Annotated[schemas.EventListQuery, Depends(_build_event_list_query)],
     *,
     db: DbSession,
     current_user: OptionalUser,
 ):
-    _validate_pagination(page, page_size)
+    _validate_pagination(filters.page, filters.page_size)
     now = datetime.now(timezone.utc)
     query = _apply_event_list_filters(
         db.query(models.Event).filter(models.Event.deleted_at.is_(None)),
         now=now,
-        include_past=include_past,
-        search=search,
-        category=category,
-        start_date=start_date,
-        end_date=end_date,
-        tag_filters=_merged_tag_filters(tags=tags, tags_csv=tags_csv),
-        city=city,
-        location=location,
+        include_past=filters.include_past,
+        search=filters.search,
+        category=filters.category,
+        start_date=filters.start_date,
+        end_date=filters.end_date,
+        tag_filters=_merged_tag_filters(tags=filters.tags, tags_csv=filters.tags_csv),
+        city=filters.city,
+        location=filters.location,
     )
 
     if _is_student_user(current_user):
@@ -1193,7 +1262,7 @@ def get_events(
             blocked_organizer_ids=blocked_organizer_ids,
         )
     total = query.count()
-    sort_value = _default_events_sort(sort, db=db, current_user=current_user, now=now)
+    sort_value = _default_events_sort(filters.sort, db=db, current_user=current_user, now=now)
     use_recommended_sort = _use_recommended_sort(sort_value, db=db, current_user=current_user, now=now)
 
     if use_recommended_sort:
@@ -1211,7 +1280,7 @@ def get_events(
     else:
         query = query.order_by(models.Event.start_time.asc(), models.Event.id.asc())
     query, _ = _events_with_counts_query(db, query)
-    query = query.offset((page - 1) * page_size).limit(page_size)
+    query = query.offset((filters.page - 1) * filters.page_size).limit(filters.page_size)
     events = query.all()
     if use_recommended_sort:
         lang = _preferred_lang(request=request, user=current_user)
@@ -1233,7 +1302,433 @@ def get_events(
         ]
     else:
         items = [_serialize_event(event, seats) for event, seats in events]
-    return {"items": items, "total": total, "page": page, "page_size": page_size}
+    return {"items": items, "total": total, "page": filters.page, "page_size": filters.page_size}
+
+
+_REFRESHING_INTERACTION_TYPES = {"click", "view", "share", "favorite", "register", "unregister", "search", "filter"}
+
+
+def _normalize_interest_value(value: str | None) -> str | None:
+    if not value:
+        return None
+    normalized = value.strip().lower()
+    return normalized or None
+
+
+def _coerce_utc_datetime(value: datetime | None, *, fallback: datetime) -> datetime:
+    dt = value or fallback
+    if dt.tzinfo is None:
+        return dt.replace(tzinfo=timezone.utc)
+    return dt
+
+
+def _event_learning_delta(*, interaction_type: str, meta: object) -> float:
+    normalized_type = (interaction_type or "").strip().lower()
+    if normalized_type == "click":
+        return 1.0
+    if normalized_type == "view":
+        return 0.6
+    if normalized_type == "share":
+        return 1.3
+    if normalized_type == "favorite":
+        return 2.0
+    if normalized_type == "register":
+        return 2.5
+    if normalized_type != "dwell" or not isinstance(meta, dict):
+        return 0.0
+    seconds = meta.get("seconds")
+    if not isinstance(seconds, (int, float)):
+        return 0.0
+    if float(seconds) < float(settings.recommendations_online_learning_dwell_threshold_seconds):
+        return 0.0
+    return 0.8 + min(1.0, float(seconds) / 60.0) * 0.4
+
+
+def _load_existing_interaction_event_ids(*, db: Session, payload: schemas.InteractionBatchIn) -> set[int]:
+    event_ids = {event.event_id for event in payload.events if event.event_id is not None}
+    if not event_ids:
+        return set()
+    return {row[0] for row in db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all()}
+
+
+def _build_event_interactions(
+    *,
+    db: Session,
+    payload: schemas.InteractionBatchIn,
+    current_user: models.User | None,
+    now: datetime,
+) -> list[models.EventInteraction]:
+    existing_event_ids = _load_existing_interaction_event_ids(db=db, payload=payload)
+    interactions: list[models.EventInteraction] = []
+    for event in payload.events:
+        if event.event_id is not None and event.event_id not in existing_event_ids:
+            continue
+        interactions.append(
+            models.EventInteraction(
+                user_id=current_user.id if current_user else None,
+                event_id=event.event_id,
+                interaction_type=event.interaction_type,
+                occurred_at=_coerce_utc_datetime(event.occurred_at, fallback=now),
+                meta=event.meta,
+            )
+        )
+    return interactions
+
+
+def _collect_search_filter_deltas(
+    *,
+    meta: dict[str, object],
+    tag_name_deltas: dict[str, float],
+    category_deltas: dict[str, float],
+    city_deltas: dict[str, float],
+) -> None:
+    tags_value = meta.get("tags")
+    if isinstance(tags_value, list):
+        for name in tags_value:
+            key = _normalize_interest_value(str(name or ""))
+            if key:
+                tag_name_deltas[key] = max(tag_name_deltas.get(key, 0.0), 0.2)
+
+    category_key = _normalize_interest_value(meta.get("category") if isinstance(meta.get("category"), str) else None)
+    if category_key:
+        category_deltas[category_key] = max(category_deltas.get(category_key, 0.0), 0.2)
+
+    city_key = _normalize_interest_value(meta.get("city") if isinstance(meta.get("city"), str) else None)
+    if city_key:
+        city_deltas[city_key] = max(city_deltas.get(city_key, 0.0), 0.2)
+
+
+def _collect_online_learning_deltas(
+    payload: schemas.InteractionBatchIn,
+) -> tuple[dict[int, float], dict[str, float], dict[str, float], dict[str, float]]:
+    event_deltas: dict[int, float] = {}
+    tag_name_deltas: dict[str, float] = {}
+    category_deltas: dict[str, float] = {}
+    city_deltas: dict[str, float] = {}
+
+    for event in payload.events:
+        if event.event_id is not None:
+            delta = _event_learning_delta(interaction_type=str(event.interaction_type), meta=event.meta)
+            if delta > 0:
+                event_id = int(event.event_id)
+                event_deltas[event_id] = max(event_deltas.get(event_id, 0.0), float(delta))
+
+        if event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
+            _collect_search_filter_deltas(
+                meta=event.meta,
+                tag_name_deltas=tag_name_deltas,
+                category_deltas=category_deltas,
+                city_deltas=city_deltas,
+            )
+
+    return event_deltas, tag_name_deltas, category_deltas, city_deltas
+
+
+def _load_event_delta_context(
+    *,
+    db: Session,
+    event_ids: list[int],
+) -> tuple[dict[int, str | None], dict[int, str | None], dict[int, list[int]]]:
+    if not event_ids:
+        return {}, {}, {}
+
+    event_rows = (
+        db.query(models.Event.id, models.Event.category, models.Event.city)
+        .filter(models.Event.id.in_(event_ids))
+        .all()
+    )
+    event_category_by_id = {int(event_id): _normalize_interest_value(category) for event_id, category, _city in event_rows}
+    event_city_by_id = {int(event_id): _normalize_interest_value(city) for event_id, _category, city in event_rows}
+
+    tag_rows = (
+        db.query(models.event_tags.c.event_id, models.event_tags.c.tag_id)
+        .filter(models.event_tags.c.event_id.in_(event_ids))
+        .all()
+    )
+    tag_ids_by_event: dict[int, list[int]] = {}
+    for event_id, tag_id in tag_rows:
+        tag_ids_by_event.setdefault(int(event_id), []).append(int(tag_id))
+    return event_category_by_id, event_city_by_id, tag_ids_by_event
+
+
+def _merge_event_signal_deltas(
+    *,
+    event_deltas: dict[int, float],
+    event_category_by_id: dict[int, str | None],
+    event_city_by_id: dict[int, str | None],
+    tag_ids_by_event: dict[int, list[int]],
+    hidden_tag_ids: set[int],
+    tag_delta_by_id: dict[int, float],
+    category_deltas: dict[str, float],
+    city_deltas: dict[str, float],
+) -> None:
+    for event_id, delta in event_deltas.items():
+        category_key = event_category_by_id.get(event_id)
+        if category_key:
+            category_deltas[category_key] = category_deltas.get(category_key, 0.0) + float(delta)
+
+        city_key = event_city_by_id.get(event_id)
+        if city_key:
+            city_deltas[city_key] = city_deltas.get(city_key, 0.0) + float(delta)
+
+        tag_ids = tag_ids_by_event.get(event_id, [])
+        per_tag = float(delta) / float(max(1, len(tag_ids)))
+        for tag_id in tag_ids:
+            if tag_id in hidden_tag_ids:
+                continue
+            tag_delta_by_id[tag_id] = tag_delta_by_id.get(tag_id, 0.0) + per_tag
+
+
+def _merge_named_tag_deltas(
+    *,
+    db: Session,
+    tag_name_deltas: dict[str, float],
+    hidden_tag_ids: set[int],
+    tag_delta_by_id: dict[int, float],
+) -> None:
+    if not tag_name_deltas:
+        return
+    tag_name_rows = (
+        db.query(models.Tag.id, func.lower(models.Tag.name))
+        .filter(func.lower(models.Tag.name).in_(sorted(tag_name_deltas.keys())))
+        .all()
+    )
+    for tag_id, tag_name_lower in tag_name_rows:
+        if tag_id in hidden_tag_ids:
+            continue
+        key = str(tag_name_lower or "").strip().lower()
+        delta = float(tag_name_deltas.get(key, 0.0))
+        tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + delta
+
+
+def _decay_interest_score(
+    *,
+    score: float,
+    last_seen_at: datetime,
+    now: datetime,
+    decay_lambda: float,
+) -> float:
+    delta_seconds = (now - last_seen_at).total_seconds()
+    if delta_seconds <= 0:
+        return float(score)
+    return float(score) * math.exp(-decay_lambda * float(delta_seconds))
+
+
+def _upsert_implicit_tag_scores(
+    *,
+    db: Session,
+    user_id: int,
+    tag_delta_by_id: dict[int, float],
+    now: datetime,
+    max_score: float,
+    decay_lambda: float,
+) -> None:
+    if not tag_delta_by_id:
+        return
+    existing_rows = (
+        db.query(models.UserImplicitInterestTag)
+        .filter(
+            models.UserImplicitInterestTag.user_id == user_id,
+            models.UserImplicitInterestTag.tag_id.in_(sorted(tag_delta_by_id.keys())),
+        )
+        .all()
+    )
+    existing_by_tag_id = {int(row.tag_id): row for row in existing_rows}
+    for tag_id, row in existing_by_tag_id.items():
+        last_seen_at = _coerce_utc_datetime(row.last_seen_at, fallback=now)
+        delta = float(tag_delta_by_id.get(tag_id, 0.0))
+        row.score = min(
+            max_score,
+            _decay_interest_score(score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda)
+            + delta,
+        )
+        row.last_seen_at = now
+        db.add(row)
+
+    for tag_id, delta in tag_delta_by_id.items():
+        if tag_id in existing_by_tag_id:
+            continue
+        db.add(
+            models.UserImplicitInterestTag(
+                user_id=user_id,
+                tag_id=int(tag_id),
+                score=min(max_score, float(delta)),
+                last_seen_at=now,
+            )
+        )
+
+
+def _upsert_named_interest_scores(
+    *,
+    db: Session,
+    user_id: int,
+    deltas: dict[str, float],
+    now: datetime,
+    max_score: float,
+    decay_lambda: float,
+    model_cls,
+    key_field: str,
+) -> None:
+    if not deltas:
+        return
+    column = getattr(model_cls, key_field)
+    existing_rows = (
+        db.query(model_cls)
+        .filter(model_cls.user_id == user_id, column.in_(sorted(deltas.keys())))
+        .all()
+    )
+    existing_by_key = {str(getattr(row, key_field)): row for row in existing_rows}
+    for key, row in existing_by_key.items():
+        last_seen_at = _coerce_utc_datetime(getattr(row, "last_seen_at", None), fallback=now)
+        delta = float(deltas.get(str(key), 0.0))
+        row.score = min(
+            max_score,
+            _decay_interest_score(score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda)
+            + delta,
+        )
+        row.last_seen_at = now
+        db.add(row)
+    for key, delta in deltas.items():
+        if str(key) in existing_by_key:
+            continue
+        db.add(
+            model_cls(
+                user_id=user_id,
+                **{
+                    key_field: str(key),
+                    "score": min(max_score, float(delta)),
+                    "last_seen_at": now,
+                },
+            )
+        )
+
+
+def _apply_online_learning(
+    *,
+    db: Session,
+    payload: schemas.InteractionBatchIn,
+    current_user: models.User | None,
+    now: datetime,
+) -> None:
+    if current_user is None:
+        return
+    if getattr(current_user, "role", None) != models.UserRole.student:
+        return
+    if not settings.recommendations_online_learning_enabled:
+        return
+
+    half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
+    decay_lambda = math.log(2.0) / (float(half_life_hours) * 3600.0)
+    max_score = float(settings.recommendations_online_learning_max_score)
+    event_deltas, tag_name_deltas, category_deltas, city_deltas = _collect_online_learning_deltas(payload)
+    if not any((event_deltas, tag_name_deltas, category_deltas, city_deltas)):
+        return
+
+    hidden_tag_ids, _blocked = _load_personalization_exclusions(db=db, user_id=int(current_user.id))
+    tag_delta_by_id: dict[int, float] = {}
+    event_ids = sorted(event_deltas.keys())
+    event_category_by_id, event_city_by_id, tag_ids_by_event = _load_event_delta_context(db=db, event_ids=event_ids)
+    _merge_event_signal_deltas(
+        event_deltas=event_deltas,
+        event_category_by_id=event_category_by_id,
+        event_city_by_id=event_city_by_id,
+        tag_ids_by_event=tag_ids_by_event,
+        hidden_tag_ids=hidden_tag_ids,
+        tag_delta_by_id=tag_delta_by_id,
+        category_deltas=category_deltas,
+        city_deltas=city_deltas,
+    )
+    _merge_named_tag_deltas(
+        db=db,
+        tag_name_deltas=tag_name_deltas,
+        hidden_tag_ids=hidden_tag_ids,
+        tag_delta_by_id=tag_delta_by_id,
+    )
+    _upsert_implicit_tag_scores(
+        db=db,
+        user_id=int(current_user.id),
+        tag_delta_by_id=tag_delta_by_id,
+        now=now,
+        max_score=max_score,
+        decay_lambda=decay_lambda,
+    )
+    _upsert_named_interest_scores(
+        db=db,
+        user_id=int(current_user.id),
+        deltas=category_deltas,
+        now=now,
+        max_score=max_score,
+        decay_lambda=decay_lambda,
+        model_cls=models.UserImplicitInterestCategory,
+        key_field="category",
+    )
+    _upsert_named_interest_scores(
+        db=db,
+        user_id=int(current_user.id),
+        deltas=city_deltas,
+        now=now,
+        max_score=max_score,
+        decay_lambda=decay_lambda,
+        model_cls=models.UserImplicitInterestCity,
+        key_field="city",
+    )
+    db.commit()
+
+
+def _interaction_should_refresh(event: schemas.InteractionEventIn) -> bool:
+    if event.interaction_type in _REFRESHING_INTERACTION_TYPES:
+        return True
+    if event.interaction_type != "dwell" or not isinstance(event.meta, dict):
+        return False
+    seconds = event.meta.get("seconds")
+    return isinstance(seconds, (int, float)) and float(seconds) >= 10.0
+
+
+def _refresh_recommendations_too_soon(*, db: Session, user_id: int, now: datetime) -> bool:
+    latest_generated_at = (
+        db.query(func.max(models.UserRecommendation.generated_at))
+        .filter(models.UserRecommendation.user_id == user_id)
+        .scalar()
+    )
+    if latest_generated_at is None:
+        return False
+    latest_generated_at = _coerce_utc_datetime(latest_generated_at, fallback=now)
+    age_seconds = (now - latest_generated_at).total_seconds()
+    return age_seconds < float(settings.recommendations_realtime_refresh_min_interval_seconds)
+
+
+def _maybe_enqueue_realtime_recommendation_refresh(
+    *,
+    db: Session,
+    payload: schemas.InteractionBatchIn,
+    current_user: models.User | None,
+    now: datetime,
+) -> None:
+    if current_user is None:
+        return
+    if getattr(current_user, "role", None) != models.UserRole.student:
+        return
+    if not settings.task_queue_enabled or not settings.recommendations_use_ml_cache:
+        return
+    if not settings.recommendations_realtime_refresh_enabled:
+        return
+    if not any(_interaction_should_refresh(event) for event in payload.events):
+        return
+    if _refresh_recommendations_too_soon(db=db, user_id=int(current_user.id), now=now):
+        return
+
+    from .task_queue import enqueue_job, JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML  # noqa: PLC0415
+
+    enqueue_job(
+        db,
+        JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
+        {
+            "user_id": int(current_user.id),
+            "top_n": int(settings.recommendations_realtime_refresh_top_n),
+            "skip_training": True,
+        },
+        dedupe_key=str(int(current_user.id)),
+    )
 
 
 @app.post("/api/analytics/interactions", status_code=status.HTTP_204_NO_CONTENT)
@@ -1255,307 +1750,15 @@ def record_interactions(
         window_seconds=settings.analytics_rate_window_seconds,
     )
 
-    event_ids = {event.event_id for event in payload.events if event.event_id is not None}
-    existing_event_ids: set[int] = set()
-    if event_ids:
-        existing_event_ids = {row[0] for row in db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all()}
-
     now = datetime.now(timezone.utc)
-    interactions: list[models.EventInteraction] = []
-    for event in payload.events:
-        if event.event_id is not None and event.event_id not in existing_event_ids:
-            continue
-        occurred_at = event.occurred_at or now
-        if occurred_at.tzinfo is None:
-            occurred_at = occurred_at.replace(tzinfo=timezone.utc)
-        interactions.append(
-            models.EventInteraction(
-                user_id=current_user.id if current_user else None,
-                event_id=event.event_id,
-                interaction_type=event.interaction_type,
-                occurred_at=occurred_at,
-                meta=event.meta,
-            )
-        )
-
+    interactions = _build_event_interactions(db=db, payload=payload, current_user=current_user, now=now)
     if not interactions:
         return
 
     db.add_all(interactions)
     db.commit()
-
-    if (
-        current_user is not None
-        and getattr(current_user, "role", None) == models.UserRole.student
-        and settings.recommendations_online_learning_enabled
-    ):
-        half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
-        half_life_seconds = float(half_life_hours) * 3600.0
-        decay_lambda = math.log(2.0) / half_life_seconds
-        max_score = float(settings.recommendations_online_learning_max_score)
-
-        def _normalize_city(value: str | None) -> str | None:
-            if not value:
-                return None
-            s = value.strip().lower()
-            return s or None
-
-        def _normalize_category(value: str | None) -> str | None:
-            if not value:
-                return None
-            s = value.strip().lower()
-            return s or None
-
-        def _decay(score: float, last_seen_at: datetime) -> float:
-            delta_seconds = (now - last_seen_at).total_seconds()
-            if delta_seconds <= 0:
-                return float(score)
-            return float(score) * math.exp(-decay_lambda * float(delta_seconds))
-
-        def _event_delta(*, interaction_type: str, meta: object) -> float:
-            itype = (interaction_type or "").strip().lower()
-            if itype == "click":
-                return 1.0
-            if itype == "view":
-                return 0.6
-            if itype == "share":
-                return 1.3
-            if itype == "favorite":
-                return 2.0
-            if itype == "register":
-                return 2.5
-            if itype == "dwell":
-                seconds = None
-                if isinstance(meta, dict):
-                    seconds = meta.get("seconds")
-                if isinstance(seconds, (int, float)) and float(seconds) >= float(
-                    settings.recommendations_online_learning_dwell_threshold_seconds
-                ):
-                    return 0.8 + min(1.0, float(seconds) / 60.0) * 0.4
-            return 0.0
-
-        event_deltas: dict[int, float] = {}
-        tag_name_deltas: dict[str, float] = {}
-        category_deltas: dict[str, float] = {}
-        city_deltas: dict[str, float] = {}
-
-        for event in payload.events:
-            if event.event_id is not None:
-                delta = _event_delta(interaction_type=str(event.interaction_type), meta=event.meta)
-                if delta > 0:
-                    event_id = int(event.event_id)
-                    event_deltas[event_id] = max(event_deltas.get(event_id, 0.0), float(delta))
-
-            if event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
-                tags_value = event.meta.get("tags")
-                if isinstance(tags_value, list):
-                    for name in tags_value:
-                        s = str(name or "").strip()
-                        if not s:
-                            continue
-                        key = s.lower()
-                        tag_name_deltas[key] = max(tag_name_deltas.get(key, 0.0), 0.2)
-
-                cat_value = _normalize_category(event.meta.get("category"))
-                if cat_value:
-                    category_deltas[cat_value] = max(category_deltas.get(cat_value, 0.0), 0.2)
-
-                city_value = _normalize_city(event.meta.get("city"))
-                if city_value:
-                    city_deltas[city_value] = max(city_deltas.get(city_value, 0.0), 0.2)
-
-        if event_deltas or tag_name_deltas or category_deltas or city_deltas:
-            hidden_tag_ids, _blocked = _load_personalization_exclusions(db=db, user_id=int(current_user.id))
-
-            tag_delta_by_id: dict[int, float] = {}
-            if event_deltas:
-                event_ids = sorted(event_deltas.keys())
-                event_rows = (
-                    db.query(models.Event.id, models.Event.category, models.Event.city)
-                    .filter(models.Event.id.in_(event_ids))
-                    .all()
-                )
-                event_category_by_id: dict[int, str | None] = {}
-                event_city_by_id: dict[int, str | None] = {}
-                for event_id, category, city in event_rows:
-                    event_category_by_id[int(event_id)] = _normalize_category(category)
-                    event_city_by_id[int(event_id)] = _normalize_city(city)
-
-                tag_rows = (
-                    db.query(models.event_tags.c.event_id, models.event_tags.c.tag_id)
-                    .filter(models.event_tags.c.event_id.in_(event_ids))
-                    .all()
-                )
-                tag_ids_by_event: dict[int, list[int]] = {}
-                for event_id, tag_id in tag_rows:
-                    tag_ids_by_event.setdefault(int(event_id), []).append(int(tag_id))
-
-                for event_id, delta in event_deltas.items():
-                    cat_key = event_category_by_id.get(int(event_id))
-                    if cat_key:
-                        category_deltas[cat_key] = category_deltas.get(cat_key, 0.0) + float(delta)
-                    city_key = event_city_by_id.get(int(event_id))
-                    if city_key:
-                        city_deltas[city_key] = city_deltas.get(city_key, 0.0) + float(delta)
-
-                    tag_ids = tag_ids_by_event.get(int(event_id), [])
-                    per_tag = float(delta) / float(max(1, len(tag_ids)))
-                    for tag_id in tag_ids:
-                        if tag_id in hidden_tag_ids:
-                            continue
-                        tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + per_tag
-
-            if tag_name_deltas:
-                tag_name_rows = (
-                    db.query(models.Tag.id, func.lower(models.Tag.name))
-                    .filter(func.lower(models.Tag.name).in_(sorted(tag_name_deltas.keys())))
-                    .all()
-                )
-                for tag_id, tag_name_lower in tag_name_rows:
-                    if tag_id in hidden_tag_ids:
-                        continue
-                    key = str(tag_name_lower or "").strip().lower()
-                    delta = float(tag_name_deltas.get(key, 0.0))
-                    tag_delta_by_id[int(tag_id)] = tag_delta_by_id.get(int(tag_id), 0.0) + delta
-
-            if tag_delta_by_id:
-                existing_rows = (
-                    db.query(models.UserImplicitInterestTag)
-                    .filter(
-                        models.UserImplicitInterestTag.user_id == current_user.id,
-                        models.UserImplicitInterestTag.tag_id.in_(sorted(tag_delta_by_id.keys())),
-                    )
-                    .all()
-                )
-                existing_by_tag_id = {int(row.tag_id): row for row in existing_rows}
-                for tag_id, row in existing_by_tag_id.items():
-                    last_seen_at = row.last_seen_at or now
-                    if last_seen_at.tzinfo is None:
-                        last_seen_at = last_seen_at.replace(tzinfo=timezone.utc)
-                    delta = float(tag_delta_by_id.get(tag_id, 0.0))
-                    row.score = min(max_score, _decay(float(row.score or 0.0), last_seen_at) + delta)
-                    row.last_seen_at = now
-                    db.add(row)
-
-                for tag_id, delta in tag_delta_by_id.items():
-                    if tag_id in existing_by_tag_id:
-                        continue
-                    db.add(
-                        models.UserImplicitInterestTag(
-                            user_id=current_user.id,
-                            tag_id=int(tag_id),
-                            score=min(max_score, float(delta)),
-                            last_seen_at=now,
-                        )
-                    )
-
-            if category_deltas:
-                existing_rows = (
-                    db.query(models.UserImplicitInterestCategory)
-                    .filter(
-                        models.UserImplicitInterestCategory.user_id == current_user.id,
-                        models.UserImplicitInterestCategory.category.in_(sorted(category_deltas.keys())),
-                    )
-                    .all()
-                )
-                existing_by_key = {str(row.category): row for row in existing_rows}
-                for key, row in existing_by_key.items():
-                    last_seen_at = row.last_seen_at or now
-                    if last_seen_at.tzinfo is None:
-                        last_seen_at = last_seen_at.replace(tzinfo=timezone.utc)
-                    delta = float(category_deltas.get(str(key), 0.0))
-                    row.score = min(max_score, _decay(float(row.score or 0.0), last_seen_at) + delta)
-                    row.last_seen_at = now
-                    db.add(row)
-                for key, delta in category_deltas.items():
-                    if str(key) in existing_by_key:
-                        continue
-                    db.add(
-                        models.UserImplicitInterestCategory(
-                            user_id=current_user.id,
-                            category=str(key),
-                            score=min(max_score, float(delta)),
-                            last_seen_at=now,
-                        )
-                    )
-
-            if city_deltas:
-                existing_rows = (
-                    db.query(models.UserImplicitInterestCity)
-                    .filter(
-                        models.UserImplicitInterestCity.user_id == current_user.id,
-                        models.UserImplicitInterestCity.city.in_(sorted(city_deltas.keys())),
-                    )
-                    .all()
-                )
-                existing_by_key = {str(row.city): row for row in existing_rows}
-                for key, row in existing_by_key.items():
-                    last_seen_at = row.last_seen_at or now
-                    if last_seen_at.tzinfo is None:
-                        last_seen_at = last_seen_at.replace(tzinfo=timezone.utc)
-                    delta = float(city_deltas.get(str(key), 0.0))
-                    row.score = min(max_score, _decay(float(row.score or 0.0), last_seen_at) + delta)
-                    row.last_seen_at = now
-                    db.add(row)
-                for key, delta in city_deltas.items():
-                    if str(key) in existing_by_key:
-                        continue
-                    db.add(
-                        models.UserImplicitInterestCity(
-                            user_id=current_user.id,
-                            city=str(key),
-                            score=min(max_score, float(delta)),
-                            last_seen_at=now,
-                        )
-                    )
-
-            db.commit()
-
-    if (
-        current_user is not None
-        and getattr(current_user, "role", None) == models.UserRole.student
-        and settings.task_queue_enabled
-        and settings.recommendations_use_ml_cache
-        and settings.recommendations_realtime_refresh_enabled
-    ):
-        should_refresh = False
-        for event in payload.events:
-            if event.interaction_type in {"click", "view", "share", "favorite", "register", "unregister", "search", "filter"}:
-                should_refresh = True
-                break
-            if event.interaction_type == "dwell":
-                seconds = None
-                if isinstance(event.meta, dict):
-                    seconds = event.meta.get("seconds")
-                if isinstance(seconds, (int, float)) and float(seconds) >= 10.0:
-                    should_refresh = True
-                    break
-
-        if should_refresh:
-            from .task_queue import enqueue_job, JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML  # noqa: PLC0415
-
-            latest_generated_at = (
-                db.query(func.max(models.UserRecommendation.generated_at))
-                .filter(models.UserRecommendation.user_id == current_user.id)
-                .scalar()
-            )
-            if latest_generated_at is not None:
-                if latest_generated_at.tzinfo is None:
-                    latest_generated_at = latest_generated_at.replace(tzinfo=timezone.utc)
-                age_seconds = (now - latest_generated_at).total_seconds()
-                if age_seconds < float(settings.recommendations_realtime_refresh_min_interval_seconds):
-                    return
-
-            enqueue_job(
-                db,
-                JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
-                {
-                    "user_id": int(current_user.id),
-                    "top_n": int(settings.recommendations_realtime_refresh_top_n),
-                    "skip_training": True,
-                },
-                dedupe_key=str(int(current_user.id)),
-            )
+    _apply_online_learning(db=db, payload=payload, current_user=current_user, now=now)
+    _maybe_enqueue_realtime_recommendation_refresh(db=db, payload=payload, current_user=current_user, now=now)
 
 
 
@@ -3453,25 +3656,196 @@ def my_events(db: DbSession, current_user: CurrentUser):
     return [_serialize_event(event, seats) for event, seats in events]
 
 
+def _registered_event_ids(*, db: Session, user_id: int) -> list[int]:
+    return [
+        event_id
+        for event_id, in db.query(models.Registration.event_id)
+        .filter(models.Registration.user_id == user_id, models.Registration.deleted_at.is_(None))
+        .all()
+    ]
+
+
+def _recommendation_history_tag_names(*, db: Session, user_id: int) -> list[str]:
+    return [
+        tag_name
+        for tag_name, in (
+            db.query(models.Tag.name)
+            .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
+            .join(models.Event, models.Event.id == models.event_tags.c.event_id)
+            .join(models.Registration, models.Registration.event_id == models.Event.id)
+            .filter(
+                models.Registration.user_id == user_id,
+                models.Registration.deleted_at.is_(None),
+                models.Event.deleted_at.is_(None),
+            )
+            .all()
+        )
+    ]
+
+
+def _recommendation_reason(
+    *,
+    history_tag_names: list[str],
+    profile_tag_names: list[str],
+    lang: str,
+) -> str | None:
+    reason_parts: list[str] = []
+    if history_tag_names:
+        tags = ", ".join(sorted(set(history_tag_names))[:3])
+        reason_parts.append(f"Similar tags: {tags}" if lang == "en" else f"Etichete similare: {tags}")
+    if profile_tag_names:
+        tags = ", ".join(sorted(set(profile_tag_names))[:3])
+        reason_parts.append(f"Your interests: {tags}" if lang == "en" else f"Interesele tale: {tags}")
+    return " • ".join(reason_parts[:2]) if reason_parts else None
+
+
+def _tag_based_recommendations(
+    *,
+    db: Session,
+    match_tag_names: list[str],
+    registered_event_ids: list[int],
+    hidden_tag_ids: set[int],
+    blocked_organizer_ids: set[int],
+    now: datetime,
+    lang: str,
+    history_tag_names: list[str],
+    profile_tag_names: list[str],
+) -> list[tuple[models.Event, int, Optional[str]]]:
+    if not match_tag_names:
+        return []
+    lowered_match_tags = [name.lower() for name in match_tag_names]
+    base_query = (
+        db.query(models.Event)
+        .filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered_match_tags)))
+        .filter(models.Event.deleted_at.is_(None))
+        .filter(models.Event.start_time >= now)
+        .filter(models.Event.status == "published")
+        .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
+    )
+    if registered_event_ids:
+        base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+    base_query = _apply_personalization_exclusions(
+        base_query,
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
+    )
+    query, _ = _events_with_counts_query(db, base_query.order_by(models.Event.start_time, models.Event.id))
+    reason = _recommendation_reason(
+        history_tag_names=history_tag_names,
+        profile_tag_names=profile_tag_names,
+        lang=lang,
+    )
+    return [(event, seats, reason) for event, seats in query.limit(10).all()]
+
+
+def _popular_recommendations(
+    *,
+    db: Session,
+    registered_event_ids: list[int],
+    hidden_tag_ids: set[int],
+    blocked_organizer_ids: set[int],
+    now: datetime,
+    lang: str,
+) -> list[tuple[models.Event, int, Optional[str]]]:
+    base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None), models.Event.start_time >= now)
+    if registered_event_ids:
+        base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
+    base_query = _apply_personalization_exclusions(
+        base_query,
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
+    )
+    base_query = base_query.filter(models.Event.status == "published").filter(
+        (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+    )
+    query, seats_subquery = _events_with_counts_query(db, base_query)
+    fallback_reason = "Popular / upcoming events" if lang == "en" else "Evenimente populare / viitoare"
+    return [
+        (event, seats, fallback_reason)
+        for event, seats in query.order_by(
+            func.coalesce(seats_subquery.c.seats_taken, 0).desc(),
+            models.Event.start_time,
+        )
+        .limit(10)
+        .all()
+    ]
+
+
+def _fallback_recommendations(
+    *,
+    db: Session,
+    current_user: models.User,
+    now: datetime,
+    lang: str,
+    registered_event_ids: list[int],
+    hidden_tag_ids: set[int],
+    blocked_organizer_ids: set[int],
+) -> list[tuple[models.Event, int, Optional[str]]]:
+    history_tag_names = _recommendation_history_tag_names(db=db, user_id=int(current_user.id))
+    profile_tag_names = [tag.name for tag in current_user.interest_tags]
+    match_tag_names = list(dict.fromkeys([*history_tag_names, *profile_tag_names]))
+    events = _tag_based_recommendations(
+        db=db,
+        match_tag_names=match_tag_names,
+        registered_event_ids=registered_event_ids,
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
+        now=now,
+        lang=lang,
+        history_tag_names=history_tag_names,
+        profile_tag_names=profile_tag_names,
+    )
+    if events:
+        return events
+    return _popular_recommendations(
+        db=db,
+        registered_event_ids=registered_event_ids,
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
+        now=now,
+        lang=lang,
+    )
+
+
+def _serialize_recommendations(
+    *,
+    events: list[tuple[models.Event, int, Optional[str]]],
+    user_city: str,
+    lang: str,
+) -> list[schemas.EventResponse]:
+    localized: list[tuple[bool, schemas.EventResponse]] = []
+    for event, seats, reason in events:
+        if event.max_seats is not None and seats >= event.max_seats:
+            continue
+        localized.append(
+            (
+                bool(user_city and event.city and event.city.strip().lower() == user_city),
+                _serialize_event(
+                    event,
+                    seats,
+                    recommendation_reason=_append_local_reason(
+                        reason=reason,
+                        event_city=event.city,
+                        user_city=user_city,
+                        lang=lang,
+                    ),
+                ),
+            )
+        )
+    localized.sort(key=lambda item: item[0], reverse=True)
+    return [item for _, item in localized[:10]]
+
+
 @app.get("/api/recommendations", response_model=List[schemas.EventResponse], responses=_responses(404, 503))
 def recommended_events(
     request: Request,
     db: DbSession,
     current_user: StudentUser,
 ):
-    lang = current_user.language_preference
-    if not lang or lang == "system":
-        lang = request.headers.get("accept-language") or "ro"
-    lang = (lang or "ro").split(",")[0][:2].lower()
-
+    lang = _preferred_lang(request=request, user=current_user)
     now = datetime.now(timezone.utc)
-    user_city = (current_user.city or "").strip().lower()
-    registered_event_ids = [
-        e.event_id
-        for e in db.query(models.Registration.event_id)
-        .filter(models.Registration.user_id == current_user.id, models.Registration.deleted_at.is_(None))
-        .all()
-    ]
+    user_city = _normalized_user_city(current_user)
+    registered_event_ids = _registered_event_ids(db=db, user_id=int(current_user.id))
     hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(db=db, user_id=current_user.id)
     events = _load_cached_recommendations(
         db=db,
@@ -3482,101 +3856,17 @@ def recommended_events(
     )
 
     if not events:
-        history_tag_names = [
-            t[0]
-            for t in (
-                db.query(models.Tag.name)
-                .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
-                .join(models.Event, models.Event.id == models.event_tags.c.event_id)
-                .join(models.Registration, models.Registration.event_id == models.Event.id)
-                .filter(
-                    models.Registration.user_id == current_user.id,
-                    models.Registration.deleted_at.is_(None),
-                    models.Event.deleted_at.is_(None),
-                )
-                .all()
-            )
-        ]
+        events = _fallback_recommendations(
+            db=db,
+            current_user=current_user,
+            now=now,
+            lang=lang,
+            registered_event_ids=registered_event_ids,
+            hidden_tag_ids=hidden_tag_ids,
+            blocked_organizer_ids=blocked_organizer_ids,
+        )
 
-        profile_tag_names = [t.name for t in current_user.interest_tags]
-        match_tag_names = list(dict.fromkeys([*history_tag_names, *profile_tag_names]))
-
-        events: List[tuple[models.Event, int, Optional[str]]] = []
-        if match_tag_names:
-            lowered_match_tags = [name.lower() for name in match_tag_names]
-            base_query = (
-                db.query(models.Event)
-                .filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered_match_tags)))
-                .filter(models.Event.deleted_at.is_(None))
-                .filter(models.Event.start_time >= now)
-                .filter(models.Event.status == "published")
-                .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
-            )
-            if registered_event_ids:
-                base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
-            base_query = _apply_personalization_exclusions(
-                base_query,
-                hidden_tag_ids=hidden_tag_ids,
-                blocked_organizer_ids=blocked_organizer_ids,
-            )
-            base_query = base_query.order_by(models.Event.start_time, models.Event.id)
-            query, _ = _events_with_counts_query(db, base_query)
-            reason_parts: list[str] = []
-            if history_tag_names:
-                reason_parts.append(
-                    (
-                        f"Similar tags: {', '.join(sorted(set(history_tag_names))[:3])}"
-                        if lang == "en"
-                        else f"Etichete similare: {', '.join(sorted(set(history_tag_names))[:3])}"
-                    )
-                )
-            if profile_tag_names:
-                reason_parts.append(
-                    (
-                        f"Your interests: {', '.join(sorted(set(profile_tag_names))[:3])}"
-                        if lang == "en"
-                        else f"Interesele tale: {', '.join(sorted(set(profile_tag_names))[:3])}"
-                    )
-                )
-            reason = " • ".join(reason_parts[:2]) if reason_parts else None
-            events = [(ev, seats, reason) for ev, seats in query.limit(10).all()]
-
-        if not events:
-            base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None), models.Event.start_time >= now)
-            if registered_event_ids:
-                base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
-            base_query = _apply_personalization_exclusions(
-                base_query,
-                hidden_tag_ids=hidden_tag_ids,
-                blocked_organizer_ids=blocked_organizer_ids,
-            )
-            base_query = base_query.filter(models.Event.status == "published").filter(
-                (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
-            )
-            query, seats_subquery = _events_with_counts_query(db, base_query)
-            fallback_reason = "Popular / upcoming events" if lang == "en" else "Evenimente populare / viitoare"
-            events = [
-                (ev, seats, fallback_reason)
-                for ev, seats in query.order_by(
-                    func.coalesce(seats_subquery.c.seats_taken, 0).desc(), models.Event.start_time
-                )
-                .limit(10)
-                .all()
-            ]
-
-    filtered = []
-    for event, seats, reason in events:
-        if event.max_seats is not None and seats >= event.max_seats:
-            continue
-        is_local = bool(user_city and event.city and event.city.strip().lower() == user_city)
-        final_reason = reason
-        if is_local:
-            suffix = f"Near you: {event.city}" if lang == "en" else f"În apropiere: {event.city}"
-            final_reason = f"{reason} • {suffix}" if reason else suffix
-        filtered.append((is_local, _serialize_event(event, seats, recommendation_reason=final_reason)))
-
-    filtered.sort(key=lambda item: item[0], reverse=True)
-    return [item for _, item in filtered[:10]]
+    return _serialize_recommendations(events=events, user_city=user_city, lang=lang)
 
 @app.get("/api/health", responses=_responses(503))
 def health_check(db: DbSession):

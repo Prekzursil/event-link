@@ -319,6 +319,22 @@ def test_main_skip_training_paths(monkeypatch, db_session, capsys) -> None:
     assert any(rec.event_id == int(event_candidate.id) for rec in recommendations)
 
 
+def test_main_skip_training_returns_zero_when_loader_yields_empty_state(monkeypatch, db_session) -> None:
+    module = _load_script_module()
+    student, _event_candidate = _seed_training_rows(db_session)
+    monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
+    monkeypatch.setattr(module, "_load_persisted_model_state", lambda **_kwargs: (None, None, None))
+
+    assert _run_main(module, monkeypatch, "--skip-training", "--user-id", str(student.id)) == 0
+
+    recommendations = (
+        db_session.query(models.UserRecommendation)
+        .filter(models.UserRecommendation.user_id == int(student.id))
+        .all()
+    )
+    assert recommendations == []
+
+
 def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db_session, capsys) -> None:
     module = _load_script_module()
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))

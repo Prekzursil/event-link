@@ -4,6 +4,7 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 from fastapi import Request
+import pytest
 
 from app import api, models, schemas
 
@@ -669,3 +670,69 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
 
     assert len(fake_db.interactions) == 1
     assert fake_db.commits == 2
+
+
+def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
+    class _NoQueryDb:
+        def query(self, *_args, **_kwargs):
+            raise AssertionError("query should not run")
+
+    assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
+    assert api._event_learning_delta(interaction_type="dwell", meta={"seconds": "slow"}) == 0.0
+    with pytest.raises(AssertionError, match="query should not run"):
+        _NoQueryDb().query()
+
+
+def test_online_learning_and_realtime_refresh_guard_returns(monkeypatch):
+    class _GuardDb:
+        def query(self, *_args, **_kwargs):
+            raise AssertionError("query should not run")
+
+        def commit(self):
+            raise AssertionError("commit should not run")
+
+    payload = schemas.InteractionBatchIn.model_validate(
+        {"events": [{"interaction_type": "click", "event_id": 1}]}
+    )
+    now = datetime.now(timezone.utc)
+    guard_db = _GuardDb()
+
+    api._apply_online_learning(
+        db=guard_db,
+        payload=payload,
+        current_user=None,
+        now=now,
+    )
+    api._apply_online_learning(
+        db=guard_db,
+        payload=payload,
+        current_user=SimpleNamespace(role=models.UserRole.organizator),
+        now=now,
+    )
+
+    monkeypatch.setattr(api.settings, "task_queue_enabled", True, raising=False)
+    monkeypatch.setattr(api.settings, "recommendations_use_ml_cache", True, raising=False)
+    monkeypatch.setattr(api.settings, "recommendations_realtime_refresh_enabled", False, raising=False)
+
+    api._maybe_enqueue_realtime_recommendation_refresh(
+        db=guard_db,
+        payload=payload,
+        current_user=None,
+        now=now,
+    )
+    api._maybe_enqueue_realtime_recommendation_refresh(
+        db=guard_db,
+        payload=payload,
+        current_user=SimpleNamespace(id=1, role=models.UserRole.organizator),
+        now=now,
+    )
+    api._maybe_enqueue_realtime_recommendation_refresh(
+        db=guard_db,
+        payload=payload,
+        current_user=SimpleNamespace(id=1, role=models.UserRole.student),
+        now=now,
+    )
+    with pytest.raises(AssertionError, match="query should not run"):
+        guard_db.query()
+    with pytest.raises(AssertionError, match="commit should not run"):
+        guard_db.commit()

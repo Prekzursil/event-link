@@ -41,27 +41,28 @@ def _weekly_digest_events(
     *,
     db: Session,
     user_id: int,
-    week_start: datetime,
-    week_end: datetime,
+    now: datetime,
+    top_n: int,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> list[models.Event]:
     query = (
         db.query(models.Event)
+        .join(models.UserRecommendation, models.UserRecommendation.event_id == models.Event.id)
         .filter(
+            models.UserRecommendation.user_id == user_id,
             models.Event.deleted_at.is_(None),
-            models.Event.start_time >= week_start,
-            models.Event.start_time < week_end,
+            models.Event.start_time >= now,
             models.Event.status == "published",
-            (models.Event.publish_at == None) | (models.Event.publish_at <= week_start),  # noqa: E711
+            (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
         )
-        .order_by(models.Event.start_time.asc())
+        .order_by(models.UserRecommendation.rank.asc(), models.Event.start_time.asc(), models.Event.id.asc())
     )
     hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(db=db, user_id=user_id)
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
         query = query.filter(~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids))))
-    return query.all()
+    return query.limit(max(1, top_n)).all()
 
 
 def _enqueue_weekly_digest_email(
@@ -80,7 +81,7 @@ def _enqueue_weekly_digest_email(
         events,
         lang=_preferred_lang(user.language_preference),
     )
-    dedupe_key = f"weekly_digest:{int(user.id)}:{week_key}"
+    dedupe_key = f"digest:{int(user.id)}:{week_key}"
     db.add(
         models.NotificationDelivery(
             dedupe_key=dedupe_key,
@@ -111,9 +112,9 @@ def send_weekly_digest(
     send_email_job_type: str,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> dict[str, int]:
-    del payload
     now = datetime.now(timezone.utc)
-    week_start, week_end, week_key = _weekly_digest_window(now)
+    _week_start, _week_end, week_key = _weekly_digest_window(now)
+    top_n = max(1, int(payload.get("top_n") or 5))
     total_users = 0
     enqueued_emails = 0
 
@@ -121,14 +122,14 @@ def send_weekly_digest(
         if not _coerce_bool(getattr(user, "is_active", True)):
             continue
         total_users += 1
-        dedupe_key = f"weekly_digest:{int(user.id)}:{week_key}"
+        dedupe_key = f"digest:{int(user.id)}:{week_key}"
         if _notification_exists(db=db, dedupe_key=dedupe_key):
             continue
         events = _weekly_digest_events(
             db=db,
             user_id=int(user.id),
-            week_start=week_start,
-            week_end=week_end,
+            now=now,
+            top_n=top_n,
             load_personalization_exclusions_fn=load_personalization_exclusions_fn,
         )
         if not events:
