@@ -78,6 +78,8 @@ def test_codecov_analytics_uploads_existing_reports_to_codacy() -> None:
     assert 'CODACY_ORGANIZATION_PROVIDER: gh' in content
     assert 'CODACY_USERNAME: Prekzursil' in content
     assert 'CODACY_PROJECT_NAME: ${{ github.event.repository.name }}' in content
+    assert 'python -m pip install -r backend/requirements.txt pytest pytest-cov lizard' in content
+    assert 'npm --prefix ui run test:unit:coverage' in content
     assert 'bash <(curl -Ls https://coverage.codacy.com/get.sh) report "${report_args[@]}"' in content
 
 
