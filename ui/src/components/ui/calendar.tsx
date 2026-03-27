@@ -7,16 +7,14 @@ import { buttonVariants } from "@/components/ui/button"
 
 export type CalendarProps = React.ComponentProps<typeof DayPicker>
 
-type CalendarChevronProps = {
+type CalendarChevronProps = Readonly<{
   className?: string
-  size?: number
-  disabled?: boolean
   orientation?: "right" | "left" | "up" | "down"
-}
+}>
 
-function CalendarChevron({ orientation = "right" }: CalendarChevronProps) {
+function CalendarChevron({ className, orientation = "right" }: CalendarChevronProps) {
   const Icon = orientation === "left" ? ChevronLeft : ChevronRight
-  return <Icon className="h-4 w-4" />
+  return <Icon className={cn("h-4 w-4", className)} />
 }
 
 function Calendar({

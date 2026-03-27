@@ -343,6 +343,153 @@ ADMINS = [
 ]
 
 
+def _clear_existing_data(session) -> None:  # noqa: ANN001
+    print("⚠️  Database already has data. Clearing existing data...")
+    tables_to_clear = [
+        user_interest_tags,
+        FavoriteEvent.__table__,
+        Registration.__table__,
+        event_tags,
+        Event.__table__,
+        PasswordResetToken.__table__,
+        User.__table__,
+        Tag.__table__,
+    ]
+    for table in tables_to_clear:
+        try:
+            session.execute(table.delete())
+        except Exception as exc:
+            print(f"⚠️  Skipping clear for {table.name}: {exc}")
+    session.commit()
+    print("✅ Existing data cleared")
+
+
+def _create_tags(session):  # noqa: ANN001
+    print("📌 Creating tags...")
+    tag_objects = {}
+    for tag_name in TAGS:
+        tag = Tag(name=tag_name)
+        session.add(tag)
+        tag_objects[tag_name] = tag
+    session.flush()
+    print(f"   Created {len(TAGS)} tags")
+    return tag_objects
+
+
+def _create_users(session, user_rows, *, role: UserRole, label: str, extra_fields: tuple[str, ...] = ()):  # noqa: ANN001
+    print(label)
+    created_users = []
+    for row in user_rows:
+        payload = {
+            "email": row["email"],
+            _PASSWORD_HASH_FIELD: pwd_context.hash(row[_SECRET_FIELD]),
+            "role": role,
+            "full_name": row["full_name"],
+        }
+        for field_name in extra_fields:
+            payload[field_name] = row.get(field_name)
+        user = User(**payload)
+        session.add(user)
+        created_users.append(user)
+    session.flush()
+    return created_users
+
+
+def _assign_student_interest_tags(student_objects, tag_objects: dict[str, Tag]) -> None:
+    print("🏷️  Assigning interest tags to students...")
+    available_tags = list(tag_objects.values())
+    for student in student_objects:
+        student.interest_tags = _rng.sample(available_tags, _rng.randint(3, 6))
+
+
+def _build_seed_event(event_data: dict[str, object], *, organizer_id: int, now: datetime, index: int) -> Event:
+    is_past_event = index < 3
+    if is_past_event:
+        start_time = now - timedelta(days=_rng.randint(5, 30), hours=_rng.randint(10, 18))
+    else:
+        start_time = now + timedelta(days=_rng.randint(3, 60), hours=_rng.randint(10, 18))
+    start_time = start_time.replace(minute=0, second=0, microsecond=0)
+    end_time = start_time + timedelta(hours=_rng.randint(2, 4))
+    return Event(
+        title=event_data["title"],
+        description=event_data["description"],
+        category=event_data["category"],
+        start_time=start_time,
+        end_time=end_time,
+        location=_rng.choice(LOCATIONS),
+        max_seats=event_data["max_seats"],
+        cover_url=_rng.choice(COVER_IMAGES),
+        owner_id=organizer_id,
+        status="published",
+    )
+
+
+def _create_events(session, organizer_objects):  # noqa: ANN001
+    print("📅 Creating events...")
+    event_objects = []
+    now = datetime.now(timezone.utc)
+    for index, event_data in enumerate(SAMPLE_EVENTS):
+        organizer = _rng.choice(organizer_objects)
+        event = _build_seed_event(event_data, organizer_id=organizer.id, now=now, index=index)
+        session.add(event)
+        event_objects.append((event, event_data["tags"]))
+    session.flush()
+    return event_objects, now
+
+
+def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
+    for event, tag_names in event_objects:
+        for tag_name in tag_names:
+            if tag_name in tag_objects:
+                event.tags.append(tag_objects[tag_name])
+
+
+def _create_registrations(session, event_objects, student_objects, *, now: datetime) -> int:  # noqa: ANN001
+    print("📝 Creating registrations...")
+    registration_count = 0
+    for event, _ in event_objects:
+        num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
+        for student in _rng.sample(student_objects, num_registrations):
+            registration = Registration(
+                user_id=student.id,
+                event_id=event.id,
+                attended=event.start_time < now and _rng.random() > 0.2,
+            )
+            session.add(registration)
+            registration_count += 1
+    session.flush()
+    return registration_count
+
+
+def _create_favorites(session, event_objects, student_objects) -> int:  # noqa: ANN001
+    print("❤️  Creating favorites...")
+    favorite_count = 0
+    created_events = [event for event, _ in event_objects]
+    for student in student_objects:
+        num_favorites = _rng.randint(2, 5)
+        favorite_events = _rng.sample(created_events, min(num_favorites, len(created_events)))
+        for event in favorite_events:
+            session.add(FavoriteEvent(user_id=student.id, event_id=event.id))
+            favorite_count += 1
+    session.flush()
+    return favorite_count
+
+
+def _print_seed_summary() -> None:
+    print("\n✅ Database seeding completed successfully!")
+    print("\n📋 Test accounts:")
+    print("   Students:")
+    for student in STUDENTS:
+        print(f"      - {student['email']}")
+    print("   Organizers:")
+    for organizer in ORGANIZERS:
+        print(f"      - {organizer['email']}")
+    print("   Admins:")
+    for admin in ADMINS:
+        print(f"      - {admin['email']}")
+    print("   Passwords are intentionally omitted from logs.")
+
+
 def seed_database():
     """Seed the database with sample data."""
     print("🌱 Starting database seeding...")
@@ -353,201 +500,40 @@ def seed_database():
         user_count = session.scalar(select(func.count()).select_from(User)) or 0
         
         if user_count > 0:
-            print("⚠️  Database already has data. Clearing existing data...")
-            # Clear existing data in correct order (respecting foreign keys)
-            # Use try/except for tables that might not exist
-            tables_to_clear = [
-                user_interest_tags,
-                FavoriteEvent.__table__,
-                Registration.__table__,
-                event_tags,
-                Event.__table__,
-                PasswordResetToken.__table__,
-                User.__table__,
-                Tag.__table__,
-            ]
-            for table in tables_to_clear:
-                try:
-                    session.execute(table.delete())
-                except Exception as exc:
-                    print(f"⚠️  Skipping clear for {table.name}: {exc}")
-            session.commit()
-            print("✅ Existing data cleared")
-        
-        # Create tags
-        print("📌 Creating tags...")
-        tag_objects = {}
-        for tag_name in TAGS:
-            tag = Tag(name=tag_name)
-            session.add(tag)
-            tag_objects[tag_name] = tag
-        session.flush()
-        print(f"   Created {len(TAGS)} tags")
-        
-        # Create students
-        print("👨‍🎓 Creating students...")
-        student_objects = []
-        for student_data in STUDENTS:
-            student = User(**{
-                "email": student_data["email"],
-                _PASSWORD_HASH_FIELD: pwd_context.hash(student_data[_SECRET_FIELD]),
-                "role": UserRole.student,
-                "full_name": student_data["full_name"],
-            })
-            session.add(student)
-            student_objects.append(student)
-        session.flush()
+            _clear_existing_data(session)
+
+        tag_objects = _create_tags(session)
+        student_objects = _create_users(session, STUDENTS, role=UserRole.student, label="👨‍🎓 Creating students...")
         print(f"   Created {len(STUDENTS)} students")
-        
-        # Assign interest tags to students
-        print("🏷️  Assigning interest tags to students...")
-        for student in student_objects:
-            # Each student gets 3-6 random interest tags
-            num_tags = _rng.randint(3, 6)
-            selected_tags = _rng.sample(list(tag_objects.values()), num_tags)
-            student.interest_tags = selected_tags
+        _assign_student_interest_tags(student_objects, tag_objects)
         session.flush()
-        
-        # Create organizers
-        print("🏢 Creating organizers...")
-        organizer_objects = []
-        for org_data in ORGANIZERS:
-            organizer = User(**{
-                "email": org_data["email"],
-                _PASSWORD_HASH_FIELD: pwd_context.hash(org_data[_SECRET_FIELD]),
-                "role": UserRole.organizator,
-                "full_name": org_data["full_name"],
-                "org_name": org_data["org_name"],
-                "org_description": org_data["org_description"],
-                "org_website": org_data.get("org_website"),
-                "org_logo_url": org_data.get("org_logo_url"),
-            })
-            session.add(organizer)
-            organizer_objects.append(organizer)
-        session.flush()
+
+        organizer_objects = _create_users(
+            session,
+            ORGANIZERS,
+            role=UserRole.organizator,
+            label="🏢 Creating organizers...",
+            extra_fields=("org_name", "org_description", "org_website", "org_logo_url"),
+        )
         print(f"   Created {len(ORGANIZERS)} organizers")
 
-        # Create admins
-        print("🛡️ Creating admins...")
-        admin_objects = []
-        for admin_data in ADMINS:
-            admin = User(**{
-                "email": admin_data["email"],
-                _PASSWORD_HASH_FIELD: pwd_context.hash(admin_data[_SECRET_FIELD]),
-                "role": UserRole.admin,
-                "full_name": admin_data["full_name"],
-            })
-            session.add(admin)
-            admin_objects.append(admin)
-        session.flush()
+        _create_users(session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins...")
         print(f"   Created {len(ADMINS)} admins")
-        
-        # Create events
-        print("📅 Creating events...")
-        event_objects = []
-        now = datetime.now(timezone.utc)
-        
-        for i, event_data in enumerate(SAMPLE_EVENTS):
-            # Distribute events across time: some past, some upcoming
-            if i < 3:
-                # Past events (last 30 days)
-                days_ago = _rng.randint(5, 30)
-                start_time = now - timedelta(days=days_ago, hours=_rng.randint(10, 18))
-            else:
-                # Future events (next 60 days)
-                days_ahead = _rng.randint(3, 60)
-                start_time = now + timedelta(days=days_ahead, hours=_rng.randint(10, 18))
-                
-            # Round to nearest hour
-            start_time = start_time.replace(minute=0, second=0, microsecond=0)
-            
-            # Event duration: 2-4 hours
-            duration_hours = _rng.randint(2, 4)
-            end_time = start_time + timedelta(hours=duration_hours)
-            
-            # Random organizer
-            organizer = _rng.choice(organizer_objects)
-            
-            event = Event(
-                title=event_data["title"],
-                description=event_data["description"],
-                category=event_data["category"],
-                start_time=start_time,
-                end_time=end_time,
-                location=_rng.choice(LOCATIONS),
-                max_seats=event_data["max_seats"],
-                cover_url=_rng.choice(COVER_IMAGES),
-                owner_id=organizer.id,
-                status="published"
-            )
-            session.add(event)
-            event_objects.append((event, event_data["tags"]))
-        
-        session.flush()
-        
-        # Assign tags to events
-        for event, tag_names in event_objects:
-            for tag_name in tag_names:
-                if tag_name in tag_objects:
-                    event.tags.append(tag_objects[tag_name])
-        
+
+        event_objects, now = _create_events(session, organizer_objects)
+        _attach_event_tags(event_objects, tag_objects)
         session.flush()
         print(f"   Created {len(SAMPLE_EVENTS)} events")
-        
-        # Create registrations
-        print("📝 Creating registrations...")
-        registration_count = 0
-        for event, _ in event_objects:
-            # Random students register for events
-            num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
-            registered_students = _rng.sample(student_objects, num_registrations)
-            
-            for student in registered_students:
-                is_past = event.start_time < now
-                registration = Registration(
-                    user_id=student.id,
-                    event_id=event.id,
-                    attended=is_past and _rng.random() > 0.2  # 80% attendance for past events
-                )
-                session.add(registration)
-                registration_count += 1
-        
-        session.flush()
+
+        registration_count = _create_registrations(session, event_objects, student_objects, now=now)
         print(f"   Created {registration_count} registrations")
-        
-        # Create favorites
-        print("❤️  Creating favorites...")
-        favorite_count = 0
-        for student in student_objects:
-            # Each student favorites 2-5 random events
-            num_favorites = _rng.randint(2, 5)
-            favorite_events = _rng.sample([e for e, _ in event_objects], min(num_favorites, len(event_objects)))
-            
-            for event in favorite_events:
-                favorite = FavoriteEvent(
-                    user_id=student.id,
-                    event_id=event.id
-                )
-                session.add(favorite)
-                favorite_count += 1
-        
-        session.flush()
+
+        favorite_count = _create_favorites(session, event_objects, student_objects)
         print(f"   Created {favorite_count} favorites")
         
         session.commit()
-        
-        print("\n✅ Database seeding completed successfully!")
-        print("\n📋 Test accounts:")
-        print("   Students:")
-        for s in STUDENTS:
-            print(f"      - {s['email']}")
-        print("   Organizers:")
-        for o in ORGANIZERS:
-            print(f"      - {o['email']}")
-        print("   Admins:")
-        for a in ADMINS:
-            print(f"      - {a['email']}")
-        print("   Passwords are intentionally omitted from logs.")
+
+        _print_seed_summary()
         
     except Exception as e:
         session.rollback()

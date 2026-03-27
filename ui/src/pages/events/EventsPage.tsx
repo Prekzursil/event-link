@@ -331,6 +331,21 @@ export function EventsPage() {
     </div>
   );
 
+  const renderEmptyState = () => (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
+      <h3 className="text-lg font-semibold">{t.events.noResultsTitle}</h3>
+      <p className="mt-2 text-muted-foreground">
+        {t.events.noResultsDescription}
+      </p>
+      {hasActiveFilters && (
+        <Button variant="outline" className="mt-4" onClick={clearFilters}>
+          {t.events.clearFilters}
+        </Button>
+      )}
+    </div>
+  );
+
   const clearFilters = () => {
     setSearchParams({});
   };
@@ -558,18 +573,7 @@ export function EventsPage() {
       {isLoading ? (
         <LoadingPage message={t.events.loading} />
       ) : events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">{t.events.noResultsTitle}</h3>
-          <p className="mt-2 text-muted-foreground">
-            {t.events.noResultsDescription}
-          </p>
-          {hasActiveFilters && (
-            <Button variant="outline" className="mt-4" onClick={clearFilters}>
-              {t.events.clearFilters}
-            </Button>
-          )}
-        </div>
+        renderEmptyState()
       ) : (
         <>
           {renderEventsGrid()}

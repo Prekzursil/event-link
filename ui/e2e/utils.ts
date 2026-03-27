@@ -1,4 +1,5 @@
 import { execFileSync } from 'node:child_process';
+import { existsSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { expect, type Page } from '@playwright/test';
@@ -14,8 +15,8 @@ const resetTokenTableName = `${credentialFieldId}_reset_${tokenFragment}s`;
 const resetKeyField = tokenFragment;
 const accessStorageKey = `access_${tokenFragment}`;
 const refreshStorageKey = `refresh_${tokenFragment}`;
-const SAFE_DOCKER_PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
-const DOCKER_ENV = { ...process.env, PATH: SAFE_DOCKER_PATH };
+const DOCKER_CANDIDATES = ['/usr/bin/docker', '/usr/local/bin/docker'] as const;
+const dockerBinary = DOCKER_CANDIDATES.find((candidate) => existsSync(candidate)) ?? DOCKER_CANDIDATES[0];
 
 export function repoRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -75,7 +76,7 @@ export function formatDateTimeLocal(date: Date): string {
 
 export function hasDockerCompose(): boolean {
   try {
-    execFileSync('docker', ['compose', 'version'], { env: DOCKER_ENV, stdio: 'ignore' });
+    execFileSync(dockerBinary, ['compose', 'version'], { stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -109,9 +110,9 @@ LIMIT 1;
   const root = repoRoot();
   for (let attempt = 1; attempt <= 20; attempt++) {
     const output = execFileSync(
-      'docker',
+      dockerBinary,
       ['compose', 'exec', '-T', 'db', 'psql', '-U', 'eventlink', '-d', 'eventlink', '-tAc', sql],
-      { cwd: root, encoding: 'utf8', env: DOCKER_ENV },
+      { cwd: root, encoding: 'utf8' },
     );
     const resetLinkCode = output.trim();
     if (resetLinkCode) return resetLinkCode;

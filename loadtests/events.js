@@ -14,7 +14,7 @@ export const options = {
   },
 };
 
-export default function () {
+export default function runEventsLoadtest() {
   const res = http.get(`${BASE_URL}/api/events?page=1&page_size=10`);
   check(res, {
     'status 200': (r) => r.status === 200,
