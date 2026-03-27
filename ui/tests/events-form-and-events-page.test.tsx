@@ -326,6 +326,54 @@ describe('events page and event form branch coverage', () => {
     fireEvent.click(requireElement(screen.queryByRole('button', { name: /Clear range/i }), 'clear range button'));
   }, 20000);
 
+  it('covers EventsPage recommendation panel fallback and cleanup branches', async () => {
+    let resolveRecommended:
+      | ((value: { items: ReturnType<typeof makeEvent>[]; total: number; page: number; page_size: number; total_pages: number }) => void)
+      | undefined;
+    let rejectFavorites: ((reason?: unknown) => void) | undefined;
+
+    eventServiceMock.getEvents.mockImplementation(async (filters: { sort?: string; page_size?: number }) => {
+      if (filters?.sort === 'recommended' && filters?.page_size === 4) {
+        return await new Promise((resolve) => {
+          resolveRecommended = resolve as typeof resolveRecommended;
+        });
+      }
+      return { items: [makeEvent(41, 'Cleanup event')], total: 1, page: 1, page_size: 12, total_pages: 1 };
+    });
+    eventServiceMock.getFavorites.mockReturnValueOnce(
+      new Promise((_, reject) => {
+        rejectFavorites = reject;
+      }),
+    );
+
+    const pendingRender = renderLanguageRoute('/events', '/events', <EventsPage />);
+    await screen.findByText(/Cleanup event/i);
+    pendingRender.unmount();
+    resolveRecommended?.({
+      items: [makeEvent(91, 'Late recommended event')],
+      total: 1,
+      page: 1,
+      page_size: 4,
+      total_pages: 1,
+    });
+    rejectFavorites?.(new Error('late-favorites-fail'));
+    await Promise.resolve();
+
+    cleanup();
+    eventServiceMock.getEvents.mockImplementation(async (filters: { sort?: string; page_size?: number }) => {
+      if (filters?.sort === 'recommended' && filters?.page_size === 4) {
+        throw new Error('recommended-panel-fail');
+      }
+      return { items: [makeEvent(42, 'Fallback event')], total: 1, page: 1, page_size: 12, total_pages: 1 };
+    });
+    eventServiceMock.getFavorites.mockRejectedValueOnce(new Error('favorites-panel-fail'));
+
+    renderLanguageRoute('/events', '/events', <EventsPage />);
+    await screen.findByText(/Fallback event/i);
+    await waitFor(() => expect(eventServiceMock.getFavorites).toHaveBeenCalled());
+    expect(screen.queryByText(/Late recommended event/i)).not.toBeInTheDocument();
+  });
+
   it('covers EventFormPage create flow with suggest/apply and validation branches', async () => {
     renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 

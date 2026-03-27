@@ -22,6 +22,8 @@ validate_repo_full_name = _security_helpers.validate_repo_full_name
 build_https_url = _security_helpers.build_https_url
 
 DEEPSCAN_HOST = "deepscan.io"
+DEEPSOURCE_HOST = "app.deepsource.com"
+DEEPSOURCE_CONTEXT_PREFIX = "DeepSource:"
 TOTAL_KEYS = {
     "count",
     "hits",
@@ -195,6 +197,46 @@ def _is_dashboard_url(raw_url: str) -> bool:
     return parsed.path.rstrip("/") == "/dashboard" and "prid=" in parsed.fragment
 
 
+def _matching_statuses(status_payload: dict[str, Any], *, prefix: str) -> list[dict[str, Any]]:
+    return [
+        status
+        for status in status_payload.get("statuses") or []
+        if str(status.get("context") or "").strip().startswith(prefix)
+    ]
+
+
+def _unsuccessful_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [status for status in statuses if str(status.get("state") or "").strip().lower() != "success"]
+
+
+def _first_status_target_url(statuses: list[dict[str, Any]], *, allowed_host_suffixes: set[str]) -> str | None:
+    for status in statuses:
+        target_url = str(status.get("target_url") or status.get("targetUrl") or "").strip()
+        if target_url:
+            return normalize_https_url(target_url, allowed_host_suffixes=allowed_host_suffixes)
+    return None
+
+
+def _status_finding(status: dict[str, Any]) -> str:
+    context = str(status.get("context") or "").strip()
+    description = str(status.get("description") or "").strip() or "status not successful"
+    return f"{context}: {description}"
+
+
+def _deepsource_status_summary(status_payload: dict[str, Any]) -> tuple[int, str | None, list[str]] | None:
+    matches = _matching_statuses(status_payload, prefix=DEEPSOURCE_CONTEXT_PREFIX)
+    if not matches:
+        return None
+
+    failing = _unsuccessful_statuses(matches)
+    findings = [_status_finding(status) for status in failing]
+    source_url = _first_status_target_url(
+        [*failing, *matches],
+        allowed_host_suffixes={DEEPSOURCE_HOST},
+    )
+    return len(failing), source_url, findings
+
+
 def _resolve_open_issues(
     *,
     token: str,
@@ -202,7 +244,7 @@ def _resolve_open_issues(
     repo: str,
     sha: str,
     github_token: str,
-) -> tuple[int, str]:
+) -> tuple[int, str] | tuple[int, str | None, list[str]]:
     if open_issues_url:
         analysis_url = (
             _resolve_analysis_url_from_dashboard(open_issues_url, token)
@@ -212,12 +254,19 @@ def _resolve_open_issues(
     else:
         owner, repo_name = validate_repo_full_name(repo)
         safe_sha = validate_commit_sha(sha)
-        dashboard_url = _wait_for_deepscan_dashboard_url(
+        status_payload = _github_status_payload(
             owner=owner,
             repo=repo_name,
             sha=safe_sha,
             github_token=github_token,
         )
+        try:
+            dashboard_url = _deepscan_dashboard_url(status_payload)
+        except RuntimeError:
+            deepsource_summary = _deepsource_status_summary(status_payload)
+            if deepsource_summary is not None:
+                return deepsource_summary
+            raise
         analysis_url = _resolve_analysis_url_from_dashboard(dashboard_url, token)
 
     analysis_payload = _request_json(analysis_url, token)
@@ -260,7 +309,7 @@ def _validated_open_issues_url(raw_url: str, findings: list[str]) -> str | None:
     if not raw_url:
         return None
     try:
-        return normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST})
+        return normalize_https_url(raw_url, allowed_host_suffixes={DEEPSCAN_HOST, DEEPSOURCE_HOST})
     except ValueError as exc:
         findings.append(str(exc))
         return None
@@ -305,18 +354,24 @@ def _evaluate_deepscan(
         return "fail", None, findings, open_issues_url
 
     try:
-        open_issues, source_url = resolver(
+        resolved = resolver(
             token=token,
             open_issues_url=open_issues_url,
             repo=repo,
             sha=sha,
             github_token=github_token,
         )
+        if len(resolved) == 3:
+            open_issues, source_url, resolver_findings = resolved
+        else:
+            open_issues, source_url = resolved
+            resolver_findings = []
     except Exception as exc:  # pragma: no cover - network/runtime surface
         return "fail", None, [*findings, f"DeepScan API request failed: {exc}"], open_issues_url
 
     if open_issues != 0:
-        return "fail", open_issues, [*findings, f"DeepScan reports {open_issues} open issues (expected 0)."], source_url
+        issue_findings = resolver_findings or [f"DeepScan reports {open_issues} open issues (expected 0)."]
+        return "fail", open_issues, [*findings, *issue_findings], source_url
     return "pass", open_issues, findings, source_url
 
 

@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo } from 'react';
+import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import { recordInteractions, type InteractionEventIn } from '@/services/analytics.service';
@@ -40,9 +40,108 @@ const ignoreInteractionError = () => undefined;
 const RECOMMENDATIONS_ENABLED =
   (import.meta.env.VITE_FEATURE_RECOMMENDATIONS ?? 'true').toLowerCase() !== 'false';
 const CALENDAR_MEDIA_QUERY = '(min-width: 640px)';
+type EventsPageFilters = EventFilters & {
+  tags: string[];
+  page: number;
+  page_size: number;
+  sort: NonNullable<EventFilters['sort']>;
+};
 
 function readShowTwoMonthsCalendar() {
   return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
+}
+
+function bindCalendarMedia(listener: (matches: boolean) => void): (() => void) | undefined {
+  const media = globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY);
+  if (
+    !media ||
+    typeof media.addEventListener !== 'function' ||
+    typeof media.removeEventListener !== 'function'
+  ) {
+    return undefined;
+  }
+  const handler = (event: MediaQueryListEvent) => listener(event.matches);
+  media.addEventListener('change', handler);
+  return () => media.removeEventListener('change', handler);
+}
+
+function buildEventsListInteractions(
+  events: Event[],
+  filters: EventsPageFilters,
+  hasActiveFilters: boolean,
+): InteractionEventIn[] {
+  const interactions: InteractionEventIn[] = events.map((event, index) => ({
+    interaction_type: 'impression',
+    event_id: event.id,
+    meta: {
+      source: 'events_list',
+      position: index,
+      page: filters.page,
+      sort: filters.sort,
+    },
+  }));
+  if (filters.page !== 1 || !hasActiveFilters) {
+    return interactions;
+  }
+  if (filters.search) {
+    interactions.unshift({
+      interaction_type: 'search',
+      meta: {
+        query: filters.search,
+        category: filters.category || undefined,
+        city: filters.city || undefined,
+        location: filters.location || undefined,
+        tags: filters.tags.slice(0, 10),
+        sort: filters.sort,
+      },
+    });
+    return interactions;
+  }
+  interactions.unshift({
+    interaction_type: 'filter',
+    meta: {
+      category: filters.category || undefined,
+      city: filters.city || undefined,
+      location: filters.location || undefined,
+      tags: filters.tags.slice(0, 10),
+      start_date: filters.start_date || undefined,
+      end_date: filters.end_date || undefined,
+      sort: filters.sort,
+    },
+  });
+  return interactions;
+}
+
+async function loadRecommendationPanel(): Promise<{ recommendations: Event[]; favoriteIds: Set<number> }> {
+  const [recommendationsResult, favoritesResult] = await Promise.allSettled([
+    eventService.getEvents({ page: 1, page_size: 4, sort: 'recommended' }),
+    eventService.getFavorites(),
+  ]);
+  const recommendations =
+    recommendationsResult.status === 'fulfilled' ? recommendationsResult.value.items : [];
+  const favoriteIds =
+    favoritesResult.status === 'fulfilled'
+      ? new Set(favoritesResult.value.items.map((event) => event.id))
+      : new Set<number>();
+  return { recommendations, favoriteIds };
+}
+
+function syncRecommendationPanel(
+  onLoaded: (payload: { recommendations: Event[]; favoriteIds: Set<number> }) => void,
+): () => void {
+  let cancelled = false;
+  void loadRecommendationPanel().then((payload) => {
+    if (!cancelled) {
+      onLoaded(payload);
+    }
+  });
+  return () => {
+    cancelled = true;
+  };
+}
+
+function shouldLoadRecommendations(isAuthenticated: boolean, role: string | undefined): boolean {
+  return isAuthenticated && role === 'student' && RECOMMENDATIONS_ENABLED;
 }
 
 export function EventsPage() {
@@ -61,18 +160,7 @@ export function EventsPage() {
   const dateFnsLocale = useMemo(() => getDateFnsLocale(language), [language]);
 
   useEffect(() => {
-    const media = globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY);
-    if (
-      !media ||
-      typeof media.addEventListener !== 'function' ||
-      typeof media.removeEventListener !== 'function'
-    ) {
-      return;
-    }
-
-    const handler = (e: MediaQueryListEvent) => setShowTwoMonthsCalendar(e.matches);
-    media.addEventListener('change', handler);
-    return () => media.removeEventListener('change', handler);
+    return bindCalendarMedia(setShowTwoMonthsCalendar);
   }, []);
 
   const categoryOptions = useMemo(
@@ -97,14 +185,14 @@ export function EventsPage() {
   const sortParam = searchParams.get('sort') || '';
   const page = Number.parseInt(searchParams.get('page') || '1', 10);
   const page_size = Number.parseInt(searchParams.get('page_size') || '12', 10);
-  const defaultSort: EventFilters['sort'] =
+  const defaultSort: EventsPageFilters['sort'] =
     isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED
       ? 'recommended'
       : 'time';
-  const sort: EventFilters['sort'] =
+  const sort: EventsPageFilters['sort'] =
     sortParam === 'recommended' || sortParam === 'time' ? sortParam : defaultSort;
 
-  const filters = useMemo(
+  const filters = useMemo<EventsPageFilters>(
     () => ({
       search,
       category,
@@ -131,14 +219,15 @@ export function EventsPage() {
     return `${startLabel} - ${endLabel}`;
   }, [dateFnsLocale, filters.end_date, filters.start_date, t.events.dateRangePlaceholder]);
 
-  const hasActiveFilters =
+  const hasActiveFilters = Boolean(
     filters.search ||
-    filters.category ||
-    filters.start_date ||
-    filters.end_date ||
-    filters.city ||
-    filters.location ||
-    filters.tags.length > 0;
+      filters.category ||
+      filters.start_date ||
+      filters.end_date ||
+      filters.city ||
+      filters.location ||
+      filters.tags.length > 0,
+  );
   const handleCategoryChange = (value: string) => {
     updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
   };
@@ -202,74 +291,17 @@ export function EventsPage() {
   useEffect(() => {
     if (!events.length) return;
     const timer = globalThis.setTimeout(() => {
-      const interactions: InteractionEventIn[] = events.map((event, index) => ({
-        interaction_type: 'impression',
-        event_id: event.id,
-          meta: {
-            source: 'events_list',
-            position: index,
-            page: filters.page,
-            sort: filters.sort,
-          },
-        }));
-
-      if (filters.page === 1 && hasActiveFilters) {
-          if (filters.search) {
-            interactions.unshift({
-              interaction_type: 'search',
-              meta: {
-                query: filters.search,
-                category: filters.category || undefined,
-                city: filters.city || undefined,
-                location: filters.location || undefined,
-                tags: filters.tags.slice(0, 10),
-                sort: filters.sort,
-              },
-            });
-          } else {
-          interactions.unshift({
-            interaction_type: 'filter',
-              meta: {
-                category: filters.category || undefined,
-                city: filters.city || undefined,
-                location: filters.location || undefined,
-                tags: filters.tags.slice(0, 10),
-                start_date: filters.start_date || undefined,
-                end_date: filters.end_date || undefined,
-                sort: filters.sort,
-              },
-            });
-          }
-      }
-
-      void recordInteractions(interactions);
+      void recordInteractions(buildEventsListInteractions(events, filters, hasActiveFilters));
     }, 400);
     return () => globalThis.clearTimeout(timer);
   }, [events, filters, hasActiveFilters]);
 
   useEffect(() => {
-    if (!isAuthenticated || user?.role !== 'student' || !RECOMMENDATIONS_ENABLED) return;
-    
-    const loadRecommendations = async () => {
-      try {
-        const response = await eventService.getEvents({ page: 1, page_size: 4, sort: 'recommended' });
-        setRecommendations(response.items);
-      } catch {
-        // Silent fail for recommendations
-      }
-    };
-
-    const loadFavorites = async () => {
-      try {
-        const response = await eventService.getFavorites();
-        setFavorites(new Set(response.items.map((e) => e.id)));
-      } catch {
-        // Silent fail
-      }
-    };
-
-    loadRecommendations();
-    loadFavorites();
+    if (!shouldLoadRecommendations(isAuthenticated, user?.role)) return;
+    return syncRecommendationPanel(({ recommendations: nextRecommendations, favoriteIds }) => {
+      setRecommendations(nextRecommendations);
+      setFavorites(favoriteIds);
+    });
   }, [isAuthenticated, user?.role]);
 
   const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
@@ -346,6 +378,42 @@ export function EventsPage() {
   const clearFilters = () => {
     setSearchParams({});
   };
+
+  let eventsContent: ReactNode;
+  if (isLoading) {
+    eventsContent = <LoadingPage message={t.events.loading} />;
+  } else if (events.length === 0) {
+    eventsContent = renderEmptyState();
+  } else {
+    eventsContent = (
+      <>
+        {renderEventsGrid()}
+        {totalPages > 1 && (
+          <div className="mt-8 flex items-center justify-center gap-2">
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={filters.page === 1}
+              onClick={() => updateFilters({ page: filters.page - 1 })}
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <span className="text-sm">
+              {t.events.pageLabel} {filters.page} {t.events.pageOf} {totalPages}
+            </span>
+            <Button
+              variant="outline"
+              size="icon"
+              disabled={filters.page === totalPages}
+              onClick={() => updateFilters({ page: filters.page + 1 })}
+            >
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
+      </>
+    );
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -567,40 +635,7 @@ export function EventsPage() {
       </div>
 
       {/* Events Grid */}
-      {isLoading ? (
-        <LoadingPage message={t.events.loading} />
-      ) : events.length === 0 ? (
-        renderEmptyState()
-      ) : (
-        <>
-          {renderEventsGrid()}
-
-          {/* Pagination */}
-          {totalPages > 1 && (
-            <div className="mt-8 flex items-center justify-center gap-2">
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={filters.page === 1}
-                onClick={() => updateFilters({ page: filters.page - 1 })}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <span className="text-sm">
-                {t.events.pageLabel} {filters.page} {t.events.pageOf} {totalPages}
-              </span>
-              <Button
-                variant="outline"
-                size="icon"
-                disabled={filters.page === totalPages}
-                onClick={() => updateFilters({ page: filters.page + 1 })}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
-          )}
-        </>
-      )}
+      {eventsContent}
     </div>
   );
 }

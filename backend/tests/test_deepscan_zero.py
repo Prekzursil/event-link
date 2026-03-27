@@ -134,6 +134,68 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
     assert source_url == "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
     assert findings == ["DeepScan reports 2 open issues (expected 0)."]
 
+
+def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+
+    def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+        assert owner == "Prekzursil"
+        assert repo == "event-link"
+        assert sha == "6d64df2d1be6d0d1225294b9ff979b98a5e712bf"
+        assert github_token == "gh-token"
+        return {
+            "statuses": [
+                {
+                    "context": "DeepSource: JavaScript",
+                    "state": "failure",
+                    "description": "Analysis failed: Blocking issues or failing metrics found",
+                    "target_url": (
+                        "https://app.deepsource.com/gh/Prekzursil/event-link/"
+                        "run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
+                    ),
+                }
+            ]
+        }
+
+    monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
+
+    resolved = module._resolve_open_issues(
+        token="",
+        open_issues_url=None,
+        repo="Prekzursil/event-link",
+        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        github_token="gh-token",
+    )
+
+    assert resolved == (
+        1,
+        "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
+        ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
+    )
+
+
+def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
+    module = _load_module()
+
+    status, open_issues, findings, source_url = module._evaluate_deepscan(
+        token="",
+        open_issues_url=None,
+        repo="Prekzursil/event-link",
+        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        github_token="gh-token",
+        findings=[],
+        resolver=lambda **_kwargs: (
+            1,
+            "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
+            ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
+        ),
+    )
+
+    assert status == "fail"
+    assert open_issues == 1
+    assert source_url == "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
+    assert findings == ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"]
+
 def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
     dashboard_url = (
