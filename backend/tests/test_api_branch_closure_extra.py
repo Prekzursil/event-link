@@ -5,7 +5,7 @@ from types import SimpleNamespace
 
 from fastapi import Request
 
-from app import api, auth, models, schemas
+from app import api, models, schemas
 
 
 def _auth_header(token: str) -> dict[str, str]:

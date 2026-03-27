@@ -253,7 +253,7 @@ class StudentProfileResponse(BaseModel):
     faculty: Optional[str] = None
     study_level: Optional[StudyLevel] = None
     study_year: Optional[int] = None
-    interest_tags: List[TagResponse] = []
+    interest_tags: List[TagResponse] = Field(default_factory=list)
 
 
 class StudentProfileUpdate(BaseModel):
@@ -276,8 +276,8 @@ class OrganizerSummaryResponse(BaseModel):
 
 
 class PersonalizationSettingsResponse(BaseModel):
-    hidden_tags: List[TagResponse] = []
-    blocked_organizers: List[OrganizerSummaryResponse] = []
+    hidden_tags: List[TagResponse] = Field(default_factory=list)
+    blocked_organizers: List[OrganizerSummaryResponse] = Field(default_factory=list)
 
 
 class NotificationPreferencesResponse(BaseModel):
@@ -330,7 +330,7 @@ class AdminEventResponse(BaseModel):
     owner_id: int
     owner_email: EmailStr
     owner_name: Optional[str] = None
-    tags: List[TagResponse] = []
+    tags: List[TagResponse] = Field(default_factory=list)
     seats_taken: int = 0
     status: Optional[str] = None
     publish_at: Optional[datetime] = None

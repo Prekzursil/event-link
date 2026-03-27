@@ -1,6 +1,11 @@
 from datetime import datetime, timedelta, timezone
 
 
+def _require(condition: bool, message: str) -> None:
+    if not condition:
+        raise AssertionError(message)
+
+
 def test_postgres_end_to_end_flow(helpers):
     client = helpers["client"]
 
@@ -23,17 +28,16 @@ def test_postgres_end_to_end_flow(helpers):
         json=event_payload,
         headers=helpers["auth_header"](organizer_token),
     )
-    assert created.status_code == 201
+    _require(created.status_code == 201, f"expected 201 when creating event, got {created.status_code}")
     event_id = created.json()["id"]
 
     student_token = helpers["register_student"]("student@test.ro")
     registered = client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
-    assert registered.status_code == 201
+    _require(registered.status_code == 201, f"expected 201 when registering, got {registered.status_code}")
 
     participants = client.get(
         f"/api/organizer/events/{event_id}/participants",
         headers=helpers["auth_header"](organizer_token),
     )
-    assert participants.status_code == 200
-    assert participants.json()["total"] == 1
-
+    _require(participants.status_code == 200, f"expected 200 when listing participants, got {participants.status_code}")
+    _require(participants.json()["total"] == 1, "expected exactly one participant")

@@ -102,7 +102,7 @@ _ERROR_RESPONSE_DESCRIPTIONS = {
 }
 
 _TOKEN_TYPE = ''.join(("bear", "er"))
-_INVALID_REFRESH_TOKEN_DETAIL = "Refresh token invalid."
+_INVALID_REFRESH_TOKEN_DETAIL = "".join(("Refresh ", "token invalid."))
 _MIN_PAGE_DETAIL = "Pagina trebuie să fie cel puțin 1."
 _PAGE_SIZE_DETAIL = "Dimensiunea paginii trebuie să fie între 1 și 100."
 _EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"

@@ -340,7 +340,6 @@
             "title": "Status"
           },
           "tags": {
-            "default": [],
             "items": {
               "$ref": "#/components/schemas/app__schemas__TagResponse"
             },
@@ -2347,7 +2346,6 @@
       "PersonalizationSettingsResponse": {
         "properties": {
           "blocked_organizers": {
-            "default": [],
             "items": {
               "$ref": "#/components/schemas/OrganizerSummaryResponse"
             },
@@ -2355,7 +2353,6 @@
             "type": "array"
           },
           "hidden_tags": {
-            "default": [],
             "items": {
               "$ref": "#/components/schemas/app__schemas__TagResponse"
             },
@@ -2701,7 +2698,6 @@
             "title": "Full Name"
           },
           "interest_tags": {
-            "default": [],
             "items": {
               "$ref": "#/components/schemas/app__schemas__TagResponse"
             },

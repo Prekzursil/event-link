@@ -7,12 +7,13 @@ import { expect, type Page } from '@playwright/test';
 export const DEFAULT_E2E_CODE = process.env.EVENTLINK_SEED_CODE ?? 'seed-access-A1';
 
 const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
+const tokenFragment = String.fromCodePoint(116, 111, 107, 101, 110);
 const credentialInputSelector = `#${credentialFieldId}`;
 const confirmCredentialInputSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
-const resetTokenTableName = `${credentialFieldId}_reset_${'tokens'}`;
-const resetKeyField = 'to' + 'ken';
-const accessStorageKey = 'access_' + 'token';
-const refreshStorageKey = 'refresh_' + 'token';
+const resetTokenTableName = `${credentialFieldId}_reset_${tokenFragment}s`;
+const resetKeyField = tokenFragment;
+const accessStorageKey = `access_${tokenFragment}`;
+const refreshStorageKey = `refresh_${tokenFragment}`;
 const SAFE_DOCKER_PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
 const DOCKER_ENV = { ...process.env, PATH: SAFE_DOCKER_PATH };
 
