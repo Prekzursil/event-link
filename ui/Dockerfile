@@ -5,7 +5,9 @@ WORKDIR /app
 COPY package.json package-lock.json ./
 RUN npm ci
 
-COPY . .
+COPY eslint.config.js index.html tsconfig.app.json tsconfig.json tsconfig.node.json vite.config.ts ./
+COPY public ./public
+COPY src ./src
 RUN npm run build
 
 FROM nginxinc/nginx-unprivileged:1.27-alpine
@@ -16,4 +18,3 @@ COPY nginx.conf /etc/nginx/conf.d/default.conf
 USER 101
 
 EXPOSE 8080
-

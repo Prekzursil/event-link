@@ -218,6 +218,13 @@ describe('layout and ui smoke', () => {
       expect(hasLight).toBe(true);
     });
 
+    await waitFor(() => {
+      expect(
+        screen
+          .getAllByRole('button', { name: /Theme|Tema/i })
+          .some((button) => !button.hasAttribute('disabled')),
+      ).toBe(true);
+    });
     fireEvent.mouseDown(getEnabledButton(/Theme|Tema/i, 'enabled theme trigger after light save'));
     fireEvent.click(getEnabledButton(/Dark|Întunecat/i, 'enabled dark button'));
     await waitFor(() => {

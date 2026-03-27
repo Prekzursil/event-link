@@ -614,7 +614,9 @@ export function AdminDashboardPage() {
                           variant="outline"
                           size="sm"
                           disabled={isReviewingCurrent}
-                          onClick={() => void handleReviewEvent(e.id)}
+                          onClick={() => {
+                            handleReviewEvent(e.id);
+                          }}
                         >
                           <ShieldCheck className="mr-2 h-4 w-4" />
                           {reviewActionLabel}

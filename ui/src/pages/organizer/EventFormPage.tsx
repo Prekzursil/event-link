@@ -102,21 +102,21 @@ export function EventFormPage() {
 
   useEffect(() => {
     if (isEditing && id) {
-      loadEvent(parseInt(id));
+      loadEvent(Number.parseInt(id, 10));
     }
   }, [id, isEditing, loadEvent]);
 
   const handleSuggest = async () => {
     setIsSuggesting(true);
     try {
-        const payload = {
-          title: formData.title.trim(),
-          description: formData.description.trim() || undefined,
-          category: formData.category || undefined,
-          city: formData.city.trim() || undefined,
-          location: formData.location.trim() || undefined,
-          start_time: formData.start_time ? new Date(formData.start_time).toISOString() : undefined,
-        };
+      const payload = {
+        title: formData.title.trim(),
+        description: formData.description.trim() || undefined,
+        category: formData.category || undefined,
+        city: formData.city.trim() || undefined,
+        location: formData.location.trim() || undefined,
+        start_time: formData.start_time ? new Date(formData.start_time).toISOString() : undefined,
+      };
       const res = await eventService.suggestEvent(payload);
       setSuggestion(res);
       toast({
@@ -153,6 +153,16 @@ export function EventFormPage() {
       title: t.eventForm.suggestionAppliedTitle,
       description: t.eventForm.suggestionAppliedDescription,
     });
+  };
+
+  const getSubmitLabel = () => {
+    if (isSaving) {
+      return t.eventForm.saving;
+    }
+    if (isEditing) {
+      return t.eventForm.saveChanges;
+    }
+    return t.eventForm.createButton;
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -214,6 +224,8 @@ export function EventFormPage() {
 
     setIsSaving(true);
     try {
+      const trimmedDescription = formData.description.trim();
+      const trimmedCoverUrl = formData.cover_url.trim();
       // Build data object, excluding empty optional fields
       const dataToSend: EventFormData = {
         title: formData.title.trim(),
@@ -227,18 +239,18 @@ export function EventFormPage() {
       };
 
       // Only add optional fields if they have values
-      if (formData.description && formData.description.trim()) {
-        dataToSend.description = formData.description.trim();
+      if (trimmedDescription) {
+        dataToSend.description = trimmedDescription;
       }
       if (formData.end_time) {
         dataToSend.end_time = new Date(formData.end_time).toISOString();
       }
-      if (formData.cover_url && formData.cover_url.trim()) {
-        dataToSend.cover_url = formData.cover_url.trim();
+      if (trimmedCoverUrl) {
+        dataToSend.cover_url = trimmedCoverUrl;
       }
 
       if (isEditing && id) {
-        await eventService.updateEvent(parseInt(id), dataToSend);
+        await eventService.updateEvent(Number.parseInt(id, 10), dataToSend);
         toast({
           title: t.common.success,
           description: t.eventForm.updatedDescription,
@@ -356,9 +368,7 @@ export function EventFormPage() {
 
               <div>
                 <div className="text-xs font-medium text-muted-foreground">{t.eventForm.suggestedTags}</div>
-                {!suggestion.suggested_tags.length ? (
-                  <div className="text-sm">{t.eventForm.suggestionNone}</div>
-                ) : (
+                {suggestion.suggested_tags.length ? (
                   <div className="mt-1 flex flex-wrap gap-2">
                     {suggestion.suggested_tags.map((tag) => (
                       <Badge key={tag} variant="secondary">
@@ -366,6 +376,8 @@ export function EventFormPage() {
                       </Badge>
                     ))}
                   </div>
+                ) : (
+                  <div className="text-sm">{t.eventForm.suggestionNone}</div>
                 )}
               </div>
 
@@ -530,7 +542,7 @@ export function EventFormPage() {
                   onChange={(e) =>
                     setFormData((prev) => ({
                       ...prev,
-                      max_seats: e.target.value ? parseInt(e.target.value) : undefined,
+                      max_seats: e.target.value ? Number.parseInt(e.target.value, 10) : undefined,
                     }))
                   }
                   placeholder={t.eventForm.placeholders.maxSeatsExample}
@@ -608,11 +620,7 @@ export function EventFormPage() {
               </Button>
               <Button type="submit" disabled={isSaving}>
                 <Save className="mr-2 h-4 w-4" />
-                {isSaving
-                  ? t.eventForm.saving
-                  : isEditing
-                    ? t.eventForm.saveChanges
-                    : t.eventForm.createButton}
+                {getSubmitLabel()}
               </Button>
             </div>
           </form>

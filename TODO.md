@@ -1,6 +1,7 @@
 # TODO (Event Link)
 
 ## High
+
 - [x] DX: align docs/scripts with React+Vite UI (remove stale legacy tooling references; fix `start.bat`).
 - [x] Docker: add `ui/Dockerfile` + `ui/.dockerignore` + SPA nginx config so `docker compose up --build` works again.
 - [x] React UI: add organizer upgrade flow (invite code) wired to `POST /organizer/upgrade`.
@@ -73,6 +74,7 @@
 - [x] Trust & safety: spam/phishing detection and suspicious organizer/event scoring + admin review tooling.
 
 ## Medium
+
 - [x] [EL-7] Organizer edit event: allow organizers to edit details of events they created (title, description, time, capacity, etc.).
 - [x] [EL-8] Organizer delete event: allow organizers to delete/cancel an event they created when it will no longer take place.
 - [x] [EL-9] Organizer event dashboard: provide a page where organizers can see a list of all events they have created for centralized management.
@@ -118,6 +120,7 @@
 - [x] CI caching for npm/pip to speed up pipelines and document cache keys.
 
 ## Low
+
 - [x] [EL-17] Search events by name: let students search events by title to quickly find something specific.
 - [x] [EL-18] Filter events by category: allow students to filter events by category (e.g., technical, cultural, sports) to see only relevant events.
 - [x] [EL-19] Registration confirmation email: send an email notification to students when they successfully register for an event.

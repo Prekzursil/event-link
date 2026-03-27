@@ -8,18 +8,19 @@ export function normalizeThemePreference(value: unknown): ThemePreference {
 }
 
 export function getStoredThemePreference(): ThemePreference {
-  if (typeof window === 'undefined') return 'system';
+  if (!globalThis.window) return 'system';
   return normalizeThemePreference(globalThis.localStorage.getItem(STORAGE_KEY));
 }
 
 export function storeThemePreference(preference: ThemePreference) {
-  if (typeof window === 'undefined') return;
+  if (!globalThis.window) return;
   globalThis.localStorage.setItem(STORAGE_KEY, preference);
 }
 
 export function getSystemTheme(): 'light' | 'dark' {
-  if (typeof window === 'undefined') return 'light';
-  return window.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
+  const browserWindow = globalThis.window;
+  if (!browserWindow) return 'light';
+  return browserWindow.matchMedia?.('(prefers-color-scheme: dark)')?.matches ? 'dark' : 'light';
 }
 
 export function resolveTheme(preference: ThemePreference): 'light' | 'dark' {
@@ -36,17 +37,20 @@ export function applyThemePreference(preference: ThemePreference) {
 }
 
 export function subscribeToSystemThemeChanges(onResolvedThemeChange: (theme: 'light' | 'dark') => void) {
-  if (typeof window === 'undefined' || !window.matchMedia) return () => {};
+  const browserWindow = globalThis.window;
+  if (!browserWindow?.matchMedia) return () => {};
 
-  const media = window.matchMedia('(prefers-color-scheme: dark)');
+  const media = browserWindow.matchMedia('(prefers-color-scheme: dark)');
   const handler = () => onResolvedThemeChange(media.matches ? 'dark' : 'light');
 
-  if (media.addEventListener) {
+  if (typeof media.addEventListener === 'function') {
     media.addEventListener('change', handler);
     return () => media.removeEventListener('change', handler);
   }
 
-  // Safari < 14
-  media.addListener(handler);
-  return () => media.removeListener(handler);
+  const previousOnChange = media.onchange;
+  media.onchange = handler;
+  return () => {
+    media.onchange = previousOnChange;
+  };
 }

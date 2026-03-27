@@ -101,7 +101,7 @@ export function EventCard({
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.location.href = `/organizer/events/${event.id}/edit`;
+                globalThis.location.href = `/organizer/events/${event.id}/edit`;
               }}
             >
               <Pencil className="h-4 w-4" />

@@ -119,16 +119,16 @@ class EventUpdate(BaseModel):
 class EventResponse(BaseModel):
     id: int
     title: str
-    description: Optional[str]
-    category: Optional[str]
+    description: Optional[str] = None
+    category: Optional[str] = None
     start_time: datetime
-    end_time: Optional[datetime]
-    city: Optional[str]
-    location: Optional[str]
-    max_seats: Optional[int]
-    cover_url: Optional[str]
+    end_time: Optional[datetime] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    max_seats: Optional[int] = None
+    cover_url: Optional[str] = None
     owner_id: int
-    owner_name: Optional[str]
+    owner_name: Optional[str] = None
     tags: List[TagResponse]
     seats_taken: int
     recommendation_reason: Optional[str] = None
@@ -148,15 +148,15 @@ class EventDetailResponse(EventResponse):
 class PublicEventResponse(BaseModel):
     id: int
     title: str
-    description: Optional[str]
-    category: Optional[str]
+    description: Optional[str] = None
+    category: Optional[str] = None
     start_time: datetime
-    end_time: Optional[datetime]
-    city: Optional[str]
-    location: Optional[str]
-    max_seats: Optional[int]
-    cover_url: Optional[str]
-    organizer_name: Optional[str]
+    end_time: Optional[datetime] = None
+    city: Optional[str] = None
+    location: Optional[str] = None
+    max_seats: Optional[int] = None
+    cover_url: Optional[str] = None
+    organizer_name: Optional[str] = None
     tags: List[TagResponse]
     seats_taken: int
 
@@ -175,7 +175,7 @@ class PaginatedPublicEvents(BaseModel):
 class ParticipantResponse(BaseModel):
     id: int
     email: EmailStr
-    full_name: Optional[str]
+    full_name: Optional[str] = None
     registration_time: datetime
     attended: bool
 
@@ -183,9 +183,9 @@ class ParticipantResponse(BaseModel):
 class ParticipantListResponse(BaseModel):
     event_id: int
     title: str
-    cover_url: Optional[str]
+    cover_url: Optional[str] = None
     seats_taken: int
-    max_seats: Optional[int]
+    max_seats: Optional[int] = None
     city: Optional[str] = None
     participants: list[ParticipantResponse]
     total: int
@@ -204,7 +204,7 @@ class OrganizerProfileResponse(OrganizerProfileBase):
     user_id: int
     email: EmailStr
     full_name: Optional[str] = None
-    events: List[EventResponse] = []
+    events: List[EventResponse] = Field(default_factory=list)
 
 
 class OrganizerProfileUpdate(OrganizerProfileBase):

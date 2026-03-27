@@ -184,4 +184,16 @@ describe('api client interceptors', () => {
 
     await expect(respHandler.rejected(error)).rejects.toEqual(error);
   });
+
+  it('propagates errors when no original request config is available', async () => {
+    const module = await import('@/services/api');
+    const respHandler = getResponseHandlers(module.api);
+
+    const error = {
+      config: undefined,
+      response: { status: 401 },
+    } as unknown as AxiosError;
+
+    await expect(respHandler.rejected(error)).rejects.toEqual(error);
+  });
 });

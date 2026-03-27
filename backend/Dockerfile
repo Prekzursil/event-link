@@ -8,7 +8,10 @@ WORKDIR /app
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY . /app
+COPY alembic.ini fixture_helpers.py main.py seed_data.py ./
+COPY alembic ./alembic
+COPY app ./app
+COPY scripts ./scripts
 RUN addgroup --system eventlink && adduser --system --ingroup eventlink eventlink && chown -R eventlink:eventlink /app
 
 USER eventlink

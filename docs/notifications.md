@@ -37,4 +37,3 @@ python backend/scripts/enqueue_scheduled_jobs.py --weekly-digest
 # hourly/daily
 python backend/scripts/enqueue_scheduled_jobs.py --filling-fast
 ```
-

@@ -18,7 +18,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
-export function LanguageProvider({ children }: { children: ReactNode }) {
+export function LanguageProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<LanguagePreference>(() => getStoredLanguagePreference());
   const [language, setLanguage] = useState<ResolvedLanguage>(() => resolveLanguage(getStoredLanguagePreference()));
 
@@ -48,4 +48,3 @@ export function useI18n() {
   }
   return ctx;
 }
-

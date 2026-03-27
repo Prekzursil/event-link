@@ -168,9 +168,9 @@ export function RegisterPage() {
               </div>
               {/* Password Requirements */}
               <div className="space-y-1 pt-2">
-                {passwordRequirements.map((req, index) => (
+                {passwordRequirements.map((req) => (
                   <div
-                    key={index}
+                    key={req.label}
                     className={`flex items-center gap-2 text-xs ${
                       req.met ? 'text-green-600' : 'text-muted-foreground'
                     }`}
@@ -223,4 +223,3 @@ export function RegisterPage() {
     </div>
   );
 }
-

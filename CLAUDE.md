@@ -5,11 +5,13 @@ This guide helps AI assistants understand the Event Link project structure, setu
 ## Project Overview
 
 Event Link is a full-stack event management platform that allows:
+
 - **Students**: Browse, search, register for events, manage favorites
 - **Organizers**: Create, manage, and track events with participant management
 - **Features**: Email notifications, calendar exports, recommendations, password reset
 
 **Tech Stack**:
+
 - Frontend: React + Vite + TypeScript + Tailwind (Radix UI components)
 - Backend: FastAPI + SQLAlchemy + PostgreSQL
 - Auth: JWT with access/refresh tokens
@@ -49,6 +51,7 @@ event-link/
 ## Key File Paths
 
 ### Backend Critical Files
+
 - **Entry**: `/backend/main.py`
 - **API Routes**: `/backend/app/api.py:1-1200` (all endpoints)
 - **Database Models**: `/backend/app/models.py:1-150` (User, Event, Registration, Tag, FavoriteEvent, PasswordResetToken)
@@ -57,6 +60,7 @@ event-link/
 - **Migrations**: `/backend/alembic/versions/` (4 migration files)
 
 ### Frontend Critical Files
+
 - **Entry**: `/ui/src/main.tsx`
 - **Routes**: `/ui/src/App.tsx` (react-router)
 - **Auth Context**: `/ui/src/contexts/AuthContext.tsx`
@@ -70,12 +74,14 @@ event-link/
 ### Backend (.topsecret or .env)
 
 **Required**:
+
 ```bash
 DATABASE_URL=postgresql+psycopg2://user:pass@localhost:5432/eventlink
 SECRET_KEY=<use: python -c "import secrets; print(secrets.token_urlsafe(32))">
 ```
 
 **Optional**:
+
 ```bash
 ALLOWED_ORIGINS=http://localhost:5173,http://127.0.0.1:5173,http://localhost:4200,http://127.0.0.1:4200
 AUTO_CREATE_TABLES=true           # Dev only
@@ -105,7 +111,8 @@ VITE_API_URL=http://localhost:8000
 
 ### Local Development
 
-#### Backend:
+#### Backend
+
 ```bash
 cd backend
 python -m venv .venv
@@ -115,10 +122,11 @@ alembic upgrade head  # Optional: apply migrations
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-**Health Check**: http://localhost:8000/api/health
-**Swagger Docs**: http://localhost:8000/docs
+**Health Check**: <http://localhost:8000/api/health>
+**Swagger Docs**: <http://localhost:8000/docs>
 
-#### Frontend:
+#### Frontend
+
 ```bash
 cd ui
 npm install
@@ -133,8 +141,9 @@ docker compose up --build
 ```
 
 Services:
-- Frontend: http://localhost:4200
-- Backend: http://localhost:8000
+
+- Frontend: <http://localhost:4200>
+- Backend: <http://localhost:8000>
 - PostgreSQL: localhost:5432
 
 ### Windows Helper
@@ -146,6 +155,7 @@ start.bat  # Opens two terminals for backend + frontend
 ## API Endpoints Summary
 
 ### Authentication
+
 - `POST /register` - User registration (student role)
 - `POST /login` - User login (returns access + refresh tokens)
 - `POST /refresh` - Refresh access token
@@ -154,6 +164,7 @@ start.bat  # Opens two terminals for backend + frontend
 - `POST /password/reset` - Confirm password reset
 
 ### Events
+
 - `GET /api/events` - List events (filters: search, category, date_from, date_to, location, tags, skip, limit)
 - `GET /api/events/{id}` - Event details
 - `POST /api/events` - Create event (organizer only)
@@ -163,6 +174,7 @@ start.bat  # Opens two terminals for backend + frontend
 - `GET /api/events/{id}/ics` - Export event as iCalendar
 
 ### Registration
+
 - `POST /api/events/{id}/register` - Register for event
 - `POST /api/events/{id}/register/resend` - Resend registration email
 - `DELETE /api/events/{id}/register` - Unregister from event
@@ -170,23 +182,27 @@ start.bat  # Opens two terminals for backend + frontend
 - `PUT /api/organizer/events/{id}/participants/{user_id}` - Update attendance (owner or admin)
 
 ### Admin
+
 - `GET /api/admin/stats` - Summary stats (registrations over time, popular tags)
 - `GET /api/admin/users` - List users + stats
 - `PATCH /api/admin/users/{id}` - Update user role/active flag
 - `GET /api/admin/events` - List events (including unpublished/deleted with filters)
 
 ### User Events
+
 - `GET /api/me/events` - User's registered events
 - `GET /api/me/favorites` - User's favorite events
 - `POST /api/events/{id}/favorite` - Add to favorites
 - `DELETE /api/events/{id}/favorite` - Remove from favorites
 
 ### Organizer
+
 - `GET /api/organizer/events` - User's created events
 - `GET /api/organizers/{id}` - Organizer profile
 - `PUT /api/organizers/me/profile` - Update organizer profile
 
 ### Utilities
+
 - `GET /api/recommendations` - Personalized event recommendations
 - `GET /api/me/calendar` - User's event calendar (iCalendar)
 - `GET /api/health` - Health check
@@ -196,11 +212,13 @@ start.bat  # Opens two terminals for backend + frontend
 ### Models (backend/app/models.py)
 
 **User**:
+
 - id, email (unique), hashed_password, name, role (student/organizator)
 - timestamps: created_at, updated_at
 - relationships: owned_events, registrations, favorite_events
 
 **Event**:
+
 - id, title, description, category, date, location, max_participants
 - owner_id (FK to User)
 - cover_url, organizer_name, organizer_website, is_published, publish_date
@@ -208,25 +226,30 @@ start.bat  # Opens two terminals for backend + frontend
 - relationships: owner, registrations, tags, favorited_by
 
 **Registration** (junction):
+
 - id, user_id (FK), event_id (FK), attended (boolean)
 - timestamp: registered_at
 - unique constraint: (user_id, event_id)
 
 **Tag**:
+
 - id, name (unique)
 - many-to-many with Event via event_tags
 
 **FavoriteEvent**:
+
 - id, user_id (FK), event_id (FK)
 - timestamp: created_at
 - unique constraint: (user_id, event_id)
 
 **PasswordResetToken**:
+
 - id, user_id (FK), token (unique), expires_at, used_at
 
 ### Migrations
 
 Use Alembic for schema changes:
+
 ```bash
 cd backend
 alembic revision --autogenerate -m "Description"
@@ -236,18 +259,21 @@ alembic upgrade head
 ## Testing
 
 ### Backend Unit Tests
+
 ```bash
 cd backend
 pytest
 ```
 
 ### Frontend Unit Tests
+
 ```bash
 cd ui
 npm test  # eslint + typecheck + build
 ```
 
 ### Load Tests (k6)
+
 ```bash
 K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 ```
@@ -278,16 +304,19 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 ### Debugging Tips
 
 **Backend**:
+
 - Check logs for request IDs and errors
 - Use `/docs` for interactive API testing
 - View SQL queries: `echo=True` in database.py
 
 **Frontend**:
+
 - Open browser DevTools Network tab
 - Check console for HTTP errors
 - Use React DevTools extension
 
 **Database**:
+
 - Connect: `psql $DATABASE_URL`
 - View tables: `\dt`
 - Check migrations: `alembic current`
@@ -295,6 +324,7 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 ## Architecture Patterns
 
 ### Backend
+
 - **Dependency Injection**: FastAPI's `Depends()` for database sessions
 - **Middleware**: CORS, request logging, request ID tracking
 - **Background Tasks**: Async email sending via `BackgroundTasks`
@@ -303,6 +333,7 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 - **ORM**: SQLAlchemy 2.0 with relationship loading strategies
 
 ### Frontend
+
 - **Routing**: react-router routes in `ui/src/App.tsx` (guarded routes via wrappers)
 - **State**: Auth state via `AuthContext` (`ui/src/contexts/AuthContext.tsx`)
 - **HTTP**: axios client in `ui/src/services/api.ts` with feature services per domain
@@ -321,21 +352,25 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 ## Common Issues & Solutions
 
 **Backend won't start**:
+
 - Check DATABASE_URL is correct
 - Ensure PostgreSQL is running
 - Verify .topsecret file exists with SECRET_KEY
 
 **Frontend can't connect**:
+
 - Verify backend is running on port 8000
 - Check CORS settings in backend config.py
 - Confirm `VITE_API_URL` (or fallback) points at the API base URL
 
 **Database migrations fail**:
+
 - Check for conflicting migrations: `alembic current`
 - Reset: `alembic downgrade base && alembic upgrade head`
 - Ensure no manual schema changes outside Alembic
 
 **Email not sending**:
+
 - Check EMAIL_ENABLED=true
 - Verify SMTP credentials are correct
 - View logs for SMTP errors

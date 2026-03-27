@@ -88,21 +88,20 @@ describe('lib helpers', () => {
     unsubscribeModern();
     expect(modernRemove).toHaveBeenCalledWith('change', modernHandler);
 
-    const legacyAdd = vi.fn();
-    const legacyRemove = vi.fn();
-    matchMediaMock.mockReturnValueOnce({
+    const legacyMedia = {
       matches: false,
-      addListener: legacyAdd,
-      removeListener: legacyRemove,
-    });
+      onchange: null as ((this: MediaQueryList, ev: MediaQueryListEvent) => void) | null,
+    };
+    matchMediaMock.mockReturnValueOnce(legacyMedia as MediaQueryList);
 
     const legacyCallback = vi.fn();
     const unsubscribeLegacy = subscribeToSystemThemeChanges(legacyCallback);
-    const legacyHandler = legacyAdd.mock.calls[0][0] as () => void;
-    legacyHandler();
+    const legacyHandler = legacyMedia.onchange;
+    expect(typeof legacyHandler).toBe('function');
+    legacyHandler?.call(legacyMedia as MediaQueryList, new Event('change') as MediaQueryListEvent);
     expect(legacyCallback).toHaveBeenCalledWith('light');
     unsubscribeLegacy();
-    expect(legacyRemove).toHaveBeenCalledWith(legacyHandler);
+    expect(legacyMedia.onchange).toBeNull();
   });
 
   it('covers language and theme guards outside browser globals', () => {

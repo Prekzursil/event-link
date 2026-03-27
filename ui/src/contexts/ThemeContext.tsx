@@ -16,7 +16,7 @@ interface ThemeContextType {
 
 const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
 
-export function ThemeProvider({ children }: { children: ReactNode }) {
+export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(getStoredThemePreference()));
 
@@ -53,4 +53,3 @@ export function useTheme() {
   }
   return ctx;
 }
-

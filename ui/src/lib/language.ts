@@ -11,12 +11,12 @@ export function normalizeLanguagePreference(value: unknown): LanguagePreference 
 }
 
 export function getStoredLanguagePreference(): LanguagePreference {
-  if (typeof window === 'undefined') return 'system';
+  if (!globalThis.window) return 'system';
   return normalizeLanguagePreference(globalThis.localStorage.getItem(STORAGE_KEY));
 }
 
 export function storeLanguagePreference(preference: LanguagePreference) {
-  if (typeof window === 'undefined') return;
+  if (!globalThis.window) return;
   globalThis.localStorage.setItem(STORAGE_KEY, preference);
 }
 
@@ -44,4 +44,3 @@ export function getIntlLocale(language: ResolvedLanguage): string {
 export function getDateFnsLocale(language: ResolvedLanguage) {
   return language === 'ro' ? ro : enUS;
 }
-

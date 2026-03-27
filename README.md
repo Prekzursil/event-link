@@ -76,7 +76,7 @@ alembic upgrade head
 python -m uvicorn main:app --reload --host 0.0.0.0 --port 8000
 ```
 
-Health check: http://localhost:8000/api/health
+Health check: <http://localhost:8000/api/health>
 
 ### Frontend (React + Vite)
 
@@ -108,8 +108,9 @@ docker compose up --build
 ```
 
 Services:
-- Frontend: http://localhost:4200 (nginx)
-- Backend API: http://localhost:8000 (FastAPI)
+
+- Frontend: <http://localhost:4200> (nginx)
+- Backend API: <http://localhost:8000> (FastAPI)
 - Postgres: exposed on `${POSTGRES_PORT:-5432}`
 
 `docker-compose.yml` wires the backend to Postgres and forwards environment values from `.env`.
@@ -127,6 +128,7 @@ The seed script clears existing tables and inserts sample users/events/tags/regi
 See `docs/disaster-recovery.md` for Postgres backup/restore scripts and a basic DR runbook.
 
 Sample credentials:
+
 - Student: `student@test.com` / `test123`
 - Organizer: `organizer@test.com` / `test123`
 
@@ -165,5 +167,6 @@ This repo includes `.pre-commit-config.yaml` to run format/lint checks before co
 - Enable: `pre-commit install`
 
 Notes:
+
 - Python hooks cover `backend/` (ruff + black).
 - UI hooks cover `ui/` (prettier + eslint) and require `cd ui && npm install`.

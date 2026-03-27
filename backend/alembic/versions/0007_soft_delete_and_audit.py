@@ -14,20 +14,21 @@ revision = "0007_soft_delete_and_audit"
 down_revision = "0006_background_jobs"
 branch_labels = None
 depends_on = None
+USER_ID_FOREIGN_KEY = "users.id"
 
 
 def upgrade() -> None:
     op.add_column("events", sa.Column("deleted_at", sa.TIMESTAMP(timezone=True), nullable=True))
     op.add_column(
         "events",
-        sa.Column("deleted_by_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column("deleted_by_user_id", sa.Integer(), sa.ForeignKey(USER_ID_FOREIGN_KEY), nullable=True),
     )
     op.create_index("ix_events_deleted_at", "events", ["deleted_at"], unique=False)
 
     op.add_column("registrations", sa.Column("deleted_at", sa.TIMESTAMP(timezone=True), nullable=True))
     op.add_column(
         "registrations",
-        sa.Column("deleted_by_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column("deleted_by_user_id", sa.Integer(), sa.ForeignKey(USER_ID_FOREIGN_KEY), nullable=True),
     )
     op.create_index("ix_registrations_deleted_at", "registrations", ["deleted_at"], unique=False)
 
@@ -37,7 +38,7 @@ def upgrade() -> None:
         sa.Column("entity_type", sa.String(length=50), nullable=False),
         sa.Column("entity_id", sa.Integer(), nullable=False),
         sa.Column("action", sa.String(length=50), nullable=False),
-        sa.Column("actor_user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column("actor_user_id", sa.Integer(), sa.ForeignKey(USER_ID_FOREIGN_KEY), nullable=True),
         sa.Column("created_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
         sa.Column("meta", sa.JSON(), nullable=True),
     )
@@ -61,4 +62,3 @@ def downgrade() -> None:
     op.drop_index("ix_events_deleted_at", table_name="events")
     op.drop_column("events", "deleted_by_user_id")
     op.drop_column("events", "deleted_at")
-

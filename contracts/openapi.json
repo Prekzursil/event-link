@@ -1040,16 +1040,8 @@
         "required": [
           "id",
           "title",
-          "description",
-          "category",
           "start_time",
-          "end_time",
-          "city",
-          "location",
-          "max_seats",
-          "cover_url",
           "owner_id",
-          "owner_name",
           "tags",
           "seats_taken"
         ],
@@ -1253,16 +1245,8 @@
         "required": [
           "id",
           "title",
-          "description",
-          "category",
           "start_time",
-          "end_time",
-          "city",
-          "location",
-          "max_seats",
-          "cover_url",
           "owner_id",
-          "owner_name",
           "tags",
           "seats_taken"
         ],
@@ -1813,7 +1797,6 @@
             "type": "string"
           },
           "events": {
-            "default": [],
             "items": {
               "$ref": "#/components/schemas/EventResponse"
             },
@@ -2182,9 +2165,7 @@
         "required": [
           "event_id",
           "title",
-          "cover_url",
           "seats_taken",
-          "max_seats",
           "participants",
           "total",
           "page",
@@ -2228,7 +2209,6 @@
         "required": [
           "id",
           "email",
-          "full_name",
           "registration_time",
           "attended"
         ],
@@ -2516,15 +2496,7 @@
         "required": [
           "id",
           "title",
-          "description",
-          "category",
           "start_time",
-          "end_time",
-          "city",
-          "location",
-          "max_seats",
-          "cover_url",
-          "organizer_name",
           "tags",
           "seats_taken"
         ],
@@ -2650,15 +2622,7 @@
         "required": [
           "id",
           "title",
-          "description",
-          "category",
           "start_time",
-          "end_time",
-          "city",
-          "location",
-          "max_seats",
-          "cover_url",
-          "organizer_name",
           "tags",
           "seats_taken"
         ],
@@ -3650,6 +3614,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -3692,6 +3659,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -4513,6 +4483,9 @@
           "204": {
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -4597,6 +4570,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -4808,6 +4784,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "503": {
+            "description": "Service unavailable."
           }
         },
         "summary": "Health Check"
@@ -5106,6 +5085,9 @@
           "204": {
             "description": "Successful Response"
           },
+          "404": {
+            "description": "Not found."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5300,6 +5282,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
           },
           "422": {
             "content": {
@@ -5507,6 +5492,15 @@
               }
             },
             "description": "Successful Response"
+          },
+          "400": {
+            "description": "Bad request."
+          },
+          "403": {
+            "description": "Forbidden."
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {
@@ -5811,6 +5805,9 @@
             },
             "description": "Successful Response"
           },
+          "400": {
+            "description": "Bad request."
+          },
           "422": {
             "content": {
               "application/json": {
@@ -5854,6 +5851,9 @@
               }
             },
             "description": "Successful Response"
+          },
+          "404": {
+            "description": "Not found."
           },
           "422": {
             "content": {

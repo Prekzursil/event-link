@@ -165,6 +165,26 @@ describe('events page and event form branch coverage', () => {
     await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
 
     cleanup();
+    recordInteractionsSpy.mockReturnValueOnce({
+      catch: (handler: (error: Error) => void) => {
+        handler(new Error('click-fail'));
+        return Promise.resolve(undefined);
+      },
+    });
+    eventServiceMock.getEvents.mockResolvedValueOnce({ items: [makeEvent(12)], total: 1, page: 1, page_size: 12, total_pages: 1 });
+    renderLanguageRoute('/events?sort=time', '/events', <EventsPage />);
+    await screen.findByText(/Event 12/i);
+    fireEvent.click(screen.getByText('open-12'));
+    await waitFor(() =>
+      expect(recordInteractionsSpy).toHaveBeenCalledWith([
+        expect.objectContaining({
+          interaction_type: 'click',
+          event_id: 12,
+        }),
+      ]),
+    );
+
+    cleanup();
     eventServiceMock.getEvents.mockResolvedValueOnce({ items: [], total: 0, page: 1, page_size: 12, total_pages: 1 });
     renderLanguageRoute('/events?search=abc', '/events', <EventsPage />);
     expect(await screen.findByText(/No events found/i)).toBeInTheDocument();

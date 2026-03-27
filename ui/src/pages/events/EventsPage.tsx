@@ -35,6 +35,7 @@ import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const PAGE_SIZES = [6, 12, 24, 48];
 const ALL_CATEGORIES_VALUE = '__all__';
+const ignoreInteractionError = () => undefined;
 
 const RECOMMENDATIONS_ENABLED =
   (import.meta.env.VITE_FEATURE_RECOMMENDATIONS ?? 'true').toLowerCase() !== 'false';
@@ -305,6 +306,31 @@ export function EventsPage() {
     }
   };
 
+  const renderEventsGrid = () => (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {events.map((event) => (
+        <EventCard
+          key={event.id}
+          event={event}
+          onFavoriteToggle={handleFavoriteToggle}
+          isFavorite={favorites.has(event.id)}
+          showRecommendation={filters.sort === 'recommended'}
+          onEventClick={(eventId) => {
+            Promise.resolve(
+              recordInteractions([
+                {
+                  interaction_type: 'click',
+                  event_id: eventId,
+                  meta: { source: 'events_list', sort: filters.sort, page: filters.page },
+                },
+              ]),
+            ).catch(ignoreInteractionError);
+          }}
+        />
+      ))}
+    </div>
+  );
+
   const clearFilters = () => {
     setSearchParams({});
   };
@@ -546,26 +572,7 @@ export function EventsPage() {
         </div>
       ) : (
         <>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-            {events.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onFavoriteToggle={handleFavoriteToggle}
-                isFavorite={favorites.has(event.id)}
-                showRecommendation={filters.sort === 'recommended'}
-                onEventClick={(eventId) =>
-                  void recordInteractions([
-                    {
-                      interaction_type: 'click',
-                      event_id: eventId,
-                      meta: { source: 'events_list', sort: filters.sort, page: filters.page },
-                    },
-                  ])
-                }
-              />
-            ))}
-          </div>
+          {renderEventsGrid()}
 
           {/* Pagination */}
           {totalPages > 1 && (

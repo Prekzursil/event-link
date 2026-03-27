@@ -20,6 +20,7 @@ from .database import Base
 USER_ID_FK = "users.id"
 EVENT_ID_FK = "events.id"
 TAG_ID_FK = "tags.id"
+CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 
 
 class UserRole(str, enum.Enum):
@@ -57,10 +58,10 @@ class User(Base):
     registrations = relationship(
         "Registration",
         back_populates="user",
-        cascade="all, delete-orphan",
+        cascade=CASCADE_DELETE_ORPHAN,
         foreign_keys="Registration.user_id",
     )
-    favorites = relationship("FavoriteEvent", back_populates="user", cascade="all, delete-orphan")
+    favorites = relationship("FavoriteEvent", back_populates="user", cascade=CASCADE_DELETE_ORPHAN)
     interest_tags = relationship("Tag", secondary="user_interest_tags")
 
 
@@ -99,9 +100,9 @@ class Event(Base):
     deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
     owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
-    registrations = relationship("Registration", back_populates="event", cascade="all, delete-orphan")
+    registrations = relationship("Registration", back_populates="event", cascade=CASCADE_DELETE_ORPHAN)
     tags = relationship("Tag", secondary="event_tags", back_populates="events")
-    favorites = relationship("FavoriteEvent", back_populates="event", cascade="all, delete-orphan")
+    favorites = relationship("FavoriteEvent", back_populates="event", cascade=CASCADE_DELETE_ORPHAN)
     deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
     moderation_reviewed_by = relationship("User", foreign_keys=[moderation_reviewed_by_user_id])
 

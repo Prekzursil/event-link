@@ -64,6 +64,7 @@ export function ParticipantsPage() {
   const [isEmailing, setIsEmailing] = useState(false);
   const { toast } = useToast();
   const { language, t } = useI18n();
+  const skeletonRowKeys = Array.from({ length: Math.min(pageSize, 10) }, (_, position) => `skeleton-${position + 1}`);
 
   const loadParticipants = useCallback(async () => {
     if (!eventId) {
@@ -169,7 +170,7 @@ export function ParticipantsPage() {
     const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
     const link = document.createElement('a');
     link.href = URL.createObjectURL(blob);
-    link.download = `${t.participants.csvFilePrefix}-${currentData.title.replace(/\s+/g, '-')}.csv`;
+    link.download = `${t.participants.csvFilePrefix}-${currentData.title.replaceAll(/\s+/g, '-')}.csv`;
     link.click();
   };
 
@@ -385,8 +386,8 @@ export function ParticipantsPage() {
                 </TableHeader>
                 <TableBody>
                   {isLoading
-                    ? Array.from({ length: Math.min(pageSize, 10) }).map((_, index) => (
-                        <TableRow key={`skeleton-${index}`}>
+                    ? skeletonRowKeys.map((rowKey) => (
+                        <TableRow key={rowKey}>
                           <TableCell>
                             <div className="flex items-center gap-2">
                               <Skeleton className="h-4 w-4 rounded" />
@@ -441,7 +442,7 @@ export function ParticipantsPage() {
                     <Select
                       value={String(pageSize)}
                       onValueChange={(value) => {
-                        setPageSize(parseInt(value));
+                        setPageSize(Number.parseInt(value, 10));
                         setPage(1);
                       }}
                     >

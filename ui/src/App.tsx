@@ -31,8 +31,10 @@ import {
   OrganizerProfilePage,
 } from '@/pages/organizer';
 
+type RouteProps = Readonly<{ children: React.ReactNode }>;
+
 // Protected route wrapper
-function ProtectedRoute({ children }: { children: React.ReactNode }) {
+function ProtectedRoute({ children }: RouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {
@@ -47,7 +49,7 @@ function ProtectedRoute({ children }: { children: React.ReactNode }) {
 }
 
 // Organizer route wrapper
-function OrganizerRoute({ children }: { children: React.ReactNode }) {
+function OrganizerRoute({ children }: RouteProps) {
   const { isAuthenticated, isOrganizer, isLoading } = useAuth();
 
   if (isLoading) {
@@ -66,7 +68,7 @@ function OrganizerRoute({ children }: { children: React.ReactNode }) {
 }
 
 // Admin route wrapper
-function AdminRoute({ children }: { children: React.ReactNode }) {
+function AdminRoute({ children }: RouteProps) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
 
   if (isLoading) {
@@ -85,7 +87,7 @@ function AdminRoute({ children }: { children: React.ReactNode }) {
 }
 
 // Guest only route (login/register)
-function GuestRoute({ children }: { children: React.ReactNode }) {
+function GuestRoute({ children }: RouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
 
   if (isLoading) {

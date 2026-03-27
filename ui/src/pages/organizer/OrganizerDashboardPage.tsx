@@ -82,6 +82,15 @@ export function OrganizerDashboardPage() {
   const selectedCount = selectedEventIds.size;
   const isAllSelected = events.length > 0 && selectedEventIds.size === events.length;
   const isSomeSelected = selectedEventIds.size > 0 && selectedEventIds.size < events.length;
+  const statusBadge = (status: Event['status'], isPast: boolean) => {
+    if (status === 'draft') {
+      return <Badge variant="secondary">{t.organizerDashboard.statusDraft}</Badge>;
+    }
+    if (isPast) {
+      return <Badge variant="outline">{t.organizerDashboard.statusEnded}</Badge>;
+    }
+    return <Badge variant="default">{t.organizerDashboard.statusActive}</Badge>;
+  };
   let selectAllState: boolean | 'indeterminate' = false;
   if (isAllSelected) {
     selectAllState = true;
@@ -439,13 +448,7 @@ export function OrganizerDashboardPage() {
                           </div>
                         </TableCell>
                         <TableCell>
-                          {event.status === 'draft' ? (
-                            <Badge variant="secondary">{t.organizerDashboard.statusDraft}</Badge>
-                          ) : isPast ? (
-                            <Badge variant="outline">{t.organizerDashboard.statusEnded}</Badge>
-                          ) : (
-                            <Badge variant="default">{t.organizerDashboard.statusActive}</Badge>
-                          )}
+                          {statusBadge(event.status, isPast)}
                         </TableCell>
                         <TableCell>
                           <DropdownMenu>

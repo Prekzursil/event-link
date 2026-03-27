@@ -5,6 +5,7 @@ This repo ships with small helper scripts for backing up and restoring the Postg
 ## Backup
 
 Prereqs:
+
 - Docker / Docker Desktop
 - `docker compose up -d db` (the `db` container must be running)
 
@@ -23,6 +24,7 @@ bash scripts/db-backup.sh backups/eventlink-prod-20250101.sql.gz
 ```
 
 Recommendations:
+
 - Store backups outside the host (object storage, offsite).
 - Encrypt backups at rest.
 - Keep multiple restore points (e.g., daily + weekly).
@@ -31,6 +33,7 @@ Recommendations:
 ## Restore
 
 Prereqs:
+
 - Docker / Docker Desktop
 - A backup created with `pg_dump` (this repo’s `db-backup.sh` produces a `.sql.gz` file)
 
@@ -41,6 +44,7 @@ bash scripts/db-restore.sh backups/eventlink-20250101T000000Z.sql.gz
 ```
 
 Notes:
+
 - The restore script **drops and recreates the `public` schema** (data loss if you point it at the wrong DB).
 - For production, consider running the restore against a separate environment first.
 

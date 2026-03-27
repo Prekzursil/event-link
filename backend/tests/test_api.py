@@ -820,7 +820,7 @@ def test_event_validation_rules(helpers):
         "location": "L",
         "max_seats": -1,
         "tags": [],
-        "cover_url": "http://example.com/" + "a" * 600,
+        "cover_url": "https://example.com/" + "a" * 600,
     }
     resp = client.post("/api/events", json=bad_payload, headers=helpers["auth_header"](organizer_token))
     assert resp.status_code == 422
@@ -1542,6 +1542,5 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
     assert event_row is not None
     assert event_row.owner_id == placeholder.id
-
 
 

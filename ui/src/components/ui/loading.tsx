@@ -2,10 +2,10 @@ import { Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useI18n } from '@/contexts/LanguageContext';
 
-interface LoadingSpinnerProps {
+type LoadingSpinnerProps = Readonly<{
   className?: string;
   size?: 'sm' | 'md' | 'lg';
-}
+}>;
 
 const sizeClasses = {
   sm: 'h-4 w-4',
@@ -19,9 +19,9 @@ export function LoadingSpinner({ className, size = 'md' }: LoadingSpinnerProps) 
   );
 }
 
-interface LoadingPageProps {
+type LoadingPageProps = Readonly<{
   message?: string;
-}
+}>;
 
 export function LoadingPage({ message }: LoadingPageProps) {
   const { t } = useI18n();

@@ -102,6 +102,10 @@ _ERROR_RESPONSE_DESCRIPTIONS = {
 }
 
 _TOKEN_TYPE = ''.join(("bear", "er"))
+_INVALID_REFRESH_TOKEN_DETAIL = "Refresh token invalid."
+_MIN_PAGE_DETAIL = "Pagina trebuie să fie cel puțin 1."
+_PAGE_SIZE_DETAIL = "Dimensiunea paginii trebuie să fie între 1 și 100."
+_EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"
 
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
@@ -421,7 +425,7 @@ def _load_cached_recommendations(
         blocked_organizer_ids=blocked_organizer_ids,
     )
 
-    query, seats_subquery = _events_with_counts_query(db, base_query)
+    query, _ = _events_with_counts_query(db, base_query)
     default_reason = "Recommended for you" if lang == "en" else "Recomandat pentru tine"
     ranked: list[tuple[int, models.Event, int, Optional[str]]] = []
     for ev, seats in query.all():
@@ -594,16 +598,16 @@ def refresh_token(payload: schemas.RefreshRequest):
     except auth.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expirat.")
     except auth.JWTError:
-        raise HTTPException(status_code=401, detail="Refresh token invalid.")
+        raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
 
     if decoded.get("type") != "refresh":
-        raise HTTPException(status_code=401, detail="Refresh token invalid.")
+        raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
 
     user_id = decoded.get("sub")
     email = decoded.get("email")
     role = decoded.get("role")
     if not user_id or not role:
-        raise HTTPException(status_code=401, detail="Refresh token invalid.")
+        raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
 
     token_payload = {"sub": str(user_id), "email": email, "role": role}
     access_token = auth.create_access_token(
@@ -751,7 +755,7 @@ def get_events(
     category: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    tags: Optional[list[str]] = Query(None),
+    tags: Annotated[Optional[list[str]], Query()] = None,
     tags_csv: Optional[str] = None,
     city: Optional[str] = None,
     location: Optional[str] = None,
@@ -764,9 +768,9 @@ def get_events(
     current_user: OptionalUser,
 ):
     if page < 1:
-        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+        raise HTTPException(status_code=400, detail=_MIN_PAGE_DETAIL)
     if page_size < 1 or page_size > 100:
-        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+        raise HTTPException(status_code=400, detail=_PAGE_SIZE_DETAIL)
     now = datetime.now(timezone.utc)
     query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
     if not include_past:
@@ -1198,7 +1202,7 @@ def record_interactions(
                 },
                 dedupe_key=str(int(current_user.id)),
             )
-    return
+
 
 
 @app.get("/api/public/events", response_model=schemas.PaginatedPublicEvents, responses=_responses(400, 404))
@@ -1208,7 +1212,7 @@ def get_public_events(
     category: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-    tags: Optional[list[str]] = Query(None),
+    tags: Annotated[Optional[list[str]], Query()] = None,
     tags_csv: Optional[str] = None,
     city: Optional[str] = None,
     location: Optional[str] = None,
@@ -1225,9 +1229,9 @@ def get_public_events(
         window_seconds=settings.public_api_rate_window_seconds,
     )
     if page < 1:
-        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+        raise HTTPException(status_code=400, detail=_MIN_PAGE_DETAIL)
     if page_size < 1 or page_size > 100:
-        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+        raise HTTPException(status_code=400, detail=_PAGE_SIZE_DETAIL)
     now = datetime.now(timezone.utc)
     query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
     if not include_past:
@@ -1259,7 +1263,7 @@ def get_public_events(
         query = query.filter(models.Event.start_time <= end_dt)
     total = query.count()
     query = query.order_by(models.Event.id, models.Event.start_time)
-    query, seats_subquery = _events_with_counts_query(db, query)
+    query, _ = _events_with_counts_query(db, query)
     query = query.offset((page - 1) * page_size).limit(page_size)
     events = query.all()
     items = [_serialize_public_event(event, seats) for event, seats in events]
@@ -1280,11 +1284,11 @@ def get_public_event(event_id: int, request: Request, db: DbSession):
     )
     result = query.first()
     if not result:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     event, seats_taken = result
     now = datetime.now(timezone.utc)
     if event.status != "published" or (event.publish_at and event.publish_at > now):
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
     base = _serialize_public_event(event, seats_taken)
     return schemas.PublicEventDetailResponse(**base.model_dump(), available_seats=available_seats)
@@ -1297,19 +1301,19 @@ def get_event(
     db: DbSession,
     current_user: OptionalUser,
 ):
-    query, seats_subquery = _events_with_counts_query(
+    query, _ = _events_with_counts_query(
         db,
         db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)),
     )
     result = query.first()
     if not result:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     event, seats_taken = result
     now = datetime.now(timezone.utc)
     if (event.status != "published" or (event.publish_at and event.publish_at > now)) and not (
         current_user and (current_user.id == event.owner_id or _is_admin(current_user))
     ):
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     is_registered = False
     is_favorite = False
     if current_user:
@@ -1431,7 +1435,7 @@ def update_event(
         .first()
     )
     if not db_event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if db_event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați acest eveniment.")
 
@@ -1507,7 +1511,7 @@ def delete_event(event_id: int, db: DbSession, current_user: OrganizerUser):
         .first()
     )
     if not db_event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if db_event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să ștergeți acest eveniment.")
 
@@ -1551,7 +1555,7 @@ def delete_event(event_id: int, db: DbSession, current_user: OrganizerUser):
         owner_id=db_event.owner_id,
         actor_user_id=current_user.id,
     )
-    return
+
 
 
 @app.post("/api/events/{event_id}/restore", responses=_responses(403, 404))
@@ -1562,7 +1566,7 @@ def restore_event(
 ):
     db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not db_event or db_event.deleted_at is None:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
 
     if not _is_admin(current_user):
         if current_user.role != models.UserRole.organizator:
@@ -1626,7 +1630,7 @@ def clone_event(
 ):
     orig = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not orig:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if orig.owner_id != current_user.id:
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să clonați acest eveniment.")
 
@@ -1672,7 +1676,7 @@ def organizer_events(
     if not include_deleted:
         base_query = base_query.filter(models.Event.deleted_at.is_(None))
     base_query = base_query.order_by(models.Event.start_time)
-    query, seats_subquery = _events_with_counts_query(db, base_query)
+    query, _ = _events_with_counts_query(db, base_query)
     events = query.all()
     return [_serialize_event(event, seats) for event, seats in events]
 
@@ -1721,7 +1725,7 @@ def organizer_bulk_update_status(
     return {"updated": len(events)}
 
 
-@app.post("/api/organizer/events/bulk/tags")
+@app.post("/api/organizer/events/bulk/tags", responses=_responses(400, 403, 404))
 def organizer_bulk_update_tags(
     payload: schemas.OrganizerBulkTagsUpdate,
     db: DbSession,
@@ -1866,7 +1870,7 @@ def email_event_participants(
     )
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să trimiteți email pentru acest eveniment.")
 
@@ -1917,7 +1921,7 @@ def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfi
         models.Event.status == "published",
         (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
     ).order_by(models.Event.start_time)
-    query, seats_subquery = _events_with_counts_query(db, base_query)
+    query, _ = _events_with_counts_query(db, base_query)
     events = [_serialize_event(ev, seats) for ev, seats in query.all()]
     return schemas.OrganizerProfileResponse(
         user_id=user.id,
@@ -1931,7 +1935,7 @@ def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfi
     )
 
 
-@app.get("/api/organizers/{organizer_id}", response_model=schemas.OrganizerProfileResponse)
+@app.get("/api/organizers/{organizer_id}", response_model=schemas.OrganizerProfileResponse, responses=_responses(404))
 def get_organizer_profile(organizer_id: int, db: DbSession):
     user = db.query(models.User).filter(models.User.id == organizer_id, models.User.role == models.UserRole.organizator).first()
     if not user:
@@ -1939,7 +1943,7 @@ def get_organizer_profile(organizer_id: int, db: DbSession):
     return _serialize_profile(user, db)
 
 
-@app.put("/api/organizers/me/profile", response_model=schemas.OrganizerProfileResponse)
+@app.put("/api/organizers/me/profile", response_model=schemas.OrganizerProfileResponse, responses=_responses(400))
 def update_organizer_profile(
     payload: schemas.OrganizerProfileUpdate,
     db: DbSession,
@@ -1993,7 +1997,7 @@ def get_student_profile(
     }
 
 
-@app.put("/api/me/profile", response_model=schemas.StudentProfileResponse)
+@app.put("/api/me/profile", response_model=schemas.StudentProfileResponse, responses=_responses(400))
 def update_student_profile(
     payload: schemas.StudentProfileUpdate,
     db: DbSession,
@@ -2125,7 +2129,6 @@ def remove_hidden_tag(
         meta={"tag_id": tag_id},
     )
     db.commit()
-    return
 
 
 @app.post("/api/me/personalization/blocked-organizers/{organizer_id}", status_code=status.HTTP_201_CREATED, responses=_responses(404))
@@ -2162,7 +2165,11 @@ def add_blocked_organizer(
     return {"status": "blocked"}
 
 
-@app.delete("/api/me/personalization/blocked-organizers/{organizer_id}", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete(
+    "/api/me/personalization/blocked-organizers/{organizer_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_responses(404),
+)
 def remove_blocked_organizer(
     organizer_id: int,
     db: DbSession,
@@ -2185,7 +2192,6 @@ def remove_blocked_organizer(
         meta={"organizer_id": organizer_id},
     )
     db.commit()
-    return
 
 
 # ===================== NOTIFICATION PREFERENCES =====================
@@ -2323,9 +2329,8 @@ def export_my_data(
             .all()
         )
         event_ids = [e.id for e in events]
-        reg_counts = {
-            event_id: count
-            for event_id, count in (
+        reg_counts = dict(
+            (
                 db.query(models.Registration.event_id, func.count(models.Registration.id))
                 .filter(models.Registration.event_id.in_(event_ids))
                 .group_by(models.Registration.event_id)
@@ -2333,10 +2338,9 @@ def export_my_data(
                 if event_ids
                 else []
             )
-        }
-        fav_counts = {
-            event_id: count
-            for event_id, count in (
+        )
+        fav_counts = dict(
+            (
                 db.query(models.FavoriteEvent.event_id, func.count(models.FavoriteEvent.id))
                 .filter(models.FavoriteEvent.event_id.in_(event_ids))
                 .group_by(models.FavoriteEvent.event_id)
@@ -2344,7 +2348,7 @@ def export_my_data(
                 if event_ids
                 else []
             )
-        }
+        )
         export_payload["organized_events"] = [
             {
                 **_serialize_event_for_export(ev),
@@ -2431,7 +2435,7 @@ def event_participants(
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să accesați acest eveniment.")
 
@@ -2486,7 +2490,7 @@ def update_participant_attendance(
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if event.owner_id != current_user.id and not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați acest eveniment.")
 
@@ -2513,7 +2517,7 @@ def update_participant_attendance(
         actor_user_id=current_user.id,
         attended=attended,
     )
-    return
+
 
 
 @app.post("/api/events/{event_id}/register", status_code=status.HTTP_201_CREATED, responses=_responses(400, 404))
@@ -2527,7 +2531,7 @@ def register_for_event(
     _ensure_registrations_enabled()
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     now = datetime.now(timezone.utc)
     if event.status != "published" or (event.publish_at and event.publish_at > now):
         raise HTTPException(status_code=400, detail="Evenimentul nu este publicat.")
@@ -2601,7 +2605,7 @@ def resend_registration_email(
     _enforce_rate_limit("resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600)
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     registration = (
         db.query(models.Registration)
         .filter(
@@ -2639,7 +2643,7 @@ def unregister_from_event(
     _ensure_registrations_enabled()
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     now = datetime.now(timezone.utc)
     start_time = _normalize_dt(event.start_time)
     if start_time and start_time < now:
@@ -2670,7 +2674,7 @@ def unregister_from_event(
     )
     db.commit()
     log_event("event_unregistered", event_id=event.id, user_id=current_user.id)
-    return
+
 
 
 @app.post("/api/admin/events/{event_id}/registrations/{user_id}/restore", responses=_responses(400))
@@ -2778,7 +2782,7 @@ def admin_stats(
     }
 
 
-@app.get("/api/admin/personalization/metrics", response_model=schemas.PersonalizationMetricsResponse)
+@app.get("/api/admin/personalization/metrics", response_model=schemas.PersonalizationMetricsResponse, responses=_responses(400))
 def admin_personalization_metrics(
     days: int = 30,
     *,
@@ -2892,6 +2896,7 @@ def admin_enqueue_guardrails_evaluate(
 @app.post(
     "/api/admin/personalization/models/activate",
     response_model=schemas.AdminActivatePersonalizationModelResponse,
+    responses=_responses(404),
 )
 def admin_activate_personalization_model(
     payload: schemas.AdminActivatePersonalizationModelRequest,
@@ -2979,9 +2984,9 @@ def admin_list_users(
     current_user: AdminUser,
 ):
     if page < 1:
-        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+        raise HTTPException(status_code=400, detail=_MIN_PAGE_DETAIL)
     if page_size < 1 or page_size > 100:
-        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+        raise HTTPException(status_code=400, detail=_PAGE_SIZE_DETAIL)
 
     filters = []
     if search:
@@ -3159,9 +3164,9 @@ def admin_list_events(
     current_user: AdminUser,
 ):
     if page < 1:
-        raise HTTPException(status_code=400, detail="Pagina trebuie să fie cel puțin 1.")
+        raise HTTPException(status_code=400, detail=_MIN_PAGE_DETAIL)
     if page_size < 1 or page_size > 100:
-        raise HTTPException(status_code=400, detail="Dimensiunea paginii trebuie să fie între 1 și 100.")
+        raise HTTPException(status_code=400, detail=_PAGE_SIZE_DETAIL)
 
     query = db.query(models.Event).options(joinedload(models.Event.owner), joinedload(models.Event.tags))
     if not include_deleted:
@@ -3229,7 +3234,7 @@ def favorite_event(
 ):
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     existing = (
         db.query(models.FavoriteEvent)
         .filter(models.FavoriteEvent.event_id == event_id, models.FavoriteEvent.user_id == current_user.id)
@@ -3243,7 +3248,7 @@ def favorite_event(
     return {"status": "added"}
 
 
-@app.delete("/api/events/{event_id}/favorite", status_code=status.HTTP_204_NO_CONTENT)
+@app.delete("/api/events/{event_id}/favorite", status_code=status.HTTP_204_NO_CONTENT, responses=_responses(404))
 def unfavorite_event(
     event_id: int,
     db: DbSession,
@@ -3258,7 +3263,6 @@ def unfavorite_event(
         raise HTTPException(status_code=404, detail="Favoritul nu există")
     db.delete(fav)
     db.commit()
-    return
 
 
 @app.get("/api/me/favorites", response_model=schemas.FavoriteListResponse)
@@ -3274,7 +3278,7 @@ def list_favorites(db: DbSession, current_user: StudentUser):
         models.Event.status == "published",
         (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
     )
-    query, seats_subquery = _events_with_counts_query(db, base_query)
+    query, _ = _events_with_counts_query(db, base_query)
     items = [_serialize_event(ev, seats) for ev, seats in query.order_by(models.Event.start_time).all()]
     return {"items": items}
 
@@ -3292,7 +3296,7 @@ def my_events(db: DbSession, current_user: CurrentUser):
         )
         .order_by(models.Event.start_time)
     )
-    query, seats_subquery = _events_with_counts_query(db, base_query)
+    query, _ = _events_with_counts_query(db, base_query)
     events = query.all()
     return [_serialize_event(event, seats) for event, seats in events]
 
@@ -3364,7 +3368,7 @@ def recommended_events(
                 blocked_organizer_ids=blocked_organizer_ids,
             )
             base_query = base_query.order_by(models.Event.start_time, models.Event.id)
-            query, seats_subquery = _events_with_counts_query(db, base_query)
+            query, _ = _events_with_counts_query(db, base_query)
             reason_parts: list[str] = []
             if history_tag_names:
                 reason_parts.append(
@@ -3422,7 +3426,7 @@ def recommended_events(
     filtered.sort(key=lambda item: item[0], reverse=True)
     return [item for _, item in filtered[:10]]
 
-@app.get("/api/health")
+@app.get("/api/health", responses=_responses(503))
 def health_check(db: DbSession):
     try:
         db.execute(text("SELECT 1"))
@@ -3431,11 +3435,11 @@ def health_check(db: DbSession):
         raise HTTPException(status_code=503, detail="Database unavailable")
 
 
-@app.get("/api/events/{event_id}/ics")
+@app.get("/api/events/{event_id}/ics", responses=_responses(404))
 def event_ics(event_id: int, db: DbSession):
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
-        raise HTTPException(status_code=404, detail="Evenimentul nu există")
+        raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     ics = "\n".join([
         "BEGIN:VCALENDAR",
         "VERSION:2.0",

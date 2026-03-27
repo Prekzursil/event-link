@@ -13,6 +13,8 @@ const resetTokenTableName = `${credentialFieldId}_reset_${'tokens'}`;
 const resetKeyField = 'to' + 'ken';
 const accessStorageKey = 'access_' + 'token';
 const refreshStorageKey = 'refresh_' + 'token';
+const SAFE_DOCKER_PATH = '/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin';
+const DOCKER_ENV = { ...process.env, PATH: SAFE_DOCKER_PATH };
 
 export function repoRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
@@ -72,7 +74,7 @@ export function formatDateTimeLocal(date: Date): string {
 
 export function hasDockerCompose(): boolean {
   try {
-    execFileSync('docker', ['compose', 'version'], { stdio: 'ignore' });
+    execFileSync('docker', ['compose', 'version'], { env: DOCKER_ENV, stdio: 'ignore' });
     return true;
   } catch {
     return false;
@@ -108,7 +110,7 @@ LIMIT 1;
     const output = execFileSync(
       'docker',
       ['compose', 'exec', '-T', 'db', 'psql', '-U', 'eventlink', '-d', 'eventlink', '-tAc', sql],
-      { cwd: root, encoding: 'utf8' },
+      { cwd: root, encoding: 'utf8', env: DOCKER_ENV },
     );
     const resetLinkCode = output.trim();
     if (resetLinkCode) return resetLinkCode;

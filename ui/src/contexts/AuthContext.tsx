@@ -1,4 +1,4 @@
-import { createContext, useContext, useState, useEffect, useCallback, type ReactNode } from 'react';
+import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
 import type { User } from '@/types';
 import authService from '@/services/auth.service';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -18,7 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-export function AuthProvider({ children }: { children: ReactNode }) {
+export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const { setPreference: setThemePreference } = useTheme();
@@ -50,12 +50,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     initAuth();
   }, [refreshUser]);
 
-  const login = async (email: string, password: string) => {
+  const login = useCallback(async (email: string, password: string) => {
     await authService.login({ email, password });
     await refreshUser();
-  };
+  }, [refreshUser]);
 
-  const register = async (email: string, password: string, confirmPassword: string, fullName?: string) => {
+  const register = useCallback(async (email: string, password: string, confirmPassword: string, fullName?: string) => {
     await authService.register({
       email,
       password,
@@ -63,27 +63,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       full_name: fullName,
     });
     await refreshUser();
-  };
+  }, [refreshUser]);
 
-  const logout = () => {
+  const logout = useCallback(() => {
     authService.logout();
     setUser(null);
-  };
+  }, []);
+
+  const value = useMemo(
+    () => ({
+      user,
+      isAuthenticated: !!user,
+      isOrganizer: user?.role === 'organizator' || user?.role === 'admin',
+      isAdmin: user?.role === 'admin',
+      isLoading,
+      login,
+      register,
+      logout,
+      refreshUser,
+    }),
+    [isLoading, login, logout, refreshUser, register, user],
+  );
 
   return (
-    <AuthContext.Provider
-      value={{
-        user,
-        isAuthenticated: !!user,
-        isOrganizer: user?.role === 'organizator' || user?.role === 'admin',
-        isAdmin: user?.role === 'admin',
-        isLoading,
-        login,
-        register,
-        logout,
-        refreshUser,
-      }}
-    >
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

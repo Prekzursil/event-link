@@ -47,4 +47,3 @@ bearer_token_env_var = "GITHUB_MCP_PAT"
 
 If Codex is not inheriting your shell environment, set `shell_environment_policy.inherit = "all"`
 in `~/.codex/config.toml`.
-
