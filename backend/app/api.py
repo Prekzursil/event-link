@@ -1,3 +1,5 @@
+"""FastAPI application and endpoint handlers for Event Link."""
+
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, List, Optional
 from contextlib import asynccontextmanager, suppress
@@ -478,9 +480,11 @@ def _events_with_counts_query(db: Session, base_query=None):
         .group_by(models.Registration.event_id)
         .subquery()
     )
-    query = (
-        base_query.outerjoin(seats_subquery, models.Event.id == seats_subquery.c.event_id)
-        .add_columns(func.coalesce(seats_subquery.c.seats_taken, 0).label("seats_taken"))
+    query = base_query.outerjoin(
+        seats_subquery,
+        models.Event.id == seats_subquery.c.event_id,
+    ).add_columns(
+        func.coalesce(seats_subquery.c.seats_taken, 0).label("seats_taken"),
     )
     return query, seats_subquery
 
@@ -517,7 +521,7 @@ def _serialize_event(
 
 def _is_student_user(user: models.User | None) -> bool:
     """Check whether the optional authenticated user is a student."""
-    return bool(user is not None and getattr(user, "role", None) == models.UserRole.student)
+    return bool(user is not None and user.role == models.UserRole.student)
 
 
 def _preferred_lang(
@@ -527,16 +531,18 @@ def _preferred_lang(
     default: str = "ro",
 ) -> str:
     """Resolve the effective language from the user profile or request headers."""
-    lang = getattr(user, "language_preference", None) if user is not None else None
+    lang = user.language_preference if user is not None else None
     if not lang or lang == "system":
-        header_value = request.headers.get("accept-language") if request is not None else None
+        header_value = (
+            request.headers.get("accept-language") if request is not None else None
+        )
         lang = header_value or default
     return (lang or default).split(",")[0][:2].lower()
 
 
 def _normalized_user_city(user: models.User | None) -> str:
     """Normalize the current user's city for local recommendation messaging."""
-    return (getattr(user, "city", None) or "").strip().lower()
+    return ((user.city or "") if user is not None else "").strip().lower()
 
 
 def _append_local_reason(
@@ -547,7 +553,9 @@ def _append_local_reason(
     lang: str,
 ) -> str | None:
     """Append a local-city hint when the event city matches the user's city."""
-    is_local = bool(user_city and event_city and event_city.strip().lower() == user_city)
+    is_local = bool(
+        user_city and event_city and event_city.strip().lower() == user_city
+    )
     if not is_local:
         return reason
     suffix = f"Near you: {event_city}" if lang == "en" else f"În apropiere: {event_city}"
@@ -573,6 +581,7 @@ def _merged_tag_filters(*, tags: list[str] | None, tags_csv: str | None) -> list
 
 
 def _apply_event_visibility_filters(query, *, now: datetime, include_past: bool):  # noqa: ANN001
+    """Apply publication and past-event visibility filters to event list queries."""
     if not include_past:
         query = query.filter(models.Event.start_time >= now)
     return query.filter(models.Event.status == "published").filter(
@@ -589,17 +598,22 @@ def _apply_event_attribute_filters(
     city: str | None,
     location: str | None,
 ):  # noqa: ANN001
+    """Apply free-text and attribute filters to event list queries."""
     if search:
         query = query.filter(func.lower(models.Event.title).like(f"%{search.lower()}%"))
     if category:
         query = query.filter(func.lower(models.Event.category) == category.lower())
     if tag_filters:
         lowered = [tag.lower() for tag in tag_filters]
-        query = query.filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered)))
+        query = query.filter(
+            models.Event.tags.any(func.lower(models.Tag.name).in_(lowered))
+        )
     if city:
         query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
     if location:
-        query = query.filter(func.lower(models.Event.location).like(f"%{location.lower()}%"))
+        query = query.filter(
+            func.lower(models.Event.location).like(f"%{location.lower()}%")
+        )
     return query
 
 
@@ -609,11 +623,18 @@ def _apply_event_date_filters(
     start_date: date | None,
     end_date: date | None,
 ):  # noqa: ANN001
+    """Apply optional start and end date constraints to event list queries."""
     if start_date:
-        start_dt = datetime.combine(start_date, datetime.min.time()).replace(tzinfo=timezone.utc)
+        start_dt = datetime.combine(
+            start_date,
+            datetime.min.time(),
+        ).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time >= start_dt)
     if end_date:
-        end_dt = datetime.combine(end_date, datetime.max.time()).replace(tzinfo=timezone.utc)
+        end_dt = datetime.combine(
+            end_date,
+            datetime.max.time(),
+        ).replace(tzinfo=timezone.utc)
         query = query.filter(models.Event.start_time <= end_dt)
     return query
 
@@ -625,10 +646,17 @@ def _apply_event_list_filters(
     filters: schemas.EventListQuery,
     tag_filters: list[str] | None = None,
 ):  # noqa: ANN001
+    """Apply all public event list filters in a single helper."""
     merged_tags = (
-        tag_filters if tag_filters is not None else _merged_tag_filters(tags=filters.tags, tags_csv=filters.tags_csv)
+        tag_filters
+        if tag_filters is not None
+        else _merged_tag_filters(tags=filters.tags, tags_csv=filters.tags_csv)
     )
-    query = _apply_event_visibility_filters(query, now=now, include_past=bool(filters.include_past))
+    query = _apply_event_visibility_filters(
+        query,
+        now=now,
+        include_past=bool(filters.include_past),
+    )
     query = _apply_event_attribute_filters(
         query,
         search=filters.search,
@@ -637,13 +665,20 @@ def _apply_event_list_filters(
         city=filters.city,
         location=filters.location,
     )
-    return _apply_event_date_filters(query, start_date=filters.start_date, end_date=filters.end_date)
+    return _apply_event_date_filters(
+        query,
+        start_date=filters.start_date,
+        end_date=filters.end_date,
+    )
 
 
 def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
+    """Load hidden tags and blocked organizers used to filter recommendations."""
     hidden_tag_ids = {
         int(row[0])
-        for row in db.query(models.user_hidden_tags.c.tag_id).filter(models.user_hidden_tags.c.user_id == user_id).all()
+        for row in db.query(models.user_hidden_tags.c.tag_id)
+        .filter(models.user_hidden_tags.c.user_id == user_id)
+        .all()
     }
     blocked_organizer_ids = {
         int(row[0])
@@ -657,10 +692,13 @@ def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[
 def _apply_personalization_exclusions(
     query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
 ):  # noqa: ANN001
+    """Exclude hidden tags and blocked organizers from recommendation queries."""
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
-        query = query.filter(~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids))))
+        query = query.filter(
+            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
+        )
     return query
 
 
@@ -1163,10 +1201,13 @@ def register(user: schemas.StudentRegister, request: Request, db: DbSession):
     refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
     token_payload = {"sub": str(new_user.id), "email": new_user.email, "role": new_user.role.value}
     access_token = auth.create_access_token(data=token_payload, expires_delta=access_token_expires)
-    refresh_token = auth.create_refresh_token(data=token_payload, expires_delta=refresh_expires)
+    refresh_token_value = auth.create_refresh_token(
+        data=token_payload,
+        expires_delta=refresh_expires,
+    )
     return {
         "access_token": access_token,
-        "refresh_token": refresh_token,
+        "refresh_token": refresh_token_value,
         "token_type": _TOKEN_TYPE,
         "role": new_user.role,
         "user_id": new_user.id,
@@ -1196,11 +1237,14 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
     refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
     token_payload = {"sub": str(user.id), "email": user.email, "role": user.role.value}
     access_token = auth.create_access_token(data=token_payload, expires_delta=access_token_expires)
-    refresh_token = auth.create_refresh_token(data=token_payload, expires_delta=refresh_expires)
+    refresh_token_value = auth.create_refresh_token(
+        data=token_payload,
+        expires_delta=refresh_expires,
+    )
     log_event("login_success", user_id=user.id, email=user.email, role=user.role.value)
     return {
         "access_token": access_token,
-        "refresh_token": refresh_token,
+        "refresh_token": refresh_token_value,
         "token_type": _TOKEN_TYPE,
         "role": user.role,
         "user_id": user.id,
@@ -1230,12 +1274,12 @@ def refresh_token(payload: schemas.RefreshRequest):
     access_token = auth.create_access_token(
         data=token_payload, expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
     )
-    refresh_token = auth.create_refresh_token(
+    refresh_token_value = auth.create_refresh_token(
         data=token_payload, expires_delta=timedelta(minutes=settings.refresh_token_expire_minutes)
     )
     return {
         "access_token": access_token,
-        "refresh_token": refresh_token,
+        "refresh_token": refresh_token_value,
         "token_type": _TOKEN_TYPE,
         "role": role,
         "user_id": int(user_id),
@@ -1289,7 +1333,7 @@ def read_root():
 
 
 @app.exception_handler(HTTPException)
-async def http_exception_handler(request: Request, exc: HTTPException):
+async def http_exception_handler(_request: Request, exc: HTTPException):
     """Normalize HTTP exceptions into the API error envelope."""
     code = f"http_{exc.status_code}"
     message = exc.detail if isinstance(exc.detail, str) else "Eroare"
@@ -1300,7 +1344,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 
 @app.exception_handler(Exception)
-async def unhandled_exception_handler(request: Request, exc: Exception):
+async def unhandled_exception_handler(_request: Request, _exc: Exception):
     """Normalize unexpected exceptions into the API error envelope."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
@@ -2736,7 +2780,7 @@ def get_all_tags(db: DbSession):
 
 @app.get("/api/me/profile", response_model=schemas.StudentProfileResponse, responses=_responses(400))
 def get_student_profile(
-    db: DbSession,
+    _db: DbSession,
     current_user: CurrentUser,
 ):
     """Get current user's profile with interest tags."""
@@ -2976,7 +3020,7 @@ def remove_blocked_organizer(
 
 @app.get("/api/me/notifications", response_model=schemas.NotificationPreferencesResponse)
 def get_notification_preferences(
-    db: DbSession,
+    _db: DbSession,
     current_user: StudentUser,
 ):
     """Return the current student's notification preferences."""
@@ -3620,7 +3664,7 @@ def admin_personalization_metrics(
     days: int = 30,
     *,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Return admin personalization metrics."""
     _validate_admin_days(days)
@@ -3644,7 +3688,7 @@ def admin_personalization_metrics(
 @app.get("/api/admin/personalization/status", response_model=schemas.AdminPersonalizationStatusResponse)
 def admin_personalization_status(
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Return the current personalization system status."""
     is_active_attr = "is_active"
@@ -3672,7 +3716,7 @@ def admin_personalization_status(
 def admin_enqueue_guardrails_evaluate(
     payload: schemas.AdminEvaluateGuardrailsRequest,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Queue a personalization guardrail evaluation job."""
     from .task_queue import enqueue_job, JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS  # noqa: PLC0415
@@ -3694,7 +3738,7 @@ def admin_enqueue_guardrails_evaluate(
 def admin_activate_personalization_model(
     payload: schemas.AdminActivatePersonalizationModelRequest,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Activate a saved personalization model."""
     model = (
@@ -3731,7 +3775,7 @@ def admin_activate_personalization_model(
 def admin_enqueue_retrain_recommendations(
     payload: schemas.AdminRetrainRecommendationsRequest,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Queue a recommendation retraining job."""
     from .task_queue import enqueue_job, JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML  # noqa: PLC0415
@@ -3754,7 +3798,7 @@ def admin_enqueue_retrain_recommendations(
 def admin_enqueue_weekly_digest(
     payload: schemas.AdminWeeklyDigestRequest,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Queue the weekly digest notification job."""
     from .task_queue import enqueue_job, JOB_TYPE_SEND_WEEKLY_DIGEST  # noqa: PLC0415
@@ -3772,7 +3816,7 @@ def admin_enqueue_weekly_digest(
 def admin_enqueue_filling_fast(
     payload: schemas.AdminFillingFastRequest,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Queue the filling-fast notification job."""
     from .task_queue import enqueue_job, JOB_TYPE_SEND_FILLING_FAST_ALERTS  # noqa: PLC0415
@@ -3880,7 +3924,7 @@ def admin_list_users(
     page_size: int = 20,
     *,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """List users for the admin dashboard."""
     _validate_admin_user_pagination(page, page_size)
@@ -3990,7 +4034,7 @@ def _admin_event_list_filters(
     search: Optional[str] = None,
     category: Optional[str] = None,
     city: Optional[str] = None,
-    status: Optional[str] = None,
+    status_value: Annotated[Optional[str], Query(alias="status")] = None,
     include_deleted: bool = False,
     flagged_only: bool = False,
     page: int = 1,
@@ -4000,7 +4044,7 @@ def _admin_event_list_filters(
         search=search,
         category=category,
         city=city,
-        status=status,
+        status=status_value,
         include_deleted=include_deleted,
         flagged_only=flagged_only,
         page=page,
@@ -4013,7 +4057,7 @@ def admin_list_events(
     filters: Annotated[schemas.AdminEventListQuery, Depends(_admin_event_list_filters)],
     *,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """List events for the admin dashboard."""
     _validate_admin_user_pagination(filters.page, filters.page_size)

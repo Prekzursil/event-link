@@ -2,7 +2,7 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = REPO_ROOT / '.github' / 'workflows'
-WRAPPER_TEMPLATE_REF = '@d3aabc77c858e27cb7ade824e9fbf3dd9203f256'
+WRAPPER_TEMPLATE_REF = '@0e7482ede8d157d5183d41dfe2b575560fbea222'
 MUTATION_TEMPLATE_REF = '@7268fee30f1cf796938d97fe460259f27386a8cd'
 
 
