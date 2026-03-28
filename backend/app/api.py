@@ -1937,11 +1937,25 @@ def _event_learning_delta(*, interaction_type: str, meta: object) -> float:
     return 0.8 + min(1.0, float(seconds) / 60.0) * 0.4
 
 
-def _load_existing_interaction_event_ids(*, db: Session, payload: schemas.InteractionBatchIn) -> set[int]:
-    event_ids = {event.event_id for event in payload.events if event.event_id is not None}
+def _load_existing_interaction_event_ids(
+    *,
+    db: Session,
+    payload: schemas.InteractionBatchIn,
+) -> set[int]:
+    """Return the subset of payload event IDs that currently exist in the database."""
+    event_ids = {
+        event.event_id for event in payload.events if event.event_id is not None
+    }
     if not event_ids:
         return set()
-    return {row[0] for row in db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all()}
+    return {
+        row[0]
+        for row in (
+            db.query(models.Event.id)
+            .filter(models.Event.id.in_(event_ids))
+            .all()
+        )
+    }
 
 
 def _build_event_interactions(
@@ -1951,6 +1965,7 @@ def _build_event_interactions(
     current_user: models.User | None,
     now: datetime,
 ) -> list[models.EventInteraction]:
+    """Build normalized interaction rows while skipping unknown event IDs."""
     existing_event_ids = _load_existing_interaction_event_ids(db=db, payload=payload)
     interactions: list[models.EventInteraction] = []
     for event in payload.events:
@@ -1975,12 +1990,14 @@ def _collect_search_filter_deltas(
     category_deltas: dict[str, float],
     city_deltas: dict[str, float],
 ) -> None:
+    """Accumulate implicit-interest signals embedded in search and filter payloads."""
     _collect_tag_name_deltas(meta.get("tags"), tag_name_deltas)
     _collect_scalar_interest_delta(meta.get("category"), category_deltas)
     _collect_scalar_interest_delta(meta.get("city"), city_deltas)
 
 
 def _collect_tag_name_deltas(value: object, deltas: dict[str, float]) -> None:
+    """Collect per-tag interest deltas from a list-like metadata field."""
     if not isinstance(value, list):
         return
     for name in value:
@@ -1988,6 +2005,7 @@ def _collect_tag_name_deltas(value: object, deltas: dict[str, float]) -> None:
 
 
 def _collect_scalar_interest_delta(value: object, deltas: dict[str, float]) -> None:
+    """Apply the default scalar-interest bump for a normalized string value."""
     if not isinstance(value, str):
         return
     key = _normalize_interest_value(value)
@@ -1998,6 +2016,7 @@ def _collect_scalar_interest_delta(value: object, deltas: dict[str, float]) -> N
 def _collect_online_learning_deltas(
     payload: schemas.InteractionBatchIn,
 ) -> tuple[dict[int, float], dict[str, float], dict[str, float], dict[str, float]]:
+    """Aggregate event, tag, category, and city deltas from interaction history."""
     event_deltas: dict[int, float] = {}
     tag_name_deltas: dict[str, float] = {}
     category_deltas: dict[str, float] = {}
@@ -2005,12 +2024,21 @@ def _collect_online_learning_deltas(
 
     for event in payload.events:
         if event.event_id is not None:
-            delta = _event_learning_delta(interaction_type=str(event.interaction_type), meta=event.meta)
+            delta = _event_learning_delta(
+                interaction_type=str(event.interaction_type),
+                meta=event.meta,
+            )
             if delta > 0:
                 event_id = int(event.event_id)
-                event_deltas[event_id] = max(event_deltas.get(event_id, 0.0), float(delta))
+                event_deltas[event_id] = max(
+                    event_deltas.get(event_id, 0.0),
+                    float(delta),
+                )
 
-        if event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
+        if (
+            event.interaction_type in {"search", "filter"}
+            and isinstance(event.meta, dict)
+        ):
             _collect_search_filter_deltas(
                 meta=event.meta,
                 tag_name_deltas=tag_name_deltas,
@@ -2026,16 +2054,23 @@ def _load_event_delta_context(
     db: Session,
     event_ids: list[int],
 ) -> tuple[dict[int, str | None], dict[int, str | None], dict[int, list[int]]]:
+    """Load the category, city, and tag context needed to merge event deltas."""
     if not event_ids:
         return {}, {}, {}
 
     event_rows = (
-        db.query(models.Event.id, models.Event.category, models.Event.city).filter(models.Event.id.in_(event_ids)).all()
+        db.query(models.Event.id, models.Event.category, models.Event.city)
+        .filter(models.Event.id.in_(event_ids))
+        .all()
     )
     event_category_by_id = {
-        int(event_id): _normalize_interest_value(category) for event_id, category, _city in event_rows
+        int(event_id): _normalize_interest_value(category)
+        for event_id, category, _city in event_rows
     }
-    event_city_by_id = {int(event_id): _normalize_interest_value(city) for event_id, _category, city in event_rows}
+    event_city_by_id = {
+        int(event_id): _normalize_interest_value(city)
+        for event_id, _category, city in event_rows
+    }
 
     tag_rows = (
         db.query(models.event_tags.c.event_id, models.event_tags.c.tag_id)
@@ -2062,7 +2097,9 @@ def _merge_event_signal_deltas(
     for event_id, delta in event_deltas.items():
         category_key = event_category_by_id.get(event_id)
         if category_key:
-            category_deltas[category_key] = category_deltas.get(category_key, 0.0) + float(delta)
+            category_deltas[category_key] = (
+                category_deltas.get(category_key, 0.0) + float(delta)
+            )
 
         city_key = event_city_by_id.get(event_id)
         if city_key:
@@ -2137,7 +2174,10 @@ def _upsert_implicit_tag_scores(
         row.score = min(
             max_score,
             _decay_interest_score(
-                score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda
+                score=float(row.score or 0.0),
+                last_seen_at=last_seen_at,
+                now=now,
+                decay_lambda=decay_lambda,
             )
             + delta,
         )

@@ -95,10 +95,10 @@ describe('auth pages', () => {
     cleanup();
     vi.clearAllMocks();
     localStorage.setItem('language_preference', 'en');
-    authState.login.mockResolvedValue(undefined);
-    authState.register.mockResolvedValue(undefined);
-    authServiceMock.requestPasswordReset.mockResolvedValue(undefined);
-    authServiceMock.resetPassword.mockResolvedValue(undefined);
+    authState.login.mockResolvedValue();
+    authState.register.mockResolvedValue();
+    authServiceMock.requestPasswordReset.mockResolvedValue();
+    authServiceMock.resetPassword.mockResolvedValue();
   });
 
   it('covers LoginPage success and failure paths', async () => {
