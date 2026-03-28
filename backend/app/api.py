@@ -255,8 +255,9 @@ _CATEGORY_KEYWORDS: dict[str, list[str]] = {
 }
 
 
-def _suggest_category_from_text(text: str) -> str | None:
-    lowered = (text or "").lower()
+def _suggest_category_from_text(content: str) -> str | None:
+    """Infer the most likely event category from free-form text."""
+    lowered = (content or "").lower()
     best: tuple[int, str] | None = None
     for category, keywords in _CATEGORY_KEYWORDS.items():
         score = _keyword_match_count(lowered, keywords)
@@ -267,23 +268,26 @@ def _suggest_category_from_text(text: str) -> str | None:
     return best[1] if best else None
 
 
-def _keyword_match_count(text: str, keywords: list[str]) -> int:
-    return sum(1 for kw in keywords if kw in text)
+def _keyword_match_count(content: str, keywords: list[str]) -> int:
+    """Count how many category keywords appear in the provided text."""
+    return sum(1 for kw in keywords if kw in content)
 
 
-def _suggest_city_from_text(*, text: str, city: str | None) -> str | None:
+def _suggest_city_from_text(*, content: str, city: str | None) -> str | None:
+    """Infer an event city from the university catalog when the payload omits it."""
     if city:
         return city
     catalog_cities = {item.get("city") for item in ro_universities.get_university_catalog() if item.get("city")}
-    lowered = text.lower()
+    lowered = content.lower()
     for candidate_city in sorted(catalog_cities, key=lambda value: len(str(value)), reverse=True):
         if str(candidate_city).lower() in lowered:
             return str(candidate_city)
     return None
 
 
-def _suggest_tags_from_text(*, db: Session, text: str) -> list[str]:
-    lowered = text.lower()
+def _suggest_tags_from_text(*, db: Session, content: str) -> list[str]:
+    """Suggest existing tags whose names already appear in the provided text."""
+    lowered = content.lower()
     suggested_tags: list[str] = []
     for tag in db.query(models.Tag).order_by(models.Tag.name).all():
         name = (tag.name or "").strip()
@@ -327,8 +331,9 @@ def _find_duplicate_candidates(
     return duplicates[:5]
 
 
-def _tokenize(text: str) -> set[str]:
-    return {t for t in re.findall(r"[a-z0-9ăâîșț]+", (text or "").lower()) if t}
+def _tokenize(content: str) -> set[str]:
+    """Tokenize free-form text into normalized words for similarity matching."""
+    return {t for t in re.findall(r"[a-z0-9ăâîșț]+", (content or "").lower()) if t}
 
 
 def _jaccard_similarity(a: set[str], b: set[str]) -> float:
@@ -2489,7 +2494,7 @@ def organizer_suggest_event(
     db: DbSession,
     current_user: OrganizerUser,
 ):
-    text = " ".join(
+    combined_text = " ".join(
         [
             payload.title or "",
             payload.description or "",
@@ -2498,9 +2503,9 @@ def organizer_suggest_event(
         ]
     ).strip()
 
-    suggested_category = payload.category or _suggest_category_from_text(text)
-    suggested_city = _suggest_city_from_text(text=text, city=payload.city)
-    suggested_tags = _suggest_tags_from_text(db=db, text=text)
+    suggested_category = payload.category or _suggest_category_from_text(combined_text)
+    suggested_city = _suggest_city_from_text(content=combined_text, city=payload.city)
+    suggested_tags = _suggest_tags_from_text(db=db, content=combined_text)
     duplicates = _find_duplicate_candidates(
         db=db,
         current_user=current_user,
