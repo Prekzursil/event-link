@@ -3,14 +3,27 @@ from datetime import datetime, timezone
 from app import models
 
 
+def _create_event(client, auth_header, payload):
+    response = client.post("/api/events", headers=auth_header, json=payload)
+    assert response.status_code == 201
+    return response.json()["id"]
+
+
+def _user_id_by_email(db, email: str) -> int:
+    user = db.query(models.User).filter(models.User.email == email).first()
+    assert user is not None
+    return int(user.id)
+
+
 def test_personalization_hide_tag_excludes_events(client, helpers):
     helpers["make_organizer"]("org@test.ro")
     org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
-    resp = client.post(
-        "/api/events",
-        headers=helpers["auth_header"](org_token),
-        json={
+    organizer_header = helpers["auth_header"](org_token)
+    rock_event_id = _create_event(
+        client,
+        organizer_header,
+        {
             "title": "Rock concert",
             "description": "Live music",
             "category": "Music",
@@ -21,13 +34,10 @@ def test_personalization_hide_tag_excludes_events(client, helpers):
             "tags": ["Rock"],
         },
     )
-    assert resp.status_code == 201
-    rock_event_id = resp.json()["id"]
-
-    resp = client.post(
-        "/api/events",
-        headers=helpers["auth_header"](org_token),
-        json={
+    tech_event_id = _create_event(
+        client,
+        organizer_header,
+        {
             "title": "Tech meetup",
             "description": "Talks",
             "category": "Education",
@@ -38,8 +48,6 @@ def test_personalization_hide_tag_excludes_events(client, helpers):
             "tags": ["Tech"],
         },
     )
-    assert resp.status_code == 201
-    tech_event_id = resp.json()["id"]
 
     student_token = helpers["register_student"]("student@test.ro")
     tags = client.get("/api/tags").json()["items"]
@@ -64,10 +72,10 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
     org1_token = helpers["login"]("org1@test.ro", "organizer-fixture-A1")
     org2_token = helpers["login"]("org2@test.ro", "organizer-fixture-A1")
 
-    resp = client.post(
-        "/api/events",
-        headers=helpers["auth_header"](org1_token),
-        json={
+    org1_event_id = _create_event(
+        client,
+        helpers["auth_header"](org1_token),
+        {
             "title": "Org1 event",
             "description": "x",
             "category": "Education",
@@ -78,13 +86,10 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
             "tags": ["General"],
         },
     )
-    assert resp.status_code == 201
-    org1_event_id = resp.json()["id"]
-
-    resp = client.post(
-        "/api/events",
-        headers=helpers["auth_header"](org2_token),
-        json={
+    org2_event_id = _create_event(
+        client,
+        helpers["auth_header"](org2_token),
+        {
             "title": "Org2 event",
             "description": "y",
             "category": "Education",
@@ -95,23 +100,15 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
             "tags": ["General"],
         },
     )
-    assert resp.status_code == 201
-    org2_event_id = resp.json()["id"]
 
     student_token = helpers["register_student"]("student2@test.ro")
-    db = helpers["db"]
-    org2 = db.query(models.User).filter(models.User.email == "org2@test.ro").first()
-    assert org2 is not None
-
     resp = client.post(
-        f"/api/me/personalization/blocked-organizers/{org2.id}",
+        f"/api/me/personalization/blocked-organizers/{_user_id_by_email(helpers['db'], 'org2@test.ro')}",
         headers=helpers["auth_header"](student_token),
     )
     assert resp.status_code == 201
 
-    resp = client.get("/api/events", headers=helpers["auth_header"](student_token))
-    assert resp.status_code == 200
-    ids = [item["id"] for item in resp.json()["items"]]
+    ids = [item["id"] for item in client.get("/api/events", headers=helpers["auth_header"](student_token)).json()["items"]]
     assert org2_event_id not in ids
     assert org1_event_id in ids
 
@@ -166,10 +163,10 @@ def test_event_detail_includes_recommendation_reason_for_student(client, helpers
     helpers["make_organizer"]("org@test.ro")
     org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
 
-    resp = client.post(
-        "/api/events",
-        headers=helpers["auth_header"](org_token),
-        json={
+    event_id = _create_event(
+        client,
+        helpers["auth_header"](org_token),
+        {
             "title": "Event",
             "description": "x",
             "category": "Education",
@@ -180,8 +177,6 @@ def test_event_detail_includes_recommendation_reason_for_student(client, helpers
             "tags": ["Rock"],
         },
     )
-    assert resp.status_code == 201
-    event_id = resp.json()["id"]
 
     student_token = helpers["register_student"]("student4@test.ro")
     db = helpers["db"]

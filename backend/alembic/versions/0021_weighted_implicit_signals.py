@@ -17,13 +17,19 @@ depends_on = None
 
 
 def _create_weighted_interest_table(*, table_name: str, value_column: str, unique_name: str) -> None:
+    """Create a weighted implicit-interest table and its supporting indexes."""
     op.create_table(
         table_name,
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column(value_column, sa.String(length=100), nullable=False),
         sa.Column("score", sa.Float(), nullable=False, server_default="1.0"),
-        sa.Column("last_seen_at", sa.TIMESTAMP(timezone=True), nullable=False, server_default=sa.func.now()),
+        sa.Column(
+            "last_seen_at",
+            sa.TIMESTAMP(timezone=True),
+            nullable=False,
+            server_default=sa.func.now(),
+        ),
         sa.UniqueConstraint("user_id", value_column, name=unique_name),
     )
     for suffix, columns in (
@@ -35,6 +41,7 @@ def _create_weighted_interest_table(*, table_name: str, value_column: str, uniqu
 
 
 def upgrade() -> None:
+    """Add weighted implicit-interest tables used by the v3 recommendation model."""
     op.add_column(
         "user_implicit_interest_tags",
         sa.Column("score", sa.Float(), nullable=False, server_default="1.0"),

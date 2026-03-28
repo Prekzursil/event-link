@@ -277,19 +277,6 @@ export function ParticipantsPage() {
     loadParticipants();
   }, [loadParticipants]);
 
-  const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
-    await mutateAttendance({
-      attended,
-      currentData: data!,
-      eventId,
-      participant,
-      setData,
-      setUpdatingAttendance,
-      t,
-      toast,
-    });
-  };
-
   const toggleSort = (column: string) => {
     if (sortBy === column) {
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -297,10 +284,6 @@ export function ParticipantsPage() {
       setSortBy(column);
       setSortDir('asc');
     }
-  };
-
-  const exportToCSV = () => {
-    downloadParticipantsCsv(data!, language, t);
   };
 
   const sendEmailToParticipants = async () => {
@@ -356,8 +339,26 @@ export function ParticipantsPage() {
     return null;
   }
 
-  const totalPages = Math.ceil(data.total / pageSize);
-  const attendedCount = data.participants.filter((p) => p.attended).length;
+  const participantData = data;
+  const totalPages = Math.ceil(participantData.total / pageSize);
+  const attendedCount = participantData.participants.filter((p) => p.attended).length;
+
+  const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
+    await mutateAttendance({
+      attended,
+      currentData: participantData,
+      eventId,
+      participant,
+      setData,
+      setUpdatingAttendance,
+      t,
+      toast,
+    });
+  };
+
+  const exportToCSV = () => {
+    downloadParticipantsCsv(participantData, language, t);
+  };
 
   return (
     <div className="container mx-auto px-4 py-8">

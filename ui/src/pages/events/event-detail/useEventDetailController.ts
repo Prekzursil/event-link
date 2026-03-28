@@ -21,7 +21,7 @@ function errorDetail(error: unknown, fallback: string) {
 }
 
 /** Ignore best-effort async work that should not block UI updates. */
-function swallowPromise(result?: PromiseLike<unknown>) {
+function swallowPromise<T>(result?: PromiseLike<T>) {
   Promise.resolve(result).catch(() => undefined);
 }
 

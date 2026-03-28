@@ -25,6 +25,15 @@ interface ApiError {
   };
 }
 
+function describeApiError(error: unknown, fallback: string) {
+  const axiosError = error as AxiosError<ApiError>;
+  return (
+    axiosError.response?.data?.detail ||
+    axiosError.response?.data?.error?.message ||
+    fallback
+  );
+}
+
 export function LoginPage() {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
@@ -51,13 +60,9 @@ export function LoginPage() {
       });
       navigate(from, { replace: true });
     } catch (error) {
-      const axiosError = error as AxiosError<ApiError>;
       toast({
         title: t.auth.login.errorTitle,
-        description:
-          axiosError.response?.data?.detail ||
-          axiosError.response?.data?.error?.message ||
-          t.auth.login.errorFallback,
+        description: describeApiError(error, t.auth.login.errorFallback),
         variant: 'destructive',
       });
     } finally {
@@ -150,4 +155,3 @@ export function LoginPage() {
     </div>
   );
 }
-

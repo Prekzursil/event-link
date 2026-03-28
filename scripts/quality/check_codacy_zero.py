@@ -173,7 +173,7 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _render_md(payload: dict) -> str:
+def _build_markdown_report(payload: dict) -> str:
     lines = [
         "# Codacy Zero Gate",
         "",
@@ -190,8 +190,8 @@ def _render_md(payload: dict) -> str:
         lines.extend(f"- {item}" for item in findings)
     else:
         lines.append("- None")
-    markdown = "\n".join(lines) + "\n"
-    return markdown
+    report = "\n".join(lines) + "\n"
+    return report
 
 
 def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, str, str]:
@@ -502,7 +502,7 @@ def main() -> int:
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="codacy-zero/codacy.md",
-            text=_render_md(payload),
+            text=_build_markdown_report(payload),
         )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)

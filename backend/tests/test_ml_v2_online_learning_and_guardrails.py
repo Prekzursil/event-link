@@ -10,6 +10,125 @@ def _set_setting(obj, name: str, value):  # noqa: ANN001
     return original
 
 
+def _guardrails_models():
+    older = models.RecommenderModel(
+        model_version="old",
+        feature_names=["bias"],
+        weights=[0.0],
+        meta={"hitrate_at_10": 0.1},
+        is_active=False,
+    )
+    active = models.RecommenderModel(
+        model_version="new",
+        feature_names=["bias"],
+        weights=[0.0],
+        meta={"hitrate_at_10": 0.1},
+        is_active=True,
+    )
+    return older, active
+
+
+def _guardrails_users_and_events():
+    user = models.User(
+        email="guardrails@test.ro",
+        password_hash=auth.get_password_hash("student-fixture-A1"),
+        role=models.UserRole.student,
+    )
+    org = models.User(
+        email="org-guard@test.ro",
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
+        role=models.UserRole.organizator,
+    )
+    events = [
+        models.Event(
+            title=title,
+            start_time=datetime.now(timezone.utc) + timedelta(days=offset),
+            owner=org,
+            status="published",
+        )
+        for offset, title in ((1, "Time Event"), (2, "Time Event 2"), (3, "Recommended Event"))
+    ]
+    return user, org, events
+
+
+def _seed_guardrails_interactions(db, *, user_id: int, events) -> None:
+    now = datetime.now(timezone.utc)
+    repeated_impressions = [
+        models.EventInteraction(
+            user_id=user_id,
+            event_id=int(event.id),
+            interaction_type="impression",
+            occurred_at=now,
+            meta={"source": "events_list", "sort": sort, "position": 0},
+        )
+        for event, sort in ((events[0], "time"), (events[2], "recommended"))
+        for _ in range(10)
+    ]
+    db.add_all(
+        [
+            *repeated_impressions,
+            models.EventInteraction(
+                user_id=user_id,
+                event_id=int(events[0].id),
+                interaction_type="click",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": "time"},
+            ),
+            models.EventInteraction(
+                user_id=user_id,
+                event_id=int(events[1].id),
+                interaction_type="click",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": "time"},
+            ),
+            models.EventInteraction(
+                user_id=user_id,
+                event_id=int(events[0].id),
+                interaction_type="register",
+                occurred_at=now + timedelta(minutes=5),
+                meta={"source": "event_detail"},
+            ),
+        ]
+    )
+    db.commit()
+
+
+def _prepare_guardrails_rollback_fixture(helpers):
+    db = helpers["db"]
+    older, active = _guardrails_models()
+    user, org, events = _guardrails_users_and_events()
+    db.add_all([older, active, user, org, *events])
+    db.commit()
+    db.refresh(user)
+    for event in events:
+        db.refresh(event)
+    _seed_guardrails_interactions(db, user_id=int(user.id), events=events)
+    return db
+
+
+def _run_guardrails_rollback(db):
+    originals = {}
+    try:
+        originals["personalization_guardrails_enabled"] = _set_setting(
+            api_module.settings,
+            "personalization_guardrails_enabled",
+            True,
+        )
+        return _evaluate_personalization_guardrails(
+            db=db,
+            payload={
+                "days": 1,
+                "min_impressions": 5,
+                "ctr_drop_ratio": 0.1,
+                "conversion_drop_ratio": 0.1,
+                "click_to_register_window_hours": 72,
+            },
+        )
+    finally:
+        for name, value in originals.items():
+            setattr(api_module.settings, name, value)
+
+
 def test_background_job_dedupe_key_returns_existing_job(helpers):
     db = helpers["db"]
     job1 = enqueue_job(db, "test_job", {"value": 1}, dedupe_key="k1")
@@ -68,129 +187,9 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
 
 
 def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
-    db = helpers["db"]
-
-    older = models.RecommenderModel(
-        model_version="old",
-        feature_names=["bias"],
-        weights=[0.0],
-        meta={"hitrate_at_10": 0.1},
-        is_active=False,
-    )
-    active = models.RecommenderModel(
-        model_version="new",
-        feature_names=["bias"],
-        weights=[0.0],
-        meta={"hitrate_at_10": 0.1},
-        is_active=True,
-    )
-    db.add_all([older, active])
-    db.commit()
-    db.refresh(older)
-    db.refresh(active)
-
-    user = models.User(
-        email="guardrails@test.ro",
-        password_hash=auth.get_password_hash("student-fixture-A1"),
-        role=models.UserRole.student,
-    )
-    org = models.User(
-        email="org-guard@test.ro",
-        password_hash=auth.get_password_hash("organizer-fixture-A1"),
-        role=models.UserRole.organizator,
-    )
-    event1 = models.Event(
-        title="Time Event",
-        start_time=datetime.now(timezone.utc) + timedelta(days=1),
-        owner=org,
-        status="published",
-    )
-    event2 = models.Event(
-        title="Time Event 2",
-        start_time=datetime.now(timezone.utc) + timedelta(days=2),
-        owner=org,
-        status="published",
-    )
-    event3 = models.Event(
-        title="Recommended Event",
-        start_time=datetime.now(timezone.utc) + timedelta(days=3),
-        owner=org,
-        status="published",
-    )
-    db.add_all([user, org, event1, event2, event3])
-    db.commit()
-    db.refresh(user)
-    db.refresh(event1)
-    db.refresh(event2)
-    db.refresh(event3)
-
-    now = datetime.now(timezone.utc)
-    for _ in range(10):
-        db.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event1.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": "time", "position": 0},
-            )
-        )
-        db.add(
-            models.EventInteraction(
-                user_id=int(user.id),
-                event_id=int(event3.id),
-                interaction_type="impression",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": "recommended", "position": 0},
-            )
-        )
-
-    db.add(
-        models.EventInteraction(
-            user_id=int(user.id),
-            event_id=int(event1.id),
-            interaction_type="click",
-            occurred_at=now,
-            meta={"source": "events_list", "sort": "time"},
-        )
-    )
-    db.add(
-        models.EventInteraction(
-            user_id=int(user.id),
-            event_id=int(event2.id),
-            interaction_type="click",
-            occurred_at=now,
-            meta={"source": "events_list", "sort": "time"},
-        )
-    )
-    db.add(
-        models.EventInteraction(
-            user_id=int(user.id),
-            event_id=int(event1.id),
-            interaction_type="register",
-            occurred_at=now + timedelta(minutes=5),
-            meta={"source": "event_detail"},
-        )
-    )
-    db.commit()
-
-    originals = {}
-    try:
-        originals["personalization_guardrails_enabled"] = _set_setting(api_module.settings, "personalization_guardrails_enabled", True)
-        result = _evaluate_personalization_guardrails(
-            db=db,
-            payload={
-                "days": 1,
-                "min_impressions": 5,
-                "ctr_drop_ratio": 0.1,
-                "conversion_drop_ratio": 0.1,
-                "click_to_register_window_hours": 72,
-            },
-        )
-        assert result["action"] == "rollback"
-    finally:
-        for name, value in originals.items():
-            setattr(api_module.settings, name, value)
+    db = _prepare_guardrails_rollback_fixture(helpers)
+    result = _run_guardrails_rollback(db)
+    assert result["action"] == "rollback"
 
     active_models = db.query(models.RecommenderModel).filter(models.RecommenderModel.is_active.is_(True)).all()
     assert len(active_models) == 1
@@ -227,4 +226,3 @@ def test_admin_personalization_status_includes_active_model_version(helpers):
     assert resp.status_code == 200
     data = resp.json()
     assert data["active_model_version"] == "status-model"
-

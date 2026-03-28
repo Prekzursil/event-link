@@ -7,6 +7,9 @@ from pathlib import Path
 import pytest
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
+DEEPSCAN_PUBLIC_SHA = "f048fe7022acca4e5159015af0db0d6fef56137b"
+DEEPSOURCE_STATUS_SHA = "6d64df2d1be6d0d1225294b9ff979b98a5e712bf"
+DEEPSCAN_DASHBOARD_SHA = "2a1fcc315ff970968cb44f4be08ca270733c3c8f"
 
 
 def _load_module():
@@ -20,6 +23,30 @@ def _load_module():
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
     return module
+
+
+def _status_payload(*statuses: dict[str, object]) -> dict[str, list[dict[str, object]]]:
+    return {"statuses": list(statuses)}
+
+
+def _deepsource_status(*, state: str, target_url: str, description: str) -> dict[str, str]:
+    return {
+        "context": "DeepSource: JavaScript",
+        "state": state,
+        "description": description,
+        "target_url": target_url,
+    }
+
+
+def _public_pr_responses() -> dict[str, dict[str, dict[str, int]]]:
+    return {
+        "https://deepscan.io/api/teams/29074/projects/31139/pulls/2297171": {
+            "data": {"ownerBid": 1009136, "headAid": 3694745}
+        },
+        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745": {
+            "data": {"outstandingDefectCount": 1}
+        },
+    }
 
 
 def test_load_module_inserts_parent_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -64,31 +91,19 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
         assert owner == "Prekzursil"
         assert repo == "event-link"
-        assert sha == "f048fe7022acca4e5159015af0db0d6fef56137b"
+        assert sha == DEEPSCAN_PUBLIC_SHA
         assert github_token == "gh-token"
-        return {
-            "statuses": [
-                {
-                    "context": "DeepScan",
-                    "target_url": (
-                        "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139&bid=1008135"
-                        "&subview=pull-request&prid=2297171"
-                    ),
-                }
-            ]
-        }
-
-    responses = {
-        "https://deepscan.io/api/teams/29074/projects/31139/pulls/2297171": {
-            "data": {
-                "ownerBid": 1009136,
-                "headAid": 3694745,
+        return _status_payload(
+            {
+                "context": "DeepScan",
+                "target_url": (
+                    "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139&bid=1008135"
+                    "&subview=pull-request&prid=2297171"
+                ),
             }
-        },
-        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745": {
-            "data": {"outstandingDefectCount": 1}
-        },
-    }
+        )
+
+    responses = _public_pr_responses()
 
     def fake_request_json(url: str, token: str):
         requested.append(url)
@@ -96,20 +111,23 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
     monkeypatch.setattr(module, "_request_json", fake_request_json)
+    expected_source_url = (
+        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    )
 
     open_issues, source_url = module._resolve_open_issues(
         token="",
         open_issues_url=None,
         repo="Prekzursil/event-link",
-        sha="f048fe7022acca4e5159015af0db0d6fef56137b",
+        sha=DEEPSCAN_PUBLIC_SHA,
         github_token="gh-token",
     )
 
     assert open_issues == 1
-    assert source_url == "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    assert source_url == expected_source_url
     assert requested == [
         "https://deepscan.io/api/teams/29074/projects/31139/pulls/2297171",
-        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745",
+        expected_source_url,
     ]
 
 
@@ -137,25 +155,23 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
 
 def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
+    target_url = (
+        "https://app.deepsource.com/gh/Prekzursil/event-link/"
+        "run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
+    )
 
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
         assert owner == "Prekzursil"
         assert repo == "event-link"
-        assert sha == "6d64df2d1be6d0d1225294b9ff979b98a5e712bf"
+        assert sha == DEEPSOURCE_STATUS_SHA
         assert github_token == "gh-token"
-        return {
-            "statuses": [
-                {
-                    "context": "DeepSource: JavaScript",
-                    "state": "failure",
-                    "description": "Analysis failed: Blocking issues or failing metrics found",
-                    "target_url": (
-                        "https://app.deepsource.com/gh/Prekzursil/event-link/"
-                        "run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
-                    ),
-                }
-            ]
-        }
+        return _status_payload(
+            _deepsource_status(
+                state="failure",
+                description="Analysis failed: Blocking issues or failing metrics found",
+                target_url=target_url,
+            )
+        )
 
     monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
 
@@ -163,13 +179,13 @@ def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pyte
         token="",
         open_issues_url=None,
         repo="Prekzursil/event-link",
-        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        sha=DEEPSOURCE_STATUS_SHA,
         github_token="gh-token",
     )
 
     assert resolved == (
         1,
-        "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
+        target_url,
         ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
     )
 
@@ -201,36 +217,27 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
     module = _load_module()
     success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/ready/javascript/"
     payloads = [
-        {
-            "statuses": [
-                {
-                    "context": "DeepSource: JavaScript",
-                    "state": "pending",
-                    "description": "Analysis in progress...",
-                    "target_url": success_url,
-                }
-            ]
-        },
-        {
-            "statuses": [
-                {
-                    "context": "DeepSource: JavaScript",
-                    "state": "pending",
-                    "description": "Analysis in progress...",
-                    "target_url": success_url,
-                }
-            ]
-        },
-        {
-            "statuses": [
-                {
-                    "context": "DeepSource: JavaScript",
-                    "state": "success",
-                    "description": "Analysis complete",
-                    "target_url": success_url,
-                }
-            ]
-        },
+        _status_payload(
+            _deepsource_status(
+                state="pending",
+                description="Analysis in progress...",
+                target_url=success_url,
+            )
+        ),
+        _status_payload(
+            _deepsource_status(
+                state="pending",
+                description="Analysis in progress...",
+                target_url=success_url,
+            )
+        ),
+        _status_payload(
+            _deepsource_status(
+                state="success",
+                description="Analysis complete",
+                target_url=success_url,
+            )
+        ),
     ]
     sleeps: list[float] = []
 
@@ -245,7 +252,7 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
         token="",
         open_issues_url=None,
         repo="Prekzursil/event-link",
-        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        sha=DEEPSOURCE_STATUS_SHA,
         github_token="gh-token",
     )
 
@@ -258,26 +265,20 @@ def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: 
     success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/available/javascript/"
     payloads = [
         {"statuses": []},
-        {
-            "statuses": [
-                {
-                    "context": "DeepSource: JavaScript",
-                    "state": "success",
-                    "description": "Analysis complete",
-                    "target_url": success_url,
-                }
-            ]
-        },
-        {
-            "statuses": [
-                {
-                    "context": "DeepSource: JavaScript",
-                    "state": "success",
-                    "description": "Analysis complete",
-                    "target_url": success_url,
-                }
-            ]
-        },
+        _status_payload(
+            _deepsource_status(
+                state="success",
+                description="Analysis complete",
+                target_url=success_url,
+            )
+        ),
+        _status_payload(
+            _deepsource_status(
+                state="success",
+                description="Analysis complete",
+                target_url=success_url,
+            )
+        ),
     ]
     sleeps: list[float] = []
 
@@ -288,7 +289,7 @@ def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: 
         token="",
         open_issues_url=None,
         repo="Prekzursil/event-link",
-        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        sha=DEEPSOURCE_STATUS_SHA,
         github_token="gh-token",
     )
 
@@ -334,7 +335,7 @@ def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeyp
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
         assert owner == "Prekzursil"
         assert repo == "event-link"
-        assert sha == "2a1fcc315ff970968cb44f4be08ca270733c3c8f"
+        assert sha == DEEPSCAN_DASHBOARD_SHA
         assert github_token == "gh-token"
         return payloads.pop(0)
 
@@ -344,7 +345,7 @@ def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeyp
     resolved = module._wait_for_deepscan_dashboard_url(
         owner="Prekzursil",
         repo="event-link",
-        sha="2a1fcc315ff970968cb44f4be08ca270733c3c8f",
+        sha=DEEPSCAN_DASHBOARD_SHA,
         github_token="gh-token",
     )
 

@@ -81,6 +81,11 @@ type StatsGridProps = Readonly<{
   stats: Props['controller']['stats'];
 }>;
 
+type StatsGridCard = Readonly<{
+  title: string;
+  value: number;
+}>;
+
 type PersonalizationContentProps = Readonly<{
   controller: Props['controller'];
 }>;
@@ -261,12 +266,17 @@ const PersonalizationTable = ({ rows, table }: PersonalizationTableProps) => (
 );
 
 /** Render the top-level admin overview statistic cards. */
-const StatsGrid = ({ labels, stats }: StatsGridProps) => {
-  const statCards = [
+function buildStatsGridCards(labels: StatsGridProps['labels'], stats: StatsGridProps['stats']): StatsGridCard[] {
+  return [
     { title: labels.totalUsers, value: stats?.total_users ?? 0 },
     { title: labels.totalEvents, value: stats?.total_events ?? 0 },
     { title: labels.totalRegistrations, value: stats?.total_registrations ?? 0 },
   ];
+}
+
+/** Render the top-level admin overview statistic cards. */
+const StatsGrid = ({ labels, stats }: StatsGridProps) => {
+  const statCards = buildStatsGridCards(labels, stats);
 
   return (
     <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

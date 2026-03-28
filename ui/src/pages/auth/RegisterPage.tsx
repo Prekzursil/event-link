@@ -25,6 +25,29 @@ interface ApiError {
   };
 }
 
+type PasswordRequirementState = Readonly<{
+  hasLetters: boolean;
+  hasMinimumLength: boolean;
+  hasNumbers: boolean;
+}>;
+
+function buildPasswordRequirementState(password: string): PasswordRequirementState {
+  return {
+    hasLetters: /[a-zA-Z]/.test(password),
+    hasMinimumLength: password.length >= 8,
+    hasNumbers: /\d/.test(password),
+  };
+}
+
+function describeApiError(error: unknown, fallback: string) {
+  const axiosError = error as AxiosError<ApiError>;
+  return (
+    axiosError.response?.data?.detail ||
+    axiosError.response?.data?.error?.message ||
+    fallback
+  );
+}
+
 export function RegisterPage() {
   const { t } = useI18n();
   const [formData, setFormData] = useState({
@@ -39,10 +62,11 @@ export function RegisterPage() {
   const navigate = useNavigate();
   const { toast } = useToast();
 
+  const passwordState = buildPasswordRequirementState(formData.password);
   const passwordRequirements = [
-    { label: t.auth.register.accessCodeRequirementMin, met: formData.password.length >= 8 },
-    { label: t.auth.register.accessCodeRequirementLetters, met: /[a-zA-Z]/.test(formData.password) },
-    { label: t.auth.register.accessCodeRequirementNumbers, met: /\d/.test(formData.password) },
+    { label: t.auth.register.accessCodeRequirementMin, met: passwordState.hasMinimumLength },
+    { label: t.auth.register.accessCodeRequirementLetters, met: passwordState.hasLetters },
+    { label: t.auth.register.accessCodeRequirementNumbers, met: passwordState.hasNumbers },
   ];
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -86,13 +110,9 @@ export function RegisterPage() {
       });
       navigate('/');
     } catch (error) {
-      const axiosError = error as AxiosError<ApiError>;
       toast({
         title: t.auth.register.errorTitle,
-        description:
-          axiosError.response?.data?.detail ||
-          axiosError.response?.data?.error?.message ||
-          t.auth.register.errorFallback,
+        description: describeApiError(error, t.auth.register.errorFallback),
         variant: 'destructive',
       });
     } finally {

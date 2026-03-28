@@ -9,32 +9,45 @@ def _set_setting(obj, name: str, value):  # noqa: ANN001
     return original
 
 
-def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
+def _create_realtime_fixture(helpers, *, slug: str, title: str):
     client = helpers["client"]
     db = helpers["db"]
 
-    token = helpers["register_student"]("student-realtime@test.ro")
-    student = db.query(models.User).filter(models.User.email == "student-realtime@test.ro").first()
+    token = helpers["register_student"](f"student-{slug}@test.ro")
+    student = db.query(models.User).filter(models.User.email == f"student-{slug}@test.ro").first()
     assert student is not None
 
     organizer = models.User(
-        email="org-realtime@test.ro",
+        email=f"org-{slug}@test.ro",
         password_hash=auth.get_password_hash("organizer-fixture-A1"),
         role=models.UserRole.organizator,
     )
-    db.add(organizer)
-    db.commit()
-    db.refresh(organizer)
-
     event = models.Event(
-        title="Realtime Event",
+        title=title,
         start_time=datetime.now(timezone.utc) + timedelta(days=1),
-        owner_id=int(organizer.id),
+        owner=organizer,
         status="published",
     )
-    db.add(event)
+    db.add_all([organizer, event])
     db.commit()
     db.refresh(event)
+    return client, db, token, student, event
+
+
+def _refresh_jobs(db):
+    return (
+        db.query(models.BackgroundJob)
+        .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
+        .all()
+    )
+
+
+def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
+    client, db, token, student, event = _create_realtime_fixture(
+        helpers,
+        slug="realtime",
+        title="Realtime Event",
+    )
 
     originals = {}
     try:
@@ -53,11 +66,7 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
         )
         assert resp.status_code == 204
 
-        jobs = (
-            db.query(models.BackgroundJob)
-            .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
-            .all()
-        )
+        jobs = _refresh_jobs(db)
         assert len(jobs) == 1
         assert jobs[0].payload["user_id"] == int(student.id)
         assert jobs[0].payload["skip_training"] is True
@@ -69,43 +78,18 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
         )
         assert resp2.status_code == 204
 
-        jobs2 = (
-            db.query(models.BackgroundJob)
-            .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
-            .all()
-        )
-        assert len(jobs2) == 1
+        assert len(_refresh_jobs(db)) == 1
     finally:
         for name, value in originals.items():
             setattr(api_module.settings, name, value)
 
 
 def test_interactions_respects_realtime_refresh_min_interval(helpers):
-    client = helpers["client"]
-    db = helpers["db"]
-
-    token = helpers["register_student"]("student-interval@test.ro")
-    student = db.query(models.User).filter(models.User.email == "student-interval@test.ro").first()
-    assert student is not None
-
-    organizer = models.User(
-        email="org-interval@test.ro",
-        password_hash=auth.get_password_hash("organizer-fixture-A1"),
-        role=models.UserRole.organizator,
-    )
-    db.add(organizer)
-    db.commit()
-    db.refresh(organizer)
-
-    event = models.Event(
+    client, db, token, student, event = _create_realtime_fixture(
+        helpers,
+        slug="interval",
         title="Interval Event",
-        start_time=datetime.now(timezone.utc) + timedelta(days=1),
-        owner_id=int(organizer.id),
-        status="published",
     )
-    db.add(event)
-    db.commit()
-    db.refresh(event)
 
     db.add(
         models.UserRecommendation(
@@ -137,13 +121,7 @@ def test_interactions_respects_realtime_refresh_min_interval(helpers):
         )
         assert resp.status_code == 204
 
-        jobs = (
-            db.query(models.BackgroundJob)
-            .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
-            .all()
-        )
-        assert jobs == []
+        assert _refresh_jobs(db) == []
     finally:
         for name, value in originals.items():
             setattr(api_module.settings, name, value)
-
