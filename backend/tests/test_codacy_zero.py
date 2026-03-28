@@ -22,6 +22,20 @@ def _load_module():
     return module
 
 
+def _request(module, *, branch: str = "", pr_number: str = "", commit_sha: str = "", poll_seconds: int = 5):
+    return module.CodacyRequest(
+        provider="gh",
+        owner="Prekzursil",
+        repo="event-link",
+        token="token",
+        branch=branch,
+        pr_number=pr_number,
+        commit_sha=commit_sha,
+        timeout_seconds=30,
+        poll_seconds=poll_seconds,
+    )
+
+
 def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     original_parent = str((REPO_ROOT / "scripts" / "quality").resolve())
     monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
@@ -68,14 +82,12 @@ def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
 
     status, open_issues, findings = module._wait_for_pr_analysis(
-        provider="gh",
-        owner="Prekzursil",
-        repo="event-link",
-        token="token",
-        pr_number="97",
-        commit_sha="0123456789abcdef0123456789abcdef01234567",
-        timeout_seconds=30,
-        poll_seconds=6,
+        _request(
+            module,
+            pr_number="97",
+            commit_sha="0123456789abcdef0123456789abcdef01234567",
+            poll_seconds=6,
+        )
     )
 
     assert status == "pass"
@@ -101,14 +113,11 @@ def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPa
     )
 
     status, open_issues, findings = module._wait_for_pr_analysis(
-        provider="gh",
-        owner="Prekzursil",
-        repo="event-link",
-        token="token",
-        pr_number="97",
-        commit_sha="0123456789abcdef0123456789abcdef01234567",
-        timeout_seconds=30,
-        poll_seconds=5,
+        _request(
+            module,
+            pr_number="97",
+            commit_sha="0123456789abcdef0123456789abcdef01234567",
+        )
     )
 
     assert status == "fail"
@@ -146,14 +155,12 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
 
     status, open_issues, findings = module._wait_for_branch_analysis(
-        provider="gh",
-        owner="Prekzursil",
-        repo="event-link",
-        token="token",
-        branch="main",
-        commit_sha="0123456789abcdef0123456789abcdef01234567",
-        timeout_seconds=30,
-        poll_seconds=6,
+        _request(
+            module,
+            branch="main",
+            commit_sha="0123456789abcdef0123456789abcdef01234567",
+            poll_seconds=6,
+        )
     )
 
     assert status == "pass"
@@ -181,14 +188,11 @@ def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_rea
     )
 
     status, open_issues, findings = module._wait_for_branch_analysis(
-        provider="gh",
-        owner="Prekzursil",
-        repo="event-link",
-        token="token",
-        branch="main",
-        commit_sha="0123456789abcdef0123456789abcdef01234567",
-        timeout_seconds=30,
-        poll_seconds=5,
+        _request(
+            module,
+            branch="main",
+            commit_sha="0123456789abcdef0123456789abcdef01234567",
+        )
     )
 
     assert status == "fail"

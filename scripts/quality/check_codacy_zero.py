@@ -7,7 +7,7 @@ import os
 import sys
 import time
 from datetime import datetime, timezone
-from typing import Any
+from typing import Any, NamedTuple
 from urllib.parse import quote
 
 from _security_import import load_security_helpers
@@ -22,6 +22,43 @@ write_workspace_text = _security_helpers.write_workspace_text
 
 TOTAL_KEYS = {"total", "totalItems", "total_items", "count", "hits", "open_issues"}
 _CODACY_PROVIDERS = {"gh", "github"}
+
+
+class CodacyRequest(NamedTuple):
+    provider: str
+    owner: str
+    repo: str
+    token: str
+    branch: str
+    pr_number: str
+    commit_sha: str
+    timeout_seconds: int
+    poll_seconds: int
+
+    def with_provider(self, provider: str) -> "CodacyRequest":
+        return CodacyRequest(
+            provider=provider,
+            owner=self.owner,
+            repo=self.repo,
+            token=self.token,
+            branch=self.branch,
+            pr_number=self.pr_number,
+            commit_sha=self.commit_sha,
+            timeout_seconds=self.timeout_seconds,
+            poll_seconds=self.poll_seconds,
+        )
+
+
+class BranchAnalysisState(NamedTuple):
+    analysed_sha: str
+    branch_head_sha: str
+    open_issues: int | None
+
+
+class PrAnalysisState(NamedTuple):
+    analyzed_commit: str
+    is_analysing: bool
+    open_issues: int | None
 
 
 def _parse_args() -> argparse.Namespace:
@@ -241,10 +278,10 @@ def _repository_open_issues(payload: dict[str, Any]) -> int | None:
     return extract_total_open(payload)
 
 
-def _repository_analysis_state(payload: dict[str, Any]) -> tuple[str, str, int | None]:
+def _repository_analysis_state(payload: dict[str, Any]) -> BranchAnalysisState:
     data = payload.get("data")
     if not isinstance(data, dict):
-        return "", "", extract_total_open(payload)
+        return BranchAnalysisState("", "", extract_total_open(payload))
 
     last_analysed_commit = data.get("lastAnalysedCommit")
     selected_branch = data.get("selectedBranch")
@@ -253,125 +290,107 @@ def _repository_analysis_state(payload: dict[str, Any]) -> tuple[str, str, int |
     branch_head_sha = str(
         (selected_branch or {}).get("lastCommit") or (branch_info or {}).get("lastCommit") or ""
     ).strip()
-    return analysed_sha, branch_head_sha, _repository_open_issues(payload)
+    return BranchAnalysisState(analysed_sha, branch_head_sha, _repository_open_issues(payload))
 
 
-def _branch_analysis_result(
-    *,
-    analysed_sha: str,
-    branch_head_sha: str,
-    open_issues: int | None,
-    commit_sha: str,
-) -> tuple[str, int | None, list[str]] | None:
-    expected_sha = commit_sha or branch_head_sha
-    if not expected_sha:
-        return "fail", None, ["Codacy repository response did not include a branch head commit."]
-    if branch_head_sha and commit_sha and branch_head_sha != commit_sha:
-        return None
-    if analysed_sha != expected_sha:
-        return None
+def _issues_result(*, open_issues: int | None, missing_message: str, nonzero_message: str) -> tuple[str, int | None, list[str]]:
     if open_issues is None:
-        return "fail", None, ["Codacy repository response did not include a parseable total issue count."]
+        return "fail", None, [missing_message]
     if open_issues != 0:
-        return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
+        return "fail", open_issues, [nonzero_message]
     return "pass", open_issues, []
 
 
-def _wait_for_branch_analysis(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    branch: str,
+def _branch_head_mismatch(branch_head_sha: str, commit_sha: str) -> bool:
+    return bool(branch_head_sha and commit_sha and branch_head_sha != commit_sha)
+
+
+def _branch_analysis_result(
+    state: BranchAnalysisState,
     commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> tuple[str, int | None, list[str]]:
-    deadline = time.time() + max(timeout_seconds, 1)
+) -> tuple[str, int | None, list[str]] | None:
+    expected_sha = commit_sha or state.branch_head_sha
+    if not expected_sha:
+        return "fail", None, ["Codacy repository response did not include a branch head commit."]
+    if _branch_head_mismatch(state.branch_head_sha, commit_sha):
+        return None
+    if state.analysed_sha != expected_sha:
+        return None
+    return _issues_result(
+        open_issues=state.open_issues,
+        missing_message="Codacy repository response did not include a parseable total issue count.",
+        nonzero_message=f"Codacy reports {state.open_issues} open issues (expected 0).",
+    )
+
+
+def _wait_for_branch_analysis(request: CodacyRequest) -> tuple[str, int | None, list[str]]:
+    deadline = time.time() + max(request.timeout_seconds, 1)
 
     while True:
         status_code, payload = _repository_analysis_request(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            branch=branch,
+            provider=request.provider,
+            owner=request.owner,
+            repo=request.repo,
+            token=request.token,
+            branch=request.branch,
         )
         if status_code == 404:
             return "retry", None, []
         if not 200 <= status_code < 300:
             return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
 
-        analysed_sha, branch_head_sha, open_issues = _repository_analysis_state(payload)
-        result = _branch_analysis_result(
-            analysed_sha=analysed_sha,
-            branch_head_sha=branch_head_sha,
-            open_issues=open_issues,
-            commit_sha=commit_sha,
-        )
+        state = _repository_analysis_state(payload)
+        result = _branch_analysis_result(state, request.commit_sha)
         if result is not None:
             return result
 
         if time.time() > deadline:
-            expected_sha = commit_sha or branch_head_sha or "unknown"
+            expected_sha = request.commit_sha or state.branch_head_sha or "unknown"
             return (
                 "fail",
                 None,
                 [
-                    f"Codacy has not finished branch analysis for commit {expected_sha}; latest analyzed head is {analysed_sha or 'unknown'}."
+                    f"Codacy has not finished branch analysis for commit {expected_sha}; latest analyzed head is {state.analysed_sha or 'unknown'}."
                 ],
             )
-        time.sleep(max(poll_seconds, 1))
+        time.sleep(max(request.poll_seconds, 1))
 
 
-def _pr_analysis_state(payload: dict[str, Any]) -> tuple[str, bool, int | None]:
+def _pr_analysis_state(payload: dict[str, Any]) -> PrAnalysisState:
     pull_request = payload.get("pullRequest") if isinstance(payload.get("pullRequest"), dict) else {}
-    return (
+    return PrAnalysisState(
         str(pull_request.get("headCommitSha") or ""),
         bool(payload.get("isAnalysing")),
         _quality_new_issues(payload),
     )
 
 
-def _pr_analysis_result(*, analyzed_commit: str, is_analysing: bool, open_issues: int | None, commit_sha: str) -> tuple[str, int | None, list[str]] | None:
-    if analyzed_commit != commit_sha or is_analysing:
+def _pr_analysis_result(state: PrAnalysisState, commit_sha: str) -> tuple[str, int | None, list[str]] | None:
+    if state.analyzed_commit != commit_sha or state.is_analysing:
         return None
-    if open_issues is None:
-        return "fail", None, ["Codacy PR response did not include a parseable new issue count."]
-    if open_issues != 0:
-        return "fail", open_issues, [f"Codacy reports {open_issues} PR new issues (expected 0)."]
-    return "pass", open_issues, []
+    return _issues_result(
+        open_issues=state.open_issues,
+        missing_message="Codacy PR response did not include a parseable new issue count.",
+        nonzero_message=f"Codacy reports {state.open_issues} PR new issues (expected 0).",
+    )
 
 
-def _wait_for_pr_analysis(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    pr_number: str,
-    commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> tuple[str, int | None, list[str]]:
-    path = f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/pull-requests/{pr_number}"
-    deadline = time.time() + max(timeout_seconds, 1)
+def _wait_for_pr_analysis(request: CodacyRequest) -> tuple[str, int | None, list[str]]:
+    path = (
+        f"api/v3/analysis/organizations/{request.provider}/{request.owner}/repositories/"
+        f"{request.repo}/pull-requests/{request.pr_number}"
+    )
+    deadline = time.time() + max(request.timeout_seconds, 1)
 
     while True:
-        status_code, payload = _request_json(path=path, token=token)
+        status_code, payload = _request_json(path=path, token=request.token)
         if status_code == 404:
             return "retry", None, []
         if not 200 <= status_code < 300:
             return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
 
-        analyzed_commit, is_analysing, open_issues = _pr_analysis_state(payload)
-        result = _pr_analysis_result(
-            analyzed_commit=analyzed_commit,
-            is_analysing=is_analysing,
-            open_issues=open_issues,
-            commit_sha=commit_sha,
-        )
+        state = _pr_analysis_state(payload)
+        result = _pr_analysis_result(state, request.commit_sha)
         if result is not None:
             return result
 
@@ -380,109 +399,54 @@ def _wait_for_pr_analysis(
                 "fail",
                 None,
                 [
-                    f"Codacy has not finished PR analysis for commit {commit_sha}; latest analyzed head is {analyzed_commit or 'unknown'}."
+                    f"Codacy has not finished PR analysis for commit {request.commit_sha}; latest analyzed head is {state.analyzed_commit or 'unknown'}."
                 ],
             )
-        time.sleep(max(poll_seconds, 1))
+        time.sleep(max(request.poll_seconds, 1))
 
 
-def _evaluate_commit_analysis(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    commit_sha: str,
-) -> tuple[str, int | None, list[str]]:
-    path = f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/commits/{commit_sha}"
-    status_code, payload = _request_json(path=path, token=token)
+def _evaluate_commit_analysis(request: CodacyRequest) -> tuple[str, int | None, list[str]]:
+    path = (
+        f"api/v3/analysis/organizations/{request.provider}/{request.owner}/repositories/"
+        f"{request.repo}/commits/{request.commit_sha}"
+    )
+    status_code, payload = _request_json(path=path, token=request.token)
     if status_code == 404:
         return "retry", None, []
     if not 200 <= status_code < 300:
         return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
 
-    open_issues = _quality_new_issues(payload)
-    if open_issues is None:
-        return "fail", None, ["Codacy commit response did not include a parseable new issue count."]
-    if open_issues != 0:
-        return "fail", open_issues, [f"Codacy reports {open_issues} commit new issues (expected 0)."]
-    return "pass", open_issues, []
+    return _issues_result(
+        open_issues=_quality_new_issues(payload),
+        missing_message="Codacy commit response did not include a parseable new issue count.",
+        nonzero_message=f"Codacy reports {_quality_new_issues(payload)} commit new issues (expected 0).",
+    )
 
 
-def _evaluate_candidate(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    branch: str,
-    pr_number: str,
-    commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> tuple[str, int | None, list[str]]:
-    if branch:
-        return _wait_for_branch_analysis(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            branch=branch,
-            commit_sha=commit_sha,
-            timeout_seconds=timeout_seconds,
-            poll_seconds=poll_seconds,
-        )
-    if pr_number and commit_sha:
-        return _wait_for_pr_analysis(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            pr_number=pr_number,
-            commit_sha=commit_sha,
-            timeout_seconds=timeout_seconds,
-            poll_seconds=poll_seconds,
-        )
-    if commit_sha:
-        return _evaluate_commit_analysis(
-            provider=provider,
-            owner=owner,
-            repo=repo,
-            token=token,
-            commit_sha=commit_sha,
-        )
-    return _evaluate_repo_total(provider=provider, owner=owner, repo=repo, token=token, branch=branch)
+def _evaluate_candidate(request: CodacyRequest) -> tuple[str, int | None, list[str]]:
+    if request.branch:
+        return _wait_for_branch_analysis(request)
+    if request.pr_number and request.commit_sha:
+        return _wait_for_pr_analysis(request)
+    if request.commit_sha:
+        return _evaluate_commit_analysis(request)
+    return _evaluate_repo_total(
+        provider=request.provider,
+        owner=request.owner,
+        repo=request.repo,
+        token=request.token,
+        branch=request.branch,
+    )
 
 
-def _evaluate_codacy(
-    *,
-    provider: str,
-    owner: str,
-    repo: str,
-    token: str,
-    branch: str,
-    pr_number: str,
-    commit_sha: str,
-    timeout_seconds: int,
-    poll_seconds: int,
-) -> tuple[str, int | None, list[str]]:
-    if not token:
+def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]]:
+    if not request.token:
         return "fail", None, ["CODACY_API_TOKEN is missing."]
 
     last_exc: Exception | None = None
-    for candidate in _provider_candidates(provider):
+    for candidate in _provider_candidates(request.provider):
         try:
-            status, open_issues, findings = _evaluate_candidate(
-                provider=candidate,
-                owner=owner,
-                repo=repo,
-                token=token,
-                branch=branch,
-                pr_number=pr_number,
-                commit_sha=commit_sha,
-                timeout_seconds=timeout_seconds,
-                poll_seconds=poll_seconds,
-            )
+            status, open_issues, findings = _evaluate_candidate(request.with_provider(candidate))
         except Exception as exc:  # pragma: no cover - network/runtime surface
             last_exc = exc
             return "fail", None, [f"Codacy API request failed: {exc}"]
@@ -490,7 +454,7 @@ def _evaluate_codacy(
             continue
         return status, open_issues, findings
 
-    findings = [f"Codacy API endpoint was not found for provider(s): {provider}, gh, github."]
+    findings = [f"Codacy API endpoint was not found for provider(s): {request.provider}, gh, github."]
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")
     return "fail", None, findings
@@ -507,7 +471,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    status, open_issues, findings = _evaluate_codacy(
+    request = CodacyRequest(
         provider=provider,
         owner=owner,
         repo=repo,
@@ -518,6 +482,7 @@ def main() -> int:
         timeout_seconds=args.timeout_seconds,
         poll_seconds=args.poll_seconds,
     )
+    status, open_issues, findings = _evaluate_codacy(request)
     payload = {
         "status": status,
         "owner": owner,

@@ -134,36 +134,12 @@ def _build_feature_vector(
     event: _EventFeatures,
     now: datetime,
 ) -> list[float]:
-    tags = event.tags
-    tag_count = max(1, len(tags))
-
-    overlap_interest = sum(float(user.interest_tag_weights.get(tag, 0.0)) for tag in tags)
-    overlap_history = len(user.history_tags & tags)
-
-    overlap_interest_ratio = overlap_interest / tag_count
-    overlap_history_ratio = overlap_history / tag_count
-
-    same_city = 0.0
-    if user.city and event.city and user.city == event.city:
-        same_city = 1.0
-    elif event.city:
-        same_city = float(user.city_weights.get(event.city, 0.0))
-
-    category_match = 0.0
-    if event.category and event.category in user.history_categories:
-        category_match = 1.0
-    elif event.category:
-        category_match = float(user.category_weights.get(event.category, 0.0))
-
+    overlap_interest_ratio, overlap_history_ratio = _tag_overlap_ratios(user=user, event=event)
+    same_city = _same_city_score(user=user, event=event)
+    category_match = _category_match_score(user=user, event=event)
     organizer_match = 1.0 if event.owner_id in user.history_organizer_ids else 0.0
-
     popularity = min(math.log1p(event.seats_taken) / 5.0, 1.0)
-
-    days_until = 0.0
-    if event.start_time:
-        delta_days = (event.start_time - now).total_seconds() / 86400.0
-        days_until = max(0.0, min(delta_days / 180.0, 1.0))
-
+    days_until = _days_until_score(event=event, now=now)
     return [
         1.0,  # bias
         overlap_interest_ratio,
@@ -176,21 +152,65 @@ def _build_feature_vector(
     ]
 
 
+def _tag_overlap_ratios(*, user: _UserFeatures, event: _EventFeatures) -> tuple[float, float]:
+    tags = event.tags
+    tag_count = max(1, len(tags))
+    overlap_interest = sum(float(user.interest_tag_weights.get(tag, 0.0)) for tag in tags)
+    overlap_history = len(user.history_tags & tags)
+    return overlap_interest / tag_count, overlap_history / tag_count
+
+
+def _same_city_score(*, user: _UserFeatures, event: _EventFeatures) -> float:
+    if user.city and event.city and user.city == event.city:
+        return 1.0
+    if event.city:
+        return float(user.city_weights.get(event.city, 0.0))
+    return 0.0
+
+
+def _category_match_score(*, user: _UserFeatures, event: _EventFeatures) -> float:
+    if event.category and event.category in user.history_categories:
+        return 1.0
+    if event.category:
+        return float(user.category_weights.get(event.category, 0.0))
+    return 0.0
+
+
+def _days_until_score(*, event: _EventFeatures, now: datetime) -> float:
+    if not event.start_time:
+        return 0.0
+    delta_days = (event.start_time - now).total_seconds() / 86400.0
+    return max(0.0, min(delta_days / 180.0, 1.0))
+
+
 def _reason_for(*, user: _UserFeatures, event: _EventFeatures, lang: str) -> str:
+    overlap = _weighted_overlap_tags(user=user, event=event)
+    if overlap:
+        return _interest_reason(overlap=overlap, lang=lang)
+    if _event_is_local_for_user(user=user, event=event):
+        return "Near you" if lang == "en" else "În apropiere"
+    if event.city and float(user.city_weights.get(event.city, 0.0)) >= 0.5:
+        return "Near you" if lang == "en" else "În apropiere"
+    return "Recommended for you" if lang == "en" else "Recomandat pentru tine"
+
+
+def _weighted_overlap_tags(*, user: _UserFeatures, event: _EventFeatures) -> list[tuple[str, float]]:
     overlap: list[tuple[str, float]] = []
     for tag in event.tags:
         weight = float(user.interest_tag_weights.get(tag, 0.0))
         if weight > 0:
             overlap.append((tag, weight))
     overlap.sort(key=lambda item: (-item[1], item[0]))
-    if overlap:
-        top = ", ".join(tag for tag, _weight in overlap[:3])
-        return f"Your interests: {top}" if lang == "en" else f"Interesele tale: {top}"
-    if user.city and event.city and user.city == event.city:
-        return "Near you" if lang == "en" else "În apropiere"
-    if event.city and float(user.city_weights.get(event.city, 0.0)) >= 0.5:
-        return "Near you" if lang == "en" else "În apropiere"
-    return "Recommended for you" if lang == "en" else "Recomandat pentru tine"
+    return overlap
+
+
+def _interest_reason(*, overlap: list[tuple[str, float]], lang: str) -> str:
+    top = ", ".join(tag for tag, _weight in overlap[:3])
+    return f"Your interests: {top}" if lang == "en" else f"Interesele tale: {top}"
+
+
+def _event_is_local_for_user(*, user: _UserFeatures, event: _EventFeatures) -> bool:
+    return bool(user.city and event.city and user.city == event.city)
 
 
 def _train_log_regression_sgd(
@@ -271,19 +291,16 @@ def _score_candidate_event_ids(
     return scored
 
 
-def _evaluate_hitrate_at_k(
-    *,
-    weights: list[float],
-    users: dict[int, _UserFeatures],
-    events: dict[int, _EventFeatures],
-    positives_holdout: dict[int, int],
-    all_event_ids: list[int],
-    now: datetime,
-    k: int,
-    negatives_per_user: int,
-    seed: int,
-) -> float:
-    rng = _DeterministicRng(seed)
+def _evaluate_hitrate_at_k(**kwargs) -> float:
+    rng = _DeterministicRng(int(kwargs["seed"]))
+    weights: list[float] = kwargs["weights"]
+    users: dict[int, _UserFeatures] = kwargs["users"]
+    events: dict[int, _EventFeatures] = kwargs["events"]
+    positives_holdout: dict[int, int] = kwargs["positives_holdout"]
+    all_event_ids: list[int] = kwargs["all_event_ids"]
+    now: datetime = kwargs["now"]
+    k = int(kwargs["k"])
+    negatives_per_user = int(kwargs["negatives_per_user"])
     hits = 0
     total = 0
 
@@ -465,39 +482,30 @@ def _load_interest_tag_weights(*, db, models, user_id: int | None, now: datetime
     return interest_tag_weights_by_user
 
 
-def _load_optional_implicit_weights(
-    *,
-    query_builder,
-    user_id: int | None,
-    user_column,
-    normalizer,
-    now: datetime,
-    decay_lambda: float,
-    max_score: float,
-    warning_label: str,
-    continuation_label: str,
-) -> dict[int, dict[str, float]]:
+def _load_optional_implicit_weights(**kwargs) -> dict[int, dict[str, float]]:
     weights_by_user: dict[int, dict[str, float]] = {}
     try:
-        query = query_builder()
-        query = _maybe_filter_user(query, user_id=user_id, column=user_column)
+        query = kwargs["query_builder"]()
+        query = _maybe_filter_user(query, user_id=kwargs.get("user_id"), column=kwargs["user_column"])
         for raw_user_id, raw_key, score, last_seen_at in query.all():
-            normalized = normalizer(str(raw_key))
+            normalized = kwargs["normalizer"](str(raw_key))
             if not normalized:
                 continue
             weight = _decayed_norm(
                 score=float(score or 0.0),
                 last_seen_at=last_seen_at,
-                now=now,
-                decay_lambda=decay_lambda,
-                max_score=max_score,
+                now=kwargs["now"],
+                decay_lambda=float(kwargs["decay_lambda"]),
+                max_score=float(kwargs["max_score"]),
             )
             if weight <= 0:
                 continue
             bucket = weights_by_user.setdefault(int(raw_user_id), {})
             bucket[normalized] = max(float(bucket.get(normalized, 0.0)), float(weight))
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] could not load {warning_label} ({exc}); continuing without {continuation_label}")
+        print(
+            f"[warn] could not load {kwargs['warning_label']} ({exc}); continuing without {kwargs['continuation_label']}"
+        )
     return weights_by_user
 
 
@@ -662,6 +670,69 @@ def _apply_event_interaction_feedback(
         )
 
 
+def _load_search_filter_preferences(
+    *,
+    db,
+    models,
+    user_id: int | None,
+    implicit_interest_tags_by_user,
+    implicit_categories_by_user,
+    implicit_city_by_user,
+) -> None:
+    search_filter_query = (
+        db.query(
+            models.EventInteraction.user_id,
+            models.EventInteraction.interaction_type,
+            models.EventInteraction.meta,
+        )
+        .filter(models.EventInteraction.user_id.isnot(None))
+        .filter(models.EventInteraction.event_id.is_(None))
+        .filter(models.EventInteraction.interaction_type.in_(["search", "filter"]))
+    )
+    search_filter_query = _maybe_filter_user(search_filter_query, user_id=user_id, column=models.EventInteraction.user_id)
+    _apply_search_filter_preferences(
+        search_filter_rows=search_filter_query.all(),
+        implicit_interest_tags_by_user=implicit_interest_tags_by_user,
+        implicit_categories_by_user=implicit_categories_by_user,
+        implicit_city_by_user=implicit_city_by_user,
+    )
+
+
+def _load_event_feedback_signals(
+    *,
+    db,
+    models,
+    user_id: int | None,
+    seen_by_user,
+    impression_position_by_user_event,
+    positive_weights,
+    negative_weights,
+) -> None:
+    interaction_query = (
+        db.query(
+            models.EventInteraction.user_id,
+            models.EventInteraction.event_id,
+            models.EventInteraction.interaction_type,
+            models.EventInteraction.meta,
+        )
+        .filter(models.EventInteraction.user_id.isnot(None))
+        .filter(models.EventInteraction.event_id.isnot(None))
+        .filter(
+            models.EventInteraction.interaction_type.in_(
+                ["impression", "click", "view", "dwell", "share", "favorite", "register", "unregister"]
+            )
+        )
+    )
+    interaction_query = _maybe_filter_user(interaction_query, user_id=user_id, column=models.EventInteraction.user_id)
+    _apply_event_interaction_feedback(
+        interaction_rows=interaction_query.all(),
+        seen_by_user=seen_by_user,
+        impression_position_by_user_event=impression_position_by_user_event,
+        positive_weights=positive_weights,
+        negative_weights=negative_weights,
+    )
+
+
 def _load_interaction_signals(
     *,
     db,
@@ -677,42 +748,18 @@ def _load_interaction_signals(
     implicit_city_by_user: dict[int, str] = {}
 
     try:
-        search_filter_query = (
-            db.query(
-                models.EventInteraction.user_id,
-                models.EventInteraction.interaction_type,
-                models.EventInteraction.meta,
-            )
-            .filter(models.EventInteraction.user_id.isnot(None))
-            .filter(models.EventInteraction.event_id.is_(None))
-            .filter(models.EventInteraction.interaction_type.in_(["search", "filter"]))
-        )
-        search_filter_query = _maybe_filter_user(search_filter_query, user_id=user_id, column=models.EventInteraction.user_id)
-        _apply_search_filter_preferences(
-            search_filter_rows=search_filter_query.all(),
+        _load_search_filter_preferences(
+            db=db,
+            models=models,
+            user_id=user_id,
             implicit_interest_tags_by_user=implicit_interest_tags_by_user,
             implicit_categories_by_user=implicit_categories_by_user,
             implicit_city_by_user=implicit_city_by_user,
         )
-
-        interaction_query = (
-            db.query(
-                models.EventInteraction.user_id,
-                models.EventInteraction.event_id,
-                models.EventInteraction.interaction_type,
-                models.EventInteraction.meta,
-            )
-            .filter(models.EventInteraction.user_id.isnot(None))
-            .filter(models.EventInteraction.event_id.isnot(None))
-            .filter(
-                models.EventInteraction.interaction_type.in_(
-                    ["impression", "click", "view", "dwell", "share", "favorite", "register", "unregister"]
-                )
-            )
-        )
-        interaction_query = _maybe_filter_user(interaction_query, user_id=user_id, column=models.EventInteraction.user_id)
-        _apply_event_interaction_feedback(
-            interaction_rows=interaction_query.all(),
+        _load_event_feedback_signals(
+            db=db,
+            models=models,
+            user_id=user_id,
             seen_by_user=seen_by_user,
             impression_position_by_user_event=impression_position_by_user_event,
             positive_weights=positive_weights,
@@ -771,74 +818,65 @@ def _history_from_positive_events(*, positive_event_ids: list[int], events, impl
     return history_tags, history_categories, history_organizers
 
 
-def _build_users_and_holdout(
-    *,
-    students,
-    args,
-    events,
-    positives_by_user,
-    implicit_categories_by_user,
-    implicit_city_by_user,
-    category_weights_by_user,
-    city_weights_by_user,
-    interest_tag_weights_by_user,
-) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
+def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
     users: dict[int, _UserFeatures] = {}
     user_lang: dict[int, str] = {}
     holdout: dict[int, int] = {}
-    rng = _DeterministicRng(args.seed)
+    rng = _DeterministicRng(int(kwargs["args"].seed))
 
-    for student in students:
+    for student in kwargs["students"]:
         user_id = int(student.id)
         city = _resolved_user_city(
             student=student,
             user_id=user_id,
-            implicit_city_by_user=implicit_city_by_user,
-            city_weights_by_user=city_weights_by_user,
+            implicit_city_by_user=kwargs["implicit_city_by_user"],
+            city_weights_by_user=kwargs["city_weights_by_user"],
         )
         user_lang[user_id] = _preferred_lang(student.language_preference)
         positive_event_ids = _holdout_positive_event_ids(
             user_id=user_id,
-            positives=positives_by_user.get(user_id, {}),
+            positives=kwargs["positives_by_user"].get(user_id, {}),
             holdout=holdout,
             rng=rng,
         )
         history_tags, history_categories, history_organizers = _history_from_positive_events(
             positive_event_ids=positive_event_ids,
-            events=events,
-            implicit_categories=implicit_categories_by_user.get(user_id, set()),
+            events=kwargs["events"],
+            implicit_categories=kwargs["implicit_categories_by_user"].get(user_id, set()),
         )
         users[user_id] = _UserFeatures(
             city=city,
-            interest_tag_weights=interest_tag_weights_by_user.get(user_id, {}),
+            interest_tag_weights=kwargs["interest_tag_weights_by_user"].get(user_id, {}),
             history_tags=history_tags,
             history_categories=history_categories,
             history_organizer_ids=history_organizers,
-            category_weights=category_weights_by_user.get(user_id, {}),
-            city_weights=city_weights_by_user.get(user_id, {}),
+            category_weights=kwargs["category_weights_by_user"].get(user_id, {}),
+            city_weights=kwargs["city_weights_by_user"].get(user_id, {}),
         )
 
     return users, user_lang, holdout
 
 
-def _load_persisted_model_state(*, db, models, requested_model_version: str | None) -> tuple[str | None, list[float] | None, int | None]:
+def _selected_model_row(*, db, models, requested_model_version: str | None):
     model_query = db.query(models.RecommenderModel)
-    model_row = None
     if requested_model_version:
         model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
-    if model_row is None:
-        model_row = (
-            model_query.filter(getattr(models.RecommenderModel, "is_active").is_(True))
-            .order_by(models.RecommenderModel.id.desc())
-            .first()
-        )
-    if model_row is None:
-        model_row = model_query.order_by(models.RecommenderModel.id.desc()).first()
+        if model_row is not None:
+            return model_row
+    model_row = (
+        model_query.filter(getattr(models.RecommenderModel, "is_active").is_(True))
+        .order_by(models.RecommenderModel.id.desc())
+        .first()
+    )
+    if model_row is not None:
+        return model_row
+    return model_query.order_by(models.RecommenderModel.id.desc()).first()
 
+
+def _validated_persisted_model(model_row) -> tuple[str | None, list[float] | None, int | None]:
     if model_row is None:
         print("[warn] no persisted recommender model found; run the retraining job first")
         return None, None, 0
-
     feature_names = list(model_row.feature_names or [])
     weights = [float(weight) for weight in (model_row.weights or [])]
     if feature_names != FEATURE_NAMES:
@@ -847,8 +885,14 @@ def _load_persisted_model_state(*, db, models, requested_model_version: str | No
     if len(weights) != len(FEATURE_NAMES):
         print(f"[error] persisted model weights length mismatch: expected={len(FEATURE_NAMES)} got={len(weights)}")
         return None, None, 2
+    return str(model_row.model_version), weights, None
 
-    model_version = str(model_row.model_version)
+
+def _load_persisted_model_state(*, db, models, requested_model_version: str | None) -> tuple[str | None, list[float] | None, int | None]:
+    model_row = _selected_model_row(db=db, models=models, requested_model_version=requested_model_version)
+    model_version, weights, exit_code = _validated_persisted_model(model_row)
+    if exit_code is not None:
+        return model_version, weights, exit_code
     print(f"[load] using persisted model_version={model_version}")
     return model_version, weights, None
 
@@ -879,43 +923,36 @@ def _sample_negative_example(*, rng, impression_negatives: list[int], impression
     return rng.choice(all_event_ids), 1.0
 
 
-def _append_positive_examples(
-    *,
-    examples,
-    positives,
-    user,
-    user_id: int,
-    user_positive_ids: set[int],
-    events,
-    all_event_ids: list[int],
-    impression_negatives: list[int],
-    impression_position_by_user_event,
-    negatives_per_positive: int,
-    now: datetime,
-    rng,
-) -> None:
-    for event_id, weight in positives.items():
-        event = events.get(event_id)
+def _append_positive_examples(**kwargs) -> None:
+    for event_id, weight in kwargs["positives"].items():
+        event = kwargs["events"].get(event_id)
         if not event:
             continue
-        _append_example(examples=examples, user=user, event=event, now=now, label=1, weight=weight)
+        _append_example(
+            examples=kwargs["examples"],
+            user=kwargs["user"],
+            event=event,
+            now=kwargs["now"],
+            label=1,
+            weight=weight,
+        )
         neg_added = 0
-        max_attempts = len(all_event_ids)
-        while neg_added < negatives_per_positive and neg_added < max_attempts:
+        max_attempts = len(kwargs["all_event_ids"])
+        while neg_added < int(kwargs["negatives_per_positive"]) and neg_added < max_attempts:
             neg_event_id, neg_weight = _sample_negative_example(
-                rng=rng,
-                impression_negatives=impression_negatives,
-                impression_position_by_user_event=impression_position_by_user_event,
-                user_id=user_id,
-                all_event_ids=all_event_ids,
+                rng=kwargs["rng"],
+                impression_negatives=kwargs["impression_negatives"],
+                impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+                user_id=int(kwargs["user_id"]),
+                all_event_ids=kwargs["all_event_ids"],
             )
-            if neg_event_id in user_positive_ids:
+            if neg_event_id in kwargs["user_positive_ids"]:
                 continue
             _append_example(
-                examples=examples,
-                user=user,
-                event=events[neg_event_id],
-                now=now,
+                examples=kwargs["examples"],
+                user=kwargs["user"],
+                event=kwargs["events"][neg_event_id],
+                now=kwargs["now"],
                 label=0,
                 weight=neg_weight,
             )
@@ -929,39 +966,56 @@ def _matches_weak_signal(*, candidate_event: _EventFeatures, weak_tags: set[str]
     return matches_city or matches_category or matches_tags
 
 
-def _append_weak_signal_examples(
-    *,
-    examples,
-    user,
-    user_positive_ids: set[int],
-    weak_tags: set[str],
-    weak_categories: set[str],
-    weak_city: str | None,
-    events,
-    all_event_ids: list[int],
-    now: datetime,
-    rng,
-) -> None:
+def _append_weak_signal_examples(**kwargs) -> None:
+    weak_tags = kwargs["weak_tags"]
+    weak_categories = kwargs["weak_categories"]
+    weak_city = kwargs["weak_city"]
     if not (weak_tags or weak_categories or weak_city):
         return
     added = 0
     attempts = 0
-    while added < 3 and attempts < 200 and attempts < len(all_event_ids):
+    while added < 3 and attempts < 200 and attempts < len(kwargs["all_event_ids"]):
         attempts += 1
-        candidate_id = rng.choice(all_event_ids)
-        if candidate_id in user_positive_ids:
-            continue
-        candidate_event = events[candidate_id]
-        if not _matches_weak_signal(
-            candidate_event=candidate_event,
+        candidate_event = _next_weak_signal_candidate(
+            kwargs=kwargs,
             weak_tags=weak_tags,
             weak_categories=weak_categories,
             weak_city=weak_city,
-        ):
+        )
+        if candidate_event is None:
             continue
-        _append_example(examples=examples, user=user, event=candidate_event, now=now, label=1, weight=0.15)
-        user_positive_ids.add(candidate_id)
+        _append_example(
+            examples=kwargs["examples"],
+            user=kwargs["user"],
+            event=candidate_event,
+            now=kwargs["now"],
+            label=1,
+            weight=0.15,
+        )
+        kwargs["user_positive_ids"].add(_event_id_for_features(kwargs["events"], candidate_event))
         added += 1
+
+
+def _next_weak_signal_candidate(*, kwargs, weak_tags: set[str], weak_categories: set[str], weak_city: str | None):
+    candidate_id = kwargs["rng"].choice(kwargs["all_event_ids"])
+    if candidate_id in kwargs["user_positive_ids"]:
+        return None
+    candidate_event = kwargs["events"][candidate_id]
+    if not _matches_weak_signal(
+        candidate_event=candidate_event,
+        weak_tags=weak_tags,
+        weak_categories=weak_categories,
+        weak_city=weak_city,
+    ):
+        return None
+    return candidate_event
+
+
+def _event_id_for_features(events: dict[int, _EventFeatures], candidate_event: _EventFeatures) -> int:
+    for event_id, event in events.items():
+        if event is candidate_event:
+            return event_id
+    raise KeyError("candidate event not found")
 
 
 def _append_negative_feedback_examples(*, examples, negative_weights, users, events, now: datetime) -> None:
@@ -973,36 +1027,18 @@ def _append_negative_feedback_examples(*, examples, negative_weights, users, eve
         _append_example(examples=examples, user=user, event=event, now=now, label=0, weight=weight)
 
 
-def _build_training_examples(
-    *,
-    args,
-    positives_by_user,
-    users,
-    holdout,
-    seen_by_user,
-    impression_position_by_user_event,
-    implicit_interest_tags_by_user,
-    implicit_categories_by_user,
-    implicit_city_by_user,
-    negative_weights,
-    events,
-    all_event_ids,
-    now: datetime,
-) -> list[tuple[list[float], int, float]]:
-    examples: list[tuple[list[float], int, float]] = []
-    rng = _DeterministicRng(args.seed)
-
-    for user_id, positives in positives_by_user.items():
-        user = users.get(user_id)
+def _append_user_training_examples(*, kwargs, examples, rng) -> None:
+    for user_id, positives in kwargs["positives_by_user"].items():
+        user = kwargs["users"].get(user_id)
         if not user:
             continue
-        user_positive_ids = _user_positive_ids(user_id=user_id, positives=positives, holdout=holdout)
+        user_positive_ids = _user_positive_ids(user_id=user_id, positives=positives, holdout=kwargs["holdout"])
         impression_negatives = _impression_negative_ids(
             user_id=user_id,
             user_positive_ids=user_positive_ids,
-            seen_by_user=seen_by_user,
-            impression_position_by_user_event=impression_position_by_user_event,
-            events=events,
+            seen_by_user=kwargs["seen_by_user"],
+            impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+            events=kwargs["events"],
         )
         _append_positive_examples(
             examples=examples,
@@ -1010,33 +1046,39 @@ def _build_training_examples(
             user=user,
             user_id=user_id,
             user_positive_ids=user_positive_ids,
-            events=events,
-            all_event_ids=all_event_ids,
+            events=kwargs["events"],
+            all_event_ids=kwargs["all_event_ids"],
             impression_negatives=impression_negatives,
-            impression_position_by_user_event=impression_position_by_user_event,
-            negatives_per_positive=args.negatives_per_positive,
-            now=now,
+            impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+            negatives_per_positive=kwargs["args"].negatives_per_positive,
+            now=kwargs["now"],
             rng=rng,
         )
         _append_weak_signal_examples(
             examples=examples,
             user=user,
             user_positive_ids=user_positive_ids,
-            weak_tags=implicit_interest_tags_by_user.get(user_id, set()),
-            weak_categories=implicit_categories_by_user.get(user_id, set()),
-            weak_city=implicit_city_by_user.get(user_id),
-            events=events,
-            all_event_ids=all_event_ids,
-            now=now,
+            weak_tags=kwargs["implicit_interest_tags_by_user"].get(user_id, set()),
+            weak_categories=kwargs["implicit_categories_by_user"].get(user_id, set()),
+            weak_city=kwargs["implicit_city_by_user"].get(user_id),
+            events=kwargs["events"],
+            all_event_ids=kwargs["all_event_ids"],
+            now=kwargs["now"],
             rng=rng,
         )
 
+
+def _build_training_examples(**kwargs) -> list[tuple[list[float], int, float]]:
+    examples: list[tuple[list[float], int, float]] = []
+    rng = _DeterministicRng(int(kwargs["args"].seed))
+    _append_user_training_examples(kwargs=kwargs, examples=examples, rng=rng)
+
     _append_negative_feedback_examples(
         examples=examples,
-        negative_weights=negative_weights,
-        users=users,
-        events=events,
-        now=now,
+        negative_weights=kwargs["negative_weights"],
+        users=kwargs["users"],
+        events=kwargs["events"],
+        now=kwargs["now"],
     )
 
     return examples
@@ -1069,55 +1111,46 @@ def _persist_model_state(*, db, models, model_version: str, weights: list[float]
     )
 
 
+def _event_is_eligible(*, event: _EventFeatures, now: datetime) -> bool:
+    if event.status != "published":
+        return False
+    if event.publish_at and event.publish_at > now:
+        return False
+    if event.start_time and event.start_time < now:
+        return False
+    if event.max_seats is not None and event.seats_taken >= event.max_seats:
+        return False
+    return True
+
+
 def _eligible_event_ids(events: dict[int, _EventFeatures], now: datetime) -> list[int]:
-    eligible: list[int] = []
-    for event_id, event in events.items():
-        if event.status != "published":
-            continue
-        if event.publish_at and event.publish_at > now:
-            continue
-        if event.start_time and event.start_time < now:
-            continue
-        if event.max_seats is not None and event.seats_taken >= event.max_seats:
-            continue
-        eligible.append(event_id)
-    return eligible
+    return [event_id for event_id, event in events.items() if _event_is_eligible(event=event, now=now)]
 
 
-def _build_recommendation_rows(
-    *,
-    user_ids: list[int],
-    users,
-    user_lang,
-    registered_event_ids_by_user,
-    eligible_event_ids: list[int],
-    events,
-    weights: list[float],
-    args,
-    model_version: str,
-    now: datetime,
-    models,
-):
+def _build_recommendation_rows(**kwargs):
     inserts = []
-    for user_id in user_ids:
-        user = users[user_id]
-        registered_ids = registered_event_ids_by_user.get(user_id, set())
+    for user_id in kwargs["user_ids"]:
+        user = kwargs["users"][user_id]
+        registered_ids = kwargs["registered_event_ids_by_user"].get(user_id, set())
         scored = [
-            (_sigmoid(_dot(weights, _build_feature_vector(user=user, event=events[event_id], now=now))), event_id)
-            for event_id in eligible_event_ids
+            (
+                _sigmoid(_dot(kwargs["weights"], _build_feature_vector(user=user, event=kwargs["events"][event_id], now=kwargs["now"]))),
+                event_id,
+            )
+            for event_id in kwargs["eligible_event_ids"]
             if event_id not in registered_ids
         ]
         scored.sort(key=lambda item: item[0], reverse=True)
-        top = scored[: max(0, int(args.top_n))]
-        student_lang = user_lang.get(user_id, "ro")
+        top = scored[: max(0, int(kwargs["args"].top_n))]
+        student_lang = kwargs["user_lang"].get(user_id, "ro")
         inserts.extend(
-            models.UserRecommendation(
+            kwargs["models"].UserRecommendation(
                 user_id=user_id,
                 event_id=event_id,
                 score=float(score),
                 rank=rank,
-                model_version=model_version,
-                reason=_reason_for(user=user, event=events[event_id], lang=student_lang),
+                model_version=kwargs["model_version"],
+                reason=_reason_for(user=user, event=kwargs["events"][event_id], lang=student_lang),
             )
             for rank, (score, event_id) in enumerate(top, start=1)
         )
@@ -1131,19 +1164,7 @@ def _positive_weights_by_user(positive_weights) -> dict[int, dict[int, float]]:
     return positives_by_user
 
 
-def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float, max_score: float) -> _PreparedState | None:
-    students = _load_students(db=db, models=models, user_id=args.user_id)
-    if not students:
-        print("No student users found; nothing to do.")
-        return None
-
-    user_ids = [int(user.id) for user in students]
-    events = _load_event_features(db=db, models=models, func=func)
-    all_event_ids = list(events.keys())
-    if not all_event_ids:
-        print("No events found; nothing to do.")
-        return None
-
+def _load_decay_weight_buckets(*, db, models, args, now: datetime, decay_lambda: float, max_score: float):
     interest_tag_weights_by_user = _load_interest_tag_weights(
         db=db,
         models=models,
@@ -1184,6 +1205,10 @@ def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float
         warning_label="user_implicit_interest_cities",
         continuation_label="city weights",
     )
+    return interest_tag_weights_by_user, category_weights_by_user, city_weights_by_user
+
+
+def _interaction_training_state(*, db, models, args):
     reg_rows, fav_rows = _load_registration_and_favorite_rows(db=db, models=models, user_id=args.user_id)
     registered_event_ids_by_user = _build_registered_event_ids_by_user(reg_rows)
     positive_weights = _build_positive_weights(reg_rows, fav_rows)
@@ -1200,38 +1225,134 @@ def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float
         user_id=args.user_id,
         positive_weights=positive_weights,
     )
-
     for key in negative_weights:
         positive_weights.pop(key, None)
+    return (
+        registered_event_ids_by_user,
+        positive_weights,
+        negative_weights,
+        seen_by_user,
+        impression_position_by_user_event,
+        implicit_interest_tags_by_user,
+        implicit_categories_by_user,
+        implicit_city_by_user,
+    )
 
-    positives_by_user = _positive_weights_by_user(positive_weights)
+
+def _prepared_state_from_loaded_data(**kwargs) -> _PreparedState:
+    positives_by_user = _positive_weights_by_user(kwargs["positive_weights"])
     users, user_lang, holdout = _build_users_and_holdout(
-        students=students,
-        args=args,
-        events=events,
+        students=kwargs["students"],
+        args=kwargs["args"],
+        events=kwargs["events"],
         positives_by_user=positives_by_user,
-        implicit_categories_by_user=implicit_categories_by_user,
-        implicit_city_by_user=implicit_city_by_user,
-        category_weights_by_user=category_weights_by_user,
-        city_weights_by_user=city_weights_by_user,
-        interest_tag_weights_by_user=interest_tag_weights_by_user,
+        implicit_categories_by_user=kwargs["implicit_categories_by_user"],
+        implicit_city_by_user=kwargs["implicit_city_by_user"],
+        category_weights_by_user=kwargs["category_weights_by_user"],
+        city_weights_by_user=kwargs["city_weights_by_user"],
+        interest_tag_weights_by_user=kwargs["interest_tag_weights_by_user"],
     )
     return _PreparedState(
+        user_ids=kwargs["user_ids"],
+        events=kwargs["events"],
+        all_event_ids=kwargs["all_event_ids"],
+        registered_event_ids_by_user=kwargs["registered_event_ids_by_user"],
+        positives_by_user=positives_by_user,
+        negative_weights=kwargs["negative_weights"],
+        seen_by_user=kwargs["seen_by_user"],
+        impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+        implicit_interest_tags_by_user=kwargs["implicit_interest_tags_by_user"],
+        implicit_categories_by_user=kwargs["implicit_categories_by_user"],
+        implicit_city_by_user=kwargs["implicit_city_by_user"],
+        users=users,
+        user_lang=user_lang,
+        holdout=holdout,
+    )
+
+
+def _student_event_state(*, db, models, func, args):
+    students = _load_students(db=db, models=models, user_id=args.user_id)
+    if not students:
+        print("No student users found; nothing to do.")
+        return None, None, None
+    events = _load_event_features(db=db, models=models, func=func)
+    all_event_ids = list(events.keys())
+    if not all_event_ids:
+        print("No events found; nothing to do.")
+        return None, None, None
+    return students, events, all_event_ids
+
+
+def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float, max_score: float) -> _PreparedState | None:
+    students, events, all_event_ids = _student_event_state(db=db, models=models, func=func, args=args)
+    if students is None or events is None or all_event_ids is None:
+        return None
+    user_ids = [int(user.id) for user in students]
+
+    (
+        interest_tag_weights_by_user,
+        category_weights_by_user,
+        city_weights_by_user,
+    ) = _load_decay_weight_buckets(
+        db=db,
+        models=models,
+        args=args,
+        now=now,
+        decay_lambda=decay_lambda,
+        max_score=max_score,
+    )
+    (
+        registered_event_ids_by_user,
+        positive_weights,
+        negative_weights,
+        seen_by_user,
+        impression_position_by_user_event,
+        implicit_interest_tags_by_user,
+        implicit_categories_by_user,
+        implicit_city_by_user,
+    ) = _interaction_training_state(
+        db=db,
+        models=models,
+        args=args,
+    )
+    return _prepared_state_from_loaded_data(
         user_ids=user_ids,
         events=events,
         all_event_ids=all_event_ids,
         registered_event_ids_by_user=registered_event_ids_by_user,
-        positives_by_user=positives_by_user,
+        positive_weights=positive_weights,
         negative_weights=negative_weights,
         seen_by_user=seen_by_user,
         impression_position_by_user_event=impression_position_by_user_event,
         implicit_interest_tags_by_user=implicit_interest_tags_by_user,
         implicit_categories_by_user=implicit_categories_by_user,
         implicit_city_by_user=implicit_city_by_user,
-        users=users,
-        user_lang=user_lang,
-        holdout=holdout,
+        category_weights_by_user=category_weights_by_user,
+        city_weights_by_user=city_weights_by_user,
+        interest_tag_weights_by_user=interest_tag_weights_by_user,
+        students=students,
+        args=args,
     )
+
+
+def _training_meta(*, args, now: datetime, examples: list[tuple[list[float], int, float]], hitrate: float) -> dict[str, float | int | str]:
+    return {
+        "hitrate_at_10": float(hitrate),
+        "trained_at": now.isoformat(),
+        "examples": len(examples),
+        "epochs": int(args.epochs),
+        "lr": float(args.lr),
+        "l2": float(args.l2),
+        "negatives_per_positive": int(args.negatives_per_positive),
+    }
+
+
+def _feature_length_is_valid(examples: list[tuple[list[float], int, float]]) -> tuple[int, int | None]:
+    n_features = len(examples[0][0])
+    if n_features == len(FEATURE_NAMES):
+        return n_features, None
+    print(f"[error] feature vector length mismatch: expected={len(FEATURE_NAMES)} got={n_features}")
+    return n_features, 2
 
 
 def _train_model_state(*, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime) -> tuple[str | None, list[float] | None, int | None]:
@@ -1255,10 +1376,9 @@ def _train_model_state(*, db, models, args, requested_model_version: str | None,
         print("No training data found (no registrations/favorites/interactions); nothing to do.")
         return None, None, 0
 
-    n_features = len(examples[0][0])
-    if n_features != len(FEATURE_NAMES):
-        print(f"[error] feature vector length mismatch: expected={len(FEATURE_NAMES)} got={n_features}")
-        return None, None, 2
+    n_features, exit_code = _feature_length_is_valid(examples)
+    if exit_code is not None:
+        return None, None, exit_code
 
     weights = _train_log_regression_sgd(
         examples=examples,
@@ -1280,15 +1400,7 @@ def _train_model_state(*, db, models, args, requested_model_version: str | None,
         seed=args.seed,
     )
     print(f"[eval] hitrate@10={hitrate:.3f} users={len(state.holdout)}")
-    meta = {
-        "hitrate_at_10": float(hitrate),
-        "trained_at": now.isoformat(),
-        "examples": len(examples),
-        "epochs": int(args.epochs),
-        "lr": float(args.lr),
-        "l2": float(args.l2),
-        "negatives_per_positive": int(args.negatives_per_positive),
-    }
+    meta = _training_meta(args=args, now=now, examples=examples, hitrate=hitrate)
     if not args.dry_run:
         _persist_model_state(db=db, models=models, model_version=model_version, weights=weights, meta=meta)
     return model_version, weights, None

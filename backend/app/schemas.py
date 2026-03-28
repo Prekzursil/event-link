@@ -364,6 +364,17 @@ class PaginatedAdminEvents(BaseModel):
     page_size: int
 
 
+class AdminEventListQuery(BaseModel):
+    search: Optional[str] = None
+    category: Optional[str] = None
+    city: Optional[str] = None
+    status: Optional[str] = None
+    include_deleted: bool = False
+    flagged_only: bool = False
+    page: int = 1
+    page_size: int = 20
+
+
 class RegistrationDayStat(BaseModel):
     date: str
     registrations: int
