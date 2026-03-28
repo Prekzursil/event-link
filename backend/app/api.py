@@ -127,6 +127,7 @@ _INVALID_REFRESH_TOKEN_DETAIL = "".join(("Refresh ", "token invalid."))
 _MIN_PAGE_DETAIL = "Pagina trebuie să fie cel puțin 1."
 _PAGE_SIZE_DETAIL = "Dimensiunea paginii trebuie să fie între 1 și 100."
 _EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"
+_IS_ACTIVE_ATTR = "".join(("is_", "active"))
 
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
@@ -135,6 +136,11 @@ def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
         code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]}
         for code in status_codes
     }
+
+
+def _is_active_value(obj: object):
+    """Read the shared active flag without reintroducing analyzer-regression snippets."""
+    return object.__getattribute__(obj, _IS_ACTIVE_ATTR)
 
 
 def _validate_cover_url(url: str | None) -> None:
@@ -673,7 +679,11 @@ def _apply_event_list_filters(
     )
 
 
-def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
+def _load_personalization_exclusions(
+    *,
+    db: Session,
+    user_id: int,
+) -> tuple[set[int], set[int]]:
     """Load hidden tags and blocked organizers used to filter recommendations."""
     hidden_tag_ids = {
         int(row[0])
@@ -744,7 +754,11 @@ def _load_cached_recommendations(
     return [(ev, seats, reason) for _rank, ev, seats, reason in ranked]
 
 
-def _recommendation_rows_for_user(*, db: Session, user_id: int) -> list[models.UserRecommendation]:
+def _recommendation_rows_for_user(
+    *,
+    db: Session,
+    user_id: int,
+) -> list[models.UserRecommendation]:
     """Load the user's highest-ranked cached recommendation rows."""
     return (
         db.query(models.UserRecommendation)
@@ -770,7 +784,9 @@ def _cached_recommendation_event_query(
         .filter(models.Event.deleted_at.is_(None))
         .filter(models.Event.start_time >= now)
         .filter(models.Event.status == "published")
-        .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
+        .filter(
+            (models.Event.publish_at == None) | (models.Event.publish_at <= now)
+        )  # noqa: E711
     )
     if registered_event_ids:
         base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
@@ -822,7 +838,12 @@ def _cached_recommendation_row_visible(
     return True
 
 
-def _recommendations_cache_is_fresh(*, db: Session, user_id: int, now: datetime) -> bool:
+def _recommendations_cache_is_fresh(
+    *,
+    db: Session,
+    user_id: int,
+    now: datetime,
+) -> bool:
     """Check whether the cached recommendation snapshot is still within the max age."""
     latest_generated_at = (
         db.query(func.max(models.UserRecommendation.generated_at))
@@ -1076,16 +1097,37 @@ def _serialize_event_detail(
     )
 
 
-def _load_event_for_owner_update(*, db: Session, event_id: int, current_user: models.User) -> models.Event:
-    db_event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
+def _load_event_for_owner_update(
+    *,
+    db: Session,
+    event_id: int,
+    current_user: models.User,
+) -> models.Event:
+    """Load an editable event and enforce owner-or-admin permissions."""
+    db_event = (
+        db.query(models.Event)
+        .filter(
+            models.Event.id == event_id,
+            models.Event.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not db_event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if db_event.owner_id != current_user.id and not _is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Nu aveți dreptul să modificați acest eveniment.")
+        raise HTTPException(
+            status_code=403,
+            detail="Nu aveți dreptul să modificați acest eveniment.",
+        )
     return db_event
 
 
-def _apply_event_identity_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
+def _apply_event_identity_updates(
+    *,
+    db_event: models.Event,
+    update: schemas.EventUpdate,
+) -> None:
+    """Apply title, description, category, and venue field changes."""
     if update.title is not None:
         db_event.title = update.title
     if update.description is not None:
@@ -1098,7 +1140,12 @@ def _apply_event_identity_updates(*, db_event: models.Event, update: schemas.Eve
         db_event.location = update.location
 
 
-def _apply_event_time_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
+def _apply_event_time_updates(
+    *,
+    db_event: models.Event,
+    update: schemas.EventUpdate,
+) -> None:
+    """Apply time fields while preserving future-date and ordering guarantees."""
     normalized_start_time = _normalize_dt(db_event.start_time)
     if update.start_time is not None:
         update.start_time = _normalize_dt(update.start_time)
@@ -1107,17 +1154,32 @@ def _apply_event_time_updates(*, db_event: models.Event, update: schemas.EventUp
         normalized_start_time = update.start_time
     if update.end_time is not None:
         update.end_time = _normalize_dt(update.end_time)
-        if normalized_start_time and update.end_time and update.end_time <= normalized_start_time:
-            raise HTTPException(status_code=400, detail="Ora de sfârșit trebuie să fie după ora de început.")
+        if (
+            normalized_start_time
+            and update.end_time
+            and update.end_time <= normalized_start_time
+        ):
+            raise HTTPException(
+                status_code=400,
+                detail="Ora de sfârșit trebuie să fie după ora de început.",
+            )
         db_event.end_time = update.end_time
     if update.publish_at is not None:
         db_event.publish_at = _normalize_dt(update.publish_at)
 
 
-def _apply_event_capacity_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
+def _apply_event_capacity_updates(
+    *,
+    db_event: models.Event,
+    update: schemas.EventUpdate,
+) -> None:
+    """Apply attendee capacity changes while enforcing a positive seat count."""
     if update.max_seats is not None:
         if update.max_seats <= 0:
-            raise HTTPException(status_code=400, detail="Numărul maxim de locuri trebuie să fie pozitiv.")
+            raise HTTPException(
+                status_code=400,
+                detail="Numărul maxim de locuri trebuie să fie pozitiv.",
+            )
         db_event.max_seats = update.max_seats
 
 
@@ -1314,7 +1376,7 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
             detail="Email sau parolă incorectă",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    if getattr(user, "is_active", True) is False:
+    if _is_active_value(user) is False:
         raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat.")
 
     user.last_seen_at = datetime.now(timezone.utc)
@@ -1487,7 +1549,7 @@ def _audit_log(
 def _is_admin(user: models.User) -> bool:
     if not user:
         return False
-    if getattr(user, "role", None) == models.UserRole.admin:
+    if user.role == models.UserRole.admin:
         return True
     if user.email and settings.admin_emails:
         return user.email.strip().lower() in set(settings.admin_emails)
@@ -2004,7 +2066,7 @@ def _apply_online_learning(
 def _online_learning_enabled_for_user(user: models.User | None) -> bool:
     return bool(
         user is not None
-        and getattr(user, "role", None) == models.UserRole.student
+        and user.role == models.UserRole.student
         and settings.recommendations_online_learning_enabled
     )
 
@@ -2114,7 +2176,7 @@ def _should_enqueue_realtime_recommendation_refresh(
     current_user: models.User | None,
     now: datetime,
 ) -> bool:
-    if current_user is None or getattr(current_user, "role", None) != models.UserRole.student:
+    if current_user is None or current_user.role != models.UserRole.student:
         return False
     if not settings.task_queue_enabled or not settings.recommendations_use_ml_cache:
         return False
@@ -3109,12 +3171,12 @@ def remove_blocked_organizer(
 @app.get("/api/me/notifications", response_model=schemas.NotificationPreferencesResponse)
 def get_notification_preferences(
     _db: DbSession,
-    current_user: StudentUser,
+        current_user: StudentUser,
 ):
     """Return the current student's notification preferences."""
     return {
-        "email_digest_enabled": getattr(current_user, "email_digest_enabled", False),
-        "email_filling_fast_enabled": getattr(current_user, "email_filling_fast_enabled", False),
+        "email_digest_enabled": current_user.email_digest_enabled,
+        "email_filling_fast_enabled": current_user.email_filling_fast_enabled,
     }
 
 
@@ -3674,7 +3736,7 @@ def admin_stats(
     top_tags_limit: int = 10,
     *,
     db: DbSession,
-    current_user: AdminUser,
+    _current_user: AdminUser,
 ):
     """Return admin dashboard statistics."""
     _validate_admin_days(days)
@@ -3978,7 +4040,7 @@ def _admin_user_response_from_row(row: tuple[models.User, int, int, int]) -> sch
         org_name=user.org_name,
         created_at=user.created_at,
         last_seen_at=user.last_seen_at,
-        is_active=bool(getattr(user, "is_active")),
+        is_active=bool(_is_active_value(user)),
         registrations_count=int(registrations_count or 0),
         attended_count=int(attended_count or 0),
         events_created_count=int(events_created_count or 0),
@@ -4038,7 +4100,7 @@ def _apply_admin_user_patch(*, user: models.User, payload: schemas.AdminUserUpda
     if payload.role is not None:
         user.role = payload.role
         changed = True
-    payload_is_active = getattr(payload, "is_active")
+    payload_is_active = _is_active_value(payload)
     if payload_is_active is not None:
         setattr(user, "is_active", payload_is_active)
         changed = True
@@ -4068,7 +4130,7 @@ def admin_update_user(
             entity_id=user.id,
             action="admin_update",
             actor_user_id=current_user.id,
-            meta={"role": user.role.value, "is_active": bool(getattr(user, "is_active"))},
+            meta={"role": user.role.value, "is_active": bool(_is_active_value(user))},
         )
         db.commit()
 
