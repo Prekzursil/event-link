@@ -70,6 +70,7 @@ def test_ci_and_wrapper_workflows_define_explicit_top_level_permissions() -> Non
             '  contents: read',
             '  id-token: write',
             '  pull-requests: write',
+            '      pull-requests: write',
         ],
         'quality-zero-gate.yml': [
             'permissions:',
