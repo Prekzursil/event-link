@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
@@ -20,6 +21,13 @@ __all__ = [
     "send_filling_fast_alerts",
     "send_weekly_digest",
 ]
+
+
+@dataclass(frozen=True)
+class FillingFastSettings:
+    threshold_abs: int
+    threshold_ratio: float
+    max_per_user: int
 
 
 def _weekly_digest_window(now: datetime) -> tuple[datetime, datetime, str]:
@@ -261,6 +269,23 @@ def _enqueue_filling_fast_email(
     )
 
 
+def _filling_fast_settings(payload: dict[str, Any]) -> FillingFastSettings:
+    return FillingFastSettings(
+        threshold_abs=int(payload.get("threshold_abs") or 5),
+        threshold_ratio=float(payload.get("threshold_ratio") or 0.2),
+        max_per_user=int(payload.get("max_per_user") or 3),
+    )
+
+
+def _user_reached_filling_fast_limit(
+    *,
+    sent_by_user: dict[int, int],
+    user_id: int,
+    max_per_user: int,
+) -> bool:
+    return sent_by_user.get(user_id, 0) >= max_per_user
+
+
 def _process_filling_fast_row(
     *,
     db: Session,
@@ -269,8 +294,7 @@ def _process_filling_fast_row(
     user: models.User,
     event: models.Event,
     seats_taken: int,
-    threshold_abs: int,
-    threshold_ratio: float,
+    settings: FillingFastSettings,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> bool:
     user_id = int(user.id)
@@ -285,8 +309,8 @@ def _process_filling_fast_row(
     available = _available_seats_within_threshold(
         event=event,
         seats_taken=seats_taken,
-        threshold_abs=threshold_abs,
-        threshold_ratio=threshold_ratio,
+        threshold_abs=settings.threshold_abs,
+        threshold_ratio=settings.threshold_ratio,
     )
     if available is None:
         return False
@@ -312,9 +336,7 @@ def send_filling_fast_alerts(
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> dict[str, int]:
     now = datetime.now(timezone.utc)
-    threshold_abs = int(payload.get("threshold_abs") or 5)
-    threshold_ratio = float(payload.get("threshold_ratio") or 0.2)
-    max_per_user = int(payload.get("max_per_user") or 3)
+    settings = _filling_fast_settings(payload)
     total_pairs = 0
     enqueued_emails = 0
     sent_by_user: dict[int, int] = {}
@@ -324,7 +346,11 @@ def send_filling_fast_alerts(
             continue
         user_id = int(user.id)
         total_pairs += 1
-        if sent_by_user.get(user_id, 0) >= max_per_user:
+        if _user_reached_filling_fast_limit(
+            sent_by_user=sent_by_user,
+            user_id=user_id,
+            max_per_user=settings.max_per_user,
+        ):
             continue
         if not _process_filling_fast_row(
             db=db,
@@ -333,8 +359,7 @@ def send_filling_fast_alerts(
             user=user,
             event=event,
             seats_taken=int(seats_taken or 0),
-            threshold_abs=threshold_abs,
-            threshold_ratio=threshold_ratio,
+            settings=settings,
             load_personalization_exclusions_fn=load_personalization_exclusions_fn,
         ):
             continue

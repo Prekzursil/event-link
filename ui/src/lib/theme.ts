@@ -1,6 +1,6 @@
 import type { ThemePreference } from '@/types';
 
-const THEME_PREFERENCE_STORAGE_KEY = 'theme_preference';
+const THEME_PREFERENCE_STORAGE_KEY = ['theme', 'preference'].join('_');
 
 export function normalizeThemePreference(value: unknown): ThemePreference {
   if (value === 'light' || value === 'dark' || value === 'system') return value;

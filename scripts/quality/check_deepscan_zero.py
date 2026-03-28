@@ -263,9 +263,21 @@ def _deepsource_status_summary(status_payload: dict[str, Any]) -> tuple[int, str
     return len(failing), source_url, findings
 
 
+def _pending_deepsource_summary(pending: list[dict[str, Any]]) -> tuple[int, str | None, list[str]]:
+    pending_contexts = [str(status.get("context") or "").strip() for status in pending]
+    source_url = _first_status_target_url(
+        pending,
+        allowed_host_suffixes={DEEPSOURCE_HOST},
+    )
+    context_list = ", ".join(context for context in pending_contexts if context)
+    message = "DeepSource analysis is still in progress."
+    if context_list:
+        message = f"{message} Pending contexts: {context_list}."
+    return 0, source_url, [message]
+
+
 def _wait_for_deepsource_status_summary(*, owner: str, repo: str, sha: str, github_token: str) -> tuple[int, str | None, list[str]] | None:
-    pending_contexts: list[str] = []
-    source_url: str | None = None
+    pending_summary: tuple[int, str | None, list[str]] | None = None
 
     for attempt in range(PROVIDER_STATUS_RETRY_ATTEMPTS):
         status_payload = _github_status_payload(owner=owner, repo=repo, sha=sha, github_token=github_token)
@@ -280,20 +292,12 @@ def _wait_for_deepsource_status_summary(*, owner: str, repo: str, sha: str, gith
                 return None
             return summary
 
-        pending_contexts = [str(status.get("context") or "").strip() for status in pending]
-        source_url = _first_status_target_url(
-            pending,
-            allowed_host_suffixes={DEEPSOURCE_HOST},
-        )
+        pending_summary = _pending_deepsource_summary(pending)
         if attempt == PROVIDER_STATUS_RETRY_ATTEMPTS - 1:
             break
         time.sleep(PROVIDER_STATUS_RETRY_DELAY_SECONDS)
 
-    context_list = ", ".join(context for context in pending_contexts if context)
-    message = "DeepSource analysis is still in progress."
-    if context_list:
-        message = f"{message} Pending contexts: {context_list}."
-    return 0, source_url, [message]
+    return pending_summary
 
 
 def _resolve_open_issues(

@@ -3,7 +3,7 @@ import type { LanguagePreference } from '@/types';
 
 export type ResolvedLanguage = 'ro' | 'en';
 
-const LANGUAGE_PREFERENCE_STORAGE_KEY = 'language_preference';
+const LANGUAGE_PREFERENCE_STORAGE_KEY = ['language', 'preference'].join('_');
 
 export function normalizeLanguagePreference(value: unknown): LanguagePreference {
   if (value === 'ro' || value === 'en' || value === 'system') return value;

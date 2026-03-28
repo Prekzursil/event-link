@@ -76,6 +76,19 @@ type PersonalizationTableProps = Readonly<{
   table: Props['controller']['t']['adminDashboard']['personalizationMetrics']['table'];
 }>;
 
+type StatsGridProps = Readonly<{
+  labels: Props['controller']['t']['adminDashboard']['stats'];
+  stats: Props['controller']['stats'];
+}>;
+
+type PersonalizationContentProps = Readonly<{
+  controller: Props['controller'];
+}>;
+
+type PersonalizationActionsProps = Readonly<{
+  controller: Props['controller'];
+}>;
+
 /** Render the shared empty state for admin overview cards. */
 const EmptyState = ({ message }: EmptyStateProps) => (
   <p className="text-sm text-muted-foreground">{message}</p>
@@ -247,119 +260,111 @@ const PersonalizationTable = ({ rows, table }: PersonalizationTableProps) => (
   </Table>
 );
 
-/** Render the admin overview tab with stats and personalization controls. */
-export function AdminOverviewTab({ controller }: Props) {
-  const {
-    handleEnqueueDigest,
-    handleEnqueueFillingFast,
-    handleEnqueueRetrain,
-    isEnqueueingDigest,
-    isEnqueueingFillingFast,
-    isEnqueueingRetrain,
-    isLoadingPersonalizationMetrics,
-    personalizationMetrics,
-    personalizationRows,
-    registrationsByDay,
-    stats,
-    t,
-    topTags,
-  } = controller;
-
+/** Render the top-level admin overview statistic cards. */
+const StatsGrid = ({ labels, stats }: StatsGridProps) => {
   const statCards = [
-    {
-      title: t.adminDashboard.stats.totalUsers,
-      value: stats?.total_users ?? 0,
-    },
-    {
-      title: t.adminDashboard.stats.totalEvents,
-      value: stats?.total_events ?? 0,
-    },
-    {
-      title: t.adminDashboard.stats.totalRegistrations,
-      value: stats?.total_registrations ?? 0,
-    },
+    { title: labels.totalUsers, value: stats?.total_users ?? 0 },
+    { title: labels.totalEvents, value: stats?.total_events ?? 0 },
+    { title: labels.totalRegistrations, value: stats?.total_registrations ?? 0 },
   ];
 
-  let personalizationContent: ReactNode;
-  if (isLoadingPersonalizationMetrics) {
-    personalizationContent = <LoadingPage message={t.adminDashboard.personalizationMetrics.loading} />;
-  } else if (personalizationRows.length === 0 || !personalizationMetrics) {
-    personalizationContent = <EmptyState message={t.adminDashboard.noData} />;
-  } else {
-    personalizationContent = (
-      <div className="space-y-4">
-        <MetricsSummaryGrid
-          labels={t.adminDashboard.personalizationMetrics.totals}
-          totals={personalizationMetrics.totals}
-        />
-        <PersonalizationTable
-          rows={personalizationRows}
-          table={t.adminDashboard.personalizationMetrics.table}
-        />
-      </div>
-    );
+  return (
+    <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+      {statCards.map((card) => (
+        <StatCard key={card.title} title={card.title} value={card.value} />
+      ))}
+    </div>
+  );
+};
+
+/** Render the queue actions shown in the personalization metrics card header. */
+const PersonalizationActions = ({ controller }: PersonalizationActionsProps) => (
+  <div className="flex flex-wrap gap-2">
+    <QueueAction
+      disabled={controller.isEnqueueingRetrain}
+      idleLabel={controller.t.adminDashboard.personalizationMetrics.retrainNow}
+      isPending={controller.isEnqueueingRetrain}
+      onClick={controller.handleEnqueueRetrain}
+      pendingLabel={controller.t.adminDashboard.personalizationMetrics.queueing}
+      title="retrain"
+    />
+    <QueueAction
+      disabled={controller.isEnqueueingDigest}
+      idleLabel={controller.t.adminDashboard.notifications.enqueueDigest}
+      isPending={controller.isEnqueueingDigest}
+      onClick={controller.handleEnqueueDigest}
+      pendingLabel={controller.t.adminDashboard.notifications.queueing}
+      title="digest"
+    />
+    <QueueAction
+      disabled={controller.isEnqueueingFillingFast}
+      idleLabel={controller.t.adminDashboard.notifications.enqueueFillingFast}
+      isPending={controller.isEnqueueingFillingFast}
+      onClick={controller.handleEnqueueFillingFast}
+      pendingLabel={controller.t.adminDashboard.notifications.queueing}
+      title="fillingFast"
+    />
+  </div>
+);
+
+/** Render the body of the personalization metrics card. */
+const PersonalizationContent = ({ controller }: PersonalizationContentProps) => {
+  if (controller.isLoadingPersonalizationMetrics) {
+    return <LoadingPage message={controller.t.adminDashboard.personalizationMetrics.loading} />;
+  }
+  if (controller.personalizationRows.length === 0 || !controller.personalizationMetrics) {
+    return <EmptyState message={controller.t.adminDashboard.noData} />;
   }
 
   return (
+    <div className="space-y-4">
+      <MetricsSummaryGrid
+        labels={controller.t.adminDashboard.personalizationMetrics.totals}
+        totals={controller.personalizationMetrics.totals}
+      />
+      <PersonalizationTable
+        rows={controller.personalizationRows}
+        table={controller.t.adminDashboard.personalizationMetrics.table}
+      />
+    </div>
+  );
+};
+
+/** Render the admin overview tab with stats and personalization controls. */
+export function AdminOverviewTab({ controller }: Props) {
+  return (
     <div className="mt-6 space-y-6">
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {statCards.map((card) => (
-          <StatCard key={card.title} title={card.title} value={card.value} />
-        ))}
-      </div>
+      <StatsGrid labels={controller.t.adminDashboard.stats} stats={controller.stats} />
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <OverviewTableCard title={t.adminDashboard.registrationsByDay.title}>
+        <OverviewTableCard title={controller.t.adminDashboard.registrationsByDay.title}>
           <RegistrationsTable
-            dayLabel={t.adminDashboard.registrationsByDay.day}
-            emptyMessage={t.adminDashboard.noData}
-            registrationsLabel={t.adminDashboard.registrationsByDay.registrations}
-            rows={registrationsByDay}
+            dayLabel={controller.t.adminDashboard.registrationsByDay.day}
+            emptyMessage={controller.t.adminDashboard.noData}
+            registrationsLabel={controller.t.adminDashboard.registrationsByDay.registrations}
+            rows={controller.registrationsByDay}
           />
         </OverviewTableCard>
 
-        <OverviewTableCard title={t.adminDashboard.topTags.title}>
+        <OverviewTableCard title={controller.t.adminDashboard.topTags.title}>
           <TopTagsTable
-            emptyMessage={t.adminDashboard.noData}
-            eventsLabel={t.adminDashboard.topTags.events}
-            registrationsLabel={t.adminDashboard.topTags.registrations}
-            rows={topTags}
-            tagLabel={t.adminDashboard.topTags.tag}
+            emptyMessage={controller.t.adminDashboard.noData}
+            eventsLabel={controller.t.adminDashboard.topTags.events}
+            registrationsLabel={controller.t.adminDashboard.topTags.registrations}
+            rows={controller.topTags}
+            tagLabel={controller.t.adminDashboard.topTags.tag}
           />
         </OverviewTableCard>
       </div>
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>{t.adminDashboard.personalizationMetrics.title}</CardTitle>
-          <div className="flex flex-wrap gap-2">
-            <QueueAction
-              disabled={isEnqueueingRetrain}
-              idleLabel={t.adminDashboard.personalizationMetrics.retrainNow}
-              isPending={isEnqueueingRetrain}
-              onClick={handleEnqueueRetrain}
-              pendingLabel={t.adminDashboard.personalizationMetrics.queueing}
-              title="retrain"
-            />
-            <QueueAction
-              disabled={isEnqueueingDigest}
-              idleLabel={t.adminDashboard.notifications.enqueueDigest}
-              isPending={isEnqueueingDigest}
-              onClick={handleEnqueueDigest}
-              pendingLabel={t.adminDashboard.notifications.queueing}
-              title="digest"
-            />
-            <QueueAction
-              disabled={isEnqueueingFillingFast}
-              idleLabel={t.adminDashboard.notifications.enqueueFillingFast}
-              isPending={isEnqueueingFillingFast}
-              onClick={handleEnqueueFillingFast}
-              pendingLabel={t.adminDashboard.notifications.queueing}
-              title="fillingFast"
-            />
-          </div>
+          <CardTitle>{controller.t.adminDashboard.personalizationMetrics.title}</CardTitle>
+          <PersonalizationActions controller={controller} />
         </CardHeader>
-        <CardContent>{personalizationContent}</CardContent>
+        <CardContent>
+          <PersonalizationContent controller={controller} />
+        </CardContent>
       </Card>
     </div>
   );

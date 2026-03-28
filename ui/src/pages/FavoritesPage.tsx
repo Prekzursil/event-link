@@ -9,6 +9,58 @@ import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/contexts/LanguageContext';
 import { Heart, Search } from 'lucide-react';
 
+type FavoritesTranslations = ReturnType<typeof useI18n>['t']['favorites'];
+type FavoritesGridProps = Readonly<{
+  events: Event[];
+  favorites: Set<number>;
+  onFavoriteToggle: (eventId: number, shouldFavorite: boolean) => Promise<void>;
+}>;
+type FavoritesSectionProps = Readonly<{ favorites: FavoritesTranslations }>;
+
+function favoriteIds(events: Event[]): Set<number> {
+  return new Set(events.map((event) => event.id));
+}
+
+function FavoritesHeader({ favorites }: FavoritesSectionProps) {
+  return (
+    <div className="mb-8">
+      <h1 className="text-3xl font-bold">{favorites.title}</h1>
+      <p className="mt-2 text-muted-foreground">{favorites.subtitle}</p>
+    </div>
+  );
+}
+
+function FavoritesEmptyState({ favorites }: FavoritesSectionProps) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <Heart className="mb-4 h-12 w-12 text-muted-foreground" />
+      <h3 className="text-lg font-semibold">{favorites.emptyTitle}</h3>
+      <p className="mt-2 text-muted-foreground">{favorites.emptyDescription}</p>
+      <Button asChild className="mt-4">
+        <Link to="/">
+          <Search className="mr-2 h-4 w-4" />
+          {favorites.exploreEvents}
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+function FavoritesGrid({ events, favorites, onFavoriteToggle }: FavoritesGridProps) {
+  return (
+    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+      {events.map((event) => (
+        <EventCard
+          key={event.id}
+          event={event}
+          onFavoriteToggle={onFavoriteToggle}
+          isFavorite={favorites.has(event.id)}
+        />
+      ))}
+    </div>
+  );
+}
+
 export function FavoritesPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -21,7 +73,7 @@ export function FavoritesPage() {
     try {
       const response = await eventService.getFavorites();
       setEvents(response.items);
-      setFavorites(new Set(response.items.map((e) => e.id)));
+      setFavorites(favoriteIds(response.items));
     } catch {
       toast({
         title: t.favorites.loadErrorTitle,
@@ -67,38 +119,15 @@ export function FavoritesPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">{t.favorites.title}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {t.favorites.subtitle}
-        </p>
-      </div>
-
+      <FavoritesHeader favorites={t.favorites} />
       {events.length === 0 ? (
-        <div className="flex flex-col items-center justify-center py-16 text-center">
-          <Heart className="mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="text-lg font-semibold">{t.favorites.emptyTitle}</h3>
-          <p className="mt-2 text-muted-foreground">
-            {t.favorites.emptyDescription}
-          </p>
-          <Button asChild className="mt-4">
-            <Link to="/">
-              <Search className="mr-2 h-4 w-4" />
-              {t.favorites.exploreEvents}
-            </Link>
-          </Button>
-        </div>
+        <FavoritesEmptyState favorites={t.favorites} />
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-          {events.map((event) => (
-            <EventCard
-              key={event.id}
-              event={event}
-              onFavoriteToggle={handleFavoriteToggle}
-              isFavorite={favorites.has(event.id)}
-            />
-          ))}
-        </div>
+        <FavoritesGrid
+          events={events}
+          favorites={favorites}
+          onFavoriteToggle={handleFavoriteToggle}
+        />
       )}
     </div>
   );

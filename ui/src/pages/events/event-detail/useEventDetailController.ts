@@ -15,14 +15,17 @@ type AxiosDetailError = {
   };
 };
 
+/** Read an API error detail when the backend includes one. */
 function errorDetail(error: unknown, fallback: string) {
   return (error as AxiosDetailError).response?.data?.detail || fallback;
 }
 
-function swallowPromise(result: Promise<unknown> | unknown) {
+/** Ignore best-effort async work that should not block UI updates. */
+function swallowPromise(result?: PromiseLike<unknown>) {
   Promise.resolve(result).catch(() => undefined);
 }
 
+/** Mirror the seat counters that change when a user registers or unregisters. */
 function optimisticRegistrationEvent(event: EventDetail, nextRegistered: boolean): EventDetail {
   const seatsDelta = nextRegistered ? 1 : -1;
   return {
@@ -36,10 +39,12 @@ function optimisticRegistrationEvent(event: EventDetail, nextRegistered: boolean
   };
 }
 
+/** Record event-detail interactions without surfacing analytics failures. */
 function recordEventDetailInteraction(eventId: number, interactionType: InteractionType, meta?: Record<string, unknown>) {
   swallowPromise(recordInteractions([{ interaction_type: interactionType, event_id: eventId, meta }]));
 }
 
+/** Compute the display flags derived from the loaded event payload. */
 function eventDetailStatus(event: EventDetail | null) {
   return {
     isPast: Boolean(event && new Date(event.start_time) < new Date()),
@@ -47,10 +52,12 @@ function eventDetailStatus(event: EventDetail | null) {
   };
 }
 
+/** Preserve the inferred controller type while keeping the return object local. */
 function createEventDetailController<T>(controller: T) {
   return controller;
 }
 
+/** Build the event-detail page controller used by the route component. */
 export function useEventDetailController() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

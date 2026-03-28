@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, type Dispatch, type SetStateAction } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import type { ParticipantList, Participant } from '@/types';
@@ -47,6 +47,192 @@ import {
 } from 'lucide-react';
 import { formatDateTime } from '@/lib/utils';
 
+type ParticipantsTexts = ReturnType<typeof useI18n>['t'];
+type AttendanceMutationArgs = Readonly<{
+  attended: boolean;
+  currentData: ParticipantList;
+  eventId: number;
+  participant: Participant;
+  setData: Dispatch<SetStateAction<ParticipantList | null>>;
+  setUpdatingAttendance: Dispatch<SetStateAction<Set<number>>>;
+  t: ParticipantsTexts;
+  toast: ReturnType<typeof useToast>['toast'];
+}>;
+type EmailSendArgs = Readonly<{
+  emailMessage: string;
+  emailSubject: string;
+  eventId: number;
+  onSuccess: () => void;
+  setIsEmailing: Dispatch<SetStateAction<boolean>>;
+  t: ParticipantsTexts;
+  toast: ReturnType<typeof useToast>['toast'];
+}>;
+
+function skeletonKeys(pageSize: number) {
+  return Array.from({ length: Math.min(pageSize, 10) }, (_, position) => `skeleton-${position + 1}`);
+}
+
+function participantRowsWithAttendance(
+  participants: Participant[],
+  participantId: number,
+  attended: boolean,
+) {
+  return participants.map((entry) =>
+    entry.id === participantId ? { ...entry, attended } : entry,
+  );
+}
+
+function toggledParticipantSet(previous: Set<number>, participantId: number, active: boolean) {
+  const next = new Set(previous);
+  if (active) {
+    next.add(participantId);
+  } else {
+    next.delete(participantId);
+  }
+  return next;
+}
+
+async function loadParticipantsPage(
+  eventId: number,
+  page: number,
+  pageSize: number,
+  sortBy: string,
+  sortDir: 'asc' | 'desc',
+) {
+  return eventService.getEventParticipants(eventId, page, pageSize, sortBy, sortDir);
+}
+
+async function mutateAttendance({
+  attended,
+  currentData,
+  eventId,
+  participant,
+  setData,
+  setUpdatingAttendance,
+  t,
+  toast,
+}: AttendanceMutationArgs) {
+  const participantId = participant.id;
+  const previous = participant.attended;
+
+  setUpdatingAttendance((value) => toggledParticipantSet(value, participantId, true));
+  setData({
+    ...currentData,
+    participants: participantRowsWithAttendance(currentData.participants, participantId, attended),
+  });
+
+  try {
+    await eventService.updateParticipantAttendance(eventId, participantId, attended);
+    toast({
+      title: t.common.success,
+      description: attended ? t.participants.attendanceConfirmed : t.participants.attendanceCleared,
+    });
+  } catch {
+    setData({
+      ...currentData,
+      participants: participantRowsWithAttendance(currentData.participants, participantId, previous),
+    });
+    toast({
+      title: t.common.error,
+      description: t.participants.attendanceUpdateErrorDescription,
+      variant: 'destructive',
+    });
+  } finally {
+    setUpdatingAttendance((value) => toggledParticipantSet(value, participantId, false));
+  }
+}
+
+function escapeCsv(value: string) {
+  return `"${value.split('"').join('""')}"`;
+}
+
+function csvFilename(title: string, t: ParticipantsTexts) {
+  return `${t.participants.csvFilePrefix}-${title.trim().split(' ').filter(Boolean).join('-')}.csv`;
+}
+
+function downloadParticipantsCsv(
+  data: ParticipantList,
+  language: Parameters<typeof formatDateTime>[1],
+  t: ParticipantsTexts,
+) {
+  const headers = [
+    t.participants.csvHeaders.email,
+    t.participants.csvHeaders.name,
+    t.participants.csvHeaders.registrationDate,
+    t.participants.csvHeaders.attended,
+  ];
+  const rows = data.participants.map((participant) => [
+    participant.email,
+    participant.full_name || '',
+    formatDateTime(participant.registration_time, language),
+    participant.attended ? t.participants.csvYes : t.participants.csvNo,
+  ]);
+  const csv = [headers, ...rows]
+    .map((row) => row.map((cell) => escapeCsv(String(cell))).join(','))
+    .join('\n');
+  const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+  const link = document.createElement('a');
+  link.href = URL.createObjectURL(blob);
+  link.download = csvFilename(data.title, t);
+  link.click();
+}
+
+function validateEmailDraft(
+  subject: string,
+  message: string,
+  t: ParticipantsTexts,
+) {
+  if (!subject.trim()) {
+    return t.participants.emailMissingSubject;
+  }
+  if (!message.trim()) {
+    return t.participants.emailMissingMessage;
+  }
+  return null;
+}
+
+async function sendParticipantsEmail({
+  emailMessage,
+  emailSubject,
+  eventId,
+  onSuccess,
+  setIsEmailing,
+  t,
+  toast,
+}: EmailSendArgs) {
+  const validationMessage = validateEmailDraft(emailSubject, emailMessage, t);
+  if (validationMessage) {
+    toast({
+      title: t.common.error,
+      description: validationMessage,
+      variant: 'destructive',
+    });
+    return;
+  }
+
+  setIsEmailing(true);
+  try {
+    const response = await eventService.emailEventParticipants(
+      eventId,
+      emailSubject.trim(),
+      emailMessage.trim(),
+    );
+    toast({
+      title: t.common.success,
+      description: t.participants.emailSuccess.replace('{count}', String(response.recipients)),
+    });
+    onSuccess();
+  } catch {
+    toast({
+      title: t.common.error,
+      description: t.participants.emailError,
+      variant: 'destructive',
+    });
+  } finally {
+    setIsEmailing(false);
+  }
+}
+
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
   const eventId = Number(id);
@@ -64,7 +250,7 @@ export function ParticipantsPage() {
   const [isEmailing, setIsEmailing] = useState(false);
   const { toast } = useToast();
   const { language, t } = useI18n();
-  const skeletonRowKeys = Array.from({ length: Math.min(pageSize, 10) }, (_, position) => `skeleton-${position + 1}`);
+  const skeletonRowKeys = skeletonKeys(pageSize);
 
   const loadParticipants = useCallback(async () => {
     if (!eventId) {
@@ -74,13 +260,7 @@ export function ParticipantsPage() {
     }
     setIsLoading(true);
     try {
-      const response = await eventService.getEventParticipants(
-        eventId,
-        page,
-        pageSize,
-        sortBy,
-        sortDir
-      );
+      const response = await loadParticipantsPage(eventId, page, pageSize, sortBy, sortDir);
       setData(response);
     } catch {
       toast({
@@ -98,43 +278,16 @@ export function ParticipantsPage() {
   }, [loadParticipants]);
 
   const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
-    const currentData = data!;
-    const previous = participant.attended;
-
-    setUpdatingAttendance((prev) => {
-      const next = new Set(prev);
-      next.add(participant.id);
-      return next;
+    await mutateAttendance({
+      attended,
+      currentData: data!,
+      eventId,
+      participant,
+      setData,
+      setUpdatingAttendance,
+      t,
+      toast,
     });
-    setData({
-      ...currentData,
-      participants: currentData.participants.map((p) => (p.id === participant.id ? { ...p, attended } : p)),
-    });
-    try {
-      await eventService.updateParticipantAttendance(eventId, participant.id, attended);
-      toast({
-        title: t.common.success,
-        description: attended ? t.participants.attendanceConfirmed : t.participants.attendanceCleared,
-      });
-    } catch {
-      setData({
-        ...currentData,
-        participants: currentData.participants.map((p) =>
-          p.id === participant.id ? { ...p, attended: previous } : p
-        ),
-      });
-      toast({
-        title: t.common.error,
-        description: t.participants.attendanceUpdateErrorDescription,
-        variant: 'destructive',
-      });
-    } finally {
-      setUpdatingAttendance((prev) => {
-        const next = new Set(prev);
-        next.delete(participant.id);
-        return next;
-      });
-    }
   };
 
   const toggleSort = (column: string) => {
@@ -147,72 +300,23 @@ export function ParticipantsPage() {
   };
 
   const exportToCSV = () => {
-    const currentData = data!;
-
-    const escapeCsv = (value: string) => `"${value.split('"').join('""')}"`;
-
-    const headers = [
-      t.participants.csvHeaders.email,
-      t.participants.csvHeaders.name,
-      t.participants.csvHeaders.registrationDate,
-      t.participants.csvHeaders.attended,
-    ];
-    const rows = currentData.participants.map((p) => [
-      p.email,
-      p.full_name || '',
-      formatDateTime(p.registration_time, language),
-      p.attended ? t.participants.csvYes : t.participants.csvNo,
-    ]);
-
-    const csv = [headers, ...rows]
-      .map((row) => row.map((cell) => escapeCsv(String(cell))).join(','))
-      .join('\n');
-    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `${t.participants.csvFilePrefix}-${currentData.title.replaceAll(/\s+/g, '-')}.csv`;
-    link.click();
+    downloadParticipantsCsv(data!, language, t);
   };
 
   const sendEmailToParticipants = async () => {
-    const subject = emailSubject.trim();
-    const message = emailMessage.trim();
-    if (!subject) {
-      toast({
-        title: t.common.error,
-        description: t.participants.emailMissingSubject,
-        variant: 'destructive',
-      });
-      return;
-    }
-    if (!message) {
-      toast({
-        title: t.common.error,
-        description: t.participants.emailMissingMessage,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsEmailing(true);
-    try {
-      const res = await eventService.emailEventParticipants(eventId, subject, message);
-      toast({
-        title: t.common.success,
-        description: t.participants.emailSuccess.replace('{count}', String(res.recipients)),
-      });
-      setEmailDialogOpen(false);
-      setEmailSubject('');
-      setEmailMessage('');
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.participants.emailError,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsEmailing(false);
-    }
+    await sendParticipantsEmail({
+      emailMessage,
+      emailSubject,
+      eventId,
+      onSuccess: () => {
+        setEmailDialogOpen(false);
+        setEmailSubject('');
+        setEmailMessage('');
+      },
+      setIsEmailing,
+      t,
+      toast,
+    });
   };
 
   if (isLoading && !data) {

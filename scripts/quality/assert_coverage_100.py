@@ -72,31 +72,35 @@ def parse_named_path(value: str) -> tuple[str, Path]:
     return name, validated
 
 
-def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
-    text = path.read_text(encoding="utf-8")
-    lines_valid_match = _XML_LINES_VALID_RE.search(text)
-    lines_covered_match = _XML_LINES_COVERED_RE.search(text)
-    branches_valid_match = _XML_BRANCHES_VALID_RE.search(text)
-    branches_covered_match = _XML_BRANCHES_COVERED_RE.search(text)
+def _metric_stats_from_xml_attributes(
+    *,
+    lines_valid_match: re.Match[str] | None,
+    lines_covered_match: re.Match[str] | None,
+    branches_valid_match: re.Match[str] | None,
+    branches_covered_match: re.Match[str] | None,
+) -> CoverageStats | None:
+    if not (lines_valid_match and lines_covered_match and branches_valid_match and branches_covered_match):
+        return None
+    return CoverageStats(
+        name="",
+        path="",
+        lines=MetricStats(
+            covered=int(float(lines_covered_match.group(1))),
+            total=int(float(lines_valid_match.group(1))),
+        ),
+        branches=MetricStats(
+            covered=int(float(branches_covered_match.group(1))),
+            total=int(float(branches_valid_match.group(1))),
+        ),
+    )
 
-    if lines_valid_match and lines_covered_match and branches_valid_match and branches_covered_match:
-        return CoverageStats(
-            name=name,
-            path=str(path),
-            lines=MetricStats(
-                covered=int(float(lines_covered_match.group(1))),
-                total=int(float(lines_valid_match.group(1))),
-            ),
-            branches=MetricStats(
-                covered=int(float(branches_covered_match.group(1))),
-                total=int(float(branches_valid_match.group(1))),
-            ),
-        )
 
+def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
     line_total = 0
     line_covered = 0
     branch_total = 0
     branch_covered = 0
+
     for hits_raw in _XML_LINE_HITS_RE.findall(text):
         line_total += 1
         try:
@@ -109,11 +113,40 @@ def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
         branch_covered += int(covered_raw)
         branch_total += int(total_raw)
 
+    return (
+        MetricStats(covered=line_covered, total=line_total),
+        MetricStats(covered=branch_covered, total=branch_total),
+    )
+
+
+def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
+    text = path.read_text(encoding="utf-8")
+    lines_valid_match = _XML_LINES_VALID_RE.search(text)
+    lines_covered_match = _XML_LINES_COVERED_RE.search(text)
+    branches_valid_match = _XML_BRANCHES_VALID_RE.search(text)
+    branches_covered_match = _XML_BRANCHES_COVERED_RE.search(text)
+
+    direct_stats = _metric_stats_from_xml_attributes(
+        lines_valid_match=lines_valid_match,
+        lines_covered_match=lines_covered_match,
+        branches_valid_match=branches_valid_match,
+        branches_covered_match=branches_covered_match,
+    )
+    if direct_stats is not None:
+        return CoverageStats(
+            name=name,
+            path=str(path),
+            lines=direct_stats.lines,
+            branches=direct_stats.branches,
+        )
+
+    lines, branches = _metric_stats_from_xml_lines(text)
+
     return CoverageStats(
         name=name,
         path=str(path),
-        lines=MetricStats(covered=line_covered, total=line_total),
-        branches=MetricStats(covered=branch_covered, total=branch_total),
+        lines=lines,
+        branches=branches,
     )
 
 
@@ -142,35 +175,40 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     )
 
 
+def _metric_finding(component_name: str, metric_name: str, stats: MetricStats) -> str | None:
+    if stats.percent >= 100.0:
+        return None
+    return (
+        f"{component_name} {metric_name} coverage below 100%: "
+        f"{stats.percent:.2f}% ({stats.covered}/{stats.total})"
+    )
+
+
+def _combined_metric(stats: list[CoverageStats], metric_name: str) -> MetricStats:
+    metrics = [getattr(item, metric_name) for item in stats]
+    return MetricStats(
+        covered=sum(item.covered for item in metrics),
+        total=sum(item.total for item in metrics),
+    )
+
+
+def _metric_label(metric_name: str) -> str:
+    return "line" if metric_name == "lines" else "branch"
+
+
 def evaluate(stats: list[CoverageStats]) -> tuple[str, list[str]]:
     findings: list[str] = []
     for item in stats:
-        if item.lines.percent < 100.0:
-            findings.append(
-                f"{item.name} line coverage below 100%: {item.lines.percent:.2f}% ({item.lines.covered}/{item.lines.total})"
-            )
-        if item.branches.percent < 100.0:
-            findings.append(
-                f"{item.name} branch coverage below 100%: {item.branches.percent:.2f}% ({item.branches.covered}/{item.branches.total})"
-            )
+        for metric_name in ("lines", "branches"):
+            finding = _metric_finding(item.name, _metric_label(metric_name), getattr(item, metric_name))
+            if finding is not None:
+                findings.append(finding)
 
-    combined_lines_total = sum(item.lines.total for item in stats)
-    combined_lines_covered = sum(item.lines.covered for item in stats)
-    combined_branches_total = sum(item.branches.total for item in stats)
-    combined_branches_covered = sum(item.branches.covered for item in stats)
-    combined_lines = 100.0 if combined_lines_total <= 0 else (combined_lines_covered / combined_lines_total) * 100.0
-    combined_branches = (
-        100.0 if combined_branches_total <= 0 else (combined_branches_covered / combined_branches_total) * 100.0
-    )
-
-    if combined_lines < 100.0:
-        findings.append(
-            f"combined line coverage below 100%: {combined_lines:.2f}% ({combined_lines_covered}/{combined_lines_total})"
-        )
-    if combined_branches < 100.0:
-        findings.append(
-            f"combined branch coverage below 100%: {combined_branches:.2f}% ({combined_branches_covered}/{combined_branches_total})"
-        )
+    for metric_name in ("lines", "branches"):
+        combined = _combined_metric(stats, metric_name)
+        finding = _metric_finding("combined", _metric_label(metric_name), combined)
+        if finding is not None:
+            findings.append(finding)
 
     status = "pass" if not findings else "fail"
     return status, findings
@@ -210,9 +248,7 @@ def _safe_output_path(raw: str, fallback: str) -> Path:
     return resolve_workspace_relative_path(raw, fallback=fallback, must_exist=False, must_be_file=False)
 
 
-def main() -> int:
-    args = _parse_args()
-
+def _load_stats(args: argparse.Namespace) -> list[CoverageStats]:
     stats: list[CoverageStats] = []
     for item in args.xml:
         name, path = parse_named_path(item)
@@ -220,33 +256,56 @@ def main() -> int:
     for item in args.lcov:
         name, path = parse_named_path(item)
         stats.append(parse_lcov(name, path))
+    return stats
+
+
+def _component_payload(item: CoverageStats) -> dict[str, object]:
+    return {
+        "name": item.name,
+        "path": item.path,
+        "lines": {
+            "covered": item.lines.covered,
+            "total": item.lines.total,
+            "percent": item.lines.percent,
+        },
+        "branches": {
+            "covered": item.branches.covered,
+            "total": item.branches.total,
+            "percent": item.branches.percent,
+        },
+    }
+
+
+def _coverage_payload(
+    *,
+    status: str,
+    findings: list[str],
+    stats: list[CoverageStats],
+) -> dict[str, object]:
+    return {
+        "status": status,
+        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
+        "components": [_component_payload(item) for item in stats],
+        "findings": findings,
+    }
+
+
+def _write_outputs(*, out_json: Path, out_md: Path, payload: dict[str, object]) -> None:
+    out_json.parent.mkdir(parents=True, exist_ok=True)
+    out_md.parent.mkdir(parents=True, exist_ok=True)
+    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out_md.write_text(_render_md(payload), encoding="utf-8")
+
+
+def main() -> int:
+    args = _parse_args()
+    stats = _load_stats(args)
 
     if not stats:
         raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
 
     status, findings = evaluate(stats)
-    payload = {
-        "status": status,
-        "timestamp_utc": datetime.now(timezone.utc).isoformat(),
-        "components": [
-            {
-                "name": item.name,
-                "path": item.path,
-                "lines": {
-                    "covered": item.lines.covered,
-                    "total": item.lines.total,
-                    "percent": item.lines.percent,
-                },
-                "branches": {
-                    "covered": item.branches.covered,
-                    "total": item.branches.total,
-                    "percent": item.branches.percent,
-                },
-            }
-            for item in stats
-        ],
-        "findings": findings,
-    }
+    payload = _coverage_payload(status=status, findings=findings, stats=stats)
 
     try:
         out_json = _safe_output_path(args.out_json, "coverage-100/coverage.json")
@@ -255,10 +314,7 @@ def main() -> int:
         print(str(exc), file=sys.stderr)
         return 1
 
-    out_json.parent.mkdir(parents=True, exist_ok=True)
-    out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
-    out_md.write_text(_render_md(payload), encoding="utf-8")
+    _write_outputs(out_json=out_json, out_md=out_md, payload=payload)
     print(out_md.read_text(encoding="utf-8"), end="")
 
     return 0 if status == "pass" else 1

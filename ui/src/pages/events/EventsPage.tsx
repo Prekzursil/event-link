@@ -1,4 +1,4 @@
-import { useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import { useState, useEffect, useMemo, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import { recordInteractions, type InteractionEventIn } from '@/services/analytics.service';
@@ -46,6 +46,10 @@ type EventsPageFilters = EventFilters & {
   page_size: number;
   sort: NonNullable<EventFilters['sort']>;
 };
+type EventsListPayload = Readonly<{
+  items: Event[];
+  total: number;
+}>;
 
 function readShowTwoMonthsCalendar() {
   return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
@@ -144,6 +148,47 @@ function shouldLoadRecommendations(isAuthenticated: boolean, role: string | unde
   return isAuthenticated && role === 'student' && RECOMMENDATIONS_ENABLED;
 }
 
+type EventsListSyncArgs = Readonly<{
+  filters: EventsPageFilters;
+  onLoaded: (payload: EventsListPayload) => void;
+  onError: () => void;
+  onStarted: () => void;
+  onSettled: () => void;
+}>;
+
+function syncEventsList({
+  filters,
+  onLoaded,
+  onError,
+  onStarted,
+  onSettled,
+}: EventsListSyncArgs): () => void {
+  let cancelled = false;
+  onStarted();
+
+  void eventService
+    .getEvents(filters)
+    .then((response) => {
+      if (!cancelled) {
+        onLoaded(response);
+      }
+    })
+    .catch(() => {
+      if (!cancelled) {
+        onError();
+      }
+    })
+    .finally(() => {
+      if (!cancelled) {
+        onSettled();
+      }
+    });
+
+  return () => {
+    cancelled = true;
+  };
+}
+
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
@@ -232,60 +277,48 @@ export function EventsPage() {
     updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
   };
 
-  const updateFilters = useCallback(
-    (newFilters: Partial<EventFilters>) => {
-      const params = new URLSearchParams(searchParams);
+  const updateFilters = (newFilters: Partial<EventFilters>) => {
+    const params = new URLSearchParams(searchParams);
 
-      Object.entries(newFilters).forEach(([key, value]) => {
-        if (value === '' || value === null) {
-          params.delete(key);
-          return;
-        }
-        params.set(key, String(value));
-      });
-
-      // Reset to page 1 when filters change (except for page changes)
-      if (!('page' in newFilters)) {
-        params.set('page', '1');
+    Object.entries(newFilters).forEach(([key, value]) => {
+      if (value === '' || value === null) {
+        params.delete(key);
+        return;
       }
+      params.set(key, String(value));
+    });
 
-      setSearchParams(params);
-    },
-    [searchParams, setSearchParams]
-  );
+    if (!('page' in newFilters)) {
+      params.set('page', '1');
+    }
+
+    setSearchParams(params);
+  };
 
   useEffect(() => {
-    let cancelled = false;
-    
-    const loadEvents = async () => {
-      setIsLoading(true);
-      try {
-        const response = await eventService.getEvents(filters);
-        if (!cancelled) {
+    return syncEventsList(
+      {
+        filters,
+        onLoaded: (response) => {
           setEvents(response.items);
           setTotalEvents(response.total);
           setTotalPages(Math.ceil(response.total / filters.page_size));
-        }
-      } catch {
-        if (!cancelled) {
+        },
+        onError: () => {
           toast({
             title: t.events.loadErrorTitle,
             description: t.events.loadErrorDescription,
             variant: 'destructive',
           });
-        }
-      } finally {
-        if (!cancelled) {
+        },
+        onStarted: () => {
+          setIsLoading(true);
+        },
+        onSettled: () => {
           setIsLoading(false);
-        }
-      }
-    };
-
-    loadEvents();
-    
-    return () => {
-      cancelled = true;
-    };
+        },
+      },
+    );
   }, [filters, toast, t]);
 
   useEffect(() => {

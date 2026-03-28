@@ -14,6 +14,39 @@ DEFAULT_ALLOWED_ORIGINS = [
 ]
 
 
+def _is_empty_setting(value: object) -> bool:
+    return value is None or value == ""
+
+
+def _json_list(value: str) -> list[object] | None:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError:
+        return None
+    return parsed if isinstance(parsed, list) else None
+
+
+def _string_items(values: list[object] | tuple[object, ...], *, lower: bool = False) -> list[str]:
+    items: list[str] = []
+    for raw in values:
+        text = str(raw).strip()
+        if not text:
+            continue
+        items.append(text.lower() if lower else text)
+    return items
+
+
+def _parse_list_setting(value: object, *, lower: bool = False) -> list[str]:
+    if isinstance(value, str):
+        parsed = _json_list(value)
+        if parsed is not None:
+            return _string_items(parsed, lower=lower)
+        return _string_items(tuple(value.split(",")), lower=lower)
+    if isinstance(value, (list, tuple)):
+        return _string_items(value, lower=lower)
+    raise ValueError
+
+
 class Settings(BaseSettings):
     database_url: str
     secret_key: str
@@ -78,46 +111,22 @@ class Settings(BaseSettings):
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, value):
-        if value is None or value == "":
+        if _is_empty_setting(value):
             return list(DEFAULT_ALLOWED_ORIGINS)
-
-        if isinstance(value, str):
-            try:
-                parsed = json.loads(value)
-                if isinstance(parsed, list):
-                    return [origin for origin in parsed if origin]
-            except json.JSONDecodeError:
-                pass
-
-            parsed = [origin.strip() for origin in value.split(",")]
-            return [origin for origin in parsed if origin]
-
-        if isinstance(value, (list, tuple)):
-            return [origin for origin in value if origin]
-
-        raise ValueError("allowed_origins must be a list or comma-separated string")
+        try:
+            return _parse_list_setting(value)
+        except ValueError as exc:
+            raise ValueError("allowed_origins must be a list or comma-separated string") from exc
 
     @field_validator("admin_emails", mode="before")
     @classmethod
     def parse_admin_emails(cls, value):
-        if value is None or value == "":
+        if _is_empty_setting(value):
             return []
-
-        if isinstance(value, str):
-            try:
-                parsed = json.loads(value)
-                if isinstance(parsed, list):
-                    return [str(email).strip().lower() for email in parsed if str(email).strip()]
-            except json.JSONDecodeError:
-                pass
-
-            parsed = [email.strip().lower() for email in value.split(",")]
-            return [email for email in parsed if email]
-
-        if isinstance(value, (list, tuple)):
-            return [str(email).strip().lower() for email in value if str(email).strip()]
-
-        raise ValueError("admin_emails must be a list or comma-separated string")
+        try:
+            return _parse_list_setting(value, lower=True)
+        except ValueError as exc:
+            raise ValueError("admin_emails must be a list or comma-separated string") from exc
 
 
 settings = Settings()

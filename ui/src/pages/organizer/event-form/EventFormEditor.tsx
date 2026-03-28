@@ -13,6 +13,7 @@ type Props = Readonly<{
   controller: EventFormController;
 }>;
 
+/** Render the title and description inputs for the organizer event form. */
 function TitleDescriptionFields({ controller }: Props) {
   const { formData, t, updateField } = controller;
 
@@ -43,6 +44,7 @@ function TitleDescriptionFields({ controller }: Props) {
   );
 }
 
+/** Render the category and publication status controls. */
 function CategoryStatusFields({ controller }: Props) {
   const { formData, language, t, updateField } = controller;
 
@@ -83,6 +85,7 @@ function CategoryStatusFields({ controller }: Props) {
   );
 }
 
+/** Render the start and end time inputs. */
 function ScheduleFields({ controller }: Props) {
   const { formData, t, updateField } = controller;
 
@@ -112,6 +115,7 @@ function ScheduleFields({ controller }: Props) {
   );
 }
 
+/** Render the city, location, and capacity inputs. */
 function VenueFields({ controller }: Props) {
   const { formData, t, updateField } = controller;
 
@@ -154,6 +158,7 @@ function VenueFields({ controller }: Props) {
   );
 }
 
+/** Render the optional cover image URL field and preview. */
 function CoverField({ controller }: Props) {
   const { formData, t, updateField } = controller;
 
@@ -181,6 +186,7 @@ function CoverField({ controller }: Props) {
   );
 }
 
+/** Render the free-form tag editor used by the organizer form. */
 function TagsField({ controller }: Props) {
   const { addTag, formData, removeTag, setTagInput, t, tagInput } = controller;
 
@@ -217,6 +223,7 @@ function TagsField({ controller }: Props) {
   );
 }
 
+/** Render the cancel and submit actions for the organizer form. */
 function FormActions({ controller }: Props) {
   const { isSaving, navigate, submitLabel, t } = controller;
 
@@ -233,6 +240,7 @@ function FormActions({ controller }: Props) {
   );
 }
 
+/** Render the organizer event form using the controller state and handlers. */
 export function EventFormEditor({ controller }: Props) {
   return (
     <form onSubmit={controller.handleSubmit as unknown as (event: React.FormEvent<HTMLFormElement>) => void} className="space-y-6">

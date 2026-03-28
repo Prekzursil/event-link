@@ -42,19 +42,31 @@ export function errorDetail(error: unknown, fallback: string) {
   return (error as AxiosDetailError).response?.data?.detail || fallback;
 }
 
+function textOrEmpty(value: string | null | undefined) {
+  return value ?? '';
+}
+
+function optionalDateTimeLocal(value: string | null | undefined) {
+  return value ? formatDateTimeLocal(value) : '';
+}
+
+function eventStatus(value: Event['status'] | null | undefined): 'draft' | 'published' {
+  return value === 'draft' ? 'draft' : 'published';
+}
+
 export function eventToFormState(event: Event & { tags: EventTag[] }): EventFormState {
   return {
     title: event.title,
-    description: event.description ?? '',
-    category: event.category ?? '',
+    description: textOrEmpty(event.description),
+    category: textOrEmpty(event.category),
     start_time: formatDateTimeLocal(event.start_time),
-    end_time: event.end_time ? formatDateTimeLocal(event.end_time) : '',
-    city: event.city ?? '',
-    location: event.location ?? '',
+    end_time: optionalDateTimeLocal(event.end_time),
+    city: textOrEmpty(event.city),
+    location: textOrEmpty(event.location),
     max_seats: event.max_seats ?? undefined,
-    cover_url: event.cover_url ?? '',
+    cover_url: textOrEmpty(event.cover_url),
     tags: event.tags.map((tag) => tag.name),
-    status: (event.status as 'draft' | 'published') ?? 'published',
+    status: eventStatus(event.status),
   };
 }
 
@@ -81,26 +93,45 @@ export function applySuggestionToFormData(
   };
 }
 
+type EventFormValidator = Readonly<{
+  invalid: (formData: EventFormState) => boolean;
+  message: (t: EventFormTexts) => string;
+}>;
+
+function hasShortText(value: string) {
+  return value.trim().length < 2;
+}
+
+const EVENT_FORM_VALIDATORS: readonly EventFormValidator[] = [
+  {
+    invalid: (formData) => !formData.title.trim(),
+    message: (t) => t.eventForm.validation.titleRequired,
+  },
+  {
+    invalid: (formData) => !formData.category,
+    message: (t) => t.eventForm.validation.categoryRequired,
+  },
+  {
+    invalid: (formData) => !formData.location || hasShortText(formData.location),
+    message: (t) => t.eventForm.validation.locationRequired,
+  },
+  {
+    invalid: (formData) => !formData.city || hasShortText(formData.city),
+    message: (t) => t.eventForm.validation.cityRequired,
+  },
+  {
+    invalid: (formData) => !formData.start_time,
+    message: (t) => t.eventForm.validation.startRequired,
+  },
+  {
+    invalid: (formData) => !formData.max_seats || formData.max_seats < 1,
+    message: (t) => t.eventForm.validation.maxSeatsRequired,
+  },
+];
+
 export function validateEventForm(formData: EventFormState, t: EventFormTexts) {
-  if (!formData.title.trim()) {
-    return t.eventForm.validation.titleRequired;
-  }
-  if (!formData.category) {
-    return t.eventForm.validation.categoryRequired;
-  }
-  if (!formData.location || formData.location.trim().length < 2) {
-    return t.eventForm.validation.locationRequired;
-  }
-  if (!formData.city || formData.city.trim().length < 2) {
-    return t.eventForm.validation.cityRequired;
-  }
-  if (!formData.start_time) {
-    return t.eventForm.validation.startRequired;
-  }
-  if (!formData.max_seats || formData.max_seats < 1) {
-    return t.eventForm.validation.maxSeatsRequired;
-  }
-  return null;
+  const failingValidator = EVENT_FORM_VALIDATORS.find((validator) => validator.invalid(formData));
+  return failingValidator ? failingValidator.message(t) : null;
 }
 
 export function buildEventPayload(formData: EventFormState): EventFormData {

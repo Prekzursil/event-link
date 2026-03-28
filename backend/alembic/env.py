@@ -30,37 +30,34 @@ ALTER_VERSION_NUM_SQL = (
 )
 
 
-def ensure_alembic_version_table(connection):
-    inspector = inspect(connection)
-
-    if "alembic_version" not in inspector.get_table_names():
-        metadata = MetaData()
-        Table(
-            "alembic_version",
-            metadata,
-            Column(
-                "version_num",
-                String(ALEMBIC_VERSION_NUM_LENGTH),
-                primary_key=True,
-                nullable=False,
-            ),
-        )
-        metadata.create_all(connection)
-        return
-
-    columns = inspector.get_columns("alembic_version")
-    version_col = next(
-        (column for column in columns if column.get("name") == "version_num"),
-        None,
+def _create_alembic_version_table(connection):
+    metadata = MetaData()
+    Table(
+        "alembic_version",
+        metadata,
+        Column(
+            "version_num",
+            String(ALEMBIC_VERSION_NUM_LENGTH),
+            primary_key=True,
+            nullable=False,
+        ),
     )
-    if version_col is None:
-        return
+    metadata.create_all(connection)
 
+
+def _version_column(columns):
+    return next((column for column in columns if column.get("name") == "version_num"), None)
+
+
+def _version_length_needs_update(version_col) -> bool:
+    if version_col is None:
+        return False
     col_type = version_col.get("type")
     length = getattr(col_type, "length", None)
-    if length is None or length >= ALEMBIC_VERSION_NUM_LENGTH:
-        return
+    return length is not None and length < ALEMBIC_VERSION_NUM_LENGTH
 
+
+def _alter_version_num_column(connection) -> None:
     if connection.dialect.name == "postgresql":
         connection.exec_driver_sql(ALTER_VERSION_NUM_SQL)
         return
@@ -69,6 +66,19 @@ def ensure_alembic_version_table(connection):
         connection.exec_driver_sql(ALTER_VERSION_NUM_SQL)
     except Exception:
         return
+
+
+def ensure_alembic_version_table(connection):
+    inspector = inspect(connection)
+
+    if "alembic_version" not in inspector.get_table_names():
+        _create_alembic_version_table(connection)
+        return
+
+    if not _version_length_needs_update(_version_column(inspector.get_columns("alembic_version"))):
+        return
+
+    _alter_version_num_column(connection)
 
 
 def run_migrations_offline():

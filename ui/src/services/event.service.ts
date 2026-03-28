@@ -18,25 +18,39 @@ import type {
   UniversityCatalogItem,
 } from '../types';
 
+function appendParam(params: URLSearchParams, key: string, value: string | number | undefined | null) {
+  if (value === undefined || value === null || value === '') {
+    return;
+  }
+  params.append(key, String(value));
+}
+
+
+function buildEventFiltersParams(filters: EventFilters): URLSearchParams {
+  const params = new URLSearchParams();
+  appendParam(params, 'search', filters.search);
+  appendParam(params, 'category', filters.category);
+  appendParam(params, 'start_date', filters.start_date);
+  appendParam(params, 'end_date', filters.end_date);
+  appendParam(params, 'city', filters.city);
+  appendParam(params, 'location', filters.location);
+  appendParam(params, 'sort', filters.sort);
+  appendParam(params, 'page', filters.page);
+  appendParam(params, 'page_size', filters.page_size);
+  if (filters.include_past) {
+    params.append('include_past', 'true');
+  }
+  if (filters.tags?.length) {
+    params.append('tags_csv', filters.tags.join(','));
+  }
+  return params;
+}
+
+
 export const eventService = {
   // Public event endpoints
   async getEvents(filters: EventFilters = {}): Promise<PaginatedEvents> {
-    const params = new URLSearchParams();
-    
-    if (filters.search) params.append('search', filters.search);
-    if (filters.category) params.append('category', filters.category);
-    if (filters.start_date) params.append('start_date', filters.start_date);
-    if (filters.end_date) params.append('end_date', filters.end_date);
-    if (filters.city) params.append('city', filters.city);
-    if (filters.location) params.append('location', filters.location);
-    if (filters.include_past) params.append('include_past', 'true');
-    if (filters.sort) params.append('sort', filters.sort);
-    if (filters.page) params.append('page', filters.page.toString());
-    if (filters.page_size) params.append('page_size', filters.page_size.toString());
-    if (filters.tags?.length) {
-      params.append('tags_csv', filters.tags.join(','));
-    }
-
+    const params = buildEventFiltersParams(filters);
     const response = await api.get<PaginatedEvents>(`/api/events?${params.toString()}`);
     return response.data;
   },

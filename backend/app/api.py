@@ -466,6 +466,7 @@ def _attach_tags(db: Session, event: models.Event, tag_names: list[str]) -> None
 
 
 def _events_with_counts_query(db: Session, base_query=None):
+    """Attach the computed registration count column used by event list responses."""
     if base_query is None:
         base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
     seats_subquery = (
@@ -477,15 +478,19 @@ def _events_with_counts_query(db: Session, base_query=None):
         .group_by(models.Registration.event_id)
         .subquery()
     )
-    query = base_query.outerjoin(seats_subquery, models.Event.id == seats_subquery.c.event_id).add_columns(
-        func.coalesce(seats_subquery.c.seats_taken, 0).label("seats_taken")
+    query = (
+        base_query.outerjoin(seats_subquery, models.Event.id == seats_subquery.c.event_id)
+        .add_columns(func.coalesce(seats_subquery.c.seats_taken, 0).label("seats_taken"))
     )
     return query, seats_subquery
 
 
 def _serialize_event(
-    event: models.Event, seats_taken: int, recommendation_reason: str | None = None
+    event: models.Event,
+    seats_taken: int,
+    recommendation_reason: str | None = None,
 ) -> schemas.EventResponse:
+    """Map an event ORM row plus seat counts to the public response schema."""
     owner_name = None
     if event.owner:
         owner_name = event.owner.full_name or event.owner.email
@@ -511,10 +516,17 @@ def _serialize_event(
 
 
 def _is_student_user(user: models.User | None) -> bool:
+    """Check whether the optional authenticated user is a student."""
     return bool(user is not None and getattr(user, "role", None) == models.UserRole.student)
 
 
-def _preferred_lang(*, request: Request | None, user: models.User | None, default: str = "ro") -> str:
+def _preferred_lang(
+    *,
+    request: Request | None,
+    user: models.User | None,
+    default: str = "ro",
+) -> str:
+    """Resolve the effective language from the user profile or request headers."""
     lang = getattr(user, "language_preference", None) if user is not None else None
     if not lang or lang == "system":
         header_value = request.headers.get("accept-language") if request is not None else None
@@ -523,10 +535,18 @@ def _preferred_lang(*, request: Request | None, user: models.User | None, defaul
 
 
 def _normalized_user_city(user: models.User | None) -> str:
+    """Normalize the current user's city for local recommendation messaging."""
     return (getattr(user, "city", None) or "").strip().lower()
 
 
-def _append_local_reason(*, reason: str | None, event_city: str | None, user_city: str, lang: str) -> str | None:
+def _append_local_reason(
+    *,
+    reason: str | None,
+    event_city: str | None,
+    user_city: str,
+    lang: str,
+) -> str | None:
+    """Append a local-city hint when the event city matches the user's city."""
     is_local = bool(user_city and event_city and event_city.strip().lower() == user_city)
     if not is_local:
         return reason
@@ -535,6 +555,7 @@ def _append_local_reason(*, reason: str | None, event_city: str | None, user_cit
 
 
 def _validate_pagination(page: int, page_size: int) -> None:
+    """Reject invalid public pagination parameters before running the query."""
     if page < 1:
         raise HTTPException(status_code=400, detail=_MIN_PAGE_DETAIL)
     if page_size < 1 or page_size > 100:
@@ -542,6 +563,7 @@ def _validate_pagination(page: int, page_size: int) -> None:
 
 
 def _merged_tag_filters(*, tags: list[str] | None, tags_csv: str | None) -> list[str]:
+    """Merge repeated tag filters from repeated params and comma-separated values."""
     tag_filters: list[str] = []
     if tags:
         tag_filters.extend(tags)

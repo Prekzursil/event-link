@@ -57,7 +57,7 @@ class BranchAnalysisState(NamedTuple):
 
 class PrAnalysisState(NamedTuple):
     analyzed_commit: str
-    is_analysing: bool
+    analysis_in_progress: bool
     open_issues: int | None
 
 
@@ -190,7 +190,8 @@ def _render_md(payload: dict) -> str:
         lines.extend(f"- {item}" for item in findings)
     else:
         lines.append("- None")
-    return "\n".join(lines) + "\n"
+    markdown = "\n".join(lines) + "\n"
+    return markdown
 
 
 def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, str, str]:
@@ -366,7 +367,7 @@ def _pr_analysis_state(payload: dict[str, Any]) -> PrAnalysisState:
 
 
 def _pr_analysis_result(state: PrAnalysisState, commit_sha: str) -> tuple[str, int | None, list[str]] | None:
-    if state.analyzed_commit != commit_sha or state.is_analysing:
+    if state.analyzed_commit != commit_sha or state.analysis_in_progress:
         return None
     return _issues_result(
         open_issues=state.open_issues,
