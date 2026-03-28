@@ -1519,10 +1519,16 @@ def refresh_token(payload: schemas.RefreshRequest):
 
     token_payload = {"sub": str(user_id), "email": email, "role": role}
     access_token = auth.create_access_token(
-        data=token_payload, expires_delta=timedelta(minutes=settings.access_token_expire_minutes)
+        data=token_payload,
+        expires_delta=timedelta(
+            minutes=settings.access_token_expire_minutes,
+        ),
     )
     refresh_token_value = auth.create_refresh_token(
-        data=token_payload, expires_delta=timedelta(minutes=settings.refresh_token_expire_minutes)
+        data=token_payload,
+        expires_delta=timedelta(
+            minutes=settings.refresh_token_expire_minutes,
+        ),
     )
     return {
         "access_token": access_token,
@@ -1550,7 +1556,11 @@ def update_theme_preference(
     db.add(current_user)
     db.commit()
     db.refresh(current_user)
-    log_event("theme_preference_updated", user_id=current_user.id, theme_preference=current_user.theme_preference)
+    log_event(
+        "theme_preference_updated",
+        user_id=current_user.id,
+        theme_preference=current_user.theme_preference,
+    )
     return current_user
 
 
@@ -1595,7 +1605,12 @@ async def unhandled_exception_handler(_request: Request, _exc: Exception):
     """Normalize unexpected exceptions into the API error envelope."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-        content={"error": {"code": "internal_error", "message": "A apărut o eroare neașteptată."}},
+        content={
+            "error": {
+                "code": "internal_error",
+                "message": "A apărut o eroare neașteptată.",
+            }
+        },
     )
 
 
@@ -1609,6 +1624,7 @@ def _enforce_rate_limit(
     window_seconds: int = 60,
     identifier: str | None = None,
 ) -> None:
+    """Reject bursts of repeated requests from the same caller identity."""
     now = time.time()
     identity = identifier or (request.client.host if request.client else "unknown")
     key = f"{action}:{identity}"
@@ -1632,6 +1648,7 @@ def _audit_log(
     actor_user_id: int | None = None,
     meta: dict | None = None,
 ) -> None:
+    """Persist an audit trail entry for privileged actions."""
     db.add(
         models.AuditLog(
             entity_type=entity_type,
@@ -1644,6 +1661,7 @@ def _audit_log(
 
 
 def _is_admin(user: models.User) -> bool:
+    """Return whether the supplied user has administrator privileges."""
     if not user:
         return False
     if user.role == models.UserRole.admin:
@@ -1654,10 +1672,14 @@ def _is_admin(user: models.User) -> bool:
 
 
 def _ensure_registrations_enabled() -> None:
+    """Stop registration flows while the maintenance flag is enabled."""
     if getattr(settings, "maintenance_mode_registrations_disabled", False):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail="Înscrierile sunt temporar dezactivate. Încearcă din nou mai târziu.",
+            detail=(
+                "Înscrierile sunt temporar dezactivate. "
+                "Încearcă din nou mai târziu."
+            ),
         )
 
 
@@ -1667,6 +1689,7 @@ def _event_list_search_filters(
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
 ) -> dict[str, Optional[str] | date]:
+    """Collect the free-text and date filters for the event listing API."""
     return {
         "search": search,
         "category": category,
@@ -1679,6 +1702,7 @@ def _event_list_tag_filters(
     tags: Annotated[Optional[list[str]], Query()] = None,
     tags_csv: Optional[str] = None,
 ) -> dict[str, list[str] | str | None]:
+    """Collect the tag-based filters for the event listing API."""
     return {
         "tags": tags or [],
         "tags_csv": tags_csv,
@@ -1691,6 +1715,7 @@ def _event_list_location_filters(
     include_past: bool = False,
     sort: Optional[str] = None,
 ) -> dict[str, str | bool | None]:
+    """Collect the location and sorting filters for the event listing API."""
     return {
         "city": city,
         "location": location,
@@ -1703,6 +1728,7 @@ def _event_list_pagination_filters(
     page: int = 1,
     page_size: int = 10,
 ) -> dict[str, int]:
+    """Collect pagination parameters for the event listing API."""
     return {
         "page": page,
         "page_size": page_size,
@@ -1710,11 +1736,24 @@ def _event_list_pagination_filters(
 
 
 def _build_event_list_query(
-    search_filters: Annotated[dict[str, Optional[str] | date], Depends(_event_list_search_filters)],
-    tag_filters: Annotated[dict[str, list[str] | str | None], Depends(_event_list_tag_filters)],
-    location_filters: Annotated[dict[str, str | bool | None], Depends(_event_list_location_filters)],
-    pagination_filters: Annotated[dict[str, int], Depends(_event_list_pagination_filters)],
+    search_filters: Annotated[
+        dict[str, Optional[str] | date],
+        Depends(_event_list_search_filters),
+    ],
+    tag_filters: Annotated[
+        dict[str, list[str] | str | None],
+        Depends(_event_list_tag_filters),
+    ],
+    location_filters: Annotated[
+        dict[str, str | bool | None],
+        Depends(_event_list_location_filters),
+    ],
+    pagination_filters: Annotated[
+        dict[str, int],
+        Depends(_event_list_pagination_filters),
+    ],
 ) -> schemas.EventListQuery:
+    """Assemble all query-parameter dependency groups into one schema object."""
     return schemas.EventListQuery(
         **search_filters,
         **tag_filters,

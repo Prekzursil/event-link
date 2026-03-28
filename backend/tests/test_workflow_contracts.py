@@ -2,8 +2,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = REPO_ROOT / '.github' / 'workflows'
-WRAPPER_TEMPLATE_REF = '@0e7482ede8d157d5183d41dfe2b575560fbea222'
-MUTATION_TEMPLATE_REF = '@7268fee30f1cf796938d97fe460259f27386a8cd'
+WRAPPER_TEMPLATE_REF = '@6e8e87edd0c457f3722e401f0ffed86dac90e9e1'
+MUTATION_TEMPLATE_REF = '@6e8e87edd0c457f3722e401f0ffed86dac90e9e1'
 
 
 def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
