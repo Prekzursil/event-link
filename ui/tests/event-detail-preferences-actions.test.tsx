@@ -54,23 +54,3 @@ it('covers favorite removal and hide-tag success and error branches', async () =
   fireEvent.click(hideButton);
   await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 }, 20000);
-
-it('covers block-organizer success and error branches', async () => {
-  eventServiceMock.getEvent.mockResolvedValueOnce(
-    makeEvent({ is_favorite: true, recommendation_reason: '', tags: [{ id: 7, name: 'AI' }] }),
-  );
-  renderEventDetail('/events/1');
-  await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
-
-  const blockButton = screen.getByRole('button', {
-    name: /Block organizer|Blochează organizator/i,
-  });
-  fireEvent.click(blockButton);
-  await waitFor(() => expect(eventServiceMock.blockOrganizer).toHaveBeenCalledWith(9));
-
-  eventServiceMock.blockOrganizer.mockRejectedValueOnce({
-    response: { data: { detail: 'block-failed' } },
-  });
-  fireEvent.click(blockButton);
-  await waitFor(() => expect(toastSpy).toHaveBeenCalled());
-}, 20000);

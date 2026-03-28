@@ -330,7 +330,7 @@ function seedMegaPagesProfileDefaults() {
   seedMegaPagesStudentProfileDefaults();
 }
 
-function seedMegaPagesAdminDefaults() {
+function seedMegaPagesAdminStatsDefaults() {
   adminServiceMock.getStats.mockResolvedValue({
     users_total: 1,
     users_active: 1,
@@ -344,6 +344,9 @@ function seedMegaPagesAdminDefaults() {
     registrations_last_30_days: 1,
     top_tags: [{ tag: 'Tech', count: 1 }],
   });
+}
+
+function seedMegaPagesAdminUserDefaults() {
   adminServiceMock.getUsers.mockResolvedValue({
     items: [
       {
@@ -367,6 +370,9 @@ function seedMegaPagesAdminDefaults() {
     is_active: true,
     created_at: new Date().toISOString(),
   });
+}
+
+function seedMegaPagesAdminEventDefaults() {
   adminServiceMock.getEvents.mockResolvedValue({
     items: [
       {
@@ -395,6 +401,9 @@ function seedMegaPagesAdminDefaults() {
     page_size: 20,
   });
   adminServiceMock.reviewEventModeration.mockResolvedValue({ status: 'ok' });
+}
+
+function seedMegaPagesAdminJobDefaults() {
   adminServiceMock.getPersonalizationMetrics.mockResolvedValue({
     from: '2026-01-01T00:00:00Z',
     to: '2026-01-31T00:00:00Z',
@@ -420,6 +429,13 @@ function seedMegaPagesAdminDefaults() {
     job_id: 'job-3',
     status: 'queued',
   });
+}
+
+function seedMegaPagesAdminDefaults() {
+  seedMegaPagesAdminStatsDefaults();
+  seedMegaPagesAdminUserDefaults();
+  seedMegaPagesAdminEventDefaults();
+  seedMegaPagesAdminJobDefaults();
 }
 
 function seedMegaPagesAuthDefaults() {

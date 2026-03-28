@@ -32,23 +32,15 @@ from recompute_ml_shared import (  # noqa: E402
     _train_log_regression_sgd,
     evaluate_hitrate_at_k_impl,
 )
+from recompute_ml_prepare_state import _prepare_state  # noqa: E402
 from recompute_ml_state_helpers import (  # noqa: E402
     _RecommendationBuildState,
     _RecommendationDependencies,
     _eligible_event_ids,
     _feature_length_is_valid,
-    _history_from_positive_events,
-    _holdout_positive_event_ids,
-    _interaction_training_state,
-    _load_decay_weight_buckets,
     _load_persisted_model_state as _load_persisted_model_state_impl,
-    _positive_weights_by_user,
     _persist_model_state,
-    _prepared_state_from_loaded_data,
-    _preferred_lang,
-    _resolved_user_city,
     _selected_model_row,
-    _student_event_state,
     _training_meta,
     build_recommendation_rows_impl,
 )
@@ -68,6 +60,7 @@ __all__ = (
     "_normalize_category",
     "_normalize_city",
     "_normalize_tag",
+    "_prepare_state",
     "_reason_for",
     "_selected_model_row",
     "_sigmoid",
@@ -123,45 +116,6 @@ def _evaluate_hitrate_at_k(**kwargs) -> float:
             dot=_dot,
         ),
     )
-
-
-def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
-    users: dict[int, _UserFeatures] = {}
-    user_lang: dict[int, str] = {}
-    holdout: dict[int, int] = {}
-    rng = _DeterministicRng(int(kwargs["args"].seed))
-
-    for student in kwargs["students"]:
-        user_id = int(student.id)
-        city = _resolved_user_city(
-            student=student,
-            user_id=user_id,
-            implicit_city_by_user=kwargs["implicit_city_by_user"],
-            city_weights_by_user=kwargs["city_weights_by_user"],
-        )
-        user_lang[user_id] = _preferred_lang(student.language_preference)
-        positive_event_ids = _holdout_positive_event_ids(
-            user_id=user_id,
-            positives=kwargs["positives_by_user"].get(user_id, {}),
-            holdout=holdout,
-            rng=rng,
-        )
-        history_tags, history_categories, history_organizers = _history_from_positive_events(
-            positive_event_ids=positive_event_ids,
-            events=kwargs["events"],
-            implicit_categories=kwargs["implicit_categories_by_user"].get(user_id, set()),
-        )
-        users[user_id] = _UserFeatures(
-            city=city,
-            interest_tag_weights=kwargs["interest_tag_weights_by_user"].get(user_id, {}),
-            history_tags=history_tags,
-            history_categories=history_categories,
-            history_organizer_ids=history_organizers,
-            category_weights=kwargs["category_weights_by_user"].get(user_id, {}),
-            city_weights=kwargs["city_weights_by_user"].get(user_id, {}),
-        )
-
-    return users, user_lang, holdout
 
 
 def _load_persisted_model_state(*, db, models, requested_model_version: str | None) -> tuple[str | None, list[float] | None, int | None]:
@@ -366,161 +320,6 @@ def _build_recommendation_rows(**kwargs):
             sigmoid=_sigmoid,
             dot=_dot,
         ),
-    )
-
-
-def _load_state_entities(*, db, models, func, args):
-    students, events, all_event_ids = _student_event_state(db=db, models=models, func=func, args=args)
-    if students is None or events is None or all_event_ids is None:
-        return None
-    return students, events, all_event_ids, [int(user.id) for user in students]
-
-
-def _load_state_weight_buckets(*, db, models, args, now: datetime, decay_lambda: float, max_score: float):
-    return _load_decay_weight_buckets(
-        db=db,
-        models=models,
-        args=args,
-        now=now,
-        decay_lambda=decay_lambda,
-        max_score=max_score,
-    )
-
-
-def _load_state_interactions(*, db, models, args):
-    return _interaction_training_state(db=db, models=models, args=args)
-
-
-def _build_prepared_user_state(
-    *,
-    students,
-    args,
-    events,
-    positives_by_user,
-    implicit_categories_by_user,
-    implicit_city_by_user,
-    category_weights_by_user,
-    city_weights_by_user,
-    interest_tag_weights_by_user,
-):
-    return _build_users_and_holdout(
-        students=students,
-        args=args,
-        events=events,
-        positives_by_user=positives_by_user,
-        implicit_categories_by_user=implicit_categories_by_user,
-        implicit_city_by_user=implicit_city_by_user,
-        category_weights_by_user=category_weights_by_user,
-        city_weights_by_user=city_weights_by_user,
-        interest_tag_weights_by_user=interest_tag_weights_by_user,
-    )
-
-
-def _build_prepared_runtime_state(
-    *,
-    students,
-    args,
-    events,
-    positive_weights,
-    implicit_categories_by_user,
-    implicit_city_by_user,
-    category_weights_by_user,
-    city_weights_by_user,
-    interest_tag_weights_by_user,
-):
-    positives_by_user = _positive_weights_by_user(positive_weights)
-    return _build_prepared_user_state(
-        students=students,
-        args=args,
-        events=events,
-        positives_by_user=positives_by_user,
-        implicit_categories_by_user=implicit_categories_by_user,
-        implicit_city_by_user=implicit_city_by_user,
-        category_weights_by_user=category_weights_by_user,
-        city_weights_by_user=city_weights_by_user,
-        interest_tag_weights_by_user=interest_tag_weights_by_user,
-    )
-
-
-def _assemble_prepared_state(
-    *,
-    user_ids,
-    events,
-    all_event_ids,
-    registered_event_ids_by_user,
-    positive_weights,
-    negative_weights,
-    seen_by_user,
-    impression_position_by_user_event,
-    implicit_interest_tags_by_user,
-    implicit_categories_by_user,
-    implicit_city_by_user,
-    users,
-    user_lang,
-    holdout,
-) -> _PreparedState:
-    return _prepared_state_from_loaded_data(
-        user_ids=user_ids,
-        events=events,
-        all_event_ids=all_event_ids,
-        registered_event_ids_by_user=registered_event_ids_by_user,
-        positive_weights=positive_weights,
-        negative_weights=negative_weights,
-        seen_by_user=seen_by_user,
-        impression_position_by_user_event=impression_position_by_user_event,
-        implicit_interest_tags_by_user=implicit_interest_tags_by_user,
-        implicit_categories_by_user=implicit_categories_by_user,
-        implicit_city_by_user=implicit_city_by_user,
-        users=users,
-        user_lang=user_lang,
-        holdout=holdout,
-    )
-
-
-def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float, max_score: float) -> _PreparedState | None:
-    entity_rows = _load_state_entities(db=db, models=models, func=func, args=args)
-    if entity_rows is None:
-        return None
-    students, events, all_event_ids, user_ids = entity_rows
-    interest_tag_weights_by_user, category_weights_by_user, city_weights_by_user = _load_state_weight_buckets(
-        db=db,
-        models=models,
-        args=args,
-        now=now,
-        decay_lambda=decay_lambda,
-        max_score=max_score,
-    )
-    registered_event_ids_by_user, positive_weights, negative_weights, seen_by_user, impression_position_by_user_event, implicit_interest_tags_by_user, implicit_categories_by_user, implicit_city_by_user = _load_state_interactions(
-        db=db,
-        models=models,
-        args=args,
-    )
-    users, user_lang, holdout = _build_prepared_runtime_state(
-        students=students,
-        args=args,
-        events=events,
-        positive_weights=positive_weights,
-        implicit_categories_by_user=implicit_categories_by_user,
-        implicit_city_by_user=implicit_city_by_user,
-        category_weights_by_user=category_weights_by_user,
-        city_weights_by_user=city_weights_by_user,
-        interest_tag_weights_by_user=interest_tag_weights_by_user,
-    )
-    return _assemble_prepared_state(
-        user_ids=user_ids,
-        events=events,
-        all_event_ids=all_event_ids,
-        registered_event_ids_by_user=registered_event_ids_by_user,
-        positive_weights=positive_weights,
-        negative_weights=negative_weights,
-        seen_by_user=seen_by_user,
-        impression_position_by_user_event=impression_position_by_user_event,
-        implicit_interest_tags_by_user=implicit_interest_tags_by_user,
-        implicit_categories_by_user=implicit_categories_by_user,
-        implicit_city_by_user=implicit_city_by_user,
-        users=users,
-        user_lang=user_lang,
-        holdout=holdout,
     )
 
 
