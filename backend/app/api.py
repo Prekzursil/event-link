@@ -217,11 +217,18 @@ def _compute_moderation(
     )
 
     score = min(1.0, score)
-    status = "flagged" if score >= 0.5 else "clean"
-    return score, flags, status
+    moderation_status = "flagged" if score >= 0.5 else "clean"
+    return score, flags, moderation_status
 
 
-def _moderation_signal(*, condition: bool, flag: str, flags: list[str], weight: float) -> float:
+def _moderation_signal(
+    *,
+    condition: bool,
+    flag: str,
+    flags: list[str],
+    weight: float,
+) -> float:
+    """Append a moderation flag and return its score contribution when matched."""
     if not condition:
         return 0.0
     flags.append(flag)

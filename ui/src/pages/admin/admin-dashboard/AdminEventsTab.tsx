@@ -40,6 +40,34 @@ type FilterToggleProps = {
   onCheckedChange: (checked: boolean) => void;
 };
 
+type SearchFieldProps = {
+  onSearchChange: (value: string) => void;
+  searchLabel: string;
+  searchPlaceholder: string;
+  value: string;
+};
+
+type StatusFilterFieldProps = {
+  onStatusChange: (value: EventStatusFilter) => void;
+  statusAll: string;
+  statusDraft: string;
+  statusLabel: string;
+  statusPublished: string;
+  value: EventStatusFilter;
+};
+
+type FilterActionsProps = {
+  applyLabel: string;
+  eventsFlaggedOnly: boolean;
+  eventsIncludeDeleted: boolean;
+  flaggedOnlyLabel: string;
+  includeDeletedLabel: string;
+  isLoadingEvents: boolean;
+  onApply: () => void;
+  onFlaggedOnlyChange: (checked: boolean) => void;
+  onIncludeDeletedChange: (checked: boolean) => void;
+};
+
 type EventsFiltersBarProps = {
   applyLabel: string;
   eventsFlaggedOnly: boolean;
@@ -64,6 +92,16 @@ type EventsFiltersBarProps = {
 
 type EventOwnerCellProps = {
   event: AdminEvent;
+};
+
+type EventsTableContentProps = {
+  events: AdminEvent[];
+  eventsCopy: EventsCopy;
+  language: Props['controller']['language'];
+  onDelete: (eventId: number) => void;
+  onRestore: (eventId: number) => void;
+  onReview: (eventId: number) => void;
+  reviewingEventId: number | null;
 };
 
 type EventStatusBadgeProps = {
@@ -131,6 +169,80 @@ const FilterToggle = ({ checked, label, onCheckedChange }: FilterToggleProps) =>
   </div>
 );
 
+/** Render the free-text event search control. */
+const SearchField = ({
+  onSearchChange,
+  searchLabel,
+  searchPlaceholder,
+  value,
+}: SearchFieldProps) => (
+  <div className="flex-1">
+    <label className="mb-1 block text-sm font-medium">{searchLabel}</label>
+    <Input
+      value={value}
+      onChange={(event) => onSearchChange(event.target.value)}
+      placeholder={searchPlaceholder}
+    />
+  </div>
+);
+
+/** Render the event status select control. */
+const StatusFilterField = ({
+  onStatusChange,
+  statusAll,
+  statusDraft,
+  statusLabel,
+  statusPublished,
+  value,
+}: StatusFilterFieldProps) => (
+  <div className="w-full md:w-56">
+    <label className="mb-1 block text-sm font-medium">{statusLabel}</label>
+    <Select
+      value={value}
+      onValueChange={(nextValue) => onStatusChange(nextValue as EventStatusFilter)}
+    >
+      <SelectTrigger>
+        <SelectValue placeholder={statusAll} />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="all">{statusAll}</SelectItem>
+        <SelectItem value="published">{statusPublished}</SelectItem>
+        <SelectItem value="draft">{statusDraft}</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
+);
+
+/** Render the checkbox and apply-button controls for the filters row. */
+const FilterActions = ({
+  applyLabel,
+  eventsFlaggedOnly,
+  eventsIncludeDeleted,
+  flaggedOnlyLabel,
+  includeDeletedLabel,
+  isLoadingEvents,
+  onApply,
+  onFlaggedOnlyChange,
+  onIncludeDeletedChange,
+}: FilterActionsProps) => (
+  <>
+    <FilterToggle
+      checked={eventsIncludeDeleted}
+      label={includeDeletedLabel}
+      onCheckedChange={onIncludeDeletedChange}
+    />
+    <FilterToggle
+      checked={eventsFlaggedOnly}
+      label={flaggedOnlyLabel}
+      onCheckedChange={onFlaggedOnlyChange}
+    />
+    <Button onClick={onApply} disabled={isLoadingEvents}>
+      <RefreshCw className="mr-2 h-4 w-4" />
+      {applyLabel}
+    </Button>
+  </>
+);
+
 /** Render the filter controls shown above the admin events table. */
 const EventsFiltersBar = ({
   applyLabel,
@@ -154,44 +266,31 @@ const EventsFiltersBar = ({
   statusPublished,
 }: EventsFiltersBarProps) => (
   <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
-    <div className="flex-1">
-      <label className="mb-1 block text-sm font-medium">{searchLabel}</label>
-      <Input
-        value={eventsSearch}
-        onChange={(event) => onSearchChange(event.target.value)}
-        placeholder={searchPlaceholder}
-      />
-    </div>
-    <div className="w-full md:w-56">
-      <label className="mb-1 block text-sm font-medium">{statusLabel}</label>
-      <Select
-        value={eventsStatus}
-        onValueChange={(value) => onStatusChange(value as EventStatusFilter)}
-      >
-        <SelectTrigger>
-          <SelectValue placeholder={statusAll} />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">{statusAll}</SelectItem>
-          <SelectItem value="published">{statusPublished}</SelectItem>
-          <SelectItem value="draft">{statusDraft}</SelectItem>
-        </SelectContent>
-      </Select>
-    </div>
-    <FilterToggle
-      checked={eventsIncludeDeleted}
-      label={includeDeletedLabel}
-      onCheckedChange={onIncludeDeletedChange}
+    <SearchField
+      onSearchChange={onSearchChange}
+      searchLabel={searchLabel}
+      searchPlaceholder={searchPlaceholder}
+      value={eventsSearch}
     />
-    <FilterToggle
-      checked={eventsFlaggedOnly}
-      label={flaggedOnlyLabel}
-      onCheckedChange={onFlaggedOnlyChange}
+    <StatusFilterField
+      onStatusChange={onStatusChange}
+      statusAll={statusAll}
+      statusDraft={statusDraft}
+      statusLabel={statusLabel}
+      statusPublished={statusPublished}
+      value={eventsStatus}
     />
-    <Button onClick={onApply} disabled={isLoadingEvents}>
-      <RefreshCw className="mr-2 h-4 w-4" />
-      {applyLabel}
-    </Button>
+    <FilterActions
+      applyLabel={applyLabel}
+      eventsFlaggedOnly={eventsFlaggedOnly}
+      eventsIncludeDeleted={eventsIncludeDeleted}
+      flaggedOnlyLabel={flaggedOnlyLabel}
+      includeDeletedLabel={includeDeletedLabel}
+      isLoadingEvents={isLoadingEvents}
+      onApply={onApply}
+      onFlaggedOnlyChange={onFlaggedOnlyChange}
+      onIncludeDeletedChange={onIncludeDeletedChange}
+    />
   </div>
 );
 
@@ -356,6 +455,46 @@ const EventsPagination = ({
   </div>
 );
 
+/** Render the admin events table structure without pagination. */
+const EventsTableContent = ({
+  events,
+  eventsCopy,
+  language,
+  onDelete,
+  onRestore,
+  onReview,
+  reviewingEventId,
+}: EventsTableContentProps) => (
+  <Table>
+    <TableHeader>
+      <TableRow>
+        <TableHead>{eventsCopy.table.title}</TableHead>
+        <TableHead>{eventsCopy.table.city}</TableHead>
+        <TableHead>{eventsCopy.table.date}</TableHead>
+        <TableHead>{eventsCopy.table.owner}</TableHead>
+        <TableHead>{eventsCopy.table.status}</TableHead>
+        <TableHead>{eventsCopy.table.moderation}</TableHead>
+        <TableHead className="text-right">{eventsCopy.table.seats}</TableHead>
+        <TableHead className="w-[160px]" />
+      </TableRow>
+    </TableHeader>
+    <TableBody>
+      {events.map((event) => (
+        <AdminEventRow
+          key={event.id}
+          event={event}
+          eventsCopy={eventsCopy}
+          language={language}
+          onDelete={onDelete}
+          onRestore={onRestore}
+          onReview={onReview}
+          reviewingEventId={reviewingEventId}
+        />
+      ))}
+    </TableBody>
+  </Table>
+);
+
 /** Render the admin events table or its empty state. */
 const EventsResults = ({
   events,
@@ -377,35 +516,16 @@ const EventsResults = ({
   }
 
   return (
-    <>
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>{eventsCopy.table.title}</TableHead>
-            <TableHead>{eventsCopy.table.city}</TableHead>
-            <TableHead>{eventsCopy.table.date}</TableHead>
-            <TableHead>{eventsCopy.table.owner}</TableHead>
-            <TableHead>{eventsCopy.table.status}</TableHead>
-            <TableHead>{eventsCopy.table.moderation}</TableHead>
-            <TableHead className="text-right">{eventsCopy.table.seats}</TableHead>
-            <TableHead className="w-[160px]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {events.map((event) => (
-            <AdminEventRow
-              key={event.id}
-              event={event}
-              eventsCopy={eventsCopy}
-              language={language}
-              onDelete={onDelete}
-              onRestore={onRestore}
-              onReview={onReview}
-              reviewingEventId={reviewingEventId}
-            />
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-4">
+      <EventsTableContent
+        events={events}
+        eventsCopy={eventsCopy}
+        language={language}
+        onDelete={onDelete}
+        onRestore={onRestore}
+        onReview={onReview}
+        reviewingEventId={reviewingEventId}
+      />
       <EventsPagination
         copy={paginationCopy}
         currentPage={eventsPage}
@@ -414,7 +534,7 @@ const EventsResults = ({
         totalItems={eventsTotal}
         totalPages={totalEventPages}
       />
-    </>
+    </div>
   );
 };
 
