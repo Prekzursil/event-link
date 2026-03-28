@@ -10,10 +10,18 @@ import hashlib
 import math
 from pathlib import Path
 
-from fastapi import BackgroundTasks, Depends, FastAPI, HTTPException, status, Request, Query
+from fastapi import (
+    BackgroundTasks,
+    Depends,
+    FastAPI,
+    HTTPException,
+    Query,
+    Request,
+    status,
+)
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import func, text, case
+from sqlalchemy import case, func, text
 from sqlalchemy.orm import Session, joinedload
 
 from . import auth, models, schemas
@@ -21,20 +29,26 @@ from . import ro_universities
 from .config import settings
 from .database import engine, get_db, SessionLocal
 from .email_service import send_email_async
-from .email_templates import render_registration_email, render_password_reset_email
-from .logging_utils import configure_logging, RequestIdMiddleware, log_event, log_warning
+from .email_templates import (
+    render_password_reset_email,
+    render_registration_email,
+)
+from .logging_utils import (
+    RequestIdMiddleware,
+    configure_logging,
+    log_event,
+    log_warning,
+)
 
 configure_logging()
 
 
-
-
-
 def _run_migrations():
-    """Run Alembic migrations to latest head. Controlled via settings.auto_run_migrations."""
+    """Run Alembic migrations to the latest head when startup settings allow it."""
     try:
         from alembic import command
         from alembic.config import Config
+
         base_dir = Path(__file__).resolve().parent.parent
         alembic_ini = base_dir / 'alembic.ini'
         if not alembic_ini.exists():
@@ -47,18 +61,23 @@ def _run_migrations():
     except Exception:
         logging.exception('Failed to run migrations on startup')
 
+
 def _check_configuration():
+    """Validate required runtime settings before the application starts."""
     if not settings.database_url:
         raise RuntimeError('DATABASE_URL is required')
     if not settings.secret_key:
         raise RuntimeError('SECRET_KEY is required')
     if settings.email_enabled and (not settings.smtp_host or not settings.smtp_sender):
-        logging.warning('Email enabled but SMTP host/sender missing; disabling email sending')
+        logging.warning(
+            'Email enabled but SMTP host/sender missing; disabling email sending'
+        )
         settings.email_enabled = False
 
 
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    """Prepare startup state and cancel background tasks during shutdown."""
     _check_configuration()
     if getattr(settings, "auto_run_migrations", False):
         _run_migrations()
@@ -109,13 +128,21 @@ _EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"
 
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
-    return {code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]} for code in status_codes}
+    """Build a FastAPI response description map from shared error metadata."""
+    return {
+        code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]}
+        for code in status_codes
+    }
 
 
 def _validate_cover_url(url: str | None) -> None:
+    """Reject non-HTTP(S) cover image links before persisting the payload."""
     pattern = re.compile(r"^https?://")
     if url and not pattern.match(str(url)):
-        raise HTTPException(status_code=400, detail="Cover URL trebuie să fie un link http/https valid.")
+        raise HTTPException(
+            status_code=400,
+            detail="Cover URL trebuie să fie un link http/https valid.",
+        )
 
 
 _URL_PATTERN = re.compile(r"https?://\S+", re.IGNORECASE)
@@ -146,9 +173,15 @@ _SUSPICIOUS_KEYWORDS = {
 }
 
 
-def _compute_moderation(*, title: str, description: str | None, location: str | None) -> tuple[float, list[str], str]:
-    text = f"{title or ''}\n{description or ''}\n{location or ''}"
-    lowered = text.lower()
+def _compute_moderation(
+    *,
+    title: str,
+    description: str | None,
+    location: str | None,
+) -> tuple[float, list[str], str]:
+    """Score event content for lightweight moderation signals."""
+    moderation_text = f"{title or ''}\n{description or ''}\n{location or ''}"
+    lowered = moderation_text.lower()
 
     flags: list[str] = []
     score = 0.0
@@ -161,7 +194,9 @@ def _compute_moderation(*, title: str, description: str | None, location: str | 
         weight=0.3,
     )
     score += _moderation_signal(
-        condition=any(any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls),
+        condition=any(
+            any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls
+        ),
         flag="shortener_link",
         flags=flags,
         weight=0.4,
@@ -173,7 +208,9 @@ def _compute_moderation(*, title: str, description: str | None, location: str | 
         weight=0.4,
     )
     score += _moderation_signal(
-        condition=bool(urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)),
+        condition=bool(
+            urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)
+        ),
         flag="credential_request",
         flags=flags,
         weight=0.5,
