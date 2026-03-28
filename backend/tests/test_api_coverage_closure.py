@@ -263,7 +263,8 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
             """Returns the fake query for chained filters."""
             return self
 
-        def delete(self, **_k):
+        @staticmethod
+        def delete(**_k):
             """Returns the fake delete count."""
             return 0
 
@@ -655,8 +656,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
-
 
 
 
