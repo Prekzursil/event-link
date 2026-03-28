@@ -63,6 +63,7 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
 
     class _FakeConfig:
         """Test double for FakeConfig."""
+
         def __init__(self, _path: str):
             """Initializes the test double."""
             self.path = _path
@@ -259,6 +260,7 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
 
     class _FakeQuery:
         """Test double for FakeQuery."""
+
         def filter(self, *_a, **_k):
             """Returns the fake query for chained filters."""
             return self
@@ -274,6 +276,7 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
 
     class _FakeDb:
         """Test double for FakeDb."""
+
         @staticmethod
         def query(*_a, **_k):
             """Builds the fake query result used by the test."""
@@ -659,7 +662,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 
