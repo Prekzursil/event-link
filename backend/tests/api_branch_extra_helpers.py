@@ -1,9 +1,17 @@
 """Shared helpers for API branch-closure edge tests."""
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
-
 from app import api, models, schemas
+
+__all__ = (
+    "ScalarDb",
+    "ScalarQuery",
+    "api",
+    "auth_header",
+    "event_payload",
+    "models",
+    "schemas",
+)
 
 
 def auth_header(token: str) -> dict[str, str]:

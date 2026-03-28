@@ -15,6 +15,8 @@ if str(SCRIPT_DIR) not in sys.path:
 from recompute_ml_shared import (  # noqa: E402
     FEATURE_NAMES,
     _DeterministicRng,
+    _EvaluationDependencies,
+    _EvaluationState,
     _EventFeatures,
     _PreparedState,
     _UserFeatures,
@@ -31,6 +33,8 @@ from recompute_ml_shared import (  # noqa: E402
     evaluate_hitrate_at_k_impl,
 )
 from recompute_ml_state_helpers import (  # noqa: E402
+    _RecommendationBuildState,
+    _RecommendationDependencies,
     _eligible_event_ids,
     _feature_length_is_valid,
     _history_from_positive_events,
@@ -47,6 +51,28 @@ from recompute_ml_state_helpers import (  # noqa: E402
     _student_event_state,
     _training_meta,
     build_recommendation_rows_impl,
+)
+
+__all__ = (
+    "FEATURE_NAMES",
+    "_DeterministicRng",
+    "_EventFeatures",
+    "_PreparedState",
+    "_UserFeatures",
+    "_build_feature_vector",
+    "_coerce_utc",
+    "_dot",
+    "_eligible_event_ids",
+    "_evaluate_hitrate_at_k",
+    "_impression_negative_weight",
+    "_normalize_category",
+    "_normalize_city",
+    "_normalize_tag",
+    "_reason_for",
+    "_selected_model_row",
+    "_sigmoid",
+    "_train_log_regression_sgd",
+    "main",
 )
 
 
@@ -89,11 +115,13 @@ def _load_runtime_objects():
 
 def _evaluate_hitrate_at_k(**kwargs) -> float:
     return evaluate_hitrate_at_k_impl(
-        **kwargs,
-        rng_factory=_DeterministicRng,
-        build_feature_vector=_build_feature_vector,
-        sigmoid=_sigmoid,
-        dot=_dot,
+        state=_EvaluationState(**kwargs),
+        deps=_EvaluationDependencies(
+            rng_factory=_DeterministicRng,
+            build_feature_vector=_build_feature_vector,
+            sigmoid=_sigmoid,
+            dot=_dot,
+        ),
     )
 
 
@@ -331,25 +359,25 @@ def _build_training_examples(**kwargs) -> list[tuple[list[float], int, float]]:
 
 def _build_recommendation_rows(**kwargs):
     return build_recommendation_rows_impl(
-        **kwargs,
-        build_feature_vector=_build_feature_vector,
-        reason_for=_reason_for,
-        sigmoid=_sigmoid,
-        dot=_dot,
+        state=_RecommendationBuildState(**kwargs),
+        deps=_RecommendationDependencies(
+            build_feature_vector=_build_feature_vector,
+            reason_for=_reason_for,
+            sigmoid=_sigmoid,
+            dot=_dot,
+        ),
     )
 
 
-def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float, max_score: float) -> _PreparedState | None:
+def _load_state_entities(*, db, models, func, args):
     students, events, all_event_ids = _student_event_state(db=db, models=models, func=func, args=args)
     if students is None or events is None or all_event_ids is None:
         return None
-    user_ids = [int(user.id) for user in students]
+    return students, events, all_event_ids, [int(user.id) for user in students]
 
-    (
-        interest_tag_weights_by_user,
-        category_weights_by_user,
-        city_weights_by_user,
-    ) = _load_decay_weight_buckets(
+
+def _load_state_weight_buckets(*, db, models, args, now: datetime, decay_lambda: float, max_score: float):
+    return _load_decay_weight_buckets(
         db=db,
         models=models,
         args=args,
@@ -357,22 +385,25 @@ def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float
         decay_lambda=decay_lambda,
         max_score=max_score,
     )
-    (
-        registered_event_ids_by_user,
-        positive_weights,
-        negative_weights,
-        seen_by_user,
-        impression_position_by_user_event,
-        implicit_interest_tags_by_user,
-        implicit_categories_by_user,
-        implicit_city_by_user,
-    ) = _interaction_training_state(
-        db=db,
-        models=models,
-        args=args,
-    )
-    positives_by_user = _positive_weights_by_user(positive_weights)
-    users, user_lang, holdout = _build_users_and_holdout(
+
+
+def _load_state_interactions(*, db, models, args):
+    return _interaction_training_state(db=db, models=models, args=args)
+
+
+def _build_prepared_user_state(
+    *,
+    students,
+    args,
+    events,
+    positives_by_user,
+    implicit_categories_by_user,
+    implicit_city_by_user,
+    category_weights_by_user,
+    city_weights_by_user,
+    interest_tag_weights_by_user,
+):
+    return _build_users_and_holdout(
         students=students,
         args=args,
         events=events,
@@ -383,7 +414,99 @@ def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float
         city_weights_by_user=city_weights_by_user,
         interest_tag_weights_by_user=interest_tag_weights_by_user,
     )
+
+
+def _build_prepared_runtime_state(
+    *,
+    students,
+    args,
+    events,
+    positive_weights,
+    implicit_categories_by_user,
+    implicit_city_by_user,
+    category_weights_by_user,
+    city_weights_by_user,
+    interest_tag_weights_by_user,
+):
+    positives_by_user = _positive_weights_by_user(positive_weights)
+    return _build_prepared_user_state(
+        students=students,
+        args=args,
+        events=events,
+        positives_by_user=positives_by_user,
+        implicit_categories_by_user=implicit_categories_by_user,
+        implicit_city_by_user=implicit_city_by_user,
+        category_weights_by_user=category_weights_by_user,
+        city_weights_by_user=city_weights_by_user,
+        interest_tag_weights_by_user=interest_tag_weights_by_user,
+    )
+
+
+def _assemble_prepared_state(
+    *,
+    user_ids,
+    events,
+    all_event_ids,
+    registered_event_ids_by_user,
+    positive_weights,
+    negative_weights,
+    seen_by_user,
+    impression_position_by_user_event,
+    implicit_interest_tags_by_user,
+    implicit_categories_by_user,
+    implicit_city_by_user,
+    users,
+    user_lang,
+    holdout,
+) -> _PreparedState:
     return _prepared_state_from_loaded_data(
+        user_ids=user_ids,
+        events=events,
+        all_event_ids=all_event_ids,
+        registered_event_ids_by_user=registered_event_ids_by_user,
+        positive_weights=positive_weights,
+        negative_weights=negative_weights,
+        seen_by_user=seen_by_user,
+        impression_position_by_user_event=impression_position_by_user_event,
+        implicit_interest_tags_by_user=implicit_interest_tags_by_user,
+        implicit_categories_by_user=implicit_categories_by_user,
+        implicit_city_by_user=implicit_city_by_user,
+        users=users,
+        user_lang=user_lang,
+        holdout=holdout,
+    )
+
+
+def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float, max_score: float) -> _PreparedState | None:
+    entity_rows = _load_state_entities(db=db, models=models, func=func, args=args)
+    if entity_rows is None:
+        return None
+    students, events, all_event_ids, user_ids = entity_rows
+    interest_tag_weights_by_user, category_weights_by_user, city_weights_by_user = _load_state_weight_buckets(
+        db=db,
+        models=models,
+        args=args,
+        now=now,
+        decay_lambda=decay_lambda,
+        max_score=max_score,
+    )
+    registered_event_ids_by_user, positive_weights, negative_weights, seen_by_user, impression_position_by_user_event, implicit_interest_tags_by_user, implicit_categories_by_user, implicit_city_by_user = _load_state_interactions(
+        db=db,
+        models=models,
+        args=args,
+    )
+    users, user_lang, holdout = _build_prepared_runtime_state(
+        students=students,
+        args=args,
+        events=events,
+        positive_weights=positive_weights,
+        implicit_categories_by_user=implicit_categories_by_user,
+        implicit_city_by_user=implicit_city_by_user,
+        category_weights_by_user=category_weights_by_user,
+        city_weights_by_user=city_weights_by_user,
+        interest_tag_weights_by_user=interest_tag_weights_by_user,
+    )
+    return _assemble_prepared_state(
         user_ids=user_ids,
         events=events,
         all_event_ids=all_event_ids,

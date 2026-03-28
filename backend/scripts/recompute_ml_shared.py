@@ -85,6 +85,27 @@ class _PreparedState:
     holdout: dict[int, int]
 
 
+@dataclass(frozen=True)
+class _EvaluationState:
+    weights: list[float]
+    users: dict[int, _UserFeatures]
+    events: dict[int, _EventFeatures]
+    positives_holdout: dict[int, int]
+    all_event_ids: list[int]
+    now: datetime
+    k: int
+    negatives_per_user: int
+    seed: int
+
+
+@dataclass(frozen=True)
+class _EvaluationDependencies:
+    rng_factory: object
+    build_feature_vector: object
+    sigmoid: object
+    dot: object
+
+
 FEATURE_NAMES = [
     "bias",
     "overlap_interest_ratio",
@@ -284,49 +305,34 @@ def _score_candidate_event_ids(
     return scored
 
 
-def evaluate_hitrate_at_k_impl(
-    *,
-    weights: list[float],
-    users: dict[int, _UserFeatures],
-    events: dict[int, _EventFeatures],
-    positives_holdout: dict[int, int],
-    all_event_ids: list[int],
-    now: datetime,
-    k: int,
-    negatives_per_user: int,
-    seed: int,
-    rng_factory,
-    build_feature_vector,
-    sigmoid,
-    dot,
-) -> float:
-    rng = rng_factory(int(seed))
+def evaluate_hitrate_at_k_impl(*, state: _EvaluationState, deps: _EvaluationDependencies) -> float:
+    rng = deps.rng_factory(int(state.seed))
     hits = 0
     total = 0
 
-    for user_id, pos_event_id in positives_holdout.items():
-        user = users.get(user_id)
-        pos_event = events.get(pos_event_id)
+    for user_id, pos_event_id in state.positives_holdout.items():
+        user = state.users.get(user_id)
+        pos_event = state.events.get(pos_event_id)
         if not user or not pos_event:
             continue
 
         negatives = _sample_negative_event_ids(
             rng=rng,
-            all_event_ids=all_event_ids,
+            all_event_ids=state.all_event_ids,
             positive_event_id=pos_event_id,
-            negatives_per_user=int(negatives_per_user),
+            negatives_per_user=int(state.negatives_per_user),
         )
         scored = _score_candidate_event_ids(
-            weights=weights,
+            weights=state.weights,
             user=user,
-            events=events,
+            events=state.events,
             candidate_event_ids=[pos_event_id, *negatives],
-            now=now,
-            build_feature_vector=build_feature_vector,
-            sigmoid=sigmoid,
-            dot=dot,
+            now=state.now,
+            build_feature_vector=deps.build_feature_vector,
+            sigmoid=deps.sigmoid,
+            dot=deps.dot,
         )
-        top_k = {event_id for _score, event_id in scored[: int(k)]}
+        top_k = {event_id for _score, event_id in scored[: int(state.k)]}
         total += 1
         if pos_event_id in top_k:
             hits += 1

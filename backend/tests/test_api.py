@@ -1,9 +1,8 @@
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from app import models
 from api_test_support import (
     DEFAULT_ORG_CODE,
-    SECRET_FIELD,
 )
 
 

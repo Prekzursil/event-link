@@ -133,31 +133,18 @@ def test_events_and_public_events_include_past_and_optional_detail_user(helpers)
     assert detail_resp.json()["is_favorite"] is False
 
 
-def _explicit_language_context(helpers):
-    client = helpers["client"]
+def _create_explicit_language_event(client, auth_headers, start_time: str, title: str) -> int:
+    response = client.post(
+        "/api/events",
+        json=event_payload(start_time, title=title),
+        headers=auth_headers,
+    )
+    assert response.status_code == 201
+    return int(response.json()["id"])
+
+
+def _seed_explicit_language_student(helpers, event_ids: tuple[int, int]) -> str:
     db = helpers["db"]
-    helpers["make_organizer"]("lang-owner@test.ro", "organizer-fixture-A1")
-    organizer_token = helpers["login"]("lang-owner@test.ro", "organizer-fixture-A1")
-
-    first = client.post(
-        "/api/events",
-        json=event_payload(helpers["future_time"](days=2), title="Explicit Language First"),
-        headers=helpers["auth_header"](organizer_token),
-    )
-    second = client.post(
-        "/api/events",
-        json=event_payload(helpers["future_time"](days=3), title="Explicit Language Second"),
-        headers=helpers["auth_header"](organizer_token),
-    )
-    register_target = client.post(
-        "/api/events",
-        json=event_payload(helpers["future_time"](days=4), title="Register Language"),
-        headers=helpers["auth_header"](organizer_token),
-    )
-    assert first.status_code == 201
-    assert second.status_code == 201
-    assert register_target.status_code == 201
-
     student_token = helpers["register_student"]("explicit-lang@test.ro")
     student = db.query(models.User).filter(models.User.email == "explicit-lang@test.ro").first()
     assert student is not None
@@ -168,7 +155,7 @@ def _explicit_language_context(helpers):
         [
             models.UserRecommendation(
                 user_id=int(student.id),
-                event_id=int(second.json()["id"]),
+                event_id=event_ids[1],
                 rank=1,
                 score=0.9,
                 reason="explicit-cache",
@@ -177,7 +164,7 @@ def _explicit_language_context(helpers):
             ),
             models.UserRecommendation(
                 user_id=int(student.id),
-                event_id=int(first.json()["id"]),
+                event_id=event_ids[0],
                 rank=2,
                 score=0.8,
                 reason="fallback-cache",
@@ -187,7 +174,36 @@ def _explicit_language_context(helpers):
         ]
     )
     db.commit()
-    return client, student_token, first.json()["id"], second.json()["id"], register_target.json()["id"]
+    return student_token
+
+
+def _explicit_language_context(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("lang-owner@test.ro", "organizer-fixture-A1")
+    organizer_token = helpers["login"]("lang-owner@test.ro", "organizer-fixture-A1")
+    auth_headers = helpers["auth_header"](organizer_token)
+    event_ids = (
+        _create_explicit_language_event(
+            client,
+            auth_headers,
+            helpers["future_time"](days=2),
+            "Explicit Language First",
+        ),
+        _create_explicit_language_event(
+            client,
+            auth_headers,
+            helpers["future_time"](days=3),
+            "Explicit Language Second",
+        ),
+    )
+    register_id = _create_explicit_language_event(
+        client,
+        auth_headers,
+        helpers["future_time"](days=4),
+        "Register Language",
+    )
+    student_token = _seed_explicit_language_student(helpers, event_ids)
+    return client, student_token, event_ids[0], event_ids[1], register_id
 
 
 def _assert_explicit_language_reads_cached_reason(client, student_token: str, event_id: int) -> None:
@@ -367,7 +383,7 @@ def test_restore_clone_and_suggest_cover_plain_organizer_paths(helpers):
 def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
     client = helpers["client"]
     db = helpers["db"]
-    student_token = helpers["register_student"]("partial-notifications@test.ro")
+    helpers["register_student"]("partial-notifications@test.ro")
     existing_user = db.query(models.User).filter(models.User.email == "partial-notifications@test.ro").first()
     assert existing_user is not None
     existing_user.language_preference = "en"

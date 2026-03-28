@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from dataclasses import dataclass
 from datetime import datetime
 
 from recompute_ml_interactions import _load_interaction_signals
@@ -281,47 +282,58 @@ def _eligible_event_ids(events: dict[int, _EventFeatures], now: datetime) -> lis
     return [event_id for event_id, event in events.items() if _event_is_eligible(event=event, now=now)]
 
 
-def build_recommendation_rows_impl(
-    *,
-    user_ids: list[int],
-    users: dict[int, _UserFeatures],
-    user_lang: dict[int, str],
-    registered_event_ids_by_user: dict[int, set[int]],
-    eligible_event_ids: list[int],
-    events: dict[int, _EventFeatures],
-    weights: list[float],
-    args,
-    model_version: str,
-    now: datetime,
-    models,
-    build_feature_vector,
-    reason_for,
-    sigmoid,
-    dot,
-):
+@dataclass(frozen=True)
+class _RecommendationBuildState:
+    user_ids: list[int]
+    users: dict[int, _UserFeatures]
+    user_lang: dict[int, str]
+    registered_event_ids_by_user: dict[int, set[int]]
+    eligible_event_ids: list[int]
+    events: dict[int, _EventFeatures]
+    weights: list[float]
+    args: object
+    model_version: str
+    now: datetime
+    models: object
+
+
+@dataclass(frozen=True)
+class _RecommendationDependencies:
+    build_feature_vector: object
+    reason_for: object
+    sigmoid: object
+    dot: object
+
+
+def build_recommendation_rows_impl(*, state: _RecommendationBuildState, deps: _RecommendationDependencies):
     inserts = []
-    for user_id in user_ids:
-        user = users[user_id]
-        registered_ids = registered_event_ids_by_user.get(user_id, set())
+    for user_id in state.user_ids:
+        user = state.users[user_id]
+        registered_ids = state.registered_event_ids_by_user.get(user_id, set())
         scored = [
             (
-                sigmoid(dot(weights, build_feature_vector(user=user, event=events[event_id], now=now))),
+                deps.sigmoid(
+                    deps.dot(
+                        state.weights,
+                        deps.build_feature_vector(user=user, event=state.events[event_id], now=state.now),
+                    )
+                ),
                 event_id,
             )
-            for event_id in eligible_event_ids
+            for event_id in state.eligible_event_ids
             if event_id not in registered_ids
         ]
         scored.sort(key=lambda item: item[0], reverse=True)
-        top = scored[: max(0, int(args.top_n))]
-        student_lang = user_lang.get(user_id, "ro")
+        top = scored[: max(0, int(state.args.top_n))]
+        student_lang = state.user_lang.get(user_id, "ro")
         inserts.extend(
-            models.UserRecommendation(
+            state.models.UserRecommendation(
                 user_id=user_id,
                 event_id=event_id,
                 score=float(score),
                 rank=rank,
-                model_version=model_version,
-                reason=reason_for(user=user, event=events[event_id], lang=student_lang),
+                model_version=state.model_version,
+                reason=deps.reason_for(user=user, event=state.events[event_id], lang=student_lang),
             )
             for rank, (score, event_id) in enumerate(top, start=1)
         )

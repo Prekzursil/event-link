@@ -7,15 +7,8 @@ import pytest
 
 from app import auth, models, task_queue
 from task_queue_test_support import (
-    ChainQuery,
-    FakeFillingFastDb,
-    interaction,
-    make_event,
-    make_user,
     mk_job,
     raise_assertion,
-    seed_filling_fast_branch_matrix,
-    patch_filling_fast_alerts,
     unexpected_enqueue,
 )
 

@@ -173,11 +173,7 @@ export function makeEventDetail(id: number) {
   };
 }
 
-beforeEach(() => {
-  cleanup();
-  vi.clearAllMocks();
-  setEnglishPreference();
-
+function installMegaPagesBrowserState() {
   defineMutableValue(
     globalThis,
     'matchMedia',
@@ -190,19 +186,22 @@ beforeEach(() => {
       removeListener: vi.fn(),
     })),
   );
-
   defineMutableValue(navigator, 'clipboard', {
     writeText: vi.fn().mockResolvedValue(undefined),
   });
   defineMutableValue(globalThis, 'open', vi.fn());
   defineMutableValue(globalThis, 'confirm', vi.fn().mockReturnValue(true));
   defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://mock-file'));
+}
 
+function resetMegaPagesAuthState() {
   authState.isAuthenticated = true;
   authState.isOrganizer = true;
   authState.isAdmin = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
+}
 
+function seedMegaPagesEventListDefaults() {
   const listEvents = [makeEvent(1, 2), makeEvent(2, -1)];
   eventServiceMock.getEvents.mockResolvedValue({
     items: listEvents,
@@ -212,7 +211,6 @@ beforeEach(() => {
     total_pages: 1,
   });
   eventServiceMock.getFavorites.mockResolvedValue({ items: [listEvents[0]] });
-
   eventServiceMock.getEvent.mockResolvedValue(makeEventDetail(1));
   eventServiceMock.registerForEvent.mockResolvedValue(undefined);
   eventServiceMock.unregisterFromEvent.mockResolvedValue(undefined);
@@ -222,13 +220,11 @@ beforeEach(() => {
   eventServiceMock.cloneEvent.mockResolvedValue({ id: 88 });
   eventServiceMock.hideTag.mockResolvedValue(undefined);
   eventServiceMock.blockOrganizer.mockResolvedValue(undefined);
-
   eventServiceMock.getOrganizerEvents.mockResolvedValue([makeEvent(3, 3)]);
   eventServiceMock.deleteEvent.mockResolvedValue(undefined);
   eventServiceMock.restoreEvent.mockResolvedValue({ status: 'ok' });
   eventServiceMock.bulkUpdateEventStatus.mockResolvedValue({ updated: 1 });
   eventServiceMock.bulkUpdateEventTags.mockResolvedValue({ updated: 1 });
-
   eventServiceMock.suggestEvent.mockResolvedValue({
     suggested_category: 'Technical',
     suggested_tags: ['AI'],
@@ -238,7 +234,9 @@ beforeEach(() => {
   });
   eventServiceMock.createEvent.mockResolvedValue(makeEvent(9, 5));
   eventServiceMock.updateEvent.mockResolvedValue(makeEvent(10, 7));
+}
 
+function seedMegaPagesParticipantDefaults() {
   eventServiceMock.getEventParticipants.mockResolvedValue({
     event_id: 3,
     title: 'Event 3',
@@ -258,7 +256,14 @@ beforeEach(() => {
   });
   eventServiceMock.updateParticipantAttendance.mockResolvedValue(undefined);
   eventServiceMock.emailEventParticipants.mockResolvedValue({ recipients: 1 });
+}
 
+function seedMegaPagesEventDefaults() {
+  seedMegaPagesEventListDefaults();
+  seedMegaPagesParticipantDefaults();
+}
+
+function seedMegaPagesOrganizerProfileDefaults() {
   eventServiceMock.getOrganizerProfile.mockResolvedValue({
     id: 7,
     full_name: 'Organizer Name',
@@ -269,7 +274,9 @@ beforeEach(() => {
     email: 'org@test.local',
     events: [makeEvent(11, 2), makeEvent(12, -2)],
   });
+}
 
+function seedMegaPagesStudentProfileDefaults() {
   eventServiceMock.getStudentProfile.mockResolvedValue({
     email: 'student@test.local',
     full_name: 'Student Name',
@@ -316,7 +323,14 @@ beforeEach(() => {
     new Blob(['{"ok":true}'], { type: 'application/json' }),
   );
   eventServiceMock.deleteMyAccount.mockResolvedValue(undefined);
+}
 
+function seedMegaPagesProfileDefaults() {
+  seedMegaPagesOrganizerProfileDefaults();
+  seedMegaPagesStudentProfileDefaults();
+}
+
+function seedMegaPagesAdminDefaults() {
   adminServiceMock.getStats.mockResolvedValue({
     users_total: 1,
     users_active: 1,
@@ -406,9 +420,23 @@ beforeEach(() => {
     job_id: 'job-3',
     status: 'queued',
   });
+}
 
+function seedMegaPagesAuthDefaults() {
   authServiceMock.updateThemePreference.mockResolvedValue(undefined);
   authServiceMock.updateLanguagePreference.mockResolvedValue(undefined);
   authState.refreshUser.mockResolvedValue(undefined);
   authState.logout.mockResolvedValue(undefined);
+}
+
+beforeEach(() => {
+  cleanup();
+  vi.clearAllMocks();
+  setEnglishPreference();
+  installMegaPagesBrowserState();
+  resetMegaPagesAuthState();
+  seedMegaPagesEventDefaults();
+  seedMegaPagesProfileDefaults();
+  seedMegaPagesAdminDefaults();
+  seedMegaPagesAuthDefaults();
 });
