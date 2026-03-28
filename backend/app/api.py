@@ -50,28 +50,26 @@ def _run_migrations():
         from alembic.config import Config
 
         base_dir = Path(__file__).resolve().parent.parent
-        alembic_ini = base_dir / 'alembic.ini'
+        alembic_ini = base_dir / "alembic.ini"
         if not alembic_ini.exists():
-            logging.warning('alembic.ini not found; skipping migrations')
+            logging.warning("alembic.ini not found; skipping migrations")
             return
         cfg = Config(str(alembic_ini))
-        cfg.set_main_option('script_location', str(base_dir / 'alembic'))
-        command.upgrade(cfg, 'head')
-        logging.info('Migrations applied to head')
+        cfg.set_main_option("script_location", str(base_dir / "alembic"))
+        command.upgrade(cfg, "head")
+        logging.info("Migrations applied to head")
     except Exception:
-        logging.exception('Failed to run migrations on startup')
+        logging.exception("Failed to run migrations on startup")
 
 
 def _check_configuration():
     """Validate required runtime settings before the application starts."""
     if not settings.database_url:
-        raise RuntimeError('DATABASE_URL is required')
+        raise RuntimeError("DATABASE_URL is required")
     if not settings.secret_key:
-        raise RuntimeError('SECRET_KEY is required')
+        raise RuntimeError("SECRET_KEY is required")
     if settings.email_enabled and (not settings.smtp_host or not settings.smtp_sender):
-        logging.warning(
-            'Email enabled but SMTP host/sender missing; disabling email sending'
-        )
+        logging.warning("Email enabled but SMTP host/sender missing; disabling email sending")
         settings.email_enabled = False
 
 
@@ -120,7 +118,7 @@ _ERROR_RESPONSE_DESCRIPTIONS = {
     503: "Service unavailable.",
 }
 
-_TOKEN_TYPE = ''.join(("bear", "er"))
+_TOKEN_TYPE = "".join(("bear", "er"))
 _INVALID_REFRESH_TOKEN_DETAIL = "".join(("Refresh ", "token invalid."))
 _MIN_PAGE_DETAIL = "Pagina trebuie să fie cel puțin 1."
 _PAGE_SIZE_DETAIL = "Dimensiunea paginii trebuie să fie între 1 și 100."
@@ -129,10 +127,7 @@ _EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
     """Build a FastAPI response description map from shared error metadata."""
-    return {
-        code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]}
-        for code in status_codes
-    }
+    return {code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]} for code in status_codes}
 
 
 def _validate_cover_url(url: str | None) -> None:
@@ -194,9 +189,7 @@ def _compute_moderation(
         weight=0.3,
     )
     score += _moderation_signal(
-        condition=any(
-            any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls
-        ),
+        condition=any(any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls),
         flag="shortener_link",
         flags=flags,
         weight=0.4,
@@ -208,9 +201,7 @@ def _compute_moderation(
         weight=0.4,
     )
     score += _moderation_signal(
-        condition=bool(
-            urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)
-        ),
+        condition=bool(urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)),
         flag="credential_request",
         flags=flags,
         weight=0.5,
@@ -277,11 +268,7 @@ def _suggest_city_from_text(*, content: str, city: str | None) -> str | None:
     """Infer an event city from the university catalog when the payload omits it."""
     if city:
         return city
-    catalog_cities = {
-        item.get("city")
-        for item in ro_universities.get_university_catalog()
-        if item.get("city")
-    }
+    catalog_cities = {item.get("city") for item in ro_universities.get_university_catalog() if item.get("city")}
     lowered = content.lower()
     for candidate_city in sorted(
         catalog_cities,
@@ -458,14 +445,15 @@ def _events_with_counts_query(db: Session, base_query=None):
         .group_by(models.Registration.event_id)
         .subquery()
     )
-    query = (
-        base_query.outerjoin(seats_subquery, models.Event.id == seats_subquery.c.event_id)
-        .add_columns(func.coalesce(seats_subquery.c.seats_taken, 0).label("seats_taken"))
+    query = base_query.outerjoin(seats_subquery, models.Event.id == seats_subquery.c.event_id).add_columns(
+        func.coalesce(seats_subquery.c.seats_taken, 0).label("seats_taken")
     )
     return query, seats_subquery
 
 
-def _serialize_event(event: models.Event, seats_taken: int, recommendation_reason: str | None = None) -> schemas.EventResponse:
+def _serialize_event(
+    event: models.Event, seats_taken: int, recommendation_reason: str | None = None
+) -> schemas.EventResponse:
     owner_name = None
     if event.owner:
         owner_name = event.owner.full_name or event.owner.email
@@ -583,7 +571,9 @@ def _apply_event_list_filters(
     filters: schemas.EventListQuery,
     tag_filters: list[str] | None = None,
 ):  # noqa: ANN001
-    merged_tags = tag_filters if tag_filters is not None else _merged_tag_filters(tags=filters.tags, tags_csv=filters.tags_csv)
+    merged_tags = (
+        tag_filters if tag_filters is not None else _merged_tag_filters(tags=filters.tags, tags_csv=filters.tags_csv)
+    )
     query = _apply_event_visibility_filters(query, now=now, include_past=bool(filters.include_past))
     query = _apply_event_attribute_filters(
         query,
@@ -599,9 +589,7 @@ def _apply_event_list_filters(
 def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
     hidden_tag_ids = {
         int(row[0])
-        for row in db.query(models.user_hidden_tags.c.tag_id)
-        .filter(models.user_hidden_tags.c.user_id == user_id)
-        .all()
+        for row in db.query(models.user_hidden_tags.c.tag_id).filter(models.user_hidden_tags.c.user_id == user_id).all()
     }
     blocked_organizer_ids = {
         int(row[0])
@@ -612,7 +600,9 @@ def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[
     return hidden_tag_ids, blocked_organizer_ids
 
 
-def _apply_personalization_exclusions(query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]):  # noqa: ANN001
+def _apply_personalization_exclusions(
+    query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
+):  # noqa: ANN001
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
@@ -907,11 +897,7 @@ def _serialize_event_detail(
 
 
 def _load_event_for_owner_update(*, db: Session, event_id: int, current_user: models.User) -> models.Event:
-    db_event = (
-        db.query(models.Event)
-        .filter(models.Event.id == event_id, models.Event.deleted_at.is_(None))
-        .first()
-    )
+    db_event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not db_event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if db_event.owner_id != current_user.id and not _is_admin(current_user):
@@ -980,10 +966,7 @@ def _apply_event_update_fields(*, db: Session, db_event: models.Event, update: s
     _apply_event_capacity_updates(db_event=db_event, update=update)
     _apply_event_cover_updates(db_event=db_event, update=update)
     _apply_event_metadata_updates(db=db, db_event=db_event, update=update)
-    return any(
-        value is not None
-        for value in (update.title, update.description, update.location)
-    )
+    return any(value is not None for value in (update.title, update.description, update.location))
 
 
 def _load_registerable_event(*, db: Session, event_id: int, now: datetime) -> tuple[models.Event, int]:
@@ -1102,6 +1085,7 @@ def _serialize_admin_event(event: models.Event, seats_taken: int) -> schemas.Adm
 
 @app.post("/register", response_model=schemas.Token, responses=_responses(400))
 def register(user: schemas.StudentRegister, request: Request, db: DbSession):
+    """Register a new user account and return authentication tokens."""
     _enforce_rate_limit("register", request=request, identifier=user.email.lower())
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
@@ -1137,6 +1121,7 @@ def register(user: schemas.StudentRegister, request: Request, db: DbSession):
 
 @app.post("/login", response_model=schemas.Token, responses=_responses(401))
 def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
+    """Authenticate a user and return fresh authentication tokens."""
     _enforce_rate_limit("login", request=request, identifier=user_credentials.email.lower())
     user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
     if not user or not auth.verify_password(user_credentials.password, user.password_hash):
@@ -1170,6 +1155,7 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
 
 @app.post("/refresh", response_model=schemas.Token, responses=_responses(401))
 def refresh_token(payload: schemas.RefreshRequest):
+    """Refresh a user's access and refresh tokens."""
     try:
         decoded = auth.jwt.decode(payload.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
     except auth.ExpiredSignatureError:
@@ -1204,6 +1190,7 @@ def refresh_token(payload: schemas.RefreshRequest):
 
 @app.get("/me", response_model=schemas.UserResponse)
 def get_me(current_user: CurrentUser):
+    """Return the authenticated user profile."""
     return current_user
 
 
@@ -1213,6 +1200,7 @@ def update_theme_preference(
     db: DbSession,
     current_user: CurrentUser,
 ):
+    """Update the current user's theme preference."""
     current_user.theme_preference = payload.theme_preference
     db.add(current_user)
     db.commit()
@@ -1227,6 +1215,7 @@ def update_language_preference(
     db: DbSession,
     current_user: CurrentUser,
 ):
+    """Update the current user's language preference."""
     current_user.language_preference = payload.language_preference
     db.add(current_user)
     db.commit()
@@ -1241,12 +1230,13 @@ def update_language_preference(
 
 @app.get("/")
 def read_root():
+    """Return the API welcome message."""
     return {"message": "Hello from Event Link API!"}
-
 
 
 @app.exception_handler(HTTPException)
 async def http_exception_handler(request: Request, exc: HTTPException):
+    """Normalize HTTP exceptions into the API error envelope."""
     code = f"http_{exc.status_code}"
     message = exc.detail if isinstance(exc.detail, str) else "Eroare"
     return JSONResponse(
@@ -1257,6 +1247,7 @@ async def http_exception_handler(request: Request, exc: HTTPException):
 
 @app.exception_handler(Exception)
 async def unhandled_exception_handler(request: Request, exc: Exception):
+    """Normalize unexpected exceptions into the API error envelope."""
     return JSONResponse(
         status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
         content={"error": {"code": "internal_error", "message": "A apărut o eroare neașteptată."}},
@@ -1442,6 +1433,7 @@ def get_events(
     db: DbSession,
     current_user: OptionalUser,
 ):
+    """List events visible to the current user."""
     _validate_pagination(filters.page, filters.page_size)
     now = datetime.now(timezone.utc)
     query = _apply_event_list_filters(
@@ -1607,11 +1599,11 @@ def _load_event_delta_context(
         return {}, {}, {}
 
     event_rows = (
-        db.query(models.Event.id, models.Event.category, models.Event.city)
-        .filter(models.Event.id.in_(event_ids))
-        .all()
+        db.query(models.Event.id, models.Event.category, models.Event.city).filter(models.Event.id.in_(event_ids)).all()
     )
-    event_category_by_id = {int(event_id): _normalize_interest_value(category) for event_id, category, _city in event_rows}
+    event_category_by_id = {
+        int(event_id): _normalize_interest_value(category) for event_id, category, _city in event_rows
+    }
     event_city_by_id = {int(event_id): _normalize_interest_value(city) for event_id, _category, city in event_rows}
 
     tag_rows = (
@@ -1713,7 +1705,9 @@ def _upsert_implicit_tag_scores(
         delta = float(tag_delta_by_id.get(tag_id, 0.0))
         row.score = min(
             max_score,
-            _decay_interest_score(score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda)
+            _decay_interest_score(
+                score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda
+            )
             + delta,
         )
         row.last_seen_at = now
@@ -1746,18 +1740,16 @@ def _upsert_named_interest_scores(
     if not deltas:
         return
     column = getattr(model_cls, key_field)
-    existing_rows = (
-        db.query(model_cls)
-        .filter(model_cls.user_id == user_id, column.in_(sorted(deltas.keys())))
-        .all()
-    )
+    existing_rows = db.query(model_cls).filter(model_cls.user_id == user_id, column.in_(sorted(deltas.keys()))).all()
     existing_by_key = {str(getattr(row, key_field)): row for row in existing_rows}
     for key, row in existing_by_key.items():
         last_seen_at = _coerce_utc_datetime(getattr(row, "last_seen_at", None), fallback=now)
         delta = float(deltas.get(str(key), 0.0))
         row.score = min(
             max_score,
-            _decay_interest_score(score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda)
+            _decay_interest_score(
+                score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda
+            )
             + delta,
         )
         row.last_seen_at = now
@@ -1956,6 +1948,7 @@ def record_interactions(
     db: DbSession,
     current_user: OptionalUser,
 ):
+    """Record analytics interactions and trigger recommendation refreshes."""
     if not settings.analytics_enabled:
         return
 
@@ -1979,7 +1972,6 @@ def record_interactions(
     _maybe_enqueue_realtime_recommendation_refresh(db=db, payload=payload, current_user=current_user, now=now)
 
 
-
 @app.get("/api/public/events", response_model=schemas.PaginatedPublicEvents, responses=_responses(400, 404))
 def get_public_events(
     request: Request,
@@ -1997,6 +1989,7 @@ def get_public_events(
     *,
     db: DbSession,
 ):
+    """List public events."""
     _enforce_rate_limit(
         "public_events_list",
         request=request,
@@ -2034,6 +2027,7 @@ def get_public_events(
 
 @app.get("/api/public/events/{event_id}", response_model=schemas.PublicEventDetailResponse, responses=_responses(404))
 def get_public_event(event_id: int, request: Request, db: DbSession):
+    """Return a public event by identifier."""
     _enforce_rate_limit(
         "public_events_detail",
         request=request,
@@ -2063,6 +2057,7 @@ def get_event(
     db: DbSession,
     current_user: OptionalUser,
 ):
+    """Return an event detail payload for the current user."""
     event, seats_taken = _load_event_with_counts(db, event_id)
     now = datetime.now(timezone.utc)
     if not _event_is_visible_to_user(event=event, now=now, current_user=current_user):
@@ -2135,10 +2130,14 @@ def _new_event_from_payload(
     )
 
 
-@app.post("/api/events", response_model=schemas.EventResponse, status_code=status.HTTP_201_CREATED, responses=_responses(403, 404))
-def create_event(
-    event: schemas.EventCreate, db: DbSession, current_user: OrganizerUser
-):
+@app.post(
+    "/api/events",
+    response_model=schemas.EventResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=_responses(403, 404),
+)
+def create_event(event: schemas.EventCreate, db: DbSession, current_user: OrganizerUser):
+    """Create a new organizer event."""
     start_time = _normalize_dt(event.start_time)
     end_time = _normalize_dt(event.end_time)
     cover_url = str(event.cover_url) if event.cover_url else None
@@ -2173,6 +2172,7 @@ def update_event(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Update an existing organizer event."""
     db_event = _load_event_for_owner_update(db=db, event_id=event_id, current_user=current_user)
     content_changed = _apply_event_update_fields(db=db, db_event=db_event, update=update)
     if content_changed:
@@ -2200,11 +2200,8 @@ def update_event(
 
 @app.delete("/api/events/{event_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_responses(403, 404))
 def delete_event(event_id: int, db: DbSession, current_user: OrganizerUser):
-    db_event = (
-        db.query(models.Event)
-        .filter(models.Event.id == event_id, models.Event.deleted_at.is_(None))
-        .first()
-    )
+    """Soft-delete an organizer event."""
+    db_event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not db_event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if db_event.owner_id != current_user.id and not _is_admin(current_user):
@@ -2299,6 +2296,7 @@ def restore_event(
     db: DbSession,
     current_user: CurrentUser,
 ):
+    """Restore a previously deleted organizer event."""
     db_event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not db_event or db_event.deleted_at is None:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
@@ -2342,6 +2340,7 @@ def clone_event(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Clone an existing organizer event."""
     orig = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not orig:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
@@ -2386,6 +2385,7 @@ def organizer_events(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """List events owned by the current organizer."""
     base_query = db.query(models.Event).filter(models.Event.owner_id == current_user.id)
     if not include_deleted:
         base_query = base_query.filter(models.Event.deleted_at.is_(None))
@@ -2401,15 +2401,12 @@ def organizer_bulk_update_status(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Bulk-update publish status for organizer events."""
     event_ids = list(dict.fromkeys(payload.event_ids))
     if not event_ids:
         raise HTTPException(status_code=400, detail="Nu ați selectat niciun eveniment.")
 
-    events = (
-        db.query(models.Event)
-        .filter(models.Event.id.in_(event_ids), models.Event.deleted_at.is_(None))
-        .all()
-    )
+    events = db.query(models.Event).filter(models.Event.id.in_(event_ids), models.Event.deleted_at.is_(None)).all()
     if len(events) != len(set(event_ids)):
         raise HTTPException(status_code=404, detail="Unele evenimente nu există.")
     if not _is_admin(current_user) and any(ev.owner_id != current_user.id for ev in events):
@@ -2445,11 +2442,7 @@ def _organizer_bulk_events(
     event_ids: list[int],
     current_user: models.User,
 ) -> list[models.Event]:
-    events = (
-        db.query(models.Event)
-        .filter(models.Event.id.in_(event_ids), models.Event.deleted_at.is_(None))
-        .all()
-    )
+    events = db.query(models.Event).filter(models.Event.id.in_(event_ids), models.Event.deleted_at.is_(None)).all()
     if len(events) != len(set(event_ids)):
         raise HTTPException(status_code=404, detail="Unele evenimente nu există.")
     if not _is_admin(current_user) and any(ev.owner_id != current_user.id for ev in events):
@@ -2469,6 +2462,7 @@ def organizer_bulk_update_tags(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Bulk-update tags for organizer events."""
     event_ids = list(dict.fromkeys(payload.event_ids))
     if not event_ids:
         raise HTTPException(status_code=400, detail="Nu ați selectat niciun eveniment.")
@@ -2503,6 +2497,7 @@ def organizer_suggest_event(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Suggest metadata and duplicates for an organizer event draft."""
     combined_text = " ".join(
         [
             payload.title or "",
@@ -2537,6 +2532,7 @@ def organizer_suggest_event(
         moderation_flags=moderation_flags,
         moderation_status=moderation_status,
     )
+
 
 def _load_owned_event_for_email(*, db: Session, event_id: int, current_user: models.User) -> models.Event:
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
@@ -2573,6 +2569,7 @@ def email_event_participants(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Queue participant emails for an organizer event."""
     _enforce_rate_limit(
         "organizer_email_participants",
         request=request,
@@ -2635,7 +2632,12 @@ def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfi
 
 @app.get("/api/organizers/{organizer_id}", response_model=schemas.OrganizerProfileResponse, responses=_responses(404))
 def get_organizer_profile(organizer_id: int, db: DbSession):
-    user = db.query(models.User).filter(models.User.id == organizer_id, models.User.role == models.UserRole.organizator).first()
+    """Return a public organizer profile."""
+    user = (
+        db.query(models.User)
+        .filter(models.User.id == organizer_id, models.User.role == models.UserRole.organizator)
+        .first()
+    )
     if not user:
         raise HTTPException(status_code=404, detail="Organizatorul nu există")
     return _serialize_profile(user, db)
@@ -2647,6 +2649,7 @@ def update_organizer_profile(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Update the current organizer profile."""
     logo_url = str(payload.org_logo_url) if payload.org_logo_url else None
     if logo_url and len(logo_url) > 500:
         raise HTTPException(status_code=400, detail="URL logo prea lung")
@@ -2662,8 +2665,10 @@ def update_organizer_profile(
 
 # ===================== TAGS =====================
 
+
 @app.get("/api/metadata/universities", response_model=schemas.UniversityCatalogResponse)
 def list_university_catalog():
+    """Return the university catalog metadata."""
     return {"items": ro_universities.get_university_catalog()}
 
 
@@ -2675,6 +2680,7 @@ def get_all_tags(db: DbSession):
 
 
 # ===================== STUDENT PROFILE =====================
+
 
 @app.get("/api/me/profile", response_model=schemas.StudentProfileResponse, responses=_responses(400))
 def get_student_profile(
@@ -2762,6 +2768,7 @@ def get_personalization_settings(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Return the current student's personalization settings."""
     hidden_tags = (
         db.query(models.Tag)
         .join(models.user_hidden_tags, models.user_hidden_tags.c.tag_id == models.Tag.id)
@@ -2782,12 +2789,15 @@ def get_personalization_settings(
     return {"hidden_tags": hidden_tags, "blocked_organizers": blocked_organizers}
 
 
-@app.post("/api/me/personalization/hidden-tags/{tag_id}", status_code=status.HTTP_201_CREATED, responses=_responses(404))
+@app.post(
+    "/api/me/personalization/hidden-tags/{tag_id}", status_code=status.HTTP_201_CREATED, responses=_responses(404)
+)
 def add_hidden_tag(
     tag_id: int,
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Hide a tag from the current student's recommendations."""
     tag = db.query(models.Tag).filter(models.Tag.id == tag_id).first()
     if not tag:
         raise HTTPException(status_code=404, detail="Eticheta nu există.")
@@ -2813,12 +2823,15 @@ def add_hidden_tag(
     return {"status": "hidden"}
 
 
-@app.delete("/api/me/personalization/hidden-tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_responses(404))
+@app.delete(
+    "/api/me/personalization/hidden-tags/{tag_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_responses(404)
+)
 def remove_hidden_tag(
     tag_id: int,
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Remove a hidden tag from the current student's recommendations."""
     result = db.execute(
         models.user_hidden_tags.delete().where(
             (models.user_hidden_tags.c.user_id == current_user.id) & (models.user_hidden_tags.c.tag_id == tag_id)
@@ -2837,12 +2850,17 @@ def remove_hidden_tag(
     db.commit()
 
 
-@app.post("/api/me/personalization/blocked-organizers/{organizer_id}", status_code=status.HTTP_201_CREATED, responses=_responses(404))
+@app.post(
+    "/api/me/personalization/blocked-organizers/{organizer_id}",
+    status_code=status.HTTP_201_CREATED,
+    responses=_responses(404),
+)
 def add_blocked_organizer(
     organizer_id: int,
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Block an organizer in the current student's recommendations."""
     organizer = db.query(models.User).filter(models.User.id == organizer_id).first()
     if not organizer or organizer.role not in {models.UserRole.organizator, models.UserRole.admin}:
         raise HTTPException(status_code=404, detail="Organizatorul nu există.")
@@ -2881,6 +2899,7 @@ def remove_blocked_organizer(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Unblock an organizer in the current student's recommendations."""
     result = db.execute(
         models.user_blocked_organizers.delete().where(
             (models.user_blocked_organizers.c.user_id == current_user.id)
@@ -2908,6 +2927,7 @@ def get_notification_preferences(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Return the current student's notification preferences."""
     return {
         "email_digest_enabled": getattr(current_user, "email_digest_enabled", False),
         "email_filling_fast_enabled": getattr(current_user, "email_filling_fast_enabled", False),
@@ -2920,6 +2940,7 @@ def update_notification_preferences(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Update the current student's notification preferences."""
     updates: dict[str, bool] = {}
     if payload.email_digest_enabled is not None:
         current_user.email_digest_enabled = bool(payload.email_digest_enabled)
@@ -3047,6 +3068,7 @@ def export_my_data(
     db: DbSession,
     current_user: CurrentUser,
 ):
+    """Export the current user's account data."""
     exported_at = datetime.now(timezone.utc)
 
     registrations = (
@@ -3078,13 +3100,10 @@ def export_my_data(
     headers = {"Content-Disposition": f'attachment; filename="eventlink-export-{filename_date}.json"'}
     return JSONResponse(content=export_payload, headers=headers)
 
+
 def _deleted_organizer_placeholder(*, db: Session):
     deleted_organizer_email = "deleted-organizer@eventlink.invalid"
-    placeholder = (
-        db.query(models.User)
-        .filter(func.lower(models.User.email) == deleted_organizer_email)
-        .first()
-    )
+    placeholder = db.query(models.User).filter(func.lower(models.User.email) == deleted_organizer_email).first()
     if placeholder:
         return placeholder
     placeholder = models.User(
@@ -3107,12 +3126,8 @@ def _delete_user_relations(*, db: Session, user_id: int) -> None:
     db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == user_id).delete(
         synchronize_session=False
     )
-    db.query(models.Registration).filter(models.Registration.user_id == user_id).delete(
-        synchronize_session=False
-    )
-    db.query(models.FavoriteEvent).filter(models.FavoriteEvent.user_id == user_id).delete(
-        synchronize_session=False
-    )
+    db.query(models.Registration).filter(models.Registration.user_id == user_id).delete(synchronize_session=False)
+    db.query(models.FavoriteEvent).filter(models.FavoriteEvent.user_id == user_id).delete(synchronize_session=False)
     db.execute(models.user_interest_tags.delete().where(models.user_interest_tags.c.user_id == user_id))
 
 
@@ -3122,6 +3137,7 @@ def delete_my_account(
     db: DbSession,
     current_user: CurrentUser,
 ):
+    """Delete the current user's account and personal data."""
     if not auth.verify_password(payload.password, current_user.password_hash):
         raise HTTPException(status_code=400, detail="Parolă incorectă.")
 
@@ -3169,7 +3185,11 @@ def _participant_response_items(
     ]
 
 
-@app.get("/api/organizer/events/{event_id}/participants", response_model=schemas.ParticipantListResponse, responses=_responses(403, 404))
+@app.get(
+    "/api/organizer/events/{event_id}/participants",
+    response_model=schemas.ParticipantListResponse,
+    responses=_responses(403, 404),
+)
 def event_participants(
     event_id: int,
     page: int = 1,
@@ -3180,6 +3200,7 @@ def event_participants(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """List participants for an organizer event."""
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
@@ -3214,7 +3235,11 @@ def event_participants(
     )
 
 
-@app.put("/api/organizer/events/{event_id}/participants/{user_id}", status_code=status.HTTP_204_NO_CONTENT, responses=_responses(400, 404))
+@app.put(
+    "/api/organizer/events/{event_id}/participants/{user_id}",
+    status_code=status.HTTP_204_NO_CONTENT,
+    responses=_responses(400, 404),
+)
 def update_participant_attendance(
     event_id: int,
     user_id: int,
@@ -3222,6 +3247,7 @@ def update_participant_attendance(
     db: DbSession,
     current_user: OrganizerUser,
 ):
+    """Update attendance for an event participant."""
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
@@ -3253,7 +3279,6 @@ def update_participant_attendance(
     )
 
 
-
 @app.post("/api/events/{event_id}/register", status_code=status.HTTP_201_CREATED, responses=_responses(400, 404))
 def register_for_event(
     event_id: int,
@@ -3262,6 +3287,7 @@ def register_for_event(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Register the current student for an event."""
     _ensure_registrations_enabled()
     now = datetime.now(timezone.utc)
     event, _seats_taken = _load_registerable_event(db=db, event_id=event_id, now=now)
@@ -3290,8 +3316,11 @@ def resend_registration_email(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Resend the registration email for an event."""
     _ensure_registrations_enabled()
-    _enforce_rate_limit("resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600)
+    _enforce_rate_limit(
+        "resend_registration", request=request, identifier=current_user.email.lower(), limit=3, window_seconds=600
+    )
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
@@ -3329,6 +3358,7 @@ def unregister_from_event(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Cancel the current student's registration for an event."""
     _ensure_registrations_enabled()
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
@@ -3365,7 +3395,6 @@ def unregister_from_event(
     log_event("event_unregistered", event_id=event.id, user_id=current_user.id)
 
 
-
 @app.post("/api/admin/events/{event_id}/registrations/{user_id}/restore", responses=_responses(400))
 def admin_restore_registration(
     event_id: int,
@@ -3373,6 +3402,7 @@ def admin_restore_registration(
     db: DbSession,
     current_user: CurrentUser,
 ):
+    """Restore a deleted registration as an admin."""
     if not _is_admin(current_user):
         raise HTTPException(status_code=403, detail="Acces doar pentru administratori.")
 
@@ -3421,10 +3451,7 @@ def _registration_stats_by_day(*, db: Session, start: datetime) -> list[schemas.
         .order_by("day")
         .all()
     )
-    return [
-        schemas.RegistrationDayStat(date=str(row.day), registrations=int(row.registrations or 0))
-        for row in rows
-    ]
+    return [schemas.RegistrationDayStat(date=str(row.day), registrations=int(row.registrations or 0)) for row in rows]
 
 
 def _top_tag_stats(*, db: Session, top_tags_limit: int) -> list[schemas.TagPopularityStat]:
@@ -3465,6 +3492,7 @@ def admin_stats(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Return admin dashboard statistics."""
     _validate_admin_days(days)
     _validate_top_tags_limit(top_tags_limit)
 
@@ -3531,13 +3559,18 @@ def _personalization_metrics_items(
     return items, total_impressions, total_clicks, total_registrations
 
 
-@app.get("/api/admin/personalization/metrics", response_model=schemas.PersonalizationMetricsResponse, responses=_responses(400))
+@app.get(
+    "/api/admin/personalization/metrics",
+    response_model=schemas.PersonalizationMetricsResponse,
+    responses=_responses(400),
+)
 def admin_personalization_metrics(
     days: int = 30,
     *,
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Return admin personalization metrics."""
     _validate_admin_days(days)
     start = datetime.now(timezone.utc) - timedelta(days=days)
     by_day = _personalization_metric_counts_by_day(db=db, start=start)
@@ -3561,6 +3594,7 @@ def admin_personalization_status(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Return the current personalization system status."""
     active = (
         db.query(models.RecommenderModel)
         .filter(getattr(models.RecommenderModel, "is_active").is_(True))
@@ -3587,6 +3621,7 @@ def admin_enqueue_guardrails_evaluate(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Queue a personalization guardrail evaluation job."""
     from .task_queue import enqueue_job, JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS  # noqa: PLC0415
 
     job = enqueue_job(
@@ -3608,10 +3643,9 @@ def admin_activate_personalization_model(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Activate a saved personalization model."""
     model = (
-        db.query(models.RecommenderModel)
-        .filter(models.RecommenderModel.model_version == payload.model_version)
-        .first()
+        db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version == payload.model_version).first()
     )
     if not model:
         raise HTTPException(status_code=404, detail="Modelul nu există.")
@@ -3636,12 +3670,17 @@ def admin_activate_personalization_model(
     return {"active_model_version": str(model.model_version), "recompute_job": recompute_job}
 
 
-@app.post("/api/admin/personalization/retrain", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED)
+@app.post(
+    "/api/admin/personalization/retrain",
+    response_model=schemas.EnqueuedJobResponse,
+    status_code=status.HTTP_201_CREATED,
+)
 def admin_enqueue_retrain_recommendations(
     payload: schemas.AdminRetrainRecommendationsRequest,
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Queue a recommendation retraining job."""
     from .task_queue import enqueue_job, JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML  # noqa: PLC0415
 
     job = enqueue_job(
@@ -3653,24 +3692,36 @@ def admin_enqueue_retrain_recommendations(
     return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
 
 
-@app.post("/api/admin/notifications/weekly-digest", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED, responses=_responses(400))
+@app.post(
+    "/api/admin/notifications/weekly-digest",
+    response_model=schemas.EnqueuedJobResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=_responses(400),
+)
 def admin_enqueue_weekly_digest(
     payload: schemas.AdminWeeklyDigestRequest,
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Queue the weekly digest notification job."""
     from .task_queue import enqueue_job, JOB_TYPE_SEND_WEEKLY_DIGEST  # noqa: PLC0415
 
     job = enqueue_job(db, JOB_TYPE_SEND_WEEKLY_DIGEST, payload.model_dump(exclude_none=True), dedupe_key="global")
     return {"job_id": int(job.id), "job_type": job.job_type, "status": job.status}
 
 
-@app.post("/api/admin/notifications/filling-fast", response_model=schemas.EnqueuedJobResponse, status_code=status.HTTP_201_CREATED, responses=_responses(400))
+@app.post(
+    "/api/admin/notifications/filling-fast",
+    response_model=schemas.EnqueuedJobResponse,
+    status_code=status.HTTP_201_CREATED,
+    responses=_responses(400),
+)
 def admin_enqueue_filling_fast(
     payload: schemas.AdminFillingFastRequest,
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Queue the filling-fast notification job."""
     from .task_queue import enqueue_job, JOB_TYPE_SEND_FILLING_FAST_ALERTS  # noqa: PLC0415
 
     job = enqueue_job(db, JOB_TYPE_SEND_FILLING_FAST_ALERTS, payload.model_dump(exclude_none=True), dedupe_key="global")
@@ -3777,6 +3828,7 @@ def admin_list_users(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """List users for the admin dashboard."""
     _validate_admin_user_pagination(page, page_size)
     filters = _admin_user_filters(search=search, role=role, is_active=is_active)
 
@@ -3814,6 +3866,7 @@ def admin_update_user(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Update a user's admin-managed fields."""
     user = db.query(models.User).filter(models.User.id == user_id).first()
     if not user:
         raise HTTPException(status_code=404, detail="Utilizatorul nu există.")
@@ -3908,6 +3961,7 @@ def admin_list_events(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """List events for the admin dashboard."""
     _validate_admin_user_pagination(filters.page, filters.page_size)
     _validate_admin_event_status(filters.status)
 
@@ -3938,6 +3992,7 @@ def admin_review_event_moderation(
     db: DbSession,
     current_user: AdminUser,
 ):
+    """Mark an event moderation review as completed."""
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
     if not event:
         raise HTTPException(status_code=404, detail="Evenimentul nu există.")
@@ -3965,6 +4020,7 @@ def favorite_event(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Favorite an event for the current student."""
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
@@ -3987,6 +4043,7 @@ def unfavorite_event(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Remove an event from the current student's favorites."""
     fav = (
         db.query(models.FavoriteEvent)
         .filter(models.FavoriteEvent.event_id == event_id, models.FavoriteEvent.user_id == current_user.id)
@@ -4000,6 +4057,7 @@ def unfavorite_event(
 
 @app.get("/api/me/favorites", response_model=schemas.FavoriteListResponse)
 def list_favorites(db: DbSession, current_user: StudentUser):
+    """List the current student's favorite events."""
     base_query = (
         db.query(models.Event)
         .join(models.FavoriteEvent, models.Event.id == models.FavoriteEvent.event_id)
@@ -4019,6 +4077,7 @@ def list_favorites(db: DbSession, current_user: StudentUser):
 @app.get("/api/me/events", response_model=List[schemas.EventResponse])
 def my_events(db: DbSession, current_user: CurrentUser):
     # Allow both students and organizers to see events they registered for
+    """List the events associated with the current user."""
     base_query = (
         db.query(models.Event)
         .join(models.Registration, models.Event.id == models.Registration.event_id)
@@ -4236,6 +4295,7 @@ def recommended_events(
     db: DbSession,
     current_user: StudentUser,
 ):
+    """Return personalized event recommendations."""
     lang = _preferred_lang(request=request, user=current_user)
     now = datetime.now(timezone.utc)
     user_city = _normalized_user_city(current_user)
@@ -4262,8 +4322,10 @@ def recommended_events(
 
     return _serialize_recommendations(events=events, user_city=user_city, lang=lang)
 
+
 @app.get("/api/health", responses=_responses(503))
 def health_check(db: DbSession):
+    """Report API health and database availability."""
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
@@ -4273,21 +4335,25 @@ def health_check(db: DbSession):
 
 @app.get("/api/events/{event_id}/ics", responses=_responses(404))
 def event_ics(event_id: int, db: DbSession):
+    """Return an ICS calendar entry for an event."""
     event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
-    ics = "\n".join([
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//EventLink//EN",
-        _event_to_ics(event),
-        "END:VCALENDAR",
-    ])
+    ics = "\n".join(
+        [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//EventLink//EN",
+            _event_to_ics(event),
+            "END:VCALENDAR",
+        ]
+    )
     return Response(content=ics, media_type="text/calendar")
 
 
 @app.get("/api/me/calendar")
 def user_calendar(db: DbSession, current_user: CurrentUser):
+    """Return an ICS calendar containing the current user's events."""
     regs = (
         db.query(models.Event)
         .join(models.Registration, models.Registration.event_id == models.Event.id)
@@ -4298,14 +4364,16 @@ def user_calendar(db: DbSession, current_user: CurrentUser):
         )
         .all()
     )
-    vevents = [ _event_to_ics(e, uid_suffix=f"-u{current_user.id}") for e in regs ]
-    ics = "\n".join([
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//EventLink//EN",
-        *vevents,
-        "END:VCALENDAR",
-    ])
+    vevents = [_event_to_ics(e, uid_suffix=f"-u{current_user.id}") for e in regs]
+    ics = "\n".join(
+        [
+            "BEGIN:VCALENDAR",
+            "VERSION:2.0",
+            "PRODID:-//EventLink//EN",
+            *vevents,
+            "END:VCALENDAR",
+        ]
+    )
     return Response(content=ics, media_type="text/calendar")
 
 
@@ -4316,7 +4384,10 @@ def password_forgot(
     request: Request,
     db: DbSession,
 ):
-    _enforce_rate_limit("password_forgot", request=request, identifier=payload.email.lower(), limit=5, window_seconds=300)
+    """Start the password reset flow."""
+    _enforce_rate_limit(
+        "password_forgot", request=request, identifier=payload.email.lower(), limit=5, window_seconds=300
+    )
     user = db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
     if user:
         db.query(models.PasswordResetToken).filter(
@@ -4333,12 +4404,15 @@ def password_forgot(
         if not lang or lang == "system":
             lang = (request.headers.get("accept-language") if request else None) or "ro"
         subject, body, body_html = render_password_reset_email(user, link, lang=lang)
-        send_email_async(background_tasks, db, user.email, subject, body, body_html, context={"user_id": user.id, "lang": lang})
+        send_email_async(
+            background_tasks, db, user.email, subject, body, body_html, context={"user_id": user.id, "lang": lang}
+        )
     return {"status": "ok"}
 
 
 @app.post("/password/reset", responses=_responses(400))
 def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: DbSession):
+    """Complete the password reset flow."""
     _enforce_rate_limit("password_reset", request=request, limit=10, window_seconds=300)
     token_row = (
         db.query(models.PasswordResetToken)
