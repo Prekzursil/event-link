@@ -15,6 +15,7 @@ down_revision = "0020_user_implicit_interest_tags"
 branch_labels = None
 depends_on = None
 
+
 def _create_weighted_interest_table(
     *,
     table_name: str,

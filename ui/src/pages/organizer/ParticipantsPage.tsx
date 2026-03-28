@@ -73,6 +73,7 @@ function skeletonKeys(pageSize: number) {
   return Array.from({ length: Math.min(pageSize, 10) }, (_, position) => `skeleton-${position + 1}`);
 }
 
+/** Update a single participant's attended flag within the current table rows. */
 function participantRowsWithAttendance(
   participants: Participant[],
   participantId: number,
@@ -83,6 +84,7 @@ function participantRowsWithAttendance(
   );
 }
 
+/** Add or remove a participant identifier from the in-flight attendance set. */
 function toggledParticipantSet(previous: Set<number>, participantId: number, active: boolean) {
   const next = new Set(previous);
   if (active) {
@@ -93,7 +95,8 @@ function toggledParticipantSet(previous: Set<number>, participantId: number, act
   return next;
 }
 
-async function loadParticipantsPage(
+/** Request one page of organizer participants using the active table settings. */
+function loadParticipantsPage(
   eventId: number,
   page: number,
   pageSize: number,
@@ -103,6 +106,7 @@ async function loadParticipantsPage(
   return eventService.getEventParticipants(eventId, page, pageSize, sortBy, sortDir);
 }
 
+/** Optimistically toggle attendee presence and roll back the row on failure. */
 async function mutateAttendance(args: AttendanceMutationArgs) {
   const {
     attended,
@@ -144,14 +148,17 @@ async function mutateAttendance(args: AttendanceMutationArgs) {
   }
 }
 
+/** Escape one CSV cell value according to RFC-style quoting rules. */
 function escapeCsv(value: string) {
   return `"${value.split('"').join('""')}"`;
 }
 
+/** Build the exported participant CSV filename from the event title. */
 function csvFilename(title: string, t: ParticipantsTexts) {
   return `${t.participants.csvFilePrefix}-${title.trim().split(' ').filter(Boolean).join('-')}.csv`;
 }
 
+/** Create and trigger the CSV export for the currently loaded participants. */
 function downloadParticipantsCsv(
   data: ParticipantList,
   language: Parameters<typeof formatDateTime>[1],
@@ -179,6 +186,7 @@ function downloadParticipantsCsv(
   link.click();
 }
 
+/** Validate the organizer email draft before sending it to the backend. */
 function validateEmailDraft(
   subject: string,
   message: string,
@@ -193,6 +201,7 @@ function validateEmailDraft(
   return null;
 }
 
+/** Send a bulk email to participants after validating the current draft. */
 async function sendParticipantsEmail({
   emailMessage,
   emailSubject,
@@ -235,6 +244,7 @@ async function sendParticipantsEmail({
   }
 }
 
+/** Render the organizer participant-management page for one event. */
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
   const eventId = Number(id);

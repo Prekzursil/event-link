@@ -173,21 +173,33 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _build_markdown_report(payload: dict) -> str:
+def _markdown_code(value: Any) -> str:
+    return "`" + str(value).replace("`", "'") + "`"
+
+
+def _markdown_fact(label: str, value: Any) -> str:
+    return "- " + label + ": " + _markdown_code(value)
+
+
+def _markdown_finding(item: Any) -> str:
+    return "- " + str(item).replace("\r", " ").replace("\n", " ")
+
+
+def _build_markdown_report(payload: dict[str, Any]) -> str:
     lines = [
         "# Codacy Zero Gate",
         "",
-        f"- Status: `{payload['status']}`",
-        f"- Owner/repo: `{payload['owner']}/{payload['repo']}`",
-        f"- Branch: `{payload.get('branch') or 'default'}`",
-        f"- Open issues: `{payload.get('open_issues')}`",
-        f"- Timestamp (UTC): `{payload['timestamp_utc']}`",
+        _markdown_fact("Status", payload["status"]),
+        _markdown_fact("Owner/repo", str(payload["owner"]) + "/" + str(payload["repo"])),
+        _markdown_fact("Branch", payload.get("branch") or "default"),
+        _markdown_fact("Open issues", payload.get("open_issues")),
+        _markdown_fact("Timestamp (UTC)", payload["timestamp_utc"]),
         "",
         "## Findings",
     ]
     findings = payload.get("findings") or []
     if findings:
-        lines.extend(f"- {item}" for item in findings)
+        lines.extend(_markdown_finding(item) for item in findings)
     else:
         lines.append("- None")
     report = "\n".join(lines) + "\n"

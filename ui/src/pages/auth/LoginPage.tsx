@@ -36,6 +36,18 @@ type LoginAccessCodeFieldProps = Readonly<{
   toggleShowPassword: () => void;
 }>;
 
+type LoginFormCardProps = Readonly<{
+  email: string;
+  isLoading: boolean;
+  onEmailChange: (value: string) => void;
+  onSubmit: (event: React.FormEvent) => void;
+  password: string;
+  setPassword: (value: string) => void;
+  showPassword: boolean;
+  texts: LoginTexts;
+  toggleShowPassword: () => void;
+}>;
+
 /** Extract the most useful message from an API-shaped auth error. */
 function describeApiError(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>;
@@ -94,6 +106,73 @@ function LoginAccessCodeField({
   );
 }
 
+/** Render the full login card while keeping the page shell shallow. */
+function LoginFormCard({
+  email,
+  isLoading,
+  onEmailChange,
+  onSubmit,
+  password,
+  setPassword,
+  showPassword,
+  texts,
+  toggleShowPassword,
+}: LoginFormCardProps) {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <Calendar className="h-6 w-6 text-primary" />
+        </div>
+        <CardTitle className="text-2xl">{texts.title}</CardTitle>
+        <CardDescription>{texts.description}</CardDescription>
+      </CardHeader>
+      <form onSubmit={onSubmit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="email">{texts.emailLabel}</Label>
+            <Input
+              id="email"
+              type="email"
+              placeholder={texts.emailPlaceholder}
+              value={email}
+              onChange={(event) => onEmailChange(event.target.value)}
+              required
+              disabled={isLoading}
+            />
+          </div>
+          <LoginAccessCodeField
+            isLoading={isLoading}
+            password={password}
+            setPassword={setPassword}
+            showPassword={showPassword}
+            texts={texts}
+            toggleShowPassword={toggleShowPassword}
+          />
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                {texts.submitting}
+              </>
+            ) : (
+              texts.submit
+            )}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            {texts.noAccount}{' '}
+            <Link to="/register" className="text-primary hover:underline">
+              {texts.registerLink}
+            </Link>
+          </p>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}
+
 /** Render the login form and handle auth submission side effects. */
 export function LoginPage() {
   const { t } = useI18n();
@@ -134,59 +213,17 @@ export function LoginPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Calendar className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">{t.auth.login.title}</CardTitle>
-          <CardDescription>
-            {t.auth.login.description}
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="email">{t.auth.login.emailLabel}</Label>
-              <Input
-                id="email"
-                type="email"
-                placeholder={t.auth.login.emailPlaceholder}
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <LoginAccessCodeField
-              isLoading={isLoading}
-              password={password}
-              setPassword={setPassword}
-              showPassword={showPassword}
-              texts={t.auth.login}
-              toggleShowPassword={() => setShowPassword(!showPassword)}
-            />
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  {t.auth.login.submitting}
-                </>
-              ) : (
-                t.auth.login.submit
-              )}
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              {t.auth.login.noAccount}{' '}
-              <Link to="/register" className="text-primary hover:underline">
-                {t.auth.login.registerLink}
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+      <LoginFormCard
+        email={email}
+        isLoading={isLoading}
+        onEmailChange={setEmail}
+        onSubmit={handleSubmit}
+        password={password}
+        setPassword={setPassword}
+        showPassword={showPassword}
+        texts={t.auth.login}
+        toggleShowPassword={() => setShowPassword(!showPassword)}
+      />
     </div>
   );
 }

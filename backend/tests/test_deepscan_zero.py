@@ -97,6 +97,7 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
     requested: list[str] = []
 
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+        """Return a deterministic public DeepScan commit-status payload."""
         assert owner == "Prekzursil"
         assert repo == "event-link"
         assert sha == DEEPSCAN_PUBLIC_SHA
@@ -114,6 +115,7 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
     responses = _public_pr_responses()
 
     def fake_request_json(url: str, token: str):
+        """Serve canned public API responses and record the requested URLs."""
         requested.append(url)
         return responses[url]
 
@@ -143,6 +145,13 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
     """Fail the gate when the public DeepScan analysis reports open issues."""
     module = _load_module()
 
+    def resolve_public_count(**_kwargs):
+        """Return a failing public DeepScan issue count."""
+        return (
+            2,
+            "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745",
+        )
+
     status, open_issues, findings, source_url = module._evaluate_deepscan(
         token="",
         open_issues_url=None,
@@ -150,10 +159,7 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
         sha="f048fe7022acca4e5159015af0db0d6fef56137b",
         github_token="gh-token",
         findings=[],
-        resolver=lambda **_kwargs: (
-            2,
-            "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745",
-        ),
+        resolver=resolve_public_count,
     )
 
     assert status == "fail"
@@ -171,6 +177,7 @@ def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pyte
     )
 
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+        """Return a failing DeepSource status payload for the requested commit."""
         assert owner == "Prekzursil"
         assert repo == "event-link"
         assert sha == DEEPSOURCE_STATUS_SHA
@@ -204,6 +211,14 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
     """Preserve provider-reported findings in the final gate output."""
     module = _load_module()
 
+    def resolve_provider_findings(**_kwargs):
+        """Return a provider failure payload with a single finding."""
+        return (
+            1,
+            "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
+            ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
+        )
+
     status, open_issues, findings, source_url = module._evaluate_deepscan(
         token="",
         open_issues_url=None,
@@ -211,11 +226,7 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
         sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
         github_token="gh-token",
         findings=[],
-        resolver=lambda **_kwargs: (
-            1,
-            "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
-            ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
-        ),
+        resolver=resolve_provider_findings,
     )
 
     assert status == "fail"
@@ -253,10 +264,14 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
     ]
     sleeps: list[float] = []
 
+    def next_status_payload(**_kwargs):
+        """Return the next pending-or-success provider payload."""
+        return payloads.pop(0)
+
     monkeypatch.setattr(
         module,
         "_github_status_payload",
-        lambda **_kwargs: payloads.pop(0),
+        next_status_payload,
     )
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
 
@@ -295,7 +310,11 @@ def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: 
     ]
     sleeps: list[float] = []
 
-    monkeypatch.setattr(module, "_github_status_payload", lambda **_kwargs: payloads.pop(0))
+    def next_available_status(**_kwargs):
+        """Return the next provider payload once statuses become available."""
+        return payloads.pop(0)
+
+    monkeypatch.setattr(module, "_github_status_payload", next_available_status)
     monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
 
     resolved = module._resolve_open_issues(
@@ -314,6 +333,14 @@ def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> No
     """Mark the gate as failed when provider analysis never reaches a terminal state."""
     module = _load_module()
 
+    def resolve_pending_provider(**_kwargs):
+        """Return a provider payload that never reaches completion."""
+        return (
+            0,
+            "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/",
+            ["DeepSource analysis is still in progress."],
+        )
+
     status, open_issues, findings, source_url = module._evaluate_deepscan(
         token="",
         open_issues_url=None,
@@ -321,11 +348,7 @@ def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> No
         sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
         github_token="gh-token",
         findings=[],
-        resolver=lambda **_kwargs: (
-            0,
-            "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/",
-            ["DeepSource analysis is still in progress."],
-        ),
+        resolver=resolve_pending_provider,
     )
 
     assert status == "fail"
@@ -348,6 +371,7 @@ def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeyp
     sleeps: list[float] = []
 
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+        """Return the next DeepScan dashboard commit-status payload."""
         assert owner == "Prekzursil"
         assert repo == "event-link"
         assert sha == DEEPSCAN_DASHBOARD_SHA

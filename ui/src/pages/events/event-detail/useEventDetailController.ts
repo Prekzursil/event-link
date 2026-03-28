@@ -101,13 +101,14 @@ export function useEventDetailController() {
   }, [loadEvent]);
 
   const eventId = event?.id;
-  useEffect(() => {
+  useEffect(function trackEventDwellEffect() {
     if (!eventId) {
       return;
     }
     const trackedEventId = eventId;
     const startedAt = Date.now();
     recordEventDetailInteraction(trackedEventId, 'view', { source: 'event_detail' });
+    /** Persist dwell-time analytics when the event detail view unmounts. */
     function trackDwellOnCleanup(): void {
       const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
       recordEventDetailInteraction(trackedEventId, 'dwell', { source: 'event_detail', seconds });

@@ -49,6 +49,25 @@ type RegisterAccessCodeFieldsProps = Readonly<{
   toggleShowPassword: () => void;
 }>;
 
+type RegisterFormCardProps = Readonly<{
+  formData: {
+    confirmPassword: string;
+    email: string;
+    fullName: string;
+    password: string;
+  };
+  handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  handleSubmit: (e: React.FormEvent) => void;
+  isLoading: boolean;
+  passwordRequirements: ReadonlyArray<{
+    label: string;
+    met: boolean;
+  }>;
+  showPassword: boolean;
+  texts: RegisterTexts;
+  toggleShowPassword: () => void;
+}>;
+
 /** Build the derived access-code requirement state for the registration form. */
 function buildPasswordRequirementState(password: string): PasswordRequirementState {
   return {
@@ -143,6 +162,86 @@ function RegisterAccessCodeFields({
   );
 }
 
+/** Render the full registration card while keeping the page shell shallow. */
+function RegisterFormCard({
+  formData,
+  handleChange,
+  handleSubmit,
+  isLoading,
+  passwordRequirements,
+  showPassword,
+  texts,
+  toggleShowPassword,
+}: RegisterFormCardProps) {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1 text-center">
+        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+          <Calendar className="h-6 w-6 text-primary" />
+        </div>
+        <CardTitle className="text-2xl">{texts.title}</CardTitle>
+        <CardDescription>{texts.description}</CardDescription>
+      </CardHeader>
+      <form onSubmit={handleSubmit}>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="fullName">{texts.fullNameLabel}</Label>
+            <Input
+              id="fullName"
+              name="fullName"
+              type="text"
+              placeholder={texts.fullNamePlaceholder}
+              value={formData.fullName}
+              onChange={handleChange}
+              disabled={isLoading}
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="email">{texts.emailLabel}</Label>
+            <Input
+              id="email"
+              name="email"
+              type="email"
+              placeholder={texts.emailPlaceholder}
+              value={formData.email}
+              onChange={handleChange}
+              required
+              disabled={isLoading}
+            />
+          </div>
+          <RegisterAccessCodeFields
+            formData={formData}
+            handleChange={handleChange}
+            isLoading={isLoading}
+            passwordRequirements={passwordRequirements}
+            showPassword={showPassword}
+            texts={texts}
+            toggleShowPassword={toggleShowPassword}
+          />
+        </CardContent>
+        <CardFooter className="flex flex-col gap-4">
+          <Button type="submit" className="w-full" disabled={isLoading}>
+            {isLoading ? (
+              <>
+                <LoadingSpinner size="sm" className="mr-2" />
+                {texts.submitting}
+              </>
+            ) : (
+              texts.submit
+            )}
+          </Button>
+          <p className="text-center text-sm text-muted-foreground">
+            {texts.haveAccount}{' '}
+            <Link to="/login" className="text-primary hover:underline">
+              {texts.loginLink}
+            </Link>
+          </p>
+        </CardFooter>
+      </form>
+    </Card>
+  );
+}
+
 /** Render the registration form and create a student account. */
 export function RegisterPage() {
   const { t } = useI18n();
@@ -220,73 +319,16 @@ export function RegisterPage() {
 
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Calendar className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">{t.auth.register.title}</CardTitle>
-          <CardDescription>
-            {t.auth.register.description}
-          </CardDescription>
-        </CardHeader>
-        <form onSubmit={handleSubmit}>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="fullName">{t.auth.register.fullNameLabel}</Label>
-              <Input
-                id="fullName"
-                name="fullName"
-                type="text"
-                placeholder={t.auth.register.fullNamePlaceholder}
-                value={formData.fullName}
-                onChange={handleChange}
-                disabled={isLoading}
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">{t.auth.register.emailLabel}</Label>
-              <Input
-                id="email"
-                name="email"
-                type="email"
-                placeholder={t.auth.register.emailPlaceholder}
-                value={formData.email}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
-            </div>
-            <RegisterAccessCodeFields
-              formData={formData}
-              handleChange={handleChange}
-              isLoading={isLoading}
-              passwordRequirements={passwordRequirements}
-              showPassword={showPassword}
-              texts={t.auth.register}
-              toggleShowPassword={() => setShowPassword(!showPassword)}
-            />
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  {t.auth.register.submitting}
-                </>
-              ) : (
-                t.auth.register.submit
-              )}
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              {t.auth.register.haveAccount}{' '}
-              <Link to="/login" className="text-primary hover:underline">
-                {t.auth.register.loginLink}
-              </Link>
-            </p>
-          </CardFooter>
-        </form>
-      </Card>
+      <RegisterFormCard
+        formData={formData}
+        handleChange={handleChange}
+        handleSubmit={handleSubmit}
+        isLoading={isLoading}
+        passwordRequirements={passwordRequirements}
+        showPassword={showPassword}
+        texts={t.auth.register}
+        toggleShowPassword={() => setShowPassword(!showPassword)}
+      />
     </div>
   );
 }

@@ -94,6 +94,8 @@ type PersonalizationActionsProps = Readonly<{
   controller: Props['controller'];
 }>;
 
+type StatsMetricKey = 'total_events' | 'total_registrations' | 'total_users';
+
 /** Render the shared empty state for admin overview cards. */
 const EmptyState = ({ message }: EmptyStateProps) => (
   <p className="text-sm text-muted-foreground">{message}</p>
@@ -265,12 +267,17 @@ const PersonalizationTable = ({ rows, table }: PersonalizationTableProps) => (
   </Table>
 );
 
+/** Read one statistic from the admin summary payload with a numeric fallback. */
+function statValue(stats: StatsGridProps['stats'], key: StatsMetricKey): number {
+  return stats?.[key] ?? 0;
+}
+
 /** Render the top-level admin overview statistic cards. */
 function buildStatsGridCards(labels: StatsGridProps['labels'], stats: StatsGridProps['stats']): StatsGridCard[] {
   return [
-    { title: labels.totalUsers, value: stats?.total_users ?? 0 },
-    { title: labels.totalEvents, value: stats?.total_events ?? 0 },
-    { title: labels.totalRegistrations, value: stats?.total_registrations ?? 0 },
+    { title: labels.totalUsers, value: statValue(stats, 'total_users') },
+    { title: labels.totalEvents, value: statValue(stats, 'total_events') },
+    { title: labels.totalRegistrations, value: statValue(stats, 'total_registrations') },
   ];
 }
 
