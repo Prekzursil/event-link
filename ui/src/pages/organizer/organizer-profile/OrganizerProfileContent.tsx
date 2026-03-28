@@ -35,6 +35,16 @@ type OrganizerStatsProps = {
   labels: LoadedController['t']['organizerProfile']['stats'];
 };
 
+type OrganizerIdentityProps = {
+  alt: string;
+  initials: string;
+  logoUrl: string | null;
+};
+
+type OrganizerHeaderDetailsProps = {
+  controller: LoadedController;
+};
+
 /** Renders the shared back-to-events call to action. */
 function BackToEventsButton({ label, className }: BackToEventsButtonProps) {
   return (
@@ -92,6 +102,43 @@ function OrganizerStats({ totalEvents, upcomingCount, pastCount, labels }: Organ
   );
 }
 
+/** Renders the organizer avatar block in the profile header. */
+function OrganizerIdentity({ alt, initials, logoUrl }: OrganizerIdentityProps) {
+  return (
+    <Avatar className="h-24 w-24 md:h-32 md:w-32">
+      <AvatarImage src={logoUrl ?? ''} alt={alt} />
+      <AvatarFallback className="text-2xl">{initials}</AvatarFallback>
+    </Avatar>
+  );
+}
+
+/** Renders the organizer text, links, and stats inside the header card. */
+function OrganizerHeaderDetails({ controller }: OrganizerHeaderDetailsProps) {
+  const { profile } = controller;
+
+  return (
+    <div className="flex-1 text-center md:text-left">
+      <h1 className="mb-2 text-2xl font-bold md:text-3xl">{controller.organizerDisplayName}</h1>
+
+      {profile.org_description && (
+        <p className="mb-4 text-muted-foreground">{profile.org_description}</p>
+      )}
+
+      <OrganizerContactLinks
+        email={profile.email}
+        website={profile.org_website}
+        websiteLabel={controller.t.organizerProfile.website}
+      />
+      <OrganizerStats
+        totalEvents={profile.events.length}
+        upcomingCount={controller.upcomingEvents.length}
+        pastCount={controller.pastEvents.length}
+        labels={controller.t.organizerProfile.stats}
+      />
+    </div>
+  );
+}
+
 /** Renders the organizer fallback state when the profile is missing or fails to load. */
 function NotFoundState({ controller }: Props) {
   return (
@@ -114,36 +161,16 @@ function NotFoundState({ controller }: Props) {
 
 /** Renders the organizer hero card for a loaded profile. */
 function OrganizerHeader({ controller }: { controller: LoadedController }) {
-  const { profile } = controller;
-
   return (
     <Card className="mb-8">
       <CardContent className="pt-6">
         <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
-          <Avatar className="h-24 w-24 md:h-32 md:w-32">
-            <AvatarImage src={profile.org_logo_url} alt={controller.organizerDisplayName} />
-            <AvatarFallback className="text-2xl">{controller.initials}</AvatarFallback>
-          </Avatar>
-
-          <div className="flex-1 text-center md:text-left">
-            <h1 className="mb-2 text-2xl font-bold md:text-3xl">{controller.organizerDisplayName}</h1>
-
-            {profile.org_description && (
-              <p className="mb-4 text-muted-foreground">{profile.org_description}</p>
-            )}
-
-            <OrganizerContactLinks
-              email={profile.email}
-              website={profile.org_website}
-              websiteLabel={controller.t.organizerProfile.website}
-            />
-            <OrganizerStats
-              totalEvents={profile.events.length}
-              upcomingCount={controller.upcomingEvents.length}
-              pastCount={controller.pastEvents.length}
-              labels={controller.t.organizerProfile.stats}
-            />
-          </div>
+          <OrganizerIdentity
+            alt={controller.organizerDisplayName}
+            initials={controller.initials}
+            logoUrl={controller.profile.org_logo_url}
+          />
+          <OrganizerHeaderDetails controller={controller} />
         </div>
       </CardContent>
     </Card>

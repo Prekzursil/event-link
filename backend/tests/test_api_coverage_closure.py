@@ -57,16 +57,16 @@ def _make_event(*, title: str, owner_id: int | None = None, owner=None, start_ti
 
 def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     """Builds the install fake alembic helper used by the test."""
+    def _set_main_option(*_args, **_kwargs):
+        """Accepts Alembic configuration writes during the test."""
+        return None
+
     class _FakeConfig:
         """Test double for FakeConfig."""
         def __init__(self, _path: str):
             """Initializes the test double."""
             self.path = _path
-
-        @staticmethod
-        def set_main_option(*_args, **_kwargs):
-            """Accepts Alembic configuration writes during the test."""
-            return None
+            self.set_main_option = _set_main_option
 
     def _upgrade(*_args, **_kwargs):
         """Records the fake Alembic upgrade call."""
@@ -655,7 +655,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 
