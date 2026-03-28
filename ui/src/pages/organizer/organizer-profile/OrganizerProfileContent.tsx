@@ -13,6 +13,10 @@ type Props = {
   controller: OrganizerProfileController;
 };
 
+type LoadedController = OrganizerProfileController & {
+  profile: NonNullable<OrganizerProfileController['profile']>;
+};
+
 function NotFoundState({ controller }: Props) {
   return (
     <div className="container mx-auto px-4 py-16">
@@ -37,42 +41,40 @@ function NotFoundState({ controller }: Props) {
   );
 }
 
-function OrganizerHeader({ controller }: Props) {
-  if (!controller.profile) {
-    return null;
-  }
+function OrganizerHeader({ controller }: { controller: LoadedController }) {
+  const { profile } = controller;
 
   return (
     <Card className="mb-8">
       <CardContent className="pt-6">
         <div className="flex flex-col items-center gap-6 md:flex-row md:items-start">
           <Avatar className="h-24 w-24 md:h-32 md:w-32">
-            <AvatarImage src={controller.profile.org_logo_url} alt={controller.organizerDisplayName} />
+            <AvatarImage src={profile.org_logo_url} alt={controller.organizerDisplayName} />
             <AvatarFallback className="text-2xl">{controller.initials}</AvatarFallback>
           </Avatar>
 
           <div className="flex-1 text-center md:text-left">
             <h1 className="mb-2 text-2xl font-bold md:text-3xl">{controller.organizerDisplayName}</h1>
 
-            {controller.profile.org_description && (
-              <p className="mb-4 text-muted-foreground">{controller.profile.org_description}</p>
+            {profile.org_description && (
+              <p className="mb-4 text-muted-foreground">{profile.org_description}</p>
             )}
 
             <div className="flex flex-wrap justify-center gap-4 md:justify-start">
-              {controller.profile.email && (
+              {profile.email && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <Mail className="h-4 w-4" />
-                  <a href={`mailto:${controller.profile.email}`} className="hover:text-primary">
-                    {controller.profile.email}
+                  <a href={`mailto:${profile.email}`} className="hover:text-primary">
+                    {profile.email}
                   </a>
                 </div>
               )}
 
-              {controller.profile.org_website && (
+              {profile.org_website && (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground">
                   <ExternalLink className="h-4 w-4" />
                   <a
-                    href={controller.profile.org_website}
+                    href={profile.org_website}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="hover:text-primary"
@@ -86,7 +88,7 @@ function OrganizerHeader({ controller }: Props) {
             <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
               <Badge variant="secondary" className="text-sm">
                 <CalendarDays className="mr-1 h-4 w-4" />
-                {controller.profile.events.length} {controller.t.organizerProfile.stats.events}
+                {profile.events.length} {controller.t.organizerProfile.stats.events}
               </Badge>
               <Badge variant="secondary" className="text-sm">
                 <Calendar className="mr-1 h-4 w-4" />
@@ -140,10 +142,8 @@ function EventsGrid({
   );
 }
 
-function OrganizerEventsTabs({ controller }: Props) {
-  if (!controller.profile) {
-    return null;
-  }
+function OrganizerEventsTabs({ controller }: { controller: LoadedController }) {
+  const { profile } = controller;
 
   return (
     <Tabs defaultValue="upcoming" className="w-full">
@@ -158,7 +158,7 @@ function OrganizerEventsTabs({ controller }: Props) {
         </TabsTrigger>
         <TabsTrigger value="all" className="gap-2">
           <CalendarDays className="h-4 w-4" />
-          {controller.t.organizerProfile.tabs.all} ({controller.profile.events.length})
+          {controller.t.organizerProfile.tabs.all} ({profile.events.length})
         </TabsTrigger>
       </TabsList>
 
@@ -187,14 +187,14 @@ function OrganizerEventsTabs({ controller }: Props) {
       </TabsContent>
 
       <TabsContent value="all">
-        {controller.profile.events.length === 0 ? (
+        {profile.events.length === 0 ? (
           <EmptyEventsState
             icon={CalendarDays}
             title={controller.t.organizerProfile.emptyAllTitle}
             description={controller.t.organizerProfile.emptyAllDescription}
           />
         ) : (
-          <EventsGrid events={controller.profile.events} />
+          <EventsGrid events={profile.events} />
         )}
       </TabsContent>
     </Tabs>
@@ -202,9 +202,12 @@ function OrganizerEventsTabs({ controller }: Props) {
 }
 
 export function OrganizerProfileContent({ controller }: Props) {
-  if (controller.hasError || !controller.profile) {
+  const { profile } = controller;
+  if (controller.hasError || !profile) {
     return <NotFoundState controller={controller} />;
   }
+
+  const loadedController = { ...controller, profile };
 
   return (
     <div className="container mx-auto px-4 py-8">
@@ -215,8 +218,8 @@ export function OrganizerProfileContent({ controller }: Props) {
         </Link>
       </Button>
 
-      <OrganizerHeader controller={controller} />
-      <OrganizerEventsTabs controller={controller} />
+      <OrganizerHeader controller={loadedController} />
+      <OrganizerEventsTabs controller={loadedController} />
     </div>
   );
 }

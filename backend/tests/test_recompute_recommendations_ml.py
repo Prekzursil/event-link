@@ -232,6 +232,42 @@ def test_helper_feature_vector_reason_and_impression_weights() -> None:
     assert module._impression_negative_weight(25) == pytest.approx(0.05)
 
 
+def test_selected_model_row_falls_back_when_requested_version_is_missing(db_session) -> None:
+    module = _load_script_module()
+    active_model = models.RecommenderModel(
+        model_version="active-v1",
+        feature_names=["bias"],
+        weights=[1.0],
+        is_active=True,
+    )
+    older_model = models.RecommenderModel(
+        model_version="older-v0",
+        feature_names=["bias"],
+        weights=[0.5],
+        is_active=False,
+    )
+    db_session.add_all([active_model, older_model])
+    db_session.commit()
+
+    selected = module._selected_model_row(
+        db=db_session,
+        models=models,
+        requested_model_version="missing-v9",
+    )
+
+    assert selected is not None
+    assert selected.model_version == "active-v1"
+
+
+def test_event_id_for_features_raises_when_candidate_is_missing() -> None:
+    module = _load_script_module()
+    now = datetime.now(timezone.utc)
+    _user, candidate_event, other_event = _build_helper_user_and_events(module, now)
+
+    with pytest.raises(KeyError, match="candidate event not found"):
+        module._event_id_for_features({2: other_event}, candidate_event)
+
+
 def test_helper_train_and_eval_hitrate_smoke() -> None:
     module = _load_script_module()
     now = datetime.now(timezone.utc)

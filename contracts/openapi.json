@@ -3191,6 +3191,7 @@
   "paths": {
     "/": {
       "get": {
+        "description": "Return the API welcome message.",
         "operationId": "read_root__get",
         "responses": {
           "200": {
@@ -3207,6 +3208,7 @@
     },
     "/api/admin/events": {
       "get": {
+        "description": "List events for the admin dashboard.",
         "operationId": "admin_list_events_api_admin_events_get",
         "parameters": [
           {
@@ -3349,6 +3351,7 @@
     },
     "/api/admin/events/{event_id}/moderation/review": {
       "post": {
+        "description": "Mark an event moderation review as completed.",
         "operationId": "admin_review_event_moderation_api_admin_events__event_id__moderation_review_post",
         "parameters": [
           {
@@ -3394,6 +3397,7 @@
     },
     "/api/admin/events/{event_id}/registrations/{user_id}/restore": {
       "post": {
+        "description": "Restore a deleted registration as an admin.",
         "operationId": "admin_restore_registration_api_admin_events__event_id__registrations__user_id__restore_post",
         "parameters": [
           {
@@ -3448,6 +3452,7 @@
     },
     "/api/admin/notifications/filling-fast": {
       "post": {
+        "description": "Queue the filling-fast notification job.",
         "operationId": "admin_enqueue_filling_fast_api_admin_notifications_filling_fast_post",
         "requestBody": {
           "content": {
@@ -3494,6 +3499,7 @@
     },
     "/api/admin/notifications/weekly-digest": {
       "post": {
+        "description": "Queue the weekly digest notification job.",
         "operationId": "admin_enqueue_weekly_digest_api_admin_notifications_weekly_digest_post",
         "requestBody": {
           "content": {
@@ -3540,6 +3546,7 @@
     },
     "/api/admin/personalization/guardrails/evaluate": {
       "post": {
+        "description": "Queue a personalization guardrail evaluation job.",
         "operationId": "admin_enqueue_guardrails_evaluate_api_admin_personalization_guardrails_evaluate_post",
         "requestBody": {
           "content": {
@@ -3586,6 +3593,7 @@
     },
     "/api/admin/personalization/metrics": {
       "get": {
+        "description": "Return admin personalization metrics.",
         "operationId": "admin_personalization_metrics_api_admin_personalization_metrics_get",
         "parameters": [
           {
@@ -3634,6 +3642,7 @@
     },
     "/api/admin/personalization/models/activate": {
       "post": {
+        "description": "Activate a saved personalization model.",
         "operationId": "admin_activate_personalization_model_api_admin_personalization_models_activate_post",
         "requestBody": {
           "content": {
@@ -3680,6 +3689,7 @@
     },
     "/api/admin/personalization/retrain": {
       "post": {
+        "description": "Queue a recommendation retraining job.",
         "operationId": "admin_enqueue_retrain_recommendations_api_admin_personalization_retrain_post",
         "requestBody": {
           "content": {
@@ -3723,6 +3733,7 @@
     },
     "/api/admin/personalization/status": {
       "get": {
+        "description": "Return the current personalization system status.",
         "operationId": "admin_personalization_status_api_admin_personalization_status_get",
         "responses": {
           "200": {
@@ -3746,6 +3757,7 @@
     },
     "/api/admin/stats": {
       "get": {
+        "description": "Return admin dashboard statistics.",
         "operationId": "admin_stats_api_admin_stats_get",
         "parameters": [
           {
@@ -3804,6 +3816,7 @@
     },
     "/api/admin/users": {
       "get": {
+        "description": "List users for the admin dashboard.",
         "operationId": "admin_list_users_api_admin_users_get",
         "parameters": [
           {
@@ -3910,6 +3923,7 @@
     },
     "/api/admin/users/{user_id}": {
       "patch": {
+        "description": "Update a user's admin-managed fields.",
         "operationId": "admin_update_user_api_admin_users__user_id__patch",
         "parameters": [
           {
@@ -3967,6 +3981,7 @@
     },
     "/api/analytics/interactions": {
       "post": {
+        "description": "Record analytics interactions and trigger recommendation refreshes.",
         "operationId": "record_interactions_api_analytics_interactions_post",
         "requestBody": {
           "content": {
@@ -4003,6 +4018,7 @@
     },
     "/api/events": {
       "get": {
+        "description": "List events visible to the current user.",
         "operationId": "get_events_api_events_get",
         "parameters": [
           {
@@ -4218,6 +4234,7 @@
         "summary": "Get Events"
       },
       "post": {
+        "description": "Create a new organizer event.",
         "operationId": "create_event_api_events_post",
         "requestBody": {
           "content": {
@@ -4267,6 +4284,7 @@
     },
     "/api/events/{event_id}": {
       "delete": {
+        "description": "Soft-delete an organizer event.",
         "operationId": "delete_event_api_events__event_id__delete",
         "parameters": [
           {
@@ -4308,6 +4326,7 @@
         "summary": "Delete Event"
       },
       "get": {
+        "description": "Return an event detail payload for the current user.",
         "operationId": "get_event_api_events__event_id__get",
         "parameters": [
           {
@@ -4353,6 +4372,7 @@
         "summary": "Get Event"
       },
       "put": {
+        "description": "Update an existing organizer event.",
         "operationId": "update_event_api_events__event_id__put",
         "parameters": [
           {
@@ -4416,6 +4436,7 @@
     },
     "/api/events/{event_id}/clone": {
       "post": {
+        "description": "Clone an existing organizer event.",
         "operationId": "clone_event_api_events__event_id__clone_post",
         "parameters": [
           {
@@ -4463,6 +4484,7 @@
     },
     "/api/events/{event_id}/favorite": {
       "delete": {
+        "description": "Remove an event from the current student's favorites.",
         "operationId": "unfavorite_event_api_events__event_id__favorite_delete",
         "parameters": [
           {
@@ -4501,6 +4523,7 @@
         "summary": "Unfavorite Event"
       },
       "post": {
+        "description": "Favorite an event for the current student.",
         "operationId": "favorite_event_api_events__event_id__favorite_post",
         "parameters": [
           {
@@ -4546,6 +4569,7 @@
     },
     "/api/events/{event_id}/ics": {
       "get": {
+        "description": "Return an ICS calendar entry for an event.",
         "operationId": "event_ics_api_events__event_id__ics_get",
         "parameters": [
           {
@@ -4586,6 +4610,7 @@
     },
     "/api/events/{event_id}/register": {
       "delete": {
+        "description": "Cancel the current student's registration for an event.",
         "operationId": "unregister_from_event_api_events__event_id__register_delete",
         "parameters": [
           {
@@ -4627,6 +4652,7 @@
         "summary": "Unregister From Event"
       },
       "post": {
+        "description": "Register the current student for an event.",
         "operationId": "register_for_event_api_events__event_id__register_post",
         "parameters": [
           {
@@ -4675,6 +4701,7 @@
     },
     "/api/events/{event_id}/register/resend": {
       "post": {
+        "description": "Resend the registration email for an event.",
         "operationId": "resend_registration_email_api_events__event_id__register_resend_post",
         "parameters": [
           {
@@ -4723,6 +4750,7 @@
     },
     "/api/events/{event_id}/restore": {
       "post": {
+        "description": "Restore a previously deleted organizer event.",
         "operationId": "restore_event_api_events__event_id__restore_post",
         "parameters": [
           {
@@ -4771,6 +4799,7 @@
     },
     "/api/health": {
       "get": {
+        "description": "Report API health and database availability.",
         "operationId": "health_check_api_health_get",
         "responses": {
           "200": {
@@ -4790,6 +4819,7 @@
     },
     "/api/me": {
       "delete": {
+        "description": "Delete the current user's account and personal data.",
         "operationId": "delete_my_account_api_me_delete",
         "requestBody": {
           "content": {
@@ -4837,6 +4867,7 @@
     },
     "/api/me/calendar": {
       "get": {
+        "description": "Return an ICS calendar containing the current user's events.",
         "operationId": "user_calendar_api_me_calendar_get",
         "responses": {
           "200": {
@@ -4858,6 +4889,7 @@
     },
     "/api/me/events": {
       "get": {
+        "description": "List the events associated with the current user.",
         "operationId": "my_events_api_me_events_get",
         "responses": {
           "200": {
@@ -4885,6 +4917,7 @@
     },
     "/api/me/export": {
       "get": {
+        "description": "Export the current user's account data.",
         "operationId": "export_my_data_api_me_export_get",
         "responses": {
           "200": {
@@ -4909,6 +4942,7 @@
     },
     "/api/me/favorites": {
       "get": {
+        "description": "List the current student's favorite events.",
         "operationId": "list_favorites_api_me_favorites_get",
         "responses": {
           "200": {
@@ -4932,6 +4966,7 @@
     },
     "/api/me/language": {
       "put": {
+        "description": "Update the current user's language preference.",
         "operationId": "update_language_preference_api_me_language_put",
         "requestBody": {
           "content": {
@@ -4975,6 +5010,7 @@
     },
     "/api/me/notifications": {
       "get": {
+        "description": "Return the current student's notification preferences.",
         "operationId": "get_notification_preferences_api_me_notifications_get",
         "responses": {
           "200": {
@@ -4996,6 +5032,7 @@
         "summary": "Get Notification Preferences"
       },
       "put": {
+        "description": "Update the current student's notification preferences.",
         "operationId": "update_notification_preferences_api_me_notifications_put",
         "requestBody": {
           "content": {
@@ -5039,6 +5076,7 @@
     },
     "/api/me/personalization": {
       "get": {
+        "description": "Return the current student's personalization settings.",
         "operationId": "get_personalization_settings_api_me_personalization_get",
         "responses": {
           "200": {
@@ -5065,6 +5103,7 @@
     },
     "/api/me/personalization/blocked-organizers/{organizer_id}": {
       "delete": {
+        "description": "Unblock an organizer in the current student's recommendations.",
         "operationId": "remove_blocked_organizer_api_me_personalization_blocked_organizers__organizer_id__delete",
         "parameters": [
           {
@@ -5103,6 +5142,7 @@
         "summary": "Remove Blocked Organizer"
       },
       "post": {
+        "description": "Block an organizer in the current student's recommendations.",
         "operationId": "add_blocked_organizer_api_me_personalization_blocked_organizers__organizer_id__post",
         "parameters": [
           {
@@ -5148,6 +5188,7 @@
     },
     "/api/me/personalization/hidden-tags/{tag_id}": {
       "delete": {
+        "description": "Remove a hidden tag from the current student's recommendations.",
         "operationId": "remove_hidden_tag_api_me_personalization_hidden_tags__tag_id__delete",
         "parameters": [
           {
@@ -5186,6 +5227,7 @@
         "summary": "Remove Hidden Tag"
       },
       "post": {
+        "description": "Hide a tag from the current student's recommendations.",
         "operationId": "add_hidden_tag_api_me_personalization_hidden_tags__tag_id__post",
         "parameters": [
           {
@@ -5303,6 +5345,7 @@
     },
     "/api/me/theme": {
       "put": {
+        "description": "Update the current user's theme preference.",
         "operationId": "update_theme_preference_api_me_theme_put",
         "requestBody": {
           "content": {
@@ -5346,6 +5389,7 @@
     },
     "/api/metadata/universities": {
       "get": {
+        "description": "Return the university catalog metadata.",
         "operationId": "list_university_catalog_api_metadata_universities_get",
         "responses": {
           "200": {
@@ -5364,6 +5408,7 @@
     },
     "/api/organizer/events": {
       "get": {
+        "description": "List events owned by the current organizer.",
         "operationId": "organizer_events_api_organizer_events_get",
         "parameters": [
           {
@@ -5419,6 +5464,7 @@
     },
     "/api/organizer/events/bulk/status": {
       "post": {
+        "description": "Bulk-update publish status for organizer events.",
         "operationId": "organizer_bulk_update_status_api_organizer_events_bulk_status_post",
         "requestBody": {
           "content": {
@@ -5469,6 +5515,7 @@
     },
     "/api/organizer/events/bulk/tags": {
       "post": {
+        "description": "Bulk-update tags for organizer events.",
         "operationId": "organizer_bulk_update_tags_api_organizer_events_bulk_tags_post",
         "requestBody": {
           "content": {
@@ -5519,6 +5566,7 @@
     },
     "/api/organizer/events/suggest": {
       "post": {
+        "description": "Suggest metadata and duplicates for an organizer event draft.",
         "operationId": "organizer_suggest_event_api_organizer_events_suggest_post",
         "requestBody": {
           "content": {
@@ -5568,6 +5616,7 @@
     },
     "/api/organizer/events/{event_id}/participants": {
       "get": {
+        "description": "List participants for an organizer event.",
         "operationId": "event_participants_api_organizer_events__event_id__participants_get",
         "parameters": [
           {
@@ -5658,6 +5707,7 @@
     },
     "/api/organizer/events/{event_id}/participants/email": {
       "post": {
+        "description": "Queue participant emails for an organizer event.",
         "operationId": "email_event_participants_api_organizer_events__event_id__participants_email_post",
         "parameters": [
           {
@@ -5718,6 +5768,7 @@
     },
     "/api/organizer/events/{event_id}/participants/{user_id}": {
       "put": {
+        "description": "Update attendance for an event participant.",
         "operationId": "update_participant_attendance_api_organizer_events__event_id__participants__user_id__put",
         "parameters": [
           {
@@ -5779,6 +5830,7 @@
     },
     "/api/organizers/me/profile": {
       "put": {
+        "description": "Update the current organizer profile.",
         "operationId": "update_organizer_profile_api_organizers_me_profile_put",
         "requestBody": {
           "content": {
@@ -5825,6 +5877,7 @@
     },
     "/api/organizers/{organizer_id}": {
       "get": {
+        "description": "Return a public organizer profile.",
         "operationId": "get_organizer_profile_api_organizers__organizer_id__get",
         "parameters": [
           {
@@ -5867,6 +5920,7 @@
     },
     "/api/public/events": {
       "get": {
+        "description": "List public events.",
         "operationId": "get_public_events_api_public_events_get",
         "parameters": [
           {
@@ -6066,6 +6120,7 @@
     },
     "/api/public/events/{event_id}": {
       "get": {
+        "description": "Return a public event by identifier.",
         "operationId": "get_public_event_api_public_events__event_id__get",
         "parameters": [
           {
@@ -6108,6 +6163,7 @@
     },
     "/api/recommendations": {
       "get": {
+        "description": "Return personalized event recommendations.",
         "operationId": "recommended_events_api_recommendations_get",
         "responses": {
           "200": {
@@ -6160,6 +6216,7 @@
     },
     "/login": {
       "post": {
+        "description": "Authenticate a user and return fresh authentication tokens.",
         "operationId": "login_login_post",
         "requestBody": {
           "content": {
@@ -6201,6 +6258,7 @@
     },
     "/me": {
       "get": {
+        "description": "Return the authenticated user profile.",
         "operationId": "get_me_me_get",
         "responses": {
           "200": {
@@ -6224,6 +6282,7 @@
     },
     "/password/forgot": {
       "post": {
+        "description": "Start the password reset flow.",
         "operationId": "password_forgot_password_forgot_post",
         "requestBody": {
           "content": {
@@ -6263,6 +6322,7 @@
     },
     "/password/reset": {
       "post": {
+        "description": "Complete the password reset flow.",
         "operationId": "password_reset_password_reset_post",
         "requestBody": {
           "content": {
@@ -6302,6 +6362,7 @@
     },
     "/refresh": {
       "post": {
+        "description": "Refresh a user's access and refresh tokens.",
         "operationId": "refresh_token_refresh_post",
         "requestBody": {
           "content": {
@@ -6343,6 +6404,7 @@
     },
     "/register": {
       "post": {
+        "description": "Register a new user account and return authentication tokens.",
         "operationId": "register_register_post",
         "requestBody": {
           "content": {

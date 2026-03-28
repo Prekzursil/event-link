@@ -495,6 +495,17 @@ def test_export_and_recommendation_branches(monkeypatch, helpers):
     assert int(ctx.events["full"].id) not in rec_ids
 
 
+def test_export_handles_organizer_without_events(helpers):
+    client = helpers["client"]
+    helpers["make_organizer"]("empty-export-owner@test.ro", "owner-fixture-A1")
+    owner_token = helpers["login"]("empty-export-owner@test.ro", "owner-fixture-A1")
+
+    export = client.get("/api/me/export", headers=_auth_header(owner_token))
+
+    assert export.status_code == 200
+    assert export.json()["organized_events"] == []
+
+
 def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
     ctx = _interaction_context(helpers)
     _set_settings(
@@ -543,7 +554,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 
