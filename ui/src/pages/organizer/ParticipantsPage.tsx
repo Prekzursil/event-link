@@ -68,6 +68,7 @@ type EmailSendArgs = Readonly<{
   toast: ReturnType<typeof useToast>['toast'];
 }>;
 
+/** Generate a bounded list of placeholder-row keys for the loading skeleton. */
 function skeletonKeys(pageSize: number) {
   return Array.from({ length: Math.min(pageSize, 10) }, (_, position) => `skeleton-${position + 1}`);
 }
@@ -102,16 +103,17 @@ async function loadParticipantsPage(
   return eventService.getEventParticipants(eventId, page, pageSize, sortBy, sortDir);
 }
 
-async function mutateAttendance({
-  attended,
-  currentData,
-  eventId,
-  participant,
-  setData,
-  setUpdatingAttendance,
-  t,
-  toast,
-}: AttendanceMutationArgs) {
+async function mutateAttendance(args: AttendanceMutationArgs) {
+  const {
+    attended,
+    currentData,
+    eventId,
+    participant,
+    setData,
+    setUpdatingAttendance,
+    t,
+    toast,
+  } = args;
   const participantId = participant.id;
   const previous = participant.attended;
 

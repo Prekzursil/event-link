@@ -105,12 +105,14 @@ export function useEventDetailController() {
     if (!eventId) {
       return;
     }
+    const trackedEventId = eventId;
     const startedAt = Date.now();
-    recordEventDetailInteraction(eventId, 'view', { source: 'event_detail' });
-    return () => {
+    recordEventDetailInteraction(trackedEventId, 'view', { source: 'event_detail' });
+    function trackDwellOnCleanup(): void {
       const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
-      recordEventDetailInteraction(eventId, 'dwell', { source: 'event_detail', seconds });
-    };
+      recordEventDetailInteraction(trackedEventId, 'dwell', { source: 'event_detail', seconds });
+    }
+    return trackDwellOnCleanup;
   }, [eventId]);
 
   const handleRequireAuth = useCallback(() => {

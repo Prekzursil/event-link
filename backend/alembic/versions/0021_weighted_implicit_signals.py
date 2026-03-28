@@ -15,8 +15,12 @@ down_revision = "0020_user_implicit_interest_tags"
 branch_labels = None
 depends_on = None
 
-
-def _create_weighted_interest_table(*, table_name: str, value_column: str, unique_name: str) -> None:
+def _create_weighted_interest_table(
+    *,
+    table_name: str,
+    value_column: str,
+    unique_name: str,
+) -> None:
     """Create a weighted implicit-interest table and its supporting indexes."""
     op.create_table(
         table_name,
@@ -59,9 +63,19 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_user_implicit_interest_cities_last_seen_at", table_name="user_implicit_interest_cities")
-    op.drop_index("ix_user_implicit_interest_cities_city", table_name="user_implicit_interest_cities")
-    op.drop_index("ix_user_implicit_interest_cities_user_id", table_name="user_implicit_interest_cities")
+    """Remove the weighted implicit-interest tables added by this migration."""
+    op.drop_index(
+        "ix_user_implicit_interest_cities_last_seen_at",
+        table_name="user_implicit_interest_cities",
+    )
+    op.drop_index(
+        "ix_user_implicit_interest_cities_city",
+        table_name="user_implicit_interest_cities",
+    )
+    op.drop_index(
+        "ix_user_implicit_interest_cities_user_id",
+        table_name="user_implicit_interest_cities",
+    )
     op.drop_table("user_implicit_interest_cities")
 
     op.drop_index(

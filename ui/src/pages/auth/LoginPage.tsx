@@ -25,6 +25,18 @@ interface ApiError {
   };
 }
 
+type LoginTexts = ReturnType<typeof useI18n>['t']['auth']['login'];
+
+type LoginAccessCodeFieldProps = Readonly<{
+  isLoading: boolean;
+  password: string;
+  setPassword: (value: string) => void;
+  showPassword: boolean;
+  texts: LoginTexts;
+  toggleShowPassword: () => void;
+}>;
+
+/** Extract the most useful message from an API-shaped auth error. */
 function describeApiError(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>;
   return (
@@ -34,6 +46,55 @@ function describeApiError(error: unknown, fallback: string) {
   );
 }
 
+/** Render the access-code field used on the login screen. */
+function LoginAccessCodeField({
+  isLoading,
+  password,
+  setPassword,
+  showPassword,
+  texts,
+  toggleShowPassword,
+}: LoginAccessCodeFieldProps) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center justify-between">
+        <Label htmlFor="password">{texts.accessCodeLabel}</Label>
+        <Link
+          to="/forgot-password"
+          className="text-sm text-primary hover:underline"
+        >
+          {texts.forgotAccessCode}
+        </Link>
+      </div>
+      <div className="relative">
+        <Input
+          id="password"
+          type={showPassword ? 'text' : 'password'}
+          placeholder="••••••••"
+          value={password}
+          onChange={(e) => setPassword(e.target.value)}
+          required
+          disabled={isLoading}
+        />
+        <Button
+          type="button"
+          variant="ghost"
+          size="icon"
+          className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+          onClick={toggleShowPassword}
+        >
+          {showPassword ? (
+            <EyeOff className="h-4 w-4 text-muted-foreground" />
+          ) : (
+            <Eye className="h-4 w-4 text-muted-foreground" />
+          )}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Render the login form and handle auth submission side effects. */
 export function LoginPage() {
   const { t } = useI18n();
   const [email, setEmail] = useState('');
@@ -47,6 +108,7 @@ export function LoginPage() {
 
   const from = (location.state as { from?: { pathname: string } })?.from?.pathname || '/';
 
+  /** Submit the login credentials and route the user back to the requested page. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
@@ -96,41 +158,14 @@ export function LoginPage() {
                 disabled={isLoading}
               />
             </div>
-            <div className="space-y-2">
-              <div className="flex items-center justify-between">
-                <Label htmlFor="password">{t.auth.login.accessCodeLabel}</Label>
-                <Link
-                  to="/forgot-password"
-                  className="text-sm text-primary hover:underline"
-                >
-                  {t.auth.login.forgotAccessCode}
-                </Link>
-              </div>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-              </div>
-            </div>
+            <LoginAccessCodeField
+              isLoading={isLoading}
+              password={password}
+              setPassword={setPassword}
+              showPassword={showPassword}
+              texts={t.auth.login}
+              toggleShowPassword={() => setShowPassword(!showPassword)}
+            />
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isLoading}>

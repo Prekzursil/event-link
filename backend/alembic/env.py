@@ -25,6 +25,7 @@ config = context.config
 if settings.database_url:
     config.set_main_option("sqlalchemy.url", settings.database_url)
 
+
 def _configure_logging() -> None:
     """Configure Alembic logging without evaluating INI-defined handlers."""
     basicConfig()
@@ -61,7 +62,10 @@ def _create_alembic_version_table(connection):
 
 def _version_column(columns):
     """Return the `version_num` column definition from Alembic metadata."""
-    return next((column for column in columns if column.get("name") == "version_num"), None)
+    return next(
+        (column for column in columns if column.get("name") == "version_num"),
+        None,
+    )
 
 
 def _version_length_needs_update(version_col) -> bool:

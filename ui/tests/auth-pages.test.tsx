@@ -195,10 +195,16 @@ describe('auth pages', () => {
     fireEvent.submit(requireForm(/Reset access code/i));
     await waitFor(() => expect(authServiceMock.resetPassword).toHaveBeenCalledWith('abc', 'AccessCode123A', 'AccessCode123A'));
     expect(navigateSpy).toHaveBeenCalledWith('/login');
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Reset access code/i })).not.toBeDisabled(),
+    );
 
     authServiceMock.resetPassword.mockRejectedValueOnce({ response: { data: { detail: 'bad token' } } });
     fireEvent.submit(requireForm(/Reset access code/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+    await waitFor(() =>
+      expect(screen.getByRole('button', { name: /Reset access code/i })).not.toBeDisabled(),
+    );
 
     authServiceMock.resetPassword.mockRejectedValueOnce(new Error('reset-fallback'));
     fireEvent.submit(requireForm(/Reset access code/i));

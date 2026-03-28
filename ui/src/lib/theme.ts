@@ -1,6 +1,10 @@
 import type { ThemePreference } from '@/types';
 
 const THEME_PREFERENCE_STORAGE_KEY = ['theme', 'preference'].join('_');
+/** Provide a stable unsubscribe callback when theme subscriptions are unavailable. */
+const noopUnsubscribe = (): void => {
+  return undefined;
+};
 
 /** Normalize arbitrary input into a supported theme preference value. */
 export function normalizeThemePreference(value: unknown): ThemePreference {
@@ -42,11 +46,13 @@ export function applyThemePreference(preference: ThemePreference) {
   root.style.colorScheme = resolved;
 }
 
+/** Subscribe to operating-system theme changes when media queries are available. */
 export function subscribeToSystemThemeChanges(onResolvedThemeChange: (theme: 'light' | 'dark') => void) {
   const browserWindow = globalThis.window;
-  if (!browserWindow?.matchMedia) return () => {};
+  if (!browserWindow?.matchMedia) return noopUnsubscribe;
 
   const media = browserWindow.matchMedia('(prefers-color-scheme: dark)');
+  /** Forward the browser media-query result as a normalized theme value. */
   const handler = () => onResolvedThemeChange(media.matches ? 'dark' : 'light');
 
   if (typeof media.addEventListener === 'function') {

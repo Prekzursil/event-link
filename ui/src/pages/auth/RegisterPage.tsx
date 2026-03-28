@@ -25,12 +25,31 @@ interface ApiError {
   };
 }
 
+type RegisterTexts = ReturnType<typeof useI18n>['t']['auth']['register'];
+
 type PasswordRequirementState = Readonly<{
   hasLetters: boolean;
   hasMinimumLength: boolean;
   hasNumbers: boolean;
 }>;
 
+type RegisterAccessCodeFieldsProps = Readonly<{
+  formData: {
+    confirmPassword: string;
+    password: string;
+  };
+  handleChange: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  isLoading: boolean;
+  passwordRequirements: ReadonlyArray<{
+    label: string;
+    met: boolean;
+  }>;
+  showPassword: boolean;
+  texts: RegisterTexts;
+  toggleShowPassword: () => void;
+}>;
+
+/** Build the derived access-code requirement state for the registration form. */
 function buildPasswordRequirementState(password: string): PasswordRequirementState {
   return {
     hasLetters: /[a-zA-Z]/.test(password),
@@ -39,6 +58,7 @@ function buildPasswordRequirementState(password: string): PasswordRequirementSta
   };
 }
 
+/** Extract the most useful message from an API-shaped auth error. */
 function describeApiError(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>;
   return (
@@ -48,6 +68,82 @@ function describeApiError(error: unknown, fallback: string) {
   );
 }
 
+/** Render the access-code fields and password requirements on the register page. */
+function RegisterAccessCodeFields({
+  formData,
+  handleChange,
+  isLoading,
+  passwordRequirements,
+  showPassword,
+  texts,
+  toggleShowPassword,
+}: RegisterAccessCodeFieldsProps) {
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="password">{texts.accessCodeLabel}</Label>
+        <div className="relative">
+          <Input
+            id="password"
+            name="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            value={formData.password}
+            onChange={handleChange}
+            required
+            disabled={isLoading}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+            onClick={toggleShowPassword}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            )}
+          </Button>
+        </div>
+        <div className="space-y-1 pt-2">
+          {passwordRequirements.map((req) => (
+            <div
+              key={req.label}
+              className={`flex items-center gap-2 text-xs ${
+                req.met ? 'text-green-600' : 'text-muted-foreground'
+              }`}
+            >
+              <CheckCircle2
+                className={`h-3 w-3 ${req.met ? 'text-green-600' : 'text-muted-foreground'}`}
+              />
+              {req.label}
+            </div>
+          ))}
+        </div>
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">{texts.confirmAccessCodeLabel}</Label>
+        <Input
+          id="confirmPassword"
+          name="confirmPassword"
+          type={showPassword ? 'text' : 'password'}
+          placeholder="••••••••"
+          value={formData.confirmPassword}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+        {formData.confirmPassword && formData.password !== formData.confirmPassword && (
+          <p className="text-xs text-destructive">{texts.accessCodeMismatchInline}</p>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Render the registration form and create a student account. */
 export function RegisterPage() {
   const { t } = useI18n();
   const [formData, setFormData] = useState({
@@ -69,10 +165,12 @@ export function RegisterPage() {
     { label: t.auth.register.accessCodeRequirementNumbers, met: passwordState.hasNumbers },
   ];
 
+  /** Update a single field in the registration form state. */
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData((prev) => ({ ...prev, [e.target.name]: e.target.value }));
   };
 
+  /** Validate and submit the registration form. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 
@@ -159,66 +257,15 @@ export function RegisterPage() {
                 disabled={isLoading}
               />
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="password">{t.auth.register.accessCodeLabel}</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  name="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={formData.password}
-                  onChange={handleChange}
-                  required
-                  disabled={isLoading}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-              </div>
-              {/* Password Requirements */}
-              <div className="space-y-1 pt-2">
-                {passwordRequirements.map((req) => (
-                  <div
-                    key={req.label}
-                    className={`flex items-center gap-2 text-xs ${
-                      req.met ? 'text-green-600' : 'text-muted-foreground'
-                    }`}
-                  >
-                    <CheckCircle2
-                      className={`h-3 w-3 ${req.met ? 'text-green-600' : 'text-muted-foreground'}`}
-                    />
-                    {req.label}
-                  </div>
-                ))}
-              </div>
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{t.auth.register.confirmAccessCodeLabel}</Label>
-              <Input
-                id="confirmPassword"
-                name="confirmPassword"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                required
-                disabled={isLoading}
-              />
-              {formData.confirmPassword && formData.password !== formData.confirmPassword && (
-                <p className="text-xs text-destructive">{t.auth.register.accessCodeMismatchInline}</p>
-              )}
-            </div>
+            <RegisterAccessCodeFields
+              formData={formData}
+              handleChange={handleChange}
+              isLoading={isLoading}
+              passwordRequirements={passwordRequirements}
+              showPassword={showPassword}
+              texts={t.auth.register}
+              toggleShowPassword={() => setShowPassword(!showPassword)}
+            />
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isLoading}>

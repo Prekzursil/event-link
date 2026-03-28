@@ -13,6 +13,7 @@ DEEPSCAN_DASHBOARD_SHA = "2a1fcc315ff970968cb44f4be08ca270733c3c8f"
 
 
 def _load_module():
+    """Import the DeepScan quality script directly from the repo checkout."""
     module_path = REPO_ROOT / "scripts" / "quality" / "check_deepscan_zero.py"
     parent = str(module_path.parent)
     if parent not in sys.path:
@@ -26,10 +27,12 @@ def _load_module():
 
 
 def _status_payload(*statuses: dict[str, object]) -> dict[str, list[dict[str, object]]]:
+    """Build a compact GitHub combined-status payload for tests."""
     return {"statuses": list(statuses)}
 
 
 def _deepsource_status(*, state: str, target_url: str, description: str) -> dict[str, str]:
+    """Create a DeepSource-flavored commit-status payload."""
     return {
         "context": "DeepSource: JavaScript",
         "state": state,
@@ -39,6 +42,7 @@ def _deepsource_status(*, state: str, target_url: str, description: str) -> dict
 
 
 def _public_pr_responses() -> dict[str, dict[str, dict[str, int]]]:
+    """Provide deterministic public DeepScan API responses for PR analysis lookups."""
     return {
         "https://deepscan.io/api/teams/29074/projects/31139/pulls/2297171": {
             "data": {"ownerBid": 1009136, "headAid": 3694745}
@@ -50,6 +54,7 @@ def _public_pr_responses() -> dict[str, dict[str, dict[str, int]]]:
 
 
 def test_load_module_inserts_parent_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Ensure the helper prepends the script directory before importing."""
     module_path = REPO_ROOT / "scripts" / "quality" / "check_deepscan_zero.py"
     parent = str(module_path.parent)
     original_path = list(sys.path)
@@ -63,6 +68,7 @@ def test_load_module_inserts_parent_when_missing(monkeypatch: pytest.MonkeyPatch
 
 
 def test_load_module_raises_when_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Fail loudly when the target module cannot be resolved from disk."""
     monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
@@ -70,6 +76,7 @@ def test_load_module_raises_when_spec_is_missing(monkeypatch: pytest.MonkeyPatch
 
 
 def test_parse_dashboard_url_ids_from_fragment() -> None:
+    """Extract team, project, branch, and PR identifiers from dashboard fragments."""
     module = _load_module()
 
     ids = module._parse_dashboard_url_ids(
@@ -85,6 +92,7 @@ def test_parse_dashboard_url_ids_from_fragment() -> None:
 
 
 def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Resolve open issues from the public PR analysis endpoints when available."""
     module = _load_module()
     requested: list[str] = []
 
@@ -132,6 +140,7 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
 
 
 def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
+    """Fail the gate when the public DeepScan analysis reports open issues."""
     module = _load_module()
 
     status, open_issues, findings, source_url = module._evaluate_deepscan(
@@ -154,6 +163,7 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
 
 
 def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Use provider commit statuses when the public DeepScan API is unavailable."""
     module = _load_module()
     target_url = (
         "https://app.deepsource.com/gh/Prekzursil/event-link/"
@@ -191,6 +201,7 @@ def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pyte
 
 
 def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
+    """Preserve provider-reported findings in the final gate output."""
     module = _load_module()
 
     status, open_issues, findings, source_url = module._evaluate_deepscan(
@@ -214,6 +225,7 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
 
 
 def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Poll until pending provider statuses settle into a terminal state."""
     module = _load_module()
     success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/ready/javascript/"
     payloads = [
@@ -261,6 +273,7 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
 
 
 def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Retry provider-status discovery until matching statuses are published."""
     module = _load_module()
     success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/available/javascript/"
     payloads = [
@@ -298,6 +311,7 @@ def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: 
 
 
 def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> None:
+    """Mark the gate as failed when provider analysis never reaches a terminal state."""
     module = _load_module()
 
     status, open_issues, findings, source_url = module._evaluate_deepscan(
@@ -321,6 +335,7 @@ def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> No
 
 
 def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Keep polling GitHub commit statuses until a DeepScan dashboard URL appears."""
     module = _load_module()
     dashboard_url = (
         "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139&bid=1008135"
