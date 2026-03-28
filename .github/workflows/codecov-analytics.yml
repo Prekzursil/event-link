@@ -1,5 +1,9 @@
 name: Codecov Analytics
 
+permissions:
+  contents: read
+  id-token: write
+
 on:
   push:
     branches: [main, master]
@@ -7,59 +11,17 @@ on:
     branches: [main, master]
   workflow_dispatch:
 
-permissions: {}
-
 jobs:
-  codecov-analytics:
-    name: Codecov Analytics
-    runs-on: ubuntu-latest
+  shared-codecov-analytics:
     permissions:
       contents: read
-    env:
+      id-token: write
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-codecov-analytics.yml@d3aabc77c858e27cb7ade824e9fbf3dd9203f256
+    with:
+      repo_slug: ${{ github.repository }}
+      event_name: ${{ github.event_name }}
+      sha: ${{ github.event.pull_request.head.sha || github.sha }}
+      platform_repository: Prekzursil/quality-zero-platform
+      platform_ref: main
+    secrets:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
-      CODACY_API_TOKEN: ${{ secrets.CODACY_API_TOKEN }}
-      CODACY_ORGANIZATION_PROVIDER: gh
-      CODACY_USERNAME: Prekzursil
-      CODACY_PROJECT_NAME: ${{ github.event.repository.name }}
-      CODACY_REPORT_FILES: backend/coverage.xml,ui/coverage/lcov.info
-    steps:
-      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
-      - uses: actions/setup-python@a309ff8b426b58ec0e2a45f0f869d46889d02405 # v6
-        with:
-          python-version: '3.12'
-      - uses: actions/setup-node@6044e13b5dc448c55e2357c09f80417699197238 # v6
-        with:
-          node-version: '20'
-
-      - name: Backend coverage
-        run: |
-          mkdir -p coverage
-          python -m pip install --upgrade pip
-          python -m pip install -r backend/requirements.txt pytest pytest-cov lizard
-          python -m pytest backend/tests --cov=backend --cov-branch --cov-report=xml:backend/coverage.xml
-      - name: UI coverage
-        run: |
-          npm --prefix ui ci
-          npm --prefix ui run test:unit:coverage
-      - name: Upload coverage to Codacy
-        run: |
-          set -euo pipefail
-          IFS=',' read -ra reports <<< "${CODACY_REPORT_FILES}"
-          report_args=()
-          for report in "${reports[@]}"; do
-            report="$(echo "$report" | xargs)"
-            if [ ! -f "$report" ]; then
-              echo "Coverage report not found: $report" >&2
-              exit 1
-            fi
-            report_args+=(-r "$report")
-          done
-          bash <(curl -Ls https://coverage.codacy.com/get.sh) report "${report_args[@]}"
-      - name: Upload coverage to Codecov
-        if: ${{ always() }}
-        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
-        with:
-          files: backend/coverage.xml,ui/coverage/lcov.info
-          flags: backend,ui
-          fail_ci_if_error: true
-          verbose: true

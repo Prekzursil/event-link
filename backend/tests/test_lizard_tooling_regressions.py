@@ -17,6 +17,9 @@ TARGET_LIMITS = {
     REPO_ROOT / 'backend' / 'scripts' / 'enqueue_scheduled_jobs.py': {
         'main': {'nloc_max': 50, 'ccn_max': 8},
     },
+    REPO_ROOT / 'backend' / 'scripts' / 'recompute_ml_prepare_state.py': {
+        '_prepare_state': {'nloc_max': 50, 'ccn_max': 8},
+    },
     REPO_ROOT / 'scripts' / 'security_helpers.py': {
         'normalize_https_url': {'nloc_max': 50, 'ccn_max': 8},
     },

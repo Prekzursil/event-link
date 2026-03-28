@@ -1,0 +1,53 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+PYTHON_BIN="${PYTHON_BIN:-python3}"
+VENV_DIR="${VENV_DIR:-.venv-quality-zero}"
+
+if [ ! -x "$VENV_DIR/bin/python" ] || ! "$VENV_DIR/bin/python" -m pip --version >/dev/null 2>&1; then
+  rm -rf "$VENV_DIR"
+  "$PYTHON_BIN" -m venv "$VENV_DIR"
+fi
+
+VENV_PYTHON="$VENV_DIR/bin/python"
+"$VENV_PYTHON" -m ensurepip --upgrade
+
+run_node20() {
+  local command_string="$1"
+  if command -v node >/dev/null 2>&1; then
+    local node_major
+    node_major="$(node -p 'process.versions.node.split(".")[0]')"
+    if [ "${node_major}" -ge 20 ]; then
+      bash -lc "$command_string"
+      return
+    fi
+  fi
+  npx -y -p node@20 -c "$command_string"
+}
+
+"$VENV_PYTHON" -m pip install --upgrade pip
+"$VENV_PYTHON" -m pip install \
+  -r backend/requirements.txt \
+  pytest \
+  pytest-cov \
+  lizard
+
+PYTHONPATH=backend "$VENV_PYTHON" -m pytest backend/tests \
+  --cov=app \
+  --cov-branch \
+  --cov-report=term-missing \
+  --cov-report=xml:backend/coverage.xml
+
+if [ "${RUN_INTEGRATION_TESTS:-0}" = "1" ]; then
+  : "${DATABASE_URL:?DATABASE_URL must be set when RUN_INTEGRATION_TESTS=1}"
+  PYTHONPATH=backend "$VENV_PYTHON" -m pytest backend/integration_tests \
+    --cov=app \
+    --cov-branch \
+    --cov-append \
+    --cov-report=
+  PYTHONPATH=backend "$VENV_PYTHON" -m coverage report
+  PYTHONPATH=backend "$VENV_PYTHON" -m coverage xml -o backend/coverage.xml
+fi
+
+run_node20 "npm --prefix ui ci"
+run_node20 "npm --prefix ui run test"

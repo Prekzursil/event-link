@@ -3647,9 +3647,10 @@ def admin_personalization_status(
     current_user: AdminUser,
 ):
     """Return the current personalization system status."""
+    is_active_attr = "is_active"
     active = (
         db.query(models.RecommenderModel)
-        .filter(getattr(models.RecommenderModel, "is_active").is_(True))
+        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
         .order_by(models.RecommenderModel.id.desc())
         .first()
     )
@@ -3794,6 +3795,7 @@ def _admin_user_filters(
     is_active: bool | None,
 ) -> list[object]:
     filters: list[object] = []
+    user_is_active_attr = "is_active"
     if search:
         needle = f"%{search.strip().lower()}%"
         filters.append(
@@ -3804,7 +3806,7 @@ def _admin_user_filters(
     if role:
         filters.append(models.User.role == role)
     if is_active is not None:
-        filters.append(getattr(models.User, "is_active") == is_active)
+        filters.append(getattr(models.User, user_is_active_attr) == is_active)
     return filters
 
 

@@ -71,8 +71,9 @@ def _selected_model_row(*, db, models, requested_model_version: str | None):
         model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
         if model_row is not None:
             return model_row
+    is_active_attr = "is_active"
     model_row = (
-        model_query.filter(getattr(models.RecommenderModel, "is_active").is_(True))
+        model_query.filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
         .order_by(models.RecommenderModel.id.desc())
         .first()
     )

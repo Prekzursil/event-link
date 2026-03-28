@@ -178,9 +178,10 @@ def _guardrail_threshold_status(
 
 
 def _active_and_previous_models(db: Session) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
+    is_active_attr = "is_active"
     active = (
         db.query(models.RecommenderModel)
-        .filter(getattr(models.RecommenderModel, "is_active").is_(True))
+        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
         .order_by(models.RecommenderModel.id.desc())
         .first()
     )
