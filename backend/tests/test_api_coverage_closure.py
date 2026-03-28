@@ -274,15 +274,18 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
 
     class _FakeDb:
         """Test double for FakeDb."""
-        def query(self, *_a, **_k):
+        @staticmethod
+        def query(*_a, **_k):
             """Builds the fake query result used by the test."""
             return _FakeQuery()
 
-        def commit(self):
+        @staticmethod
+        def commit():
             """Commits the fake database transaction."""
             return None
 
-        def close(self):
+        @staticmethod
+        def close():
             """Closes the fake database session."""
             return None
 
@@ -656,7 +659,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
 
 
 
