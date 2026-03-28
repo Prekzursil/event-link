@@ -93,7 +93,7 @@ describe('event detail primary actions', () => {
     fireEvent.click(actionButtons[1]);
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
 
-    defineMutableValue(navigator, 'share', vi.fn().mockResolvedValue(undefined));
+    defineMutableValue(navigator, 'share', vi.fn().mockResolvedValue());
     fireEvent.click(actionButtons[1]);
     await waitFor(() => expect(navigator.share).toHaveBeenCalled());
 

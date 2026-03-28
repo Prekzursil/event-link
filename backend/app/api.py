@@ -862,7 +862,14 @@ def _default_events_sort(
     return "time"
 
 
-def _use_recommended_sort(sort_value: str, *, db: Session, current_user: models.User | None, now: datetime) -> bool:
+def _use_recommended_sort(
+    sort_value: str,
+    *,
+    db: Session,
+    current_user: models.User | None,
+    now: datetime,
+) -> bool:
+    """Keep recommended sorting limited to eligible student users."""
     return bool(
         sort_value == "recommended"
         and _is_student_user(current_user)
@@ -871,25 +878,41 @@ def _use_recommended_sort(sort_value: str, *, db: Session, current_user: models.
     )
 
 
-def _recommendation_reason_map(*, db: Session, user_id: int, event_ids: list[int]) -> dict[int, str]:
+def _recommendation_reason_map(
+    *,
+    db: Session,
+    user_id: int,
+    event_ids: list[int],
+) -> dict[int, str]:
+    """Load cached recommendation reasons keyed by event id."""
     if not event_ids:
         return {}
     return {
         int(event_id): reason
         for event_id, reason in (
-            db.query(models.UserRecommendation.event_id, models.UserRecommendation.reason)
-            .filter(models.UserRecommendation.user_id == user_id, models.UserRecommendation.event_id.in_(event_ids))
+            db.query(
+                models.UserRecommendation.event_id,
+                models.UserRecommendation.reason,
+            )
+            .filter(
+                models.UserRecommendation.user_id == user_id,
+                models.UserRecommendation.event_id.in_(event_ids),
+            )
             .all()
         )
     }
 
 
 def _experiment_bucket(experiment: str, identity: str) -> int:
-    digest = hashlib.sha256(f"{experiment}:{identity}".encode("utf-8")).hexdigest()
+    """Map an identity into a stable experiment bucket from 0 to 99."""
+    digest = hashlib.sha256(
+        f"{experiment}:{identity}".encode("utf-8")
+    ).hexdigest()
     return int(digest[:8], 16) % 100
 
 
 def _in_experiment_treatment(experiment: str, percent: int, identity: str) -> bool:
+    """Return whether the identity falls into the configured treatment percentage."""
     if percent <= 0:
         return False
     if percent >= 100:
@@ -897,10 +920,18 @@ def _in_experiment_treatment(experiment: str, percent: int, identity: str) -> bo
     return _experiment_bucket(experiment, identity) < percent
 
 
-def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.PublicEventResponse:
+def _serialize_public_event(
+    event: models.Event,
+    seats_taken: int,
+) -> schemas.PublicEventResponse:
+    """Build the public event payload returned by the catalog endpoints."""
     organizer_name = None
     if event.owner:
-        organizer_name = event.owner.org_name or event.owner.full_name or event.owner.email
+        organizer_name = (
+            event.owner.org_name
+            or event.owner.full_name
+            or event.owner.email
+        )
     return schemas.PublicEventResponse(
         id=event.id,
         title=event.title,
@@ -919,9 +950,13 @@ def _serialize_public_event(event: models.Event, seats_taken: int) -> schemas.Pu
 
 
 def _load_event_with_counts(db: Session, event_id: int) -> tuple[models.Event, int]:
+    """Load a single visible event together with its attendee count."""
     query, _ = _events_with_counts_query(
         db,
-        db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)),
+        db.query(models.Event).filter(
+            models.Event.id == event_id,
+            models.Event.deleted_at.is_(None),
+        ),
     )
     result = query.first()
     if not result:

@@ -18,7 +18,7 @@ describe('mega pages event detail branches', () => {
     renderLanguageRoute('/events/1', '/events/:id', <EventDetailPage />);
 
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
-    fireEvent.click(screen.getByRole('button', { name: /Register for event/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Register for event/i }));
     await waitFor(() =>
       expect(navigateSpy).toHaveBeenCalledWith('/login', {
         state: { from: { pathname: '/events/1' } },
