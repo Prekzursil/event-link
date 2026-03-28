@@ -69,7 +69,9 @@ def _check_configuration():
     if not settings.secret_key:
         raise RuntimeError("SECRET_KEY is required")
     if settings.email_enabled and (not settings.smtp_host or not settings.smtp_sender):
-        logging.warning("Email enabled but SMTP host/sender missing; disabling email sending")
+        logging.warning(
+            "Email enabled but SMTP host/sender missing; disabling email sending"
+        )
         settings.email_enabled = False
 
 
@@ -127,7 +129,10 @@ _EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
     """Build a FastAPI response description map from shared error metadata."""
-    return {code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]} for code in status_codes}
+    return {
+        code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]}
+        for code in status_codes
+    }
 
 
 def _validate_cover_url(url: str | None) -> None:
@@ -189,7 +194,9 @@ def _compute_moderation(
         weight=0.3,
     )
     score += _moderation_signal(
-        condition=any(any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls),
+        condition=any(
+            any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls
+        ),
         flag="shortener_link",
         flags=flags,
         weight=0.4,
@@ -201,7 +208,9 @@ def _compute_moderation(
         weight=0.4,
     )
     score += _moderation_signal(
-        condition=bool(urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)),
+        condition=bool(
+            urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)
+        ),
         flag="credential_request",
         flags=flags,
         weight=0.5,
@@ -268,7 +277,11 @@ def _suggest_city_from_text(*, content: str, city: str | None) -> str | None:
     """Infer an event city from the university catalog when the payload omits it."""
     if city:
         return city
-    catalog_cities = {item.get("city") for item in ro_universities.get_university_catalog() if item.get("city")}
+    catalog_cities = {
+        item.get("city")
+        for item in ro_universities.get_university_catalog()
+        if item.get("city")
+    }
     lowered = content.lower()
     for candidate_city in sorted(
         catalog_cities,
@@ -301,7 +314,10 @@ def _find_duplicate_candidates(
     """Return likely duplicate organizer events based on title similarity and timing."""
     if not title_tokens:
         return []
-    query = db.query(models.Event).filter(models.Event.owner_id == current_user.id, models.Event.deleted_at.is_(None))
+    query = db.query(models.Event).filter(
+        models.Event.owner_id == current_user.id,
+        models.Event.deleted_at.is_(None),
+    )
     if payload.start_time:
         normalized_start = _normalize_dt(payload.start_time)
         if normalized_start:
@@ -333,6 +349,7 @@ def _tokenize(content: str) -> set[str]:
 
 
 def _jaccard_similarity(a: set[str], b: set[str]) -> float:
+    """Calculate the overlap ratio between two token sets."""
     if not a and not b:
         return 1.0
     if not a or not b:
@@ -343,9 +360,13 @@ def _jaccard_similarity(a: set[str], b: set[str]) -> float:
 
 
 def _ensure_future_date(start_time: datetime) -> None:
+    """Reject event start times that fall in the past."""
     start_time = _normalize_dt(start_time)
     if start_time and start_time < datetime.now(timezone.utc):
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Data evenimentului nu poate fi în trecut.")
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Data evenimentului nu poate fi în trecut.",
+        )
 
 
 def _normalize_dt(value: Optional[datetime]) -> Optional[datetime]:
@@ -358,6 +379,7 @@ def _normalize_dt(value: Optional[datetime]) -> Optional[datetime]:
 
 
 def _format_ics_dt(value: Optional[datetime]) -> str:
+    """Convert a datetime into the UTC format expected by ICS files."""
     value = _normalize_dt(value)
     if not value:
         return ""
@@ -372,7 +394,10 @@ def _run_cleanup_once(retention_days: int = 90) -> None:
     try:
         expired_tokens = (
             db.query(models.PasswordResetToken)
-            .filter((models.PasswordResetToken.used.is_(True)) | (models.PasswordResetToken.expires_at < now))
+            .filter(
+                (models.PasswordResetToken.used.is_(True))
+                | (models.PasswordResetToken.expires_at < now)
+            )
             .delete(synchronize_session=False)
         )
         old_regs = (
@@ -382,7 +407,11 @@ def _run_cleanup_once(retention_days: int = 90) -> None:
             .delete(synchronize_session=False)
         )
         db.commit()
-        log_event("cleanup_completed", expired_tokens=expired_tokens, old_registrations=old_regs)
+        log_event(
+            "cleanup_completed",
+            expired_tokens=expired_tokens,
+            old_registrations=old_regs,
+        )
     except Exception as exc:  # noqa: BLE001
         db.rollback()
         log_warning("cleanup_failed", error=str(exc))
@@ -391,12 +420,14 @@ def _run_cleanup_once(retention_days: int = 90) -> None:
 
 
 async def _cleanup_loop() -> None:
+    """Run periodic cleanup tasks on a fixed background interval."""
     while True:
         _run_cleanup_once()
         await asyncio.sleep(3600)
 
 
 def _event_to_ics(event: models.Event, uid_suffix: str = "") -> str:
+    """Serialize a single event into an ICS VEVENT block."""
     start = _format_ics_dt(event.start_time)
     end = _format_ics_dt(event.end_time) if event.end_time else ""
     lines = [
@@ -415,6 +446,7 @@ def _event_to_ics(event: models.Event, uid_suffix: str = "") -> str:
 
 
 def _attach_tags(db: Session, event: models.Event, tag_names: list[str]) -> None:
+    """Attach normalized tag records to an event, creating missing tags as needed."""
     normalized: dict[str, str] = {}
     for raw in tag_names:
         name = raw.strip() if raw else ""
