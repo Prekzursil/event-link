@@ -3837,7 +3837,7 @@ def export_my_data(
     if current_user.role == models.UserRole.organizator:
         export_payload["organized_events"] = _organized_event_export_rows(
             db=db, current_user=current_user
-    )
+        )
 
     filename_date = exported_at.strftime("%Y%m%d")
     disposition = f'attachment; filename="eventlink-export-{filename_date}.json"'
