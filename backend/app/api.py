@@ -2094,6 +2094,7 @@ def _merge_event_signal_deltas(
     category_deltas: dict[str, float],
     city_deltas: dict[str, float],
 ) -> None:
+    """Propagate event-level deltas into category, city, and tag aggregates."""
     for event_id, delta in event_deltas.items():
         category_key = event_category_by_id.get(event_id)
         if category_key:
@@ -2120,6 +2121,7 @@ def _merge_named_tag_deltas(
     hidden_tag_ids: set[int],
     tag_delta_by_id: dict[int, float],
 ) -> None:
+    """Resolve named tag signals to tag IDs and merge them into tag deltas."""
     if not tag_name_deltas:
         return
     tag_name_rows = (
@@ -2142,6 +2144,7 @@ def _decay_interest_score(
     now: datetime,
     decay_lambda: float,
 ) -> float:
+    """Decay an implicit-interest score from its last-seen timestamp to now."""
     delta_seconds = (now - last_seen_at).total_seconds()
     if delta_seconds <= 0:
         return float(score)
@@ -2157,6 +2160,7 @@ def _upsert_implicit_tag_scores(
     max_score: float,
     decay_lambda: float,
 ) -> None:
+    """Upsert per-tag implicit-interest scores after applying temporal decay."""
     if not tag_delta_by_id:
         return
     existing_rows = (
@@ -2208,18 +2212,29 @@ def _upsert_named_interest_scores(
     model_cls,
     key_field: str,
 ) -> None:
+    """Upsert category or city implicit-interest rows for the provided deltas."""
     if not deltas:
         return
     column = getattr(model_cls, key_field)
-    existing_rows = db.query(model_cls).filter(model_cls.user_id == user_id, column.in_(sorted(deltas.keys()))).all()
+    existing_rows = (
+        db.query(model_cls)
+        .filter(model_cls.user_id == user_id, column.in_(sorted(deltas.keys())))
+        .all()
+    )
     existing_by_key = {str(getattr(row, key_field)): row for row in existing_rows}
     for key, row in existing_by_key.items():
-        last_seen_at = _coerce_utc_datetime(getattr(row, "last_seen_at", None), fallback=now)
+        last_seen_at = _coerce_utc_datetime(
+            getattr(row, "last_seen_at", None),
+            fallback=now,
+        )
         delta = float(deltas.get(str(key), 0.0))
         row.score = min(
             max_score,
             _decay_interest_score(
-                score=float(row.score or 0.0), last_seen_at=last_seen_at, now=now, decay_lambda=decay_lambda
+                score=float(row.score or 0.0),
+                last_seen_at=last_seen_at,
+                now=now,
+                decay_lambda=decay_lambda,
             )
             + delta,
         )
@@ -2247,18 +2262,26 @@ def _apply_online_learning(
     current_user: models.User | None,
     now: datetime,
 ) -> None:
+    """Apply online-learning deltas from the interaction batch to user interests."""
     if not _online_learning_enabled_for_user(current_user):
         return
 
     decay_lambda, max_score = _online_learning_settings()
-    event_deltas, tag_name_deltas, category_deltas, city_deltas = _collect_online_learning_deltas(payload)
+    event_deltas, tag_name_deltas, category_deltas, city_deltas = (
+        _collect_online_learning_deltas(payload)
+    )
     if not any((event_deltas, tag_name_deltas, category_deltas, city_deltas)):
         return
 
-    hidden_tag_ids, _blocked = _load_personalization_exclusions(db=db, user_id=int(current_user.id))
+    hidden_tag_ids, _blocked = _load_personalization_exclusions(
+        db=db,
+        user_id=int(current_user.id),
+    )
     tag_delta_by_id: dict[int, float] = {}
     event_ids = sorted(event_deltas.keys())
-    event_category_by_id, event_city_by_id, tag_ids_by_event = _load_event_delta_context(db=db, event_ids=event_ids)
+    event_category_by_id, event_city_by_id, tag_ids_by_event = (
+        _load_event_delta_context(db=db, event_ids=event_ids)
+    )
     _merge_event_signal_deltas(
         event_deltas=event_deltas,
         event_category_by_id=event_category_by_id,
@@ -2289,6 +2312,7 @@ def _apply_online_learning(
 
 
 def _online_learning_enabled_for_user(user: models.User | None) -> bool:
+    """Return whether online learning should run for the current user."""
     return bool(
         user is not None
         and user.role == models.UserRole.student
@@ -2297,7 +2321,11 @@ def _online_learning_enabled_for_user(user: models.User | None) -> bool:
 
 
 def _online_learning_settings() -> tuple[float, float]:
-    half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
+    """Return the decay constant and score cap used by online learning."""
+    half_life_hours = max(
+        1,
+        int(settings.recommendations_online_learning_decay_half_life_hours),
+    )
     decay_lambda = math.log(2.0) / (float(half_life_hours) * 3600.0)
     return decay_lambda, float(settings.recommendations_online_learning_max_score)
 
