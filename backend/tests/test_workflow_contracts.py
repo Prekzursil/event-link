@@ -95,6 +95,7 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
     agents = (REPO_ROOT / 'AGENTS.md').read_text(encoding='utf-8')
     verify = (REPO_ROOT / 'scripts' / 'verify').read_text(encoding='utf-8')
     deepsource = (REPO_ROOT / '.deepsource.toml').read_text(encoding='utf-8')
+    qlty = (REPO_ROOT / '.qlty' / 'qlty.toml').read_text(encoding='utf-8')
 
     assert 'quality-zero-platform' in agents
     assert 'bash scripts/verify' in agents
@@ -113,6 +114,9 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
     assert 'test_patterns' in deepsource
     assert 'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]' in deepsource
     assert 'skip_doc_coverage = ["arrow-function-expression"]' in deepsource
+
+    assert 'config_version = "0"' in qlty
+    assert 'mode = "block"' in qlty
 
 
 def test_e2e_default_access_code_matches_seed_default() -> None:
