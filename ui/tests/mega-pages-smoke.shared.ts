@@ -3,11 +3,8 @@ import { beforeEach, vi } from 'vitest';
 
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
-const megaPagesSmokeFixtures = vi.hoisted(() => ({
-  toastSpy: vi.fn(),
-  navigateSpy: vi.fn(),
-  recordInteractionsSpy: vi.fn(),
-  eventServiceMock: {
+function createMegaPagesEventServiceMock() {
+  return {
     getEvents: vi.fn(),
     getFavorites: vi.fn(),
     getEvent: vi.fn(),
@@ -43,8 +40,11 @@ const megaPagesSmokeFixtures = vi.hoisted(() => ({
     hideTag: vi.fn(),
     blockOrganizer: vi.fn(),
     getMyCalendar: vi.fn(),
-  },
-  adminServiceMock: {
+  };
+}
+
+function createMegaPagesAdminServiceMock() {
+  return {
     getStats: vi.fn(),
     getUsers: vi.fn(),
     updateUser: vi.fn(),
@@ -54,12 +54,18 @@ const megaPagesSmokeFixtures = vi.hoisted(() => ({
     enqueueRecommendationsRetrain: vi.fn(),
     enqueueWeeklyDigest: vi.fn(),
     enqueueFillingFast: vi.fn(),
-  },
-  authServiceMock: {
+  };
+}
+
+function createMegaPagesAuthServiceMock() {
+  return {
     updateThemePreference: vi.fn(),
     updateLanguagePreference: vi.fn(),
-  },
-  authState: {
+  };
+}
+
+function createMegaPagesAuthState() {
+  return {
     isAuthenticated: true,
     isOrganizer: true,
     isAdmin: true,
@@ -67,12 +73,30 @@ const megaPagesSmokeFixtures = vi.hoisted(() => ({
     user: { id: 1, role: 'student', email: 'student@test.local' },
     logout: vi.fn(),
     refreshUser: vi.fn(),
-  },
-  themeState: {
+  };
+}
+
+function createMegaPagesThemeState() {
+  return {
     preference: 'system',
     setPreference: vi.fn(),
-  },
-}));
+  };
+}
+
+function createMegaPagesSmokeFixtures() {
+  return {
+    toastSpy: vi.fn(),
+    navigateSpy: vi.fn(),
+    recordInteractionsSpy: vi.fn(),
+    eventServiceMock: createMegaPagesEventServiceMock(),
+    adminServiceMock: createMegaPagesAdminServiceMock(),
+    authServiceMock: createMegaPagesAuthServiceMock(),
+    authState: createMegaPagesAuthState(),
+    themeState: createMegaPagesThemeState(),
+  };
+}
+
+const megaPagesSmokeFixtures = vi.hoisted(createMegaPagesSmokeFixtures);
 
 const {
   toastSpy,

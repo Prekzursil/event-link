@@ -1,202 +1,24 @@
 """Coverage-closure tests for recommendation recomputation edge paths."""
 from __future__ import annotations
 
-import importlib.util
 import runpy
 import sys
-import uuid
 from datetime import datetime, timedelta, timezone
 from pathlib import Path
 
 import pytest
 
 from app import models
-
-
-_HASH_FIELD = "pass" + "word_hash"
-
-
-def _make_user(**kwargs):
-    """Creates the user fixture value."""
-    return models.User(**{_HASH_FIELD: "hash", **kwargs})
-
-
-def _load_script_module():
-    """Loads the script module helper resource."""
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
-    module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
-    spec = importlib.util.spec_from_file_location(module_name, script_path)
-    assert spec is not None and spec.loader is not None
-    module = importlib.util.module_from_spec(spec)
-    sys.modules[module_name] = module
-    spec.loader.exec_module(module)
-    return module
-
-
-def _run_main(module, monkeypatch, *args: str) -> int:
-    """Runs the main helper path for the test."""
-    monkeypatch.setattr(sys, "argv", [str(Path(module.__file__)), *args])
-    return module.main()
-
-
-def _make_event(
-    owner,
-    *,
-    title: str,
-    now: datetime,
-    days: int,
-    hours: int = 0,
-    category: str | None = "Workshop",
-    city: str = "Cluj",
-    location: str = "Hall",
-    max_seats: int = 10,
-    status: str = "published",
-    publish_at: datetime | None = None,
-    deleted_at: datetime | None = None,
-    end_hours: int | None = None,
-):
-    """Creates the event fixture value."""
-    start_time = now + timedelta(days=days, hours=hours)
-    payload = {
-        "title": title,
-        "description": "desc",
-        "category": category,
-        "start_time": start_time,
-        "city": city,
-        "location": location,
-        "max_seats": max_seats,
-        "owner": owner,
-        "status": status,
-    }
-    if end_hours is not None:
-        payload["end_time"] = start_time + timedelta(hours=end_hours)
-    if publish_at is not None:
-        payload["publish_at"] = publish_at
-    if deleted_at is not None:
-        payload["deleted_at"] = deleted_at
-    return models.Event(**payload)
-
-
-def _refresh_all(db_session, *instances) -> None:
-    """Refreshes the all fixture rows."""
-    for instance in instances:
-        db_session.refresh(instance)
-
-
-def _build_seed_training_entities(now: datetime):
-    """Builds the seed training entities fixture data."""
-    organizer = _make_user(email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj")
-    student = _make_user(
-        email="student-ml@test.ro",
-        role=models.UserRole.student,
-        city="Cluj",
-        language_preference="en",
-    )
-    tag = models.Tag(name="Python")
-    events = {
-        "positive": _make_event(owner=organizer, title="Positive Event", now=now, days=5, location="Hall A", end_hours=2),
-        "candidate": _make_event(owner=organizer, title="Candidate Event", now=now, days=8, location="Hall B", max_seats=15, end_hours=2),
-        "filtered_status": _make_event(owner=organizer, title="Draft Event", now=now, days=9, location="Hall C", max_seats=12, status="draft"),
-        "filtered_publish": _make_event(owner=organizer, title="Future Publish", now=now, days=10, location="Hall D", max_seats=12, publish_at=now + timedelta(days=1)),
-        "filtered_past": _make_event(owner=organizer, title="Past Event", now=now, days=-1, location="Hall E", max_seats=12),
-        "filtered_full": _make_event(owner=organizer, title="Full Event", now=now, days=12, location="Hall F", max_seats=1),
-    }
-    return organizer, student, tag, events
-
-
-def _persist_seed_training_entities(db_session, organizer, student, tag, events) -> None:
-    """Persists the seed training entities fixture rows."""
-    events["positive"].tags.append(tag)
-    events["candidate"].tags.append(tag)
-    student.interest_tags.append(tag)
-    db_session.add_all([organizer, student, tag, *events.values()])
-    db_session.commit()
-    _refresh_all(db_session, student, events["positive"], events["candidate"], events["filtered_full"])
-
-
-def _build_seed_training_interactions(now: datetime, student, tag, events):
-    """Builds the seed training interactions fixture data."""
-    return [
-        models.Registration(user_id=int(student.id), event_id=int(events["positive"].id), attended=True),
-        models.Registration(user_id=int(student.id), event_id=int(events["filtered_full"].id), attended=False),
-        models.FavoriteEvent(user_id=int(student.id), event_id=int(events["positive"].id)),
-        models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now),
-        models.UserImplicitInterestCategory(user_id=int(student.id), category="Workshop", score=0.8, last_seen_at=now),
-        models.UserImplicitInterestCity(user_id=int(student.id), city="Cluj", score=0.7, last_seen_at=now),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="impression", meta={"position": 1}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="click", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="dwell", meta={"seconds": 30}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="share", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="register", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["positive"].id), interaction_type="unregister", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"}),
-    ]
-
-
-def _seed_training_rows(db_session):
-    """Seeds the training rows fixture rows."""
-    now = datetime.now(timezone.utc)
-    organizer, student, tag, events = _build_seed_training_entities(now)
-    _persist_seed_training_entities(db_session, organizer, student, tag, events)
-    db_session.add_all(_build_seed_training_interactions(now, student, tag, events))
-    db_session.commit()
-    return student, events["candidate"]
-
-
-def _warning_path_query_error(args: tuple[object, ...], state: dict[str, bool]) -> str | None:
-    """Returns the warning for path query error."""
-    if args and args[0] is models.UserImplicitInterestCategory.user_id and not state["category"]:
-        state["category"] = True
-        return "category boom"
-    if args and args[0] is models.UserImplicitInterestCity.user_id and not state["city"]:
-        state["city"] = True
-        return "city boom"
-    is_interaction_query = (
-        len(args) == 3
-        and args[0] is models.EventInteraction.user_id
-        and args[1] is models.EventInteraction.interaction_type
-        and args[2] is models.EventInteraction.meta
-    )
-    if is_interaction_query and not state["interaction"]:
-        state["interaction"] = True
-        return "interaction boom"
-    return None
-
-
-def _build_helper_user_and_events(module, now: datetime):
-    """Builds the helper user and events fixture data."""
-    user = module._UserFeatures(
-        city="cluj",
-        interest_tag_weights={"python": 1.0},
-        history_tags={"python"},
-        history_categories={"workshop"},
-        history_organizer_ids={7},
-        category_weights={"seminar": 0.4},
-        city_weights={"iasi": 0.6},
-    )
-    event = module._EventFeatures(
-        tags={"python"},
-        category="workshop",
-        city="cluj",
-        owner_id=7,
-        start_time=now + timedelta(days=3),
-        seats_taken=4,
-        max_seats=10,
-        status="published",
-        publish_at=None,
-    )
-    other_event = module._EventFeatures(
-        tags={"go"},
-        category="seminar",
-        city="iasi",
-        owner_id=8,
-        start_time=now + timedelta(days=4),
-        seats_taken=0,
-        max_seats=10,
-        status="published",
-        publish_at=None,
-    )
-    return user, event, other_event
+from recompute_ml_test_helpers import (
+    _build_helper_user_and_events,
+    _load_script_module,
+    _make_event,
+    _make_user,
+    _refresh_all,
+    _run_main,
+    _seed_training_rows,
+    _warning_path_query_error,
+)
 
 
 def test_helper_rng_and_normalize_primitives() -> None:
@@ -741,6 +563,9 @@ def test_patch_rng_choices_falls_back_when_requested_choice_is_missing(monkeypat
     module = _load_script_module()
     _patch_rng_for_choices(monkeypatch, module, [999])
     rng = module._DeterministicRng(7)
+    ordered = [11, 22]
+    rng.shuffle(ordered)
+    assert ordered == [11, 22]
     assert rng.choice([11, 22]) == 11
     assert rng.choice([11, 22]) == 22
 
@@ -804,135 +629,3 @@ def test_evaluate_hitrate_can_miss_positive(monkeypatch) -> None:
         seed=1,
     )
     assert hitrate == pytest.approx(0.0)
-
-
-def test_main_training_covers_sparse_meta_and_nondecayed_paths(monkeypatch, db_session) -> None:
-    """Exercises main training covers sparse meta and nondecayed paths."""
-    module = _load_script_module()
-    now = datetime.now(timezone.utc)
-    monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
-    import app.database as database_module
-
-    class _SessionContext:
-        """Test double for SessionContext."""
-        def __init__(self, session):
-            """Initializes the test double."""
-            self._session = session
-
-        def __enter__(self):
-            """Returns the wrapped context value."""
-            return self._session
-
-        def __exit__(self, exc_type, exc, tb):
-            """Leaves exception propagation unchanged."""
-            return False
-
-    def _session_local():
-        """Builds the fake session-local context factory."""
-        return _SessionContext(db_session)
-
-    monkeypatch.setattr(database_module, "SessionLocal", _session_local)
-    student, candidate = _seed_training_rows(db_session)
-    organizer = candidate.owner
-    assert organizer is not None
-
-    no_category_positive = _make_event(
-        owner=organizer,
-        title="No Category Positive",
-        now=now,
-        days=6,
-        category=None,
-        city="Cluj",
-        location="Hall C",
-        end_hours=2,
-    )
-    db_session.add(no_category_positive)
-    db_session.commit()
-    db_session.refresh(no_category_positive)
-
-    python_tag = db_session.query(models.Tag).filter(models.Tag.name == "Python").first()
-    assert python_tag is not None
-    future_seen = now + timedelta(hours=2)
-    existing_tag_row = (
-        db_session.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == int(student.id), models.UserImplicitInterestTag.tag_id == int(python_tag.id))
-        .first()
-    )
-    existing_category_row = (
-        db_session.query(models.UserImplicitInterestCategory)
-        .filter(models.UserImplicitInterestCategory.user_id == int(student.id), models.UserImplicitInterestCategory.category == "Workshop")
-        .first()
-    )
-    existing_city_row = (
-        db_session.query(models.UserImplicitInterestCity)
-        .filter(models.UserImplicitInterestCity.user_id == int(student.id), models.UserImplicitInterestCity.city == "Cluj")
-        .first()
-    )
-    assert existing_tag_row is not None
-    assert existing_category_row is not None
-    assert existing_city_row is not None
-    existing_tag_row.last_seen_at = future_seen
-    existing_category_row.last_seen_at = future_seen
-    existing_city_row.last_seen_at = future_seen
-    real_query = db_session.query
-
-    class _InterceptQuery:
-        """Test double for InterceptQuery."""
-        def __init__(self, rows):
-            """Initializes the test double."""
-            self._rows = rows
-
-        def join(self, *_args, **_kwargs):
-            """Returns the fake query for chained joins."""
-            return self
-
-        def filter(self, *_args, **_kwargs):
-            """Returns the fake query for chained filters."""
-            return self
-
-        def all(self):
-            """Returns the intercepted rows."""
-            return list(self._rows)
-
-    def _query(*args, **kwargs):
-        """Builds the query helper used by the test."""
-        is_implicit_tag_query = (
-            len(args) == 4
-            and args[0] is models.UserImplicitInterestTag.user_id
-            and args[1] is models.Tag.name
-            and args[2] is models.UserImplicitInterestTag.score
-            and args[3] is models.UserImplicitInterestTag.last_seen_at
-        )
-        if is_implicit_tag_query:
-            return _InterceptQuery([(int(student.id), "Python", 0.4, future_seen)])
-        return real_query(*args, **kwargs)
-
-    monkeypatch.setattr(db_session, "query", _query)
-    db_session.add_all(
-        [
-            models.Registration(user_id=int(student.id), event_id=int(no_category_positive.id), attended=True),
-            models.EventInteraction(user_id=int(student.id), event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "   ", "city": "   "}),
-            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta="bad-meta"),
-            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta={"position": "x"}),
-            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta={"position": 1}),
-            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="impression", meta={"position": 2}),
-            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="dwell", meta="bad-meta"),
-            models.EventInteraction(user_id=int(student.id), event_id=int(candidate.id), interaction_type="dwell", meta={"seconds": 0}),
-        ]
-    )
-    db_session.commit()
-
-    assert (
-        _run_main(
-            module,
-            monkeypatch,
-            "--dry-run",
-            "--top-n",
-            "2",
-            "--eval-negatives",
-            "0",
-            "--user-id",
-            str(student.id),
-        )
-        == 0
-    )

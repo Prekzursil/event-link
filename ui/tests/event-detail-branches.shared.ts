@@ -3,6 +3,7 @@ import { beforeEach, vi } from 'vitest';
 
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
+/** Creates the event-service mock used across event-detail tests. */
 function createEventServiceMock() {
   return {
     getEvent: vi.fn(),
@@ -17,6 +18,7 @@ function createEventServiceMock() {
   };
 }
 
+/** Creates the auth-state test double used across event-detail tests. */
 function createAuthState() {
   return {
     isAuthenticated: true,
@@ -60,6 +62,7 @@ vi.mock('react-router-dom', async () => {
 
 export const { EventDetailPage } = await import('@/pages/events/EventDetailPage');
 
+/** Returns the shared event-detail fixtures for the current test module. */
 export function getEventDetailFixtures() {
   return eventDetailFixtures;
 }

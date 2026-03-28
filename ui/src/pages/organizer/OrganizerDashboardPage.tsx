@@ -3,50 +3,13 @@ import { Link } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import type { Event } from '@/types';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Checkbox } from '@/components/ui/checkbox';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from '@/components/ui/dialog';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/contexts/LanguageContext';
-import {
-  Plus,
-  Calendar,
-  Users,
-  Eye,
-  Edit,
-  Trash2,
-  MoreHorizontal,
-  CalendarDays,
-  UserCheck,
-  Clock,
-} from 'lucide-react';
-import { formatDate } from '@/lib/utils';
-import { getEventCategoryLabel } from '@/lib/eventCategories';
+import { OrganizerBulkTagsDialog } from './organizer-dashboard/OrganizerBulkTagsDialog';
+import { OrganizerEventsTable } from './organizer-dashboard/OrganizerEventsTable';
+import { OrganizerStatsGrid } from './organizer-dashboard/OrganizerStatsGrid';
+import { Plus } from 'lucide-react';
 
 export function OrganizerDashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
@@ -82,15 +45,6 @@ export function OrganizerDashboardPage() {
   const selectedCount = selectedEventIds.size;
   const isAllSelected = events.length > 0 && selectedEventIds.size === events.length;
   const isSomeSelected = selectedEventIds.size > 0 && selectedEventIds.size < events.length;
-  const statusBadge = (status: Event['status'], isPast: boolean) => {
-    if (status === 'draft') {
-      return <Badge variant="secondary">{t.organizerDashboard.statusDraft}</Badge>;
-    }
-    if (isPast) {
-      return <Badge variant="outline">{t.organizerDashboard.statusEnded}</Badge>;
-    }
-    return <Badge variant="default">{t.organizerDashboard.statusActive}</Badge>;
-  };
   let selectAllState: boolean | 'indeterminate' = false;
   if (isAllSelected) {
     selectAllState = true;
@@ -222,66 +176,24 @@ export function OrganizerDashboardPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Dialog open={bulkTagsOpen} onOpenChange={setBulkTagsOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t.organizerDashboard.bulk.tagsDialogTitle}</DialogTitle>
-            <DialogDescription>{t.organizerDashboard.bulk.tagsDialogDescription}</DialogDescription>
-          </DialogHeader>
+      <OrganizerBulkTagsDialog
+        open={bulkTagsOpen}
+        onOpenChange={setBulkTagsOpen}
+        inputValue={bulkTagInput}
+        onInputChange={setBulkTagInput}
+        tags={bulkTags}
+        onAddTag={addBulkTag}
+        onRemoveTag={removeBulkTag}
+        onApply={applyBulkTags}
+        isBusy={isBulkUpdating}
+        texts={t.organizerDashboard}
+        cancelText={t.common.cancel}
+      />
 
-          <div className="space-y-2">
-            <Label>{t.organizerDashboard.bulk.tagsLabel}</Label>
-            <div className="flex gap-2">
-              <Input
-                value={bulkTagInput}
-                onChange={(e) => setBulkTagInput(e.target.value)}
-                placeholder={t.organizerDashboard.bulk.tagsPlaceholder}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter') {
-                    e.preventDefault();
-                    addBulkTag();
-                  }
-                }}
-              />
-              <Button type="button" variant="outline" onClick={addBulkTag}>
-                {t.organizerDashboard.bulk.addTag}
-              </Button>
-            </div>
-            {bulkTags.length > 0 && (
-              <div className="flex flex-wrap gap-2 pt-2">
-                {bulkTags.map((tag) => (
-                  <Badge
-                    key={tag}
-                    variant="secondary"
-                    className="cursor-pointer"
-                    onClick={() => removeBulkTag(tag)}
-                    title={t.organizerDashboard.bulk.removeTagHint}
-                  >
-                    {tag}
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setBulkTagsOpen(false)}>
-              {t.common.cancel}
-            </Button>
-            <Button onClick={applyBulkTags} disabled={isBulkUpdating}>
-              {t.organizerDashboard.bulk.applyTags}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* Header */}
       <div className="mb-8 flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">{t.organizerDashboard.title}</h1>
-          <p className="mt-2 text-muted-foreground">
-            {t.organizerDashboard.subtitle}
-          </p>
+          <p className="mt-2 text-muted-foreground">{t.organizerDashboard.subtitle}</p>
         </div>
         <Button asChild>
           <Link to="/organizer/events/new">
@@ -291,210 +203,30 @@ export function OrganizerDashboardPage() {
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t.organizerDashboard.statsTotalEvents}</CardTitle>
-            <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{events.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t.organizerDashboard.statsUpcomingEvents}</CardTitle>
-            <Clock className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{upcomingEvents.length}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t.organizerDashboard.statsTotalParticipants}</CardTitle>
-            <UserCheck className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{totalParticipants}</div>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">{t.organizerDashboard.statsDrafts}</CardTitle>
-            <Edit className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{draftEvents.length}</div>
-          </CardContent>
-        </Card>
-      </div>
+      <OrganizerStatsGrid
+        texts={t.organizerDashboard}
+        totalEvents={events.length}
+        upcomingEvents={upcomingEvents.length}
+        totalParticipants={totalParticipants}
+        draftEvents={draftEvents.length}
+      />
 
-      {/* Events Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle>{t.organizerDashboard.tableTitle}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {events.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">{t.organizerDashboard.emptyTitle}</h3>
-              <p className="mt-2 text-muted-foreground">
-                {t.organizerDashboard.emptyDescription}
-              </p>
-              <Button asChild className="mt-4">
-                <Link to="/organizer/events/new">
-                  <Plus className="mr-2 h-4 w-4" />
-                  {t.organizerDashboard.emptyCreateButton}
-                </Link>
-              </Button>
-            </div>
-          ) : (
-            <>
-              {selectedCount > 0 && (
-                <div className="mb-4 flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
-                  <div className="text-sm text-muted-foreground">
-                    {t.organizerDashboard.bulk.selected}:{' '}
-                    <span className="font-medium text-foreground">{selectedCount}</span>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isBulkUpdating}
-                      onClick={() => handleBulkStatusUpdate('published')}
-                    >
-                      {t.organizerDashboard.bulk.publish}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isBulkUpdating}
-                      onClick={() => handleBulkStatusUpdate('draft')}
-                    >
-                      {t.organizerDashboard.bulk.unpublish}
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      disabled={isBulkUpdating}
-                      onClick={openBulkTags}
-                    >
-                      {t.organizerDashboard.bulk.tags}
-                    </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={isBulkUpdating}
-                      onClick={() => setSelectedEventIds(new Set())}
-                    >
-                      {t.organizerDashboard.bulk.clear}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[40px]">
-                      <Checkbox
-                        checked={selectAllState}
-                        onCheckedChange={(checked) => toggleSelectAll(checked === true)}
-                        aria-label={t.organizerDashboard.bulk.selectAllAria}
-                      />
-                    </TableHead>
-                    <TableHead>{t.organizerDashboard.tableHeaderTitle}</TableHead>
-                    <TableHead>{t.organizerDashboard.tableHeaderDate}</TableHead>
-                    <TableHead>{t.organizerDashboard.tableHeaderParticipants}</TableHead>
-                    <TableHead>{t.organizerDashboard.tableHeaderStatus}</TableHead>
-                    <TableHead className="w-[70px]"></TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {events.map((event) => {
-                    const isPast = new Date(event.start_time) < now;
-                    const categoryLabel = getEventCategoryLabel(event.category, language);
-                    return (
-                      <TableRow key={event.id}>
-                        <TableCell>
-                          <Checkbox
-                            checked={selectedEventIds.has(event.id)}
-                            onCheckedChange={(checked) => toggleSelected(event.id, checked === true)}
-                            aria-label={t.organizerDashboard.bulk.selectOneAria}
-                          />
-                        </TableCell>
-                        <TableCell>
-                          <Link
-                            to={`/events/${event.id}`}
-                            className="font-medium hover:underline"
-                          >
-                            {event.title}
-                          </Link>
-                          {categoryLabel && (
-                            <span className="ml-2 text-sm text-muted-foreground">
-                              ({categoryLabel})
-                            </span>
-                          )}
-                        </TableCell>
-                        <TableCell>{formatDate(event.start_time, language)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center gap-1">
-                            <Users className="h-4 w-4 text-muted-foreground" />
-                            {event.seats_taken}
-                            {event.max_seats && ` / ${event.max_seats}`}
-                          </div>
-                        </TableCell>
-                        <TableCell>
-                          {statusBadge(event.status, isPast)}
-                        </TableCell>
-                        <TableCell>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon">
-                                <MoreHorizontal className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link to={`/events/${event.id}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  {t.organizerDashboard.actionView}
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link to={`/organizer/events/${event.id}/edit`}>
-                                  <Edit className="mr-2 h-4 w-4" />
-                                  {t.organizerDashboard.actionEdit}
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link to={`/organizer/events/${event.id}/participants`}>
-                                  <Users className="mr-2 h-4 w-4" />
-                                  {t.organizerDashboard.actionParticipants}
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem
-                                className="text-destructive"
-                                onClick={() => handleDelete(event.id)}
-                              >
-                                <Trash2 className="mr-2 h-4 w-4" />
-                                {t.organizerDashboard.actionDelete}
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </>
-          )}
-        </CardContent>
-      </Card>
+      <OrganizerEventsTable
+        events={events}
+        language={language}
+        now={now}
+        texts={t.organizerDashboard}
+        selectedEventIds={selectedEventIds}
+        selectedCount={selectedCount}
+        selectAllState={selectAllState}
+        isBulkUpdating={isBulkUpdating}
+        onSelectAll={toggleSelectAll}
+        onToggleSelected={toggleSelected}
+        onBulkStatusUpdate={handleBulkStatusUpdate}
+        onOpenBulkTags={openBulkTags}
+        onClearSelection={() => setSelectedEventIds(new Set())}
+        onDelete={handleDelete}
+      />
     </div>
   );
 }

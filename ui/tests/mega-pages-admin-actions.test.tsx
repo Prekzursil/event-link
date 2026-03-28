@@ -1,5 +1,5 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
-import { describe, expect, it } from 'vitest';
+import { expect, it } from 'vitest';
 
 import { renderLanguageRoute } from './page-test-helpers';
 import {
@@ -10,103 +10,101 @@ import {
 
 const { adminServiceMock, eventServiceMock } = getMegaPageFixtures();
 
-describe('mega pages admin actions', () => {
-  it('covers admin dashboard queue, user, and event action branches', async () => {
-    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
-    await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
+it('covers admin dashboard queue, user, and event action branches', async () => {
+  renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
+  await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
 
-    fireEvent.click(await screen.findByRole('button', { name: /Retrain/i }));
-    await waitFor(() => expect(adminServiceMock.enqueueRecommendationsRetrain).toHaveBeenCalled());
+  fireEvent.click(await screen.findByRole('button', { name: /Retrain/i }));
+  await waitFor(() => expect(adminServiceMock.enqueueRecommendationsRetrain).toHaveBeenCalled());
 
-    fireEvent.click(await screen.findByRole('button', { name: /Digest/i }));
-    await waitFor(() => expect(adminServiceMock.enqueueWeeklyDigest).toHaveBeenCalled());
+  fireEvent.click(await screen.findByRole('button', { name: /Digest/i }));
+  await waitFor(() => expect(adminServiceMock.enqueueWeeklyDigest).toHaveBeenCalled());
 
-    fireEvent.click(await screen.findByRole('button', { name: /Filling-fast/i }));
-    await waitFor(() => expect(adminServiceMock.enqueueFillingFast).toHaveBeenCalled());
+  fireEvent.click(await screen.findByRole('button', { name: /Filling-fast/i }));
+  await waitFor(() => expect(adminServiceMock.enqueueFillingFast).toHaveBeenCalled());
 
-    const usersTab = screen.getByRole('tab', { name: /Users/i });
-    fireEvent.mouseDown(usersTab);
-    fireEvent.click(usersTab);
-    await waitFor(() => expect(usersTab).toHaveAttribute('data-state', 'active'));
-    await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
-    await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalledTimes(2));
+  const usersTab = screen.getByRole('tab', { name: /Users/i });
+  fireEvent.mouseDown(usersTab);
+  fireEvent.click(usersTab);
+  await waitFor(() => expect(usersTab).toHaveAttribute('data-state', 'active'));
+  await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
+  await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalledTimes(2));
 
-    const checkboxes = screen.getAllByRole('checkbox');
-    fireEvent.click(checkboxes[checkboxes.length - 1]);
-    await waitFor(() => expect(adminServiceMock.updateUser).toHaveBeenCalled());
+  const checkboxes = screen.getAllByRole('checkbox');
+  fireEvent.click(checkboxes[checkboxes.length - 1]);
+  await waitFor(() => expect(adminServiceMock.updateUser).toHaveBeenCalled());
 
-    const eventsTab = screen.getByRole('tab', { name: /Events/i });
-    fireEvent.mouseDown(eventsTab);
-    fireEvent.click(eventsTab);
-    await waitFor(() => expect(eventsTab).toHaveAttribute('data-state', 'active'));
-    await waitFor(() => expect(adminServiceMock.getEvents).toHaveBeenCalled());
-    fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
-    await waitFor(() => expect(adminServiceMock.getEvents).toHaveBeenCalledTimes(2));
+  const eventsTab = screen.getByRole('tab', { name: /Events/i });
+  fireEvent.mouseDown(eventsTab);
+  fireEvent.click(eventsTab);
+  await waitFor(() => expect(eventsTab).toHaveAttribute('data-state', 'active'));
+  await waitFor(() => expect(adminServiceMock.getEvents).toHaveBeenCalled());
+  fireEvent.click(screen.getByRole('button', { name: /Apply/i }));
+  await waitFor(() => expect(adminServiceMock.getEvents).toHaveBeenCalledTimes(2));
 
-    fireEvent.click(screen.getByRole('button', { name: /Mark reviewed/i }));
-    await waitFor(() => expect(adminServiceMock.reviewEventModeration).toHaveBeenCalledWith(21));
+  fireEvent.click(screen.getByRole('button', { name: /Mark reviewed/i }));
+  await waitFor(() => expect(adminServiceMock.reviewEventModeration).toHaveBeenCalledWith(21));
 
-    fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
-    await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledWith(21));
+  fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+  await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledWith(21));
 
-    fireEvent.click(screen.getByRole('button', { name: /Restore/i }));
-    await waitFor(() => expect(eventServiceMock.restoreEvent).toHaveBeenCalledWith(22));
-  }, 30000);
+  fireEvent.click(screen.getByRole('button', { name: /Restore/i }));
+  await waitFor(() => expect(eventServiceMock.restoreEvent).toHaveBeenCalledWith(22));
+}, 30000);
 
-  it('covers the users previous-page handler and organizer deselection branch', async () => {
-    adminServiceMock.getUsers.mockResolvedValueOnce({
-      items: [
-        {
-          id: 1,
-          email: 'student@test.local',
-          full_name: 'Student Name',
-          role: 'student',
-          is_active: true,
-          created_at: new Date().toISOString(),
-          last_seen_at: new Date().toISOString(),
-          registrations_count: 2,
-          attended_count: 1,
-          events_created_count: 0,
-        },
-      ],
-      total: 40,
-      page: 2,
-      page_size: 20,
-    });
+it('covers the users previous-page handler and organizer deselection branch', async () => {
+  adminServiceMock.getUsers.mockResolvedValueOnce({
+    items: [
+      {
+        id: 1,
+        email: 'student@test.local',
+        full_name: 'Student Name',
+        role: 'student',
+        is_active: true,
+        created_at: new Date().toISOString(),
+        last_seen_at: new Date().toISOString(),
+        registrations_count: 2,
+        attended_count: 1,
+        events_created_count: 0,
+      },
+    ],
+    total: 40,
+    page: 2,
+    page_size: 20,
+  });
 
-    renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
-    const usersTab = await screen.findByRole('tab', { name: /Users/i });
-    fireEvent.mouseDown(usersTab);
-    fireEvent.click(usersTab);
-    await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
+  renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
+  const usersTab = await screen.findByRole('tab', { name: /Users/i });
+  fireEvent.mouseDown(usersTab);
+  fireEvent.click(usersTab);
+  await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
 
-    const usersPrevButtons = await screen.findAllByRole('button', {
-      name: /Back|Prev|Previous|Înapoi|Anterior/i,
-    });
-    usersPrevButtons.forEach((button) => {
-      if (!button.hasAttribute('disabled')) {
-        fireEvent.click(button);
-      }
-    });
-    await waitFor(() =>
-      expect(adminServiceMock.getUsers).toHaveBeenCalledWith(expect.objectContaining({ page: 1 })),
-    );
+  const usersPrevButtons = await screen.findAllByRole('button', {
+    name: /Back|Prev|Previous|Înapoi|Anterior/i,
+  });
+  usersPrevButtons.forEach((button) => {
+    if (!button.hasAttribute('disabled')) {
+      fireEvent.click(button);
+    }
+  });
+  await waitFor(() =>
+    expect(adminServiceMock.getUsers).toHaveBeenCalledWith(expect.objectContaining({ page: 1 })),
+  );
 
-    cleanup();
-    renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
-    await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
+  cleanup();
+  renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
+  await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
 
-    const organizerCheckboxes = screen.getAllByRole('checkbox');
-    const rowCheckbox = organizerCheckboxes[organizerCheckboxes.length - 1];
-    fireEvent.click(rowCheckbox);
-    await waitFor(() =>
-      expect(screen.getByRole('button', { name: /Publish|Public/i })).toBeInTheDocument(),
-    );
+  const organizerCheckboxes = screen.getAllByRole('checkbox');
+  const rowCheckbox = organizerCheckboxes[organizerCheckboxes.length - 1];
+  fireEvent.click(rowCheckbox);
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /Publish|Public/i })).toBeInTheDocument(),
+  );
 
-    fireEvent.click(rowCheckbox);
-    await waitFor(() =>
-      expect(screen.queryByRole('button', { name: /Publish|Public/i })).not.toBeInTheDocument(),
-    );
-  }, 20000);
-});
+  fireEvent.click(rowCheckbox);
+  await waitFor(() =>
+    expect(screen.queryByRole('button', { name: /Publish|Public/i })).not.toBeInTheDocument(),
+  );
+}, 20000);

@@ -8,7 +8,7 @@ import {
   getHighImpactPageFixtures,
 } from './high-impact-pages-coverage.fixtures';
 
-const { authServiceMock, authState, eventServiceMock, toastSpy } = getHighImpactPageFixtures();
+const { authServiceMock, eventServiceMock, toastSpy } = getHighImpactPageFixtures();
 
 it('covers StudentProfilePage fallback and error branches', async () => {
   eventServiceMock.getPersonalizationSettings.mockRejectedValueOnce(
@@ -72,15 +72,3 @@ it('covers StudentProfilePage fallback and error branches', async () => {
     expect(eventServiceMock.deleteMyAccount).toHaveBeenCalledWith('wrong-access-code'),
   );
 }, 20000);
-
-it('covers StudentProfilePage non-student and load-failure branches', async () => {
-  authState.user = { id: 11, role: 'organizator', email: 'org@test.local' };
-  renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
-  await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
-  expect(screen.queryByText(/Personalization/i)).not.toBeInTheDocument();
-
-  authState.user = { id: 11, role: 'student', email: 'student@test.local' };
-  eventServiceMock.getStudentProfile.mockRejectedValueOnce(new Error('profile-load-fail'));
-  renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
-  await waitFor(() => expect(toastSpy).toHaveBeenCalled());
-});

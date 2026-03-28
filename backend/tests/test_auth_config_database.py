@@ -90,10 +90,12 @@ def test_settings_parsers_support_csv_json_and_invalid() -> None:
     assert config.Settings.parse_allowed_origins("") == config.DEFAULT_ALLOWED_ORIGINS
     assert config.Settings.parse_allowed_origins("https://a.test, https://b.test") == ["https://a.test", "https://b.test"]
     assert config.Settings.parse_allowed_origins('["https://a.test","https://b.test"]') == ["https://a.test", "https://b.test"]
+    assert config.Settings.parse_allowed_origins('["https://a.test",""]') == ["https://a.test"]
     assert config.Settings.parse_allowed_origins("123") == ["123"]
     assert config.Settings.parse_admin_emails("") == []
     assert config.Settings.parse_admin_emails("A@T.RO,b@t.ro") == ["a@t.ro", "b@t.ro"]
     assert config.Settings.parse_admin_emails('["Admin@T.RO"]') == ["admin@t.ro"]
+    assert config.Settings.parse_admin_emails('["Admin@T.RO",""]') == ["admin@t.ro"]
     assert config.Settings.parse_admin_emails("123") == ["123"]
 
     with pytest.raises(ValueError):

@@ -1,0 +1,879 @@
+[
+  {
+    "name": "1 December University of Alba Iulia",
+    "city": "Alba Iulia",
+    "faculties": [
+      "Facultatea de Istorie, Litere și Științe ale Educației",
+      "Facultatea de Drept și Științe Sociale",
+      "Facultatea de Informatică și Inginerie",
+      "Facultatea de Științe Economice",
+      "Facultatea de Teologie Ortodoxă"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Academia Tehnica Militara",
+    "city": null,
+    "faculties": [
+      "Facultatea de Comunicații și Sisteme Electronice pentru Apărare și Securitate",
+      "Facultatea de Sisteme Informatice și Securitate Cibernetică",
+      "Facultatea de Sisteme Integrate de Armament, Geniu și Mecatronică",
+      "Facultatea de Aeronave și Autovehicule Militare"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Academia de Studii Economice din Bucuresti",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Administrarea Afacerilor cu predare în limbi străine",
+      "Facultatea de Administrație și Management Public",
+      "Facultatea de Business și Turism",
+      "Facultatea de Cibernetică, Statistică și Informatică Economică",
+      "Facultatea de Contabilitate și Informatică de Gestiune",
+      "Facultatea de Drept",
+      "Facultatea de Economie Agroalimentară și a Mediului",
+      "Facultatea de Economie Teoretică și Aplicată",
+      "Facultatea de Finanțe, Asigurări, Bănci și Burse de Valori",
+      "Facultatea de Management",
+      "Facultatea de Marketing",
+      "Facultatea de Relații Economice Internaționale"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Academy of Arts \"George Enescu\" Iasi",
+    "city": "Iași",
+    "faculties": [
+      "Facultatea de Interpretare, Compoziție și Studii Muzicale Teoretice",
+      "Facultatea de Teatru",
+      "Facultatea de Arte Vizuale și Design"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Academy of Music \"Georghe Dima\" Cluj-Napoca",
+    "city": "Cluj-Napoca",
+    "faculties": [
+      "Facultatea de Interpretare Muzicală",
+      "Facultatea Teoretică"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Babes-Bolyai University of Cluj-Napoca",
+    "city": "Cluj-Napoca",
+    "faculties": [
+      "Facultatea de Matematică și Informatică",
+      "Facultatea de Fizică",
+      "Facultatea de Chimie și Inginerie Chimică",
+      "Facultatea de Biologie și Geologie",
+      "Facultatea de Business",
+      "Facultatea de Geografie",
+      "Facultatea de Știința și Ingineria Mediului",
+      "Facultatea de Drept",
+      "Facultatea de Litere",
+      "Facultatea de Istorie și Filosofie",
+      "Facultatea de Sociologie și Asistență Socială",
+      "Facultatea de Psihologie și Științe ale Educației",
+      "Facultatea de Științe Economice și Gestiunea Afacerilor",
+      "Facultatea de Studii Europene",
+      "Facultatea de Științe Politice, Administrative și ale Comunicării",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Teologie Ortodoxă",
+      "Facultatea de Teologie Greco-Catolică",
+      "Facultatea de Teologie Reformată",
+      "Facultatea de Teologie Romano-Catolică",
+      "Facultatea de Teatru și Televiziune",
+      "Facultatea de Inginerie"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Constantin Brancoveanu University Pitesti",
+    "city": "Pitești",
+    "faculties": [
+      "Facultatea de Management Marketing în Afaceri Economice",
+      "Facultatea de Finanțe Contabilitate",
+      "Facultatea de Științe Juridice, Administrative și ale Comunicării"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Emanuel University",
+    "city": "Oradea",
+    "faculties": [
+      "Facultatea de Teologie",
+      "Facultatea de Management"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Institute of Architecture \"Ion Mincu\" Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Arhitectură",
+      "Facultatea de Urbanism",
+      "Facultatea de Arhitectură de Interior"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Maritime University Constanta",
+    "city": "Constanța",
+    "faculties": [
+      "Facultatea de Navigație și Transport Naval",
+      "Facultatea de Electromecanică Navală"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "National Academy for Physical Education and Sports Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Kinetoterapie"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "National School of Political and Administrative Studies Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Administrație Publică",
+      "Facultatea de Comunicare și Relații Publice",
+      "Facultatea de Management",
+      "Facultatea de Științe Politice"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "National University of Arts",
+    "city": null,
+    "faculties": [
+      "Facultatea de Arte Plastice",
+      "Facultatea de Arte Decorative și Design",
+      "Facultatea de Istoria și Teoria Artei"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "National University of Music",
+    "city": null,
+    "faculties": [
+      "Facultatea de Compoziție, Muzicologie și Pedagogie muzicală",
+      "Facultatea de Interpretare Muzicală"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "National University of Theater and Film Arts",
+    "city": null,
+    "faculties": [
+      "Facultatea de Teatru",
+      "Facultatea de Film"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "North University of Baia Mare",
+    "city": "Baia Mare",
+    "faculties": [
+      "Facultatea de Inginerie",
+      "Facultatea de Litere",
+      "Facultatea de Științe"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Oradea University",
+    "city": "Oradea",
+    "faculties": [
+      "Facultatea de Arte",
+      "Facultatea de Construcții, Cadastru și Arhitectură",
+      "Facultatea de Drept",
+      "Facultatea de Geografie, Turism și Sport",
+      "Facultatea de Inginerie Electrică și Tehnologia Informației",
+      "Facultatea de Inginerie Energetică și Management Industrial",
+      "Facultatea de Inginerie Managerială și Tehnologică",
+      "Facultatea de Istorie, Relații Internaționale, Științe Politice și Științele Comunicării",
+      "Facultatea de Litere",
+      "Facultatea de Medicină și Farmacie",
+      "Facultatea de Protecția Mediului",
+      "Facultatea de Informatică și Științe",
+      "Facultatea de Științe Economice",
+      "Facultatea de Științe Socio-Umane",
+      "Facultatea de Teologie Ortodoxă „Episcop Dr. Vasile Coman”"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Petru Maior University of Targu Mures",
+    "city": "Târgu Mureș",
+    "faculties": [
+      "Facultatea de Inginerie",
+      "Facultatea de Științe și Litere",
+      "Facultatea de Științe Economice, Juridice și Administrative"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Polytechnic University of Timisoara",
+    "city": "Timișoara",
+    "faculties": [
+      "Facultatea de Arhitectură și Urbanism",
+      "Facultatea de Automatică și Calculatoare",
+      "Facultatea de Chimie Industrială și Ingineria Mediului",
+      "Facultatea de Construcții",
+      "Facultatea de Hidrotehnică",
+      "Facultatea de Electronică, Telecomunicații și Tehnologii Informaționale",
+      "Facultatea de Inginerie Electrică și Energetică",
+      "Facultatea de Management în Producție și Transporturi",
+      "Facultatea de Mecanică",
+      "Facultatea de Inginerie din Hunedoara",
+      "Facultatea de Științe ale Comunicării"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Romanian-American University",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Afaceri Internaționale",
+      "Facultatea de Drept",
+      "Facultatea de Educație Fizică, Sport și Kinetoterapie",
+      "Facultatea de Finanțe și Contabilitate",
+      "Facultatea de Informatică Managerială",
+      "Facultatea de Management-Marketing",
+      "Facultatea de Psihologie și Științele Educației",
+      "Facultatea de Turism și Managementul Ospitalității"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Spiru Haret University",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Arhitectură (București)",
+      "Facultatea de Arte (București)",
+      "Facultatea de Științe Juridice și Administrative (Brașov)",
+      "Facultatea de Științe Juridice, Politice și Administrative (București)",
+      "Facultatea de Contabilitate și Finanțe (Râmnicu Vâlcea)",
+      "Facultatea de Drept și Administrație Publică (Constanța)",
+      "Facultatea de Drept și Administrație Publică (Craiova)",
+      "Facultatea de Drept și Administrație Publică (Râmnicu Vâlcea)",
+      "Facultatea de Științe Economice (Câmpulung-Muscel)",
+      "Facultatea de Educație Fizică și Sport (București)",
+      "Facultatea de Psihologie și Științele Educației (București)",
+      "Facultatea de Finanțe și Bănci (București)",
+      "Facultatea de Jurnalism și Științele Comunicării (București)",
+      "Facultatea de Litere (București)",
+      "Facultatea de Management (Brașov)",
+      "Facultatea de Management Financiar Contabil (București)",
+      "Facultatea de Management Financiar Contabil (Craiova)",
+      "Facultatea de Management Financiar Contabil (Constanța)",
+      "Facultatea de Marketing și Afaceri Economice Internaționale (București)",
+      "Facultatea de Matematică, Informatică și Științele Naturii (București)",
+      "Facultatea de Medicină Veterinară (București)",
+      "Facultatea de Psihologie și Pedagogie (Brașov)",
+      "Facultatea de Relații Internaționale, Istorie și Filosofie (București)"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Targu-Mures University of Theatre",
+    "city": "Târgu Mureș",
+    "faculties": [
+      "Facultatea de Arte în Limba Română"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Technical University of Civil Engineering Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Construcții Civile, Industriale și Agricole",
+      "Facultatea de Inginerie a Instalațiilor",
+      "Facultatea de Hidrotehnică",
+      "Facultatea de Căi Ferate, Drumuri și Poduri",
+      "Facultatea de Geodezie",
+      "Facultatea de Inginerie în Limbi Străine",
+      "Facultatea de Utilaj Tehnologic"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Technical University of Cluj-Napoca",
+    "city": "Cluj-Napoca",
+    "faculties": [
+      "Facultatea de Automatică și Calculatoare",
+      "Facultatea de Electronică, Telecomunicații și Tehnologia Informației",
+      "Facultatea de Inginerie Electrică",
+      "Facultatea de Construcții",
+      "Facultatea de Instalații",
+      "Facultatea de Construcții de Mașini",
+      "Facultatea de Inginerie Industrială, Robotică și Managementul Producției",
+      "Facultatea de Mecanică",
+      "Facultatea de Autovehicule Rutiere, Mecatronică și Mecanică",
+      "Facultatea de Știința și Ingineria Materialelor",
+      "Facultatea de Ingineria Materialelor și a Mediului",
+      "Facultatea de Arhitectură și Urbanism",
+      "Facultatea de Inginerie",
+      "Facultatea de Litere",
+      "Facultatea de Științe"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Technical University of Iasi",
+    "city": "Iași",
+    "faculties": [
+      "Facultatea de Arhitectură „G. M. Cantacuzino”",
+      "Facultatea de Automatică și Calculatoare",
+      "Facultatea de Construcții și Instalații",
+      "Facultatea de Construcții de Mașini și Management Industrial",
+      "Facultatea de Design Industrial și Managementul Afacerilor",
+      "Facultatea de Electronică, Telecomunicații și Tehnologia Informației",
+      "Facultatea de Hidrotehnică, Geodezie și Ingineria Mediului",
+      "Facultatea de Inginerie Chimică și Protecția Mediului „Cristofor Simionescu”",
+      "Facultatea de Inginerie Electrică, Energetică și Informatică Aplicată",
+      "Facultatea de Mecanică",
+      "Facultatea de Știința și Ingineria Materialelor"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Technical University of Timisoara",
+    "city": "Timișoara",
+    "faculties": [
+      "Facultatea de Arhitectură și Urbanism",
+      "Facultatea de Automatică și Calculatoare",
+      "Facultatea de Chimie Industrială și Ingineria Mediului",
+      "Facultatea de Construcții",
+      "Facultatea de Hidrotehnică",
+      "Facultatea de Electronică, Telecomunicații și Tehnologii Informaționale",
+      "Facultatea de Inginerie Electrică și Energetică",
+      "Facultatea de Management în Producție și Transporturi",
+      "Facultatea de Mecanică",
+      "Facultatea de Inginerie din Hunedoara",
+      "Facultatea de Științe ale Comunicării"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Universitatea de Vest \"Vasile Goldiş\"",
+    "city": null,
+    "faculties": [
+      "Facultatea de Medicină",
+      "Facultatea de Farmacie",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Științe Economice, Inginerie și Informatică",
+      "Facultatea de Științe Juridice",
+      "Facultatea de Științe Socio-Umane, Educației Fizice și Sport"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University \"Aurel Vlaicu\" Arad",
+    "city": "Arad",
+    "faculties": [
+      "Facultatea de Științe Economice",
+      "Facultatea de Științe Exacte",
+      "Facultatea de Științe Umaniste și Sociale",
+      "Facultatea de Științe ale Educației, Psihologie și Asistență Socială",
+      "Facultatea de Teologie Ortodoxă „Ilarion V. Felea”",
+      "Facultatea de Inginerie",
+      "Facultatea de Inginerie Alimentară, Turism și Protecția Mediului",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Design"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University \"Petre Andrei\" Iasi",
+    "city": "Iași",
+    "faculties": [
+      "Facultatea de Psihologie și Științele Educației",
+      "Facultatea de Asistență Socială și Sociologie",
+      "Facultatea de Științe Politice și Administrative",
+      "Facultatea de Drept",
+      "Facultatea de Economie"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University \"Titu Maiorescu\"",
+    "city": null,
+    "faculties": [
+      "Facultatea de Drept",
+      "Facultatea de Psihologie",
+      "Facultatea de Informatică",
+      "Facultatea de Științe Economice",
+      "Facultatea de Medicină",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Farmacie",
+      "Facultatea de Științele Educației, Comunicare și Relații Internaționale",
+      "Facultatea de Asistență Medicală"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University \"Transilvania\" of Brasov",
+    "city": "Brașov",
+    "faculties": [
+      "Facultatea de Inginerie Tehnologică și Management Industrial",
+      "Facultatea de Știința și Ingineria Materialelor",
+      "Facultatea de Design de Produs și Mediu",
+      "Facultatea de Inginerie Electrică și Știința Calculatoarelor",
+      "Facultatea de Silvicultură și Exploatări Forestiere",
+      "Facultatea de Ingineria Lemnului",
+      "Facultatea de Construcții",
+      "Facultatea de Științe Economice și Administrarea Afacerilor",
+      "Facultatea de Alimentație și Turism",
+      "Facultatea de Matematică și Informatică",
+      "Facultatea de Muzică",
+      "Facultatea de Medicină",
+      "Facultatea de Drept",
+      "Facultatea de Sociologie și Comunicare",
+      "Facultatea de Educație Fizică și Sporturi Montane",
+      "Facultatea de Litere",
+      "Facultatea de Psihologie și Științele Educației"
+    ],
+    "aliases": [
+      "University \"Transilvany\" of Brasov"
+    ]
+  },
+  {
+    "name": "University Lucian Blaga of Sibiu",
+    "city": "Sibiu",
+    "faculties": [
+      "Facultatea de Teologie",
+      "Facultatea de Drept „Simion Bărnuțiu”",
+      "Facultatea de Litere și Arte",
+      "Facultatea de Științe Socio-Umane",
+      "Facultatea de Inginerie",
+      "Facultatea de Medicină",
+      "Facultatea de Științe",
+      "Facultatea de Științe Agricole, Industrie Alimentară și Protecția Mediului",
+      "Facultatea de Științe Economice"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University Oil-Gas Ploiesti",
+    "city": "Ploiești",
+    "faculties": [
+      "Facultatea de Inginerie Mecanică și Electrică",
+      "Facultatea de Ingineria Petrolului și Gazelor",
+      "Facultatea de Tehnologia Petrolului și Petrochimie",
+      "Facultatea de Litere și Științe",
+      "Facultatea de Științe Economice"
+    ],
+    "aliases": [
+      "University Oil- Gas Ploiesti"
+    ]
+  },
+  {
+    "name": "University Politehnica of Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Automatică și Calculatoare",
+      "Facultatea de Antreprenoriat, Ingineria și Managementul Afacerilor",
+      "Facultatea de Chimie Aplicată și Știința Materialelor",
+      "Facultatea de Energetică",
+      "Facultatea de Electronică, Telecomunicații și Tehnologia Informației",
+      "Facultatea de Ingineria și Managementul Sistemelor Tehnologice",
+      "Facultatea de Ingineria Sistemelor Biotehnice",
+      "Facultatea de Inginerie Aerospațială",
+      "Facultatea de Inginerie Electrică",
+      "Facultatea de Inginerie Medicală",
+      "Facultatea de Inginerie Mecanică și Mecatronică",
+      "Facultatea de Inginerie cu predare în limbi străine",
+      "Facultatea de Transporturi",
+      "Facultatea de Știința și Ingineria Materialelor",
+      "Facultatea de Științe Aplicate"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Agriculture and Veterinary Medicine Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Agricultură",
+      "Facultatea de Horticultură",
+      "Facultatea de Ingineria și Gestiunea Producțiilor Animaliere",
+      "Facultatea de Medicină Veterinară",
+      "Facultatea de Biotehnologii",
+      "Facultatea de Îmbunătățiri Funciare și Ingineria Mediului",
+      "Facultatea de Management și Dezvoltare Rurală"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Agriculture and Veterinary Medicine Cluj-Napoca",
+    "city": "Cluj-Napoca",
+    "faculties": [
+      "Facultatea de Agricultură",
+      "Facultatea de Horticultură",
+      "Facultatea de Zootehnie și Biotehnologii",
+      "Facultatea de Medicină Veterinară",
+      "Facultatea de Știința și Tehnologia Alimentelor",
+      "Facultatea de Silvicultură și Cadastru"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Agriculture and Veterinary Medicine Iasi",
+    "city": "Iași",
+    "faculties": [
+      "Facultatea de Agricultură",
+      "Facultatea de Horticultură",
+      "Facultatea de Ingineria Resurselor Animale și Alimentare",
+      "Facultatea de Medicină Veterinară"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Agriculture and Veterinary Medicine Timisoara",
+    "city": "Timișoara",
+    "faculties": [
+      "Facultatea de Agricultură",
+      "Facultatea de Bioingineria Resurselor Animaliere",
+      "Facultatea de Inginerie Alimentară",
+      "Facultatea de Inginerie și Tehnologii Aplicate",
+      "Facultatea de Management și Turism Rural",
+      "Facultatea de Medicină Veterinară"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Art and Design Cluj-Napoca",
+    "city": "Cluj-Napoca",
+    "faculties": [
+      "Facultatea de Arte Plastice",
+      "Facultatea de Arte Decorative și Design"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Bacau",
+    "city": "Bacău",
+    "faculties": [
+      "Facultatea de Științe",
+      "Facultatea de Inginerie",
+      "Facultatea de Științe Economice",
+      "Facultatea de Litere",
+      "Facultatea de Științe ale Mișcării, Sportului și Sănătății"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Administrație și Afaceri",
+      "Facultatea de Biologie",
+      "Facultatea de Chimie",
+      "Facultatea de Drept",
+      "Facultatea de Filosofie",
+      "Facultatea de Fizică",
+      "Facultatea de Geografie",
+      "Facultatea de Geologie și Geofizică",
+      "Facultatea de Istorie",
+      "Facultatea de Jurnalism și Științele Comunicării",
+      "Facultatea de Limbi și Literaturi Străine",
+      "Facultatea de Litere",
+      "Facultatea de Matematică și Informatică",
+      "Facultatea de Psihologie și Științele Educației",
+      "Facultatea de Sociologie și Asistență Socială",
+      "Facultatea de Studii Interdisciplinare",
+      "Facultatea de Științe Politice",
+      "Facultatea de Teologie Baptistă",
+      "Facultatea de Teologie Ortodoxă",
+      "Facultatea de Teologie Romano-Catolică și Asistență Socială"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Constanta",
+    "city": "Constanța",
+    "faculties": [
+      "Facultatea de Istorie și Științe Politice",
+      "Facultatea de Farmacie",
+      "Facultatea de Medicină",
+      "Facultatea de Psihologie și Științele Educației",
+      "Facultatea de Litere",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Teologie",
+      "Facultatea de Matematică și Informatică",
+      "Facultatea de Științe Aplicate și Inginerie",
+      "Facultatea de Arte",
+      "Facultatea de Științe ale Naturii și Științe Agricole",
+      "Facultatea de Drept și Științe Administrative",
+      "Facultatea de Construcții",
+      "Facultatea de Inginerie Mecanică, Industrială și Maritimă"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Constanta Medical School",
+    "city": "Constanța",
+    "faculties": [
+      "Facultatea de Farmacie",
+      "Facultatea de Medicină"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Craiova",
+    "city": "Craiova",
+    "faculties": [
+      "Facultatea de Agronomie",
+      "Facultatea de Automatică, Calculatoare și Electronică",
+      "Facultatea de Drept",
+      "Facultatea de Economie și Administrarea Afacerilor",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Horticultură",
+      "Facultatea de Inginerie Electrică",
+      "Facultatea de Litere",
+      "Facultatea de Mecanică",
+      "Facultatea de Teologie Ortodoxă",
+      "Facultatea de Științe",
+      "Facultatea de Științe Sociale"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Galatzi",
+    "city": "Galați",
+    "faculties": [
+      "Facultatea de Inginerie",
+      "Facultatea de Arhitectură Navală",
+      "Facultatea de Știința și Ingineria Alimentelor",
+      "Facultatea de Automatică, Calculatoare, Inginerie Electrică și Electronică",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Litere",
+      "Facultatea de Științe și Mediu",
+      "Facultatea de Istorie, Filosofie și Teologie",
+      "Facultatea de Inginerie și Agronomie din Brăila",
+      "Facultatea de Economie și Administrarea Afacerilor",
+      "Facultatea de Drept și Științe Administrative",
+      "Facultatea de Medicină și Farmacie",
+      "Facultatea de Arte",
+      "Facultatea Transfrontalieră"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Iasi",
+    "city": "Iași",
+    "faculties": [
+      "Facultatea de Biologie",
+      "Facultatea de Chimie",
+      "Facultatea de Drept",
+      "Facultatea de Economie și Administrarea Afacerilor",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Filosofie și Științe Social-Politice",
+      "Facultatea de Fizică",
+      "Facultatea de Geografie și Geologie",
+      "Facultatea de Informatică",
+      "Facultatea de Istorie",
+      "Facultatea de Litere",
+      "Facultatea de Matematică",
+      "Facultatea de Psihologie și Științe ale Educației",
+      "Facultatea de Teologie Ortodoxă",
+      "Facultatea de Teologie Romano-Catolică"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Medicine and Pharmacology of Oradea",
+    "city": "Oradea",
+    "faculties": [
+      "Facultatea de Medicină și Farmacie"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Medicine and Pharmacy of Bucharest",
+    "city": "București",
+    "faculties": [
+      "Facultatea de Medicină",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Farmacie",
+      "Facultatea de Moașe și Asistență Medicală"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Medicine and Pharmacy of Cluj-Napoca",
+    "city": "Cluj-Napoca",
+    "faculties": [
+      "Facultatea de Medicină",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Farmacie"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Medicine and Pharmacy of Iasi",
+    "city": "Iași",
+    "faculties": [
+      "Facultatea de Medicină",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Farmacie",
+      "Facultatea de Bioinginerie Medicală"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Medicine and Pharmacy of Targu Mures",
+    "city": "Târgu Mureș",
+    "faculties": [
+      "Facultatea de Medicină",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Medicină Engleză",
+      "Facultatea de Farmacie",
+      "Facultatea de Inginerie și Tehnologia Informației",
+      "Facultatea de Științe și Litere",
+      "Facultatea de Economie și Drept"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Medicine and Pharmacy of Timisoara",
+    "city": "Timișoara",
+    "faculties": [
+      "Facultatea de Medicină",
+      "Facultatea de Medicină Dentară",
+      "Facultatea de Farmacie"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Oradea",
+    "city": "Oradea",
+    "faculties": [
+      "Facultatea de Arte",
+      "Facultatea de Construcții, Cadastru și Arhitectură",
+      "Facultatea de Drept",
+      "Facultatea de Geografie, Turism și Sport",
+      "Facultatea de Inginerie Electrică și Tehnologia Informației",
+      "Facultatea de Inginerie Energetică și Management Industrial",
+      "Facultatea de Inginerie Managerială și Tehnologică",
+      "Facultatea de Istorie, Relații Internaționale, Științe Politice și Științele Comunicării",
+      "Facultatea de Litere",
+      "Facultatea de Medicină și Farmacie",
+      "Facultatea de Protecția Mediului",
+      "Facultatea de Informatică și Științe",
+      "Facultatea de Științe Economice",
+      "Facultatea de Științe Socio-Umane",
+      "Facultatea de Teologie Ortodoxă „Episcop Dr. Vasile Coman”"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Petrosani",
+    "city": "Petroșani",
+    "faculties": [
+      "Facultatea de Mine",
+      "Facultatea de Inginerie Mecanică și Electrică",
+      "Facultatea de Științe Economice, Administrative și Sociale"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Pitesti",
+    "city": "Pitești",
+    "faculties": [
+      "Facultatea de Științe, Educație Fizică și Informatică",
+      "Facultatea de Mecanică și Tehnologie",
+      "Facultatea de Electronică, Comunicații și Calculatoare",
+      "Facultatea de Științe Economice și Drept",
+      "Facultatea de Științe ale Educației",
+      "Facultatea de Teologie, Litere, Istorie, Arte"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Sibiu",
+    "city": "Sibiu",
+    "faculties": [
+      "Facultatea de Teologie",
+      "Facultatea de Drept „Simion Bărnuțiu”",
+      "Facultatea de Litere și Arte",
+      "Facultatea de Științe Socio-Umane",
+      "Facultatea de Inginerie",
+      "Facultatea de Medicină",
+      "Facultatea de Științe",
+      "Facultatea de Științe Agricole, Industrie Alimentară și Protecția Mediului",
+      "Facultatea de Științe Economice"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Suceava",
+    "city": "Suceava",
+    "faculties": [
+      "Facultatea de Drept și Științe Administrative",
+      "Facultatea de Economie, Administrație și Afaceri",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Inginerie Alimentară",
+      "Facultatea de Inginerie Electrică și Știința Calculatoarelor",
+      "Facultatea de Inginerie Mecanică, Autovehicule și Robotică",
+      "Facultatea de Istorie, Geografie și Științe Sociale",
+      "Facultatea de Litere și Științe ale Comunicării",
+      "Facultatea de Medicină și Științe Biologice",
+      "Facultatea de Științe ale Educației",
+      "Facultatea de Silvicultură"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "University of Targu Jiu",
+    "city": "Târgu Jiu",
+    "faculties": [
+      "Facultatea de Inginerie și Dezvoltare Durabilă",
+      "Facultatea de Științe ale Educației și Management Public",
+      "Facultatea de Științe Juridice",
+      "Facultatea de Științe Economice",
+      "Facultatea de Științe Medicale și Comportamentale"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "Valahia University of Targoviste",
+    "city": "Târgoviște",
+    "faculties": [
+      "Facultatea de Științe Economice",
+      "Facultatea de Drept și Științe Administrative",
+      "Facultatea de Inginerie Electrică, Electronică și Tehnologia Informației",
+      "Facultatea de Științe și Arte",
+      "Facultatea de Ingineria Mediului și Știința Alimentelor",
+      "Facultatea de Ingineria Materialelor și Mecanică",
+      "Facultatea de Teologie Ortodoxă și Științele Educației",
+      "Facultatea de Științe Umaniste",
+      "Facultatea de Științe Politice, Litere și Comunicare",
+      "Facultatea de Științe și Inginerie Alexandria"
+    ],
+    "aliases": []
+  },
+  {
+    "name": "West University of Timisoara",
+    "city": "Timișoara",
+    "faculties": [
+      "Facultatea de Arte și Design",
+      "Facultatea de Chimie, Biologie, Geografie",
+      "Facultatea de Drept",
+      "Facultatea de Economie și de Administrare a Afacerilor",
+      "Facultatea de Educație Fizică și Sport",
+      "Facultatea de Fizică",
+      "Facultatea de Litere, Istorie și Teologie",
+      "Facultatea de Matematică și Informatică",
+      "Facultatea de Muzică și Teatru",
+      "Facultatea de Sociologie și Psihologie",
+      "Facultatea de Științe Politice, Filosofie și Științe ale Comunicării"
+    ],
+    "aliases": []
+  }
+]

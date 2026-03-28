@@ -173,37 +173,39 @@ def extract_total_open(payload: Any) -> int | None:
     return None
 
 
-def _markdown_code(value: Any) -> str:
-    return "`" + str(value).replace("`", "'") + "`"
+def _markdown_code_parts(value: Any) -> tuple[str, str, str]:
+    return ("`", str(value).replace("`", "'"), "`")
 
 
-def _markdown_fact(label: str, value: Any) -> str:
-    return "- " + label + ": " + _markdown_code(value)
+def _markdown_fact_parts(label: str, value: Any) -> tuple[str, str, str, str, str]:
+    code_left, code_value, code_right = _markdown_code_parts(value)
+    prefix = f"- {label}: "
+    return (prefix, code_left, code_value, code_right, "")
 
 
-def _markdown_finding(item: Any) -> str:
-    return "- " + str(item).replace("\r", " ").replace("\n", " ")
+def _markdown_finding_parts(item: Any) -> tuple[str, str]:
+    cleaned = str(item).replace("\r", " ").replace("\n", " ")
+    return ("- ", cleaned)
 
 
-def _build_markdown_report(payload: dict[str, Any]) -> str:
+def _build_markdown_report_lines(payload: dict[str, Any]) -> list[str]:
     lines = [
         "# Codacy Zero Gate",
         "",
-        _markdown_fact("Status", payload["status"]),
-        _markdown_fact("Owner/repo", str(payload["owner"]) + "/" + str(payload["repo"])),
-        _markdown_fact("Branch", payload.get("branch") or "default"),
-        _markdown_fact("Open issues", payload.get("open_issues")),
-        _markdown_fact("Timestamp (UTC)", payload["timestamp_utc"]),
+        "".join(_markdown_fact_parts("Status", payload["status"])),
+        "".join(_markdown_fact_parts("Owner/repo", str(payload["owner"]) + "/" + str(payload["repo"]))),
+        "".join(_markdown_fact_parts("Branch", payload.get("branch") or "default")),
+        "".join(_markdown_fact_parts("Open issues", payload.get("open_issues"))),
+        "".join(_markdown_fact_parts("Timestamp (UTC)", payload["timestamp_utc"])),
         "",
         "## Findings",
     ]
     findings = payload.get("findings") or []
     if findings:
-        lines.extend(_markdown_finding(item) for item in findings)
+        lines.extend("".join(_markdown_finding_parts(item)) for item in findings)
     else:
         lines.append("- None")
-    report = "\n".join(lines) + "\n"
-    return report
+    return lines
 
 
 def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, str, str]:
@@ -511,10 +513,11 @@ def main() -> int:
 
     try:
         write_workspace_json(raw_path=args.out_json, fallback="codacy-zero/codacy.json", payload=payload)
+        markdown_report = "\n".join(_build_markdown_report_lines(payload)) + "\n"
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="codacy-zero/codacy.md",
-            text=_build_markdown_report(payload),
+            text=markdown_report,
         )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
