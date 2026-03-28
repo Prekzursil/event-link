@@ -277,9 +277,17 @@ def _suggest_city_from_text(*, content: str, city: str | None) -> str | None:
     """Infer an event city from the university catalog when the payload omits it."""
     if city:
         return city
-    catalog_cities = {item.get("city") for item in ro_universities.get_university_catalog() if item.get("city")}
+    catalog_cities = {
+        item.get("city")
+        for item in ro_universities.get_university_catalog()
+        if item.get("city")
+    }
     lowered = content.lower()
-    for candidate_city in sorted(catalog_cities, key=lambda value: len(str(value)), reverse=True):
+    for candidate_city in sorted(
+        catalog_cities,
+        key=lambda value: len(str(value)),
+        reverse=True,
+    ):
         if str(candidate_city).lower() in lowered:
             return str(candidate_city)
     return None
@@ -303,6 +311,7 @@ def _find_duplicate_candidates(
     payload: schemas.EventSuggestRequest,
     title_tokens: set[str],
 ) -> list[schemas.EventDuplicateCandidate]:
+    """Return likely duplicate organizer events based on title similarity and timing."""
     if not title_tokens:
         return []
     query = db.query(models.Event).filter(models.Event.owner_id == current_user.id, models.Event.deleted_at.is_(None))
