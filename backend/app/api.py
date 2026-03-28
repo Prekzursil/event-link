@@ -1294,9 +1294,13 @@ def _restore_registration_if_deleted(
     event_id: int,
     current_user: models.User,
 ) -> bool:
+    """Restore a soft-deleted registration when the student re-registers."""
     existing = (
         db.query(models.Registration)
-        .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.user_id == current_user.id,
+        )
         .first()
     )
     if not existing:
@@ -1328,8 +1332,13 @@ def _queue_registration_email(
     event: models.Event,
     current_user: models.User,
 ) -> None:
+    """Queue the registration confirmation email in the caller's locale."""
     lang = _preferred_lang(request=request, user=current_user)
-    subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
+    subject, body_text, body_html = render_registration_email(
+        event,
+        current_user,
+        lang=lang,
+    )
     send_email_async(
         background_tasks,
         db,
@@ -1341,7 +1350,11 @@ def _queue_registration_email(
     )
 
 
-def _serialize_admin_event(event: models.Event, seats_taken: int) -> schemas.AdminEventResponse:
+def _serialize_admin_event(
+    event: models.Event,
+    seats_taken: int,
+) -> schemas.AdminEventResponse:
+    """Build the admin event payload including moderation metadata."""
     owner_email = event.owner.email if event.owner else "unknown@example.com"
     owner_name = None
     if event.owner:
@@ -1368,7 +1381,11 @@ def _serialize_admin_event(event: models.Event, seats_taken: int) -> schemas.Adm
         moderation_status=getattr(event, "moderation_status", None),
         moderation_flags=getattr(event, "moderation_flags", None),
         moderation_reviewed_at=getattr(event, "moderation_reviewed_at", None),
-        moderation_reviewed_by_user_id=getattr(event, "moderation_reviewed_by_user_id", None),
+        moderation_reviewed_by_user_id=getattr(
+            event,
+            "moderation_reviewed_by_user_id",
+            None,
+        ),
         deleted_at=event.deleted_at,
     )
 
@@ -1397,8 +1414,15 @@ def register(user: schemas.StudentRegister, request: Request, db: DbSession):
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
-    token_payload = {"sub": str(new_user.id), "email": new_user.email, "role": new_user.role.value}
-    access_token = auth.create_access_token(data=token_payload, expires_delta=access_token_expires)
+    token_payload = {
+        "sub": str(new_user.id),
+        "email": new_user.email,
+        "role": new_user.role.value,
+    }
+    access_token = auth.create_access_token(
+        data=token_payload,
+        expires_delta=access_token_expires,
+    )
     refresh_token_value = auth.create_refresh_token(
         data=token_payload,
         expires_delta=refresh_expires,
@@ -1415,9 +1439,20 @@ def register(user: schemas.StudentRegister, request: Request, db: DbSession):
 @app.post("/login", response_model=schemas.Token, responses=_responses(401))
 def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
     """Authenticate a user and return fresh authentication tokens."""
-    _enforce_rate_limit("login", request=request, identifier=user_credentials.email.lower())
-    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
-    if not user or not auth.verify_password(user_credentials.password, user.password_hash):
+    _enforce_rate_limit(
+        "login",
+        request=request,
+        identifier=user_credentials.email.lower(),
+    )
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == user_credentials.email)
+        .first()
+    )
+    if not user or not auth.verify_password(
+        user_credentials.password,
+        user.password_hash,
+    ):
         log_warning("login_failed", email=user_credentials.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
@@ -1425,7 +1460,10 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
             headers={"WWW-Authenticate": "Bearer"},
         )
     if _is_active_value(user) is False:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Cont dezactivat.",
+        )
 
     user.last_seen_at = datetime.now(timezone.utc)
     db.add(user)
@@ -1433,8 +1471,15 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
 
     access_token_expires = timedelta(minutes=settings.access_token_expire_minutes)
     refresh_expires = timedelta(minutes=settings.refresh_token_expire_minutes)
-    token_payload = {"sub": str(user.id), "email": user.email, "role": user.role.value}
-    access_token = auth.create_access_token(data=token_payload, expires_delta=access_token_expires)
+    token_payload = {
+        "sub": str(user.id),
+        "email": user.email,
+        "role": user.role.value,
+    }
+    access_token = auth.create_access_token(
+        data=token_payload,
+        expires_delta=access_token_expires,
+    )
     refresh_token_value = auth.create_refresh_token(
         data=token_payload,
         expires_delta=refresh_expires,
@@ -1453,7 +1498,11 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
 def refresh_token(payload: schemas.RefreshRequest):
     """Refresh a user's access and refresh tokens."""
     try:
-        decoded = auth.jwt.decode(payload.refresh_token, settings.secret_key, algorithms=[settings.algorithm])
+        decoded = auth.jwt.decode(
+            payload.refresh_token,
+            settings.secret_key,
+            algorithms=[settings.algorithm],
+        )
     except auth.ExpiredSignatureError:
         raise HTTPException(status_code=401, detail="Refresh token expirat.")
     except auth.JWTError:
