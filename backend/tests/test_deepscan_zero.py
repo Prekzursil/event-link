@@ -253,6 +253,49 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
     assert sleeps == [module.PROVIDER_STATUS_RETRY_DELAY_SECONDS]
 
 
+def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+    success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/available/javascript/"
+    payloads = [
+        {"statuses": []},
+        {
+            "statuses": [
+                {
+                    "context": "DeepSource: JavaScript",
+                    "state": "success",
+                    "description": "Analysis complete",
+                    "target_url": success_url,
+                }
+            ]
+        },
+        {
+            "statuses": [
+                {
+                    "context": "DeepSource: JavaScript",
+                    "state": "success",
+                    "description": "Analysis complete",
+                    "target_url": success_url,
+                }
+            ]
+        },
+    ]
+    sleeps: list[float] = []
+
+    monkeypatch.setattr(module, "_github_status_payload", lambda **_kwargs: payloads.pop(0))
+    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    resolved = module._resolve_open_issues(
+        token="",
+        open_issues_url=None,
+        repo="Prekzursil/event-link",
+        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        github_token="gh-token",
+    )
+
+    assert resolved == (0, success_url, [])
+    assert sleeps == [module.PROVIDER_STATUS_RETRY_DELAY_SECONDS]
+
+
 def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> None:
     module = _load_module()
 

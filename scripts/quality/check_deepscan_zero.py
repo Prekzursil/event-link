@@ -167,6 +167,22 @@ def _wait_for_deepscan_dashboard_url(*, owner: str, repo: str, sha: str, github_
     raise last_error or RuntimeError("DeepScan commit status did not include a provider target URL.")
 
 
+def _wait_for_provider_status_payload(*, owner: str, repo: str, sha: str, github_token: str) -> dict[str, Any]:
+    last_payload: dict[str, Any] = {"statuses": []}
+    for attempt in range(PROVIDER_STATUS_RETRY_ATTEMPTS):
+        status_payload = _github_status_payload(owner=owner, repo=repo, sha=sha, github_token=github_token)
+        last_payload = status_payload
+        if _matching_statuses(status_payload, prefix="DeepScan") or _matching_statuses(
+            status_payload,
+            prefix=DEEPSOURCE_CONTEXT_PREFIX,
+        ):
+            return status_payload
+        if attempt == PROVIDER_STATUS_RETRY_ATTEMPTS - 1:
+            break
+        time.sleep(PROVIDER_STATUS_RETRY_DELAY_SECONDS)
+    return last_payload
+
+
 def _analysis_api_url(ids: dict[str, str], *, owner_bid: str, head_aid: str) -> str:
     return build_https_url(
         host=DEEPSCAN_HOST,
@@ -297,7 +313,7 @@ def _resolve_open_issues(
     else:
         owner, repo_name = validate_repo_full_name(repo)
         safe_sha = validate_commit_sha(sha)
-        status_payload = _github_status_payload(
+        status_payload = _wait_for_provider_status_payload(
             owner=owner,
             repo=repo_name,
             sha=safe_sha,
