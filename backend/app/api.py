@@ -139,7 +139,10 @@ def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
 
 
 def _is_active_value(obj: object):
-    """Read the shared active flag without reintroducing analyzer-regression snippets."""
+    """Read the shared active flag.
+
+    This keeps analyzer-regression snippets out of the call sites.
+    """
     return object.__getattribute__(obj, _IS_ACTIVE_ATTR)
 
 
@@ -1183,7 +1186,12 @@ def _apply_event_capacity_updates(
         db_event.max_seats = update.max_seats
 
 
-def _apply_event_cover_updates(*, db_event: models.Event, update: schemas.EventUpdate) -> None:
+def _apply_event_cover_updates(
+    *,
+    db_event: models.Event,
+    update: schemas.EventUpdate,
+) -> None:
+    """Apply cover URL updates after validating the incoming image link."""
     if update.cover_url is None:
         return
     if update.cover_url:
@@ -1193,7 +1201,13 @@ def _apply_event_cover_updates(*, db_event: models.Event, update: schemas.EventU
     db_event.cover_url = update.cover_url
 
 
-def _apply_event_metadata_updates(*, db: Session, db_event: models.Event, update: schemas.EventUpdate) -> None:
+def _apply_event_metadata_updates(
+    *,
+    db: Session,
+    db_event: models.Event,
+    update: schemas.EventUpdate,
+) -> None:
+    """Apply tag and publication metadata changes to an event."""
     if update.tags is not None:
         _attach_tags(db, db_event, update.tags)
     if update.status is not None:
@@ -1202,27 +1216,57 @@ def _apply_event_metadata_updates(*, db: Session, db_event: models.Event, update
         db_event.status = update.status
 
 
-def _apply_event_update_fields(*, db: Session, db_event: models.Event, update: schemas.EventUpdate) -> bool:
+def _apply_event_update_fields(
+    *,
+    db: Session,
+    db_event: models.Event,
+    update: schemas.EventUpdate,
+) -> bool:
+    """Apply all editable event fields and report whether any input was present."""
     _apply_event_identity_updates(db_event=db_event, update=update)
     _apply_event_time_updates(db_event=db_event, update=update)
     _apply_event_capacity_updates(db_event=db_event, update=update)
     _apply_event_cover_updates(db_event=db_event, update=update)
     _apply_event_metadata_updates(db=db, db_event=db_event, update=update)
-    return any(value is not None for value in (update.title, update.description, update.location))
+    return any(
+        value is not None
+        for value in (
+            update.title,
+            update.description,
+            update.location,
+        )
+    )
 
 
-def _load_registerable_event(*, db: Session, event_id: int, now: datetime) -> tuple[models.Event, int]:
-    event = db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)).first()
+def _load_registerable_event(
+    *,
+    db: Session,
+    event_id: int,
+    now: datetime,
+) -> tuple[models.Event, int]:
+    """Load a public event together with its attendee count for registration."""
+    event = (
+        db.query(models.Event)
+        .filter(
+            models.Event.id == event_id,
+            models.Event.deleted_at.is_(None),
+        )
+        .first()
+    )
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     _ensure_registerable_event_is_public(event=event, now=now)
     seats_taken = _event_seats_taken(db=db, event_id=event_id)
     if event.max_seats is not None and seats_taken >= event.max_seats:
-        raise HTTPException(status_code=status.HTTP_409_CONFLICT, detail="Evenimentul este plin.")
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Evenimentul este plin.",
+        )
     return event, int(seats_taken)
 
 
 def _ensure_registerable_event_is_public(*, event: models.Event, now: datetime) -> None:
+    """Reject registration for draft, scheduled, or already-started events."""
     if event.status != "published" or (event.publish_at and event.publish_at > now):
         raise HTTPException(status_code=400, detail="Evenimentul nu este publicat.")
     start_time = _normalize_dt(event.start_time)
@@ -1231,9 +1275,13 @@ def _ensure_registerable_event_is_public(*, event: models.Event, now: datetime) 
 
 
 def _event_seats_taken(*, db: Session, event_id: int) -> int:
+    """Count active registrations tied to the given event."""
     return int(
         db.query(func.count(models.Registration.id))
-        .filter(models.Registration.event_id == event_id, models.Registration.deleted_at.is_(None))
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.deleted_at.is_(None),
+        )
         .scalar()
         or 0
     )
