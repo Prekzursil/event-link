@@ -19,6 +19,10 @@ function errorDetail(error: unknown, fallback: string) {
   return (error as AxiosDetailError).response?.data?.detail || fallback;
 }
 
+function swallowPromise(result: Promise<unknown> | unknown) {
+  Promise.resolve(result).catch(() => undefined);
+}
+
 function optimisticRegistrationEvent(event: EventDetail, nextRegistered: boolean): EventDetail {
   const seatsDelta = nextRegistered ? 1 : -1;
   return {
@@ -33,7 +37,7 @@ function optimisticRegistrationEvent(event: EventDetail, nextRegistered: boolean
 }
 
 function recordEventDetailInteraction(eventId: number, interactionType: InteractionType, meta?: Record<string, unknown>) {
-  void recordInteractions([{ interaction_type: interactionType, event_id: eventId, meta }]);
+  swallowPromise(recordInteractions([{ interaction_type: interactionType, event_id: eventId, meta }]));
 }
 
 function eventDetailStatus(event: EventDetail | null) {
@@ -86,7 +90,7 @@ export function useEventDetailController() {
   }, [id, navigate, t, toast]);
 
   useEffect(() => {
-    void loadEvent();
+    swallowPromise(loadEvent());
   }, [loadEvent]);
 
   const eventId = event?.id;

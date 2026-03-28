@@ -13,54 +13,54 @@ import {
 } from '@/components/ui/table';
 import type { AdminDashboardController } from './useAdminDashboardController';
 
-type Props = {
+type Props = Readonly<{
   controller: AdminDashboardController;
-};
+}>;
 
 type RegistrationsRow = Props['controller']['registrationsByDay'][number];
 type TopTagRow = Props['controller']['topTags'][number];
 type PersonalizationRow = Props['controller']['personalizationRows'][number];
 type PersonalizationTotals = NonNullable<Props['controller']['personalizationMetrics']>['totals'];
 
-type EmptyStateProps = {
+type EmptyStateProps = Readonly<{
   message: string;
-};
+}>;
 
-type OverviewTableCardProps = {
+type OverviewTableCardProps = Readonly<{
   children: ReactNode;
   title: string;
-};
+}>;
 
-type StatCardProps = {
+type StatCardProps = Readonly<{
   title: string;
   value: number;
-};
+}>;
 
-type QueueActionProps = {
+type QueueActionProps = Readonly<{
   disabled: boolean;
   idleLabel: string;
   isPending: boolean;
   onClick: () => void;
   pendingLabel: string;
   title: 'digest' | 'fillingFast' | 'retrain';
-};
+}>;
 
-type RegistrationsTableProps = {
+type RegistrationsTableProps = Readonly<{
   dayLabel: string;
   emptyMessage: string;
   registrationsLabel: string;
   rows: RegistrationsRow[];
-};
+}>;
 
-type TopTagsTableProps = {
+type TopTagsTableProps = Readonly<{
   emptyMessage: string;
   eventsLabel: string;
   registrationsLabel: string;
   rows: TopTagRow[];
   tagLabel: string;
-};
+}>;
 
-type MetricsSummaryGridProps = {
+type MetricsSummaryGridProps = Readonly<{
   labels: {
     clicks: string;
     conversion: string;
@@ -69,12 +69,12 @@ type MetricsSummaryGridProps = {
     registrations: string;
   };
   totals: PersonalizationTotals;
-};
+}>;
 
-type PersonalizationTableProps = {
+type PersonalizationTableProps = Readonly<{
   rows: PersonalizationRow[];
   table: Props['controller']['t']['adminDashboard']['personalizationMetrics']['table'];
-};
+}>;
 
 /** Render the shared empty state for admin overview cards. */
 const EmptyState = ({ message }: EmptyStateProps) => (
@@ -280,22 +280,25 @@ export function AdminOverviewTab({ controller }: Props) {
     },
   ];
 
-  const personalizationContent = isLoadingPersonalizationMetrics ? (
-    <LoadingPage message={t.adminDashboard.personalizationMetrics.loading} />
-  ) : personalizationRows.length === 0 || !personalizationMetrics ? (
-    <EmptyState message={t.adminDashboard.noData} />
-  ) : (
-    <div className="space-y-4">
-      <MetricsSummaryGrid
-        labels={t.adminDashboard.personalizationMetrics.totals}
-        totals={personalizationMetrics.totals}
-      />
-      <PersonalizationTable
-        rows={personalizationRows}
-        table={t.adminDashboard.personalizationMetrics.table}
-      />
-    </div>
-  );
+  let personalizationContent: ReactNode;
+  if (isLoadingPersonalizationMetrics) {
+    personalizationContent = <LoadingPage message={t.adminDashboard.personalizationMetrics.loading} />;
+  } else if (personalizationRows.length === 0 || !personalizationMetrics) {
+    personalizationContent = <EmptyState message={t.adminDashboard.noData} />;
+  } else {
+    personalizationContent = (
+      <div className="space-y-4">
+        <MetricsSummaryGrid
+          labels={t.adminDashboard.personalizationMetrics.totals}
+          totals={personalizationMetrics.totals}
+        />
+        <PersonalizationTable
+          rows={personalizationRows}
+          table={t.adminDashboard.personalizationMetrics.table}
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="mt-6 space-y-6">

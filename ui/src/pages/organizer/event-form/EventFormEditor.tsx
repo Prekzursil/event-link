@@ -9,9 +9,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 import type { EventFormController } from './useEventFormController';
 
-type Props = {
+type Props = Readonly<{
   controller: EventFormController;
-};
+}>;
 
 function TitleDescriptionFields({ controller }: Props) {
   const { formData, t, updateField } = controller;

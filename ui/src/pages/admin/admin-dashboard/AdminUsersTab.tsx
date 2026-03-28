@@ -12,9 +12,9 @@ import type { UserRole } from '@/types';
 import { roleBadgeVariant } from './shared';
 import type { AdminDashboardController } from './useAdminDashboardController';
 
-type Props = {
+type Props = Readonly<{
   controller: AdminDashboardController;
-};
+}>;
 
 export function AdminUsersTab({ controller }: Props) {
   const {
@@ -35,6 +35,95 @@ export function AdminUsersTab({ controller }: Props) {
     setUsersRole,
     setUsersSearch,
   } = controller;
+
+  let content;
+  if (isLoadingUsers) {
+    content = <LoadingPage message={t.adminDashboard.users.loading} />;
+  } else if (users.length === 0) {
+    content = <p className="text-sm text-muted-foreground">{t.adminDashboard.users.empty}</p>;
+  } else {
+    content = (
+      <>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>{t.adminDashboard.users.table.email}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.role}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.active}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.created}</TableHead>
+              <TableHead>{t.adminDashboard.users.table.lastSeen}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.users.table.registrations}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.users.table.attendances}</TableHead>
+              <TableHead className="text-right">{t.adminDashboard.users.table.events}</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {users.map((user) => (
+              <TableRow key={user.id}>
+                <TableCell>
+                  <div className="font-medium">{user.email}</div>
+                  {user.full_name && <div className="text-xs text-muted-foreground">{user.full_name}</div>}
+                </TableCell>
+                <TableCell>
+                  <div className="flex items-center gap-2">
+                    <Badge variant={roleBadgeVariant(user.role)}>{roleLabels[user.role]}</Badge>
+                    <Select
+                      value={user.role}
+                      onValueChange={(value) => handleUpdateUser(user.id, { role: value as UserRole })}
+                    >
+                      <SelectTrigger className="h-8 w-[150px]">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+                        <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+                        <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </TableCell>
+                <TableCell>
+                  <Checkbox
+                    checked={user.is_active}
+                    onCheckedChange={(checked) => handleUpdateUser(user.id, { is_active: Boolean(checked) })}
+                  />
+                </TableCell>
+                <TableCell>{formatDateTime(user.created_at, language)}</TableCell>
+                <TableCell>{user.last_seen_at ? formatDateTime(user.last_seen_at, language) : '-'}</TableCell>
+                <TableCell className="text-right">{user.registrations_count}</TableCell>
+                <TableCell className="text-right">{user.attended_count}</TableCell>
+                <TableCell className="text-right">{user.events_created_count}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+
+        <div className="mt-4 flex items-center justify-between">
+          <p className="text-sm text-muted-foreground">
+            {t.adminDashboard.pagination.page} {usersPage} / {totalUserPages} • {t.adminDashboard.pagination.total} {usersTotal}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={usersPage <= 1}
+              onClick={() => loadUsers(usersPage - 1)}
+            >
+              {t.adminDashboard.pagination.prev}
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={usersPage >= totalUserPages}
+              onClick={() => loadUsers(usersPage + 1)}
+            >
+              {t.adminDashboard.pagination.next}
+            </Button>
+          </div>
+        </div>
+      </>
+    );
+  }
 
   return (
     <div className="mt-6 space-y-4">
@@ -85,91 +174,7 @@ export function AdminUsersTab({ controller }: Props) {
             </Button>
           </div>
 
-          {isLoadingUsers ? (
-            <LoadingPage message={t.adminDashboard.users.loading} />
-          ) : users.length === 0 ? (
-            <p className="text-sm text-muted-foreground">{t.adminDashboard.users.empty}</p>
-          ) : (
-            <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>{t.adminDashboard.users.table.email}</TableHead>
-                    <TableHead>{t.adminDashboard.users.table.role}</TableHead>
-                    <TableHead>{t.adminDashboard.users.table.active}</TableHead>
-                    <TableHead>{t.adminDashboard.users.table.created}</TableHead>
-                    <TableHead>{t.adminDashboard.users.table.lastSeen}</TableHead>
-                    <TableHead className="text-right">{t.adminDashboard.users.table.registrations}</TableHead>
-                    <TableHead className="text-right">{t.adminDashboard.users.table.attendances}</TableHead>
-                    <TableHead className="text-right">{t.adminDashboard.users.table.events}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {users.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>
-                        <div className="font-medium">{user.email}</div>
-                        {user.full_name && <div className="text-xs text-muted-foreground">{user.full_name}</div>}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Badge variant={roleBadgeVariant(user.role)}>{roleLabels[user.role]}</Badge>
-                          <Select
-                            value={user.role}
-                            onValueChange={(value) => handleUpdateUser(user.id, { role: value as UserRole })}
-                          >
-                            <SelectTrigger className="h-8 w-[150px]">
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-                              <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-                              <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Checkbox
-                          checked={user.is_active}
-                          onCheckedChange={(checked) => handleUpdateUser(user.id, { is_active: Boolean(checked) })}
-                        />
-                      </TableCell>
-                      <TableCell>{formatDateTime(user.created_at, language)}</TableCell>
-                      <TableCell>{user.last_seen_at ? formatDateTime(user.last_seen_at, language) : '-'}</TableCell>
-                      <TableCell className="text-right">{user.registrations_count}</TableCell>
-                      <TableCell className="text-right">{user.attended_count}</TableCell>
-                      <TableCell className="text-right">{user.events_created_count}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-
-              <div className="mt-4 flex items-center justify-between">
-                <p className="text-sm text-muted-foreground">
-                  {t.adminDashboard.pagination.page} {usersPage} / {totalUserPages} • {t.adminDashboard.pagination.total} {usersTotal}
-                </p>
-                <div className="flex gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={usersPage <= 1}
-                    onClick={() => loadUsers(usersPage - 1)}
-                  >
-                    {t.adminDashboard.pagination.prev}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={usersPage >= totalUserPages}
-                    onClick={() => loadUsers(usersPage + 1)}
-                  >
-                    {t.adminDashboard.pagination.next}
-                  </Button>
-                </div>
-              </div>
-            </>
-          )}
+          {content}
         </CardContent>
       </Card>
     </div>

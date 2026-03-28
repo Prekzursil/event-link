@@ -24,6 +24,9 @@ def test_quality_zero_gate_requires_semgrep_zero_not_snyk_zero() -> None:
     assert '--required-context "codecov/patch"' in content
     assert '--required-context "Semgrep Zero"' in content
     assert '--required-context "Snyk Zero"' not in content
+    assert 'if [ "${{ github.event_name }}" = "pull_request" ]; then' in content
+    assert '--required-context "Codacy Static Code Analysis"' in content
+    assert '--required-context "DeepScan"' in content
 
 
 def test_semgrep_zero_workflow_exists_and_supports_pr_and_dispatch() -> None:

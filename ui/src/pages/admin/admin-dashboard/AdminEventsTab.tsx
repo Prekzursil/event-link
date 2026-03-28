@@ -26,9 +26,9 @@ import { formatDateTime } from '@/lib/utils';
 import { getModerationPresentation } from './shared';
 import type { AdminDashboardController } from './useAdminDashboardController';
 
-type Props = {
+type Props = Readonly<{
   controller: AdminDashboardController;
-};
+}>;
 
 type EventsCopy = Props['controller']['t']['adminDashboard']['events'];
 type PaginationCopy = Props['controller']['t']['adminDashboard']['pagination'];

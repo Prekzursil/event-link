@@ -4,6 +4,10 @@ import eventService from '@/services/event.service';
 import type { OrganizerProfile } from '@/types';
 import { useI18n } from '@/contexts/LanguageContext';
 
+function swallowPromise(result: Promise<unknown>) {
+  result.catch(() => undefined);
+}
+
 function splitEvents(profile: OrganizerProfile | null) {
   const now = new Date();
   const events = profile?.events ?? [];
@@ -55,7 +59,7 @@ export function useOrganizerProfileController() {
       setIsLoading(false);
       return;
     }
-    void loadProfile(organizerId);
+    swallowPromise(loadProfile(organizerId));
   }, [id, loadProfile]);
 
   const { upcomingEvents, pastEvents } = useMemo(() => splitEvents(profile), [profile]);

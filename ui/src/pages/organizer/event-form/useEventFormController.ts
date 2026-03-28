@@ -16,6 +16,10 @@ import {
   validateEventForm,
 } from './shared';
 
+function swallowPromise(result: Promise<unknown>) {
+  result.catch(() => undefined);
+}
+
 export function useEventFormController() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
@@ -48,7 +52,7 @@ export function useEventFormController() {
 
   useEffect(() => {
     if (isEditing && id) {
-      void loadEvent(Number.parseInt(id, 10));
+      swallowPromise(loadEvent(Number.parseInt(id, 10)));
     }
   }, [id, isEditing, loadEvent]);
 

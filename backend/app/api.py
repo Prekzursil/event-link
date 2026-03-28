@@ -1413,7 +1413,6 @@ def _build_event_list_query(
 def _ordered_event_list_query(
     query,
     *,
-    db: Session,
     current_user: models.User | None,
     use_recommended_sort: bool,
 ):  # noqa: ANN001
@@ -1486,7 +1485,6 @@ def get_events(
     use_recommended_sort = _use_recommended_sort(sort_value, db=db, current_user=current_user, now=now)
     query = _ordered_event_list_query(
         query,
-        db=db,
         current_user=current_user,
         use_recommended_sort=use_recommended_sort,
     )

@@ -9,41 +9,60 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { EventCard } from '@/components/events/EventCard';
 import type { OrganizerProfileController } from './useOrganizerProfileController';
 
-type Props = {
+type Props = Readonly<{
   controller: OrganizerProfileController;
-};
+}>;
 
 type LoadedController = OrganizerProfileController & {
   profile: NonNullable<OrganizerProfileController['profile']>;
 };
 
-type BackToEventsButtonProps = {
+type BackToEventsButtonProps = Readonly<{
   label: string;
   className?: string;
-};
+}>;
 
-type OrganizerContactLinksProps = {
+type OrganizerContactLinksProps = Readonly<{
   email?: string | null;
   website?: string | null;
   websiteLabel: string;
-};
+}>;
 
-type OrganizerStatsProps = {
+type OrganizerStatsProps = Readonly<{
   totalEvents: number;
   upcomingCount: number;
   pastCount: number;
   labels: LoadedController['t']['organizerProfile']['stats'];
-};
+}>;
 
-type OrganizerIdentityProps = {
+type OrganizerIdentityProps = Readonly<{
   alt: string;
   initials: string;
   logoUrl: string | null;
-};
+}>;
 
-type OrganizerHeaderDetailsProps = {
+type OrganizerHeaderDetailsProps = Readonly<{
   controller: LoadedController;
-};
+}>;
+
+type OrganizerHeaderProps = Readonly<{
+  controller: LoadedController;
+}>;
+
+type EmptyEventsStateProps = Readonly<{
+  icon: typeof Calendar;
+  title: string;
+  description: string;
+}>;
+
+type EventsGridProps = Readonly<{
+  events: OrganizerProfileController['upcomingEvents'];
+  showPastState?: boolean;
+}>;
+
+type OrganizerEventsTabsProps = Readonly<{
+  controller: LoadedController;
+}>;
 
 /** Renders the shared back-to-events call to action. */
 function BackToEventsButton({ label, className }: BackToEventsButtonProps) {
@@ -160,7 +179,7 @@ function NotFoundState({ controller }: Props) {
 }
 
 /** Renders the organizer hero card for a loaded profile. */
-function OrganizerHeader({ controller }: { controller: LoadedController }) {
+function OrganizerHeader({ controller }: OrganizerHeaderProps) {
   return (
     <Card className="mb-8">
       <CardContent className="pt-6">
@@ -168,7 +187,7 @@ function OrganizerHeader({ controller }: { controller: LoadedController }) {
           <OrganizerIdentity
             alt={controller.organizerDisplayName}
             initials={controller.initials}
-            logoUrl={controller.profile.org_logo_url}
+            logoUrl={controller.profile.org_logo_url ?? null}
           />
           <OrganizerHeaderDetails controller={controller} />
         </div>
@@ -178,15 +197,7 @@ function OrganizerHeader({ controller }: { controller: LoadedController }) {
 }
 
 /** Renders the empty-state card for a tab that has no events to show. */
-function EmptyEventsState({
-  icon: Icon,
-  title,
-  description,
-}: {
-  icon: typeof Calendar;
-  title: string;
-  description: string;
-}) {
+function EmptyEventsState({ icon: Icon, title, description }: EmptyEventsStateProps) {
   return (
     <Card>
       <CardContent className="py-12 text-center">
@@ -199,13 +210,7 @@ function EmptyEventsState({
 }
 
 /** Renders the organizer event cards for a given tab. */
-function EventsGrid({
-  events,
-  showPastState = false,
-}: {
-  events: OrganizerProfileController['upcomingEvents'];
-  showPastState?: boolean;
-}) {
+function EventsGrid({ events, showPastState = false }: EventsGridProps) {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {events.map((event) => (
@@ -216,7 +221,7 @@ function EventsGrid({
 }
 
 /** Renders the tabbed organizer event sections for upcoming, past, and all events. */
-function OrganizerEventsTabs({ controller }: { controller: LoadedController }) {
+function OrganizerEventsTabs({ controller }: OrganizerEventsTabsProps) {
   const { profile } = controller;
 
   return (

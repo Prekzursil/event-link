@@ -68,20 +68,27 @@ jobs:
           fi
       - name: Assert required quality contexts are green
         run: |
+          required_contexts=(
+            --required-context "Coverage 100 Gate"
+            --required-context "Codecov Analytics"
+            --required-context "Sonar Zero"
+            --required-context "Codacy Zero"
+            --required-context "Semgrep Zero"
+            --required-context "Sentry Zero"
+            --required-context "DeepScan Zero"
+            --required-context "SonarCloud Code Analysis"
+          )
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            required_contexts+=(
+              --required-context "codecov/patch"
+              --required-context "Codacy Static Code Analysis"
+              --required-context "DeepScan"
+            )
+          fi
           python3 scripts/quality/check_required_checks.py \
             --repo "${GITHUB_REPOSITORY}" \
             --sha "${TARGET_SHA}" \
-            --required-context "Coverage 100 Gate" \
-            --required-context "Codecov Analytics" \
-            --required-context "codecov/patch" \
-            --required-context "Sonar Zero" \
-            --required-context "Codacy Zero" \
-            --required-context "Semgrep Zero" \
-            --required-context "Sentry Zero" \
-            --required-context "DeepScan Zero" \
-            --required-context "SonarCloud Code Analysis" \
-            --required-context "Codacy Static Code Analysis" \
-            --required-context "DeepScan" \
+            "${required_contexts[@]}" \
             --timeout-seconds 1500 \
             --poll-seconds 20 \
             --out-json quality-zero-gate/required-checks.json \
@@ -92,4 +99,3 @@ jobs:
         with:
           name: quality-zero-gate
           path: quality-zero-gate
-

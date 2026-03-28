@@ -5,9 +5,9 @@ import { Button } from '@/components/ui/button';
 import { getEventCategoryLabel } from '@/lib/eventCategories';
 import type { EventFormController } from './useEventFormController';
 
-type Props = {
+type Props = Readonly<{
   controller: EventFormController;
-};
+}>;
 
 export function EventSuggestionPanel({ controller }: Props) {
   const { language, suggestion, t, applySuggestion } = controller;
