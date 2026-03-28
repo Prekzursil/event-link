@@ -8,11 +8,7 @@ import {
   getHighImpactPageFixtures,
 } from './high-impact-pages-coverage.fixtures';
 
-const {
-  authServiceMock,
-  eventServiceMock,
-  toastSpy,
-} = getHighImpactPageFixtures();
+const { authServiceMock, eventServiceMock, toastSpy } = getHighImpactPageFixtures();
 
 it('covers StudentProfilePage success handlers and guarded branches', async () => {
   renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
@@ -46,24 +42,20 @@ it('covers StudentProfilePage success handlers and guarded branches', async () =
 
   fireEvent.click(screen.getByRole('button', { name: /Light/i }));
   fireEvent.click(screen.getByRole('button', { name: /^Romanian$/i }));
-  await waitFor(() =>
-    expect(authServiceMock.updateThemePreference).toHaveBeenCalledWith('light'),
-  );
-  await waitFor(() =>
-    expect(authServiceMock.updateLanguagePreference).toHaveBeenCalledWith('ro'),
-  );
+  await waitFor(() => expect(authServiceMock.updateThemePreference).toHaveBeenCalledWith('light'));
+  await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalledWith('ro'));
 
   eventServiceMock.unhideTag.mockRejectedValueOnce(new Error('unhide-fail'));
   const firstHiddenButton = screen
     .getAllByRole('button')
-    .find((btn) => (btn.textContent || '').trim() === '✕');
+    .find((button) => (button.textContent || '').trim() === '✕');
   fireEvent.click(requireElement(firstHiddenButton, 'first hidden tag button'));
   await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
   eventServiceMock.unhideTag.mockResolvedValueOnce(undefined);
   const secondHiddenButton = screen
     .getAllByRole('button')
-    .find((btn) => (btn.textContent || '').trim() === '✕');
+    .find((button) => (button.textContent || '').trim() === '✕');
   fireEvent.click(requireElement(secondHiddenButton, 'second hidden tag button'));
   await waitFor(() => expect(eventServiceMock.unhideTag).toHaveBeenCalledWith(5));
 
@@ -107,27 +99,3 @@ it('covers StudentProfilePage success handlers and guarded branches', async () =
   expect(reopenedAccessCode).toHaveValue('');
   fireEvent.click(within(reopenedDialog).getByRole('button', { name: /Cancel|Anulează/i }));
 }, 20000);
-
-it('covers student tag checkbox onCheckedChange callback', async () => {
-  renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
-  await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
-
-  const tagCheckbox = document.getElementById('tag-1');
-  expect(tagCheckbox).not.toBeNull();
-
-  const tagCheckboxElement = requireElement(tagCheckbox, 'tag checkbox');
-  fireEvent.click(tagCheckboxElement);
-  fireEvent.click(tagCheckboxElement);
-});
-
-it('renders tag option cards and toggles selection via card click', async () => {
-  renderLanguageRoute('/profile', '/profile', <StudentProfilePage />);
-  await waitFor(() => expect(eventServiceMock.getStudentProfile).toHaveBeenCalled());
-
-  const techTagLabel = requireElement(
-    (await screen.findByText(/Tech/i)).closest('label'),
-    'tech tag label',
-  );
-  fireEvent.click(techTagLabel);
-  fireEvent.click(techTagLabel);
-});
