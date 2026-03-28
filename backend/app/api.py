@@ -964,25 +964,48 @@ def _load_event_with_counts(db: Session, event_id: int) -> tuple[models.Event, i
     return result
 
 
-def _event_is_visible_to_user(*, event: models.Event, now: datetime, current_user: models.User | None) -> bool:
-    if event.status == "published" and (not event.publish_at or event.publish_at <= now):
+def _event_is_visible_to_user(
+    *,
+    event: models.Event,
+    now: datetime,
+    current_user: models.User | None,
+) -> bool:
+    """Return whether the current user is allowed to see the event detail."""
+    if event.status == "published" and (
+        not event.publish_at or event.publish_at <= now
+    ):
         return True
-    return bool(current_user and (current_user.id == event.owner_id or _is_admin(current_user)))
+    return bool(
+        current_user
+        and (current_user.id == event.owner_id or _is_admin(current_user))
+    )
 
 
-def _event_user_flags(*, db: Session, event_id: int, current_user: models.User | None) -> tuple[bool, bool]:
+def _event_user_flags(
+    *,
+    db: Session,
+    event_id: int,
+    current_user: models.User | None,
+) -> tuple[bool, bool]:
+    """Return registration and favorite flags for the current user."""
     if current_user is None:
         return False, False
     is_registered = (
         db.query(models.Registration)
-        .filter(models.Registration.event_id == event_id, models.Registration.user_id == current_user.id)
+        .filter(
+            models.Registration.event_id == event_id,
+            models.Registration.user_id == current_user.id,
+        )
         .filter(models.Registration.deleted_at.is_(None))
         .first()
         is not None
     )
     is_favorite = (
         db.query(models.FavoriteEvent)
-        .filter(models.FavoriteEvent.event_id == event_id, models.FavoriteEvent.user_id == current_user.id)
+        .filter(
+            models.FavoriteEvent.event_id == event_id,
+            models.FavoriteEvent.user_id == current_user.id,
+        )
         .first()
         is not None
     )
@@ -996,12 +1019,16 @@ def _event_recommendation_reason(
     current_user: models.User | None,
     event: models.Event,
 ) -> str | None:
+    """Return the localized recommendation reason shown on the event detail view."""
     if not _is_student_user(current_user):
         return None
     lang = _preferred_lang(request=request, user=current_user)
     rec_reason = (
         db.query(models.UserRecommendation.reason)
-        .filter(models.UserRecommendation.user_id == current_user.id, models.UserRecommendation.event_id == event.id)
+        .filter(
+            models.UserRecommendation.user_id == current_user.id,
+            models.UserRecommendation.event_id == event.id,
+        )
         .scalar()
     )
     return _append_local_reason(
@@ -1021,7 +1048,10 @@ def _serialize_event_detail(
     is_favorite: bool,
     recommendation_reason: str | None,
 ) -> schemas.EventDetailResponse:
-    available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
+    """Serialize the event detail payload including viewer-specific flags."""
+    available_seats = (
+        event.max_seats - seats_taken if event.max_seats is not None else None
+    )
     owner_name = event.owner.full_name or event.owner.email if event.owner else None
     return schemas.EventDetailResponse(
         id=event.id,
