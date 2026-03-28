@@ -558,7 +558,8 @@ def _append_local_reason(
     )
     if not is_local:
         return reason
-    suffix = f"Near you: {event_city}" if lang == "en" else f"În apropiere: {event_city}"
+    prefix = "Near you" if lang == "en" else "În apropiere"
+    suffix = f"{prefix}: {event_city}"
     return f"{reason} • {suffix}" if reason else suffix
 
 
@@ -710,6 +711,7 @@ def _load_cached_recommendations(
     registered_event_ids: list[int],
     lang: str,
 ) -> list[tuple[models.Event, int, Optional[str]]] | None:
+    """Return visible cached ML recommendations when the user's cache is still fresh."""
     if not settings.recommendations_use_ml_cache:
         return None
 
@@ -743,6 +745,7 @@ def _load_cached_recommendations(
 
 
 def _recommendation_rows_for_user(*, db: Session, user_id: int) -> list[models.UserRecommendation]:
+    """Load the user's highest-ranked cached recommendation rows."""
     return (
         db.query(models.UserRecommendation)
         .filter(models.UserRecommendation.user_id == user_id)
@@ -760,6 +763,7 @@ def _cached_recommendation_event_query(
     now: datetime,
     registered_event_ids: list[int],
 ):
+    """Build the base event query for cached recommendation event ids."""
     base_query = (
         db.query(models.Event)
         .filter(models.Event.id.in_(event_ids))
@@ -770,7 +774,10 @@ def _cached_recommendation_event_query(
     )
     if registered_event_ids:
         base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
-    hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(db=db, user_id=user_id)
+    hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(
+        db=db,
+        user_id=user_id,
+    )
     return _apply_personalization_exclusions(
         base_query,
         hidden_tag_ids=hidden_tag_ids,
@@ -784,13 +791,20 @@ def _rank_cached_recommendation_rows(
     rec_by_event_id: dict[int, models.UserRecommendation],
     lang: str,
 ) -> list[tuple[int, models.Event, int, Optional[str]]]:
+    """Attach cached recommendation metadata to the visible event rows."""
     default_reason = "Recommended for you" if lang == "en" else "Recomandat pentru tine"
     ranked: list[tuple[int, models.Event, int, Optional[str]]] = []
     for ev, seats in rows:
         rec = rec_by_event_id.get(int(ev.id))
-        if not _cached_recommendation_row_visible(event=ev, seats=int(seats or 0), rec=rec):
+        if not _cached_recommendation_row_visible(
+            event=ev,
+            seats=int(seats or 0),
+            rec=rec,
+        ):
             continue
-        ranked.append((int(rec.rank), ev, int(seats or 0), rec.reason or default_reason))
+        ranked.append(
+            (int(rec.rank), ev, int(seats or 0), rec.reason or default_reason)
+        )
     return ranked
 
 
@@ -800,6 +814,7 @@ def _cached_recommendation_row_visible(
     seats: int,
     rec: models.UserRecommendation | None,
 ) -> bool:
+    """Keep only cached recommendation rows that still point to visible events."""
     if rec is None:
         return False
     if event.max_seats is not None and seats >= event.max_seats:
@@ -808,6 +823,7 @@ def _cached_recommendation_row_visible(
 
 
 def _recommendations_cache_is_fresh(*, db: Session, user_id: int, now: datetime) -> bool:
+    """Check whether the cached recommendation snapshot is still within the max age."""
     latest_generated_at = (
         db.query(func.max(models.UserRecommendation.generated_at))
         .filter(models.UserRecommendation.user_id == user_id)
@@ -815,13 +831,20 @@ def _recommendations_cache_is_fresh(*, db: Session, user_id: int, now: datetime)
     )
     if not latest_generated_at:
         return False
-    if getattr(latest_generated_at, "tzinfo", None) is None:
+    if latest_generated_at.tzinfo is None:
         latest_generated_at = latest_generated_at.replace(tzinfo=timezone.utc)
     max_age = timedelta(seconds=settings.recommendations_cache_max_age_seconds)
     return latest_generated_at >= (now - max_age)
 
 
-def _default_events_sort(sort: str | None, *, db: Session, current_user: models.User | None, now: datetime) -> str:
+def _default_events_sort(
+    sort: str | None,
+    *,
+    db: Session,
+    current_user: models.User | None,
+    now: datetime,
+) -> str:
+    """Choose the default public-events sort for the current user and request."""
     sort_value = (sort or "").strip().lower()
     if sort_value in {"recommended", "time"}:
         return sort_value
