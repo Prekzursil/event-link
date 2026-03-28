@@ -1,3 +1,4 @@
+"""Coverage-closure tests for recommendation recomputation edge paths."""
 from __future__ import annotations
 
 import importlib.util
@@ -16,10 +17,12 @@ _HASH_FIELD = "pass" + "word_hash"
 
 
 def _make_user(**kwargs):
+    """Creates the user fixture value."""
     return models.User(**{_HASH_FIELD: "hash", **kwargs})
 
 
 def _load_script_module():
+    """Loads the script module helper resource."""
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
     module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, script_path)
@@ -31,6 +34,7 @@ def _load_script_module():
 
 
 def _run_main(module, monkeypatch, *args: str) -> int:
+    """Runs the main helper path for the test."""
     monkeypatch.setattr(sys, "argv", [str(Path(module.__file__)), *args])
     return module.main()
 
@@ -51,6 +55,7 @@ def _make_event(
     deleted_at: datetime | None = None,
     end_hours: int | None = None,
 ):
+    """Creates the event fixture value."""
     start_time = now + timedelta(days=days, hours=hours)
     payload = {
         "title": title,
@@ -73,11 +78,13 @@ def _make_event(
 
 
 def _refresh_all(db_session, *instances) -> None:
+    """Refreshes the all fixture rows."""
     for instance in instances:
         db_session.refresh(instance)
 
 
 def _build_seed_training_entities(now: datetime):
+    """Builds the seed training entities fixture data."""
     organizer = _make_user(email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj")
     student = _make_user(
         email="student-ml@test.ro",
@@ -98,6 +105,7 @@ def _build_seed_training_entities(now: datetime):
 
 
 def _persist_seed_training_entities(db_session, organizer, student, tag, events) -> None:
+    """Persists the seed training entities fixture rows."""
     events["positive"].tags.append(tag)
     events["candidate"].tags.append(tag)
     student.interest_tags.append(tag)
@@ -107,6 +115,7 @@ def _persist_seed_training_entities(db_session, organizer, student, tag, events)
 
 
 def _build_seed_training_interactions(now: datetime, student, tag, events):
+    """Builds the seed training interactions fixture data."""
     return [
         models.Registration(user_id=int(student.id), event_id=int(events["positive"].id), attended=True),
         models.Registration(user_id=int(student.id), event_id=int(events["filtered_full"].id), attended=False),
@@ -125,6 +134,7 @@ def _build_seed_training_interactions(now: datetime, student, tag, events):
 
 
 def _seed_training_rows(db_session):
+    """Seeds the training rows fixture rows."""
     now = datetime.now(timezone.utc)
     organizer, student, tag, events = _build_seed_training_entities(now)
     _persist_seed_training_entities(db_session, organizer, student, tag, events)
@@ -134,6 +144,7 @@ def _seed_training_rows(db_session):
 
 
 def _warning_path_query_error(args: tuple[object, ...], state: dict[str, bool]) -> str | None:
+    """Returns the warning for path query error."""
     if args and args[0] is models.UserImplicitInterestCategory.user_id and not state["category"]:
         state["category"] = True
         return "category boom"
@@ -153,6 +164,7 @@ def _warning_path_query_error(args: tuple[object, ...], state: dict[str, bool]) 
 
 
 def _build_helper_user_and_events(module, now: datetime):
+    """Builds the helper user and events fixture data."""
     user = module._UserFeatures(
         city="cluj",
         interest_tag_weights={"python": 1.0},
@@ -188,6 +200,7 @@ def _build_helper_user_and_events(module, now: datetime):
 
 
 def test_helper_rng_and_normalize_primitives() -> None:
+    """Exercises helper rng and normalize primitives."""
     module = _load_script_module()
     rng_a = module._DeterministicRng(42)
     rng_b = module._DeterministicRng(42)
@@ -214,6 +227,7 @@ def test_helper_rng_and_normalize_primitives() -> None:
 
 
 def test_helper_feature_vector_reason_and_impression_weights() -> None:
+    """Exercises helper feature vector reason and impression weights."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     user, event, other_event = _build_helper_user_and_events(module, now)
@@ -233,6 +247,7 @@ def test_helper_feature_vector_reason_and_impression_weights() -> None:
 
 
 def test_selected_model_row_falls_back_when_requested_version_is_missing(db_session) -> None:
+    """Exercises selected model row falls back when requested version is missing."""
     module = _load_script_module()
     active_model = models.RecommenderModel(
         model_version="active-v1",
@@ -260,6 +275,7 @@ def test_selected_model_row_falls_back_when_requested_version_is_missing(db_sess
 
 
 def test_event_id_for_features_raises_when_candidate_is_missing() -> None:
+    """Exercises event id for features raises when candidate is missing."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     _user, candidate_event, other_event = _build_helper_user_and_events(module, now)
@@ -269,6 +285,7 @@ def test_event_id_for_features_raises_when_candidate_is_missing() -> None:
 
 
 def test_helper_train_and_eval_hitrate_smoke() -> None:
+    """Exercises helper train and eval hitrate smoke."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     user, event, other_event = _build_helper_user_and_events(module, now)
@@ -296,6 +313,7 @@ def test_helper_train_and_eval_hitrate_smoke() -> None:
 
 
 def test_main_handles_missing_database_and_empty_inputs(monkeypatch, db_session, capsys) -> None:
+    """Exercises main handles missing database and empty inputs."""
     module = _load_script_module()
 
     monkeypatch.delenv("DATABASE_URL", raising=False)
@@ -315,6 +333,7 @@ def test_main_handles_missing_database_and_empty_inputs(monkeypatch, db_session,
 
 
 def test_main_skip_training_paths(monkeypatch, db_session, capsys) -> None:
+    """Exercises main skip training paths."""
     module = _load_script_module()
     student, event_candidate = _seed_training_rows(db_session)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
@@ -356,10 +375,16 @@ def test_main_skip_training_paths(monkeypatch, db_session, capsys) -> None:
 
 
 def test_main_skip_training_returns_zero_when_loader_yields_empty_state(monkeypatch, db_session) -> None:
+    """Exercises main skip training returns zero when loader yields empty state."""
     module = _load_script_module()
     student, _event_candidate = _seed_training_rows(db_session)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
-    monkeypatch.setattr(module, "_load_persisted_model_state", lambda **_kwargs: (None, None, None))
+
+    def _load_empty_model_state(**_kwargs):
+        """Returns an empty persisted-model state for the test."""
+        return (None, None, None)
+
+    monkeypatch.setattr(module, "_load_persisted_model_state", _load_empty_model_state)
 
     assert _run_main(module, monkeypatch, "--skip-training", "--user-id", str(student.id)) == 0
 
@@ -372,6 +397,7 @@ def test_main_skip_training_returns_zero_when_loader_yields_empty_state(monkeypa
 
 
 def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db_session, capsys) -> None:
+    """Exercises main training paths cover no examples dry run and write."""
     module = _load_script_module()
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
 
@@ -427,6 +453,7 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db
 
 
 def _empty_user_features(module, *, city: str | None = None, city_weights: dict[str, float] | None = None):
+    """Builds the empty user features fixture."""
     return module._UserFeatures(
         city=city,
         interest_tag_weights={},
@@ -439,6 +466,7 @@ def _empty_user_features(module, *, city: str | None = None, city_weights: dict[
 
 
 def _basic_event_features(module, now: datetime, *, city: str, owner_id: int, days: int, category: str | None = None):
+    """Builds the basic event features fixture."""
     return module._EventFeatures(
         tags=set(),
         category=category,
@@ -453,6 +481,7 @@ def _basic_event_features(module, now: datetime, *, city: str, owner_id: int, da
 
 
 def test_reason_for_city_and_generic_fallback_edges() -> None:
+    """Exercises reason for city and generic fallback edges."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     same_city_user = _empty_user_features(module, city="cluj")
@@ -467,6 +496,7 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
 
 
 def test_evaluate_hitrate_sparse_positive_edge() -> None:
+    """Exercises evaluate hitrate sparse positive edge."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     same_city_user = _empty_user_features(module, city="cluj")
@@ -486,6 +516,7 @@ def test_evaluate_hitrate_sparse_positive_edge() -> None:
 
 
 def test_main_training_warning_paths_continue_on_query_failures(monkeypatch, db_session, capsys) -> None:
+    """Exercises main training warning paths continue on query failures."""
     module = _load_script_module()
     _seed_training_rows(db_session)
     monkeypatch.setenv("DATABASE_URL", "sqlite:///warning-paths.db")
@@ -494,22 +525,31 @@ def test_main_training_warning_paths_continue_on_query_failures(monkeypatch, db_
     import app.database as database_module
 
     class _SessionContext:
+        """Test double for SessionContext."""
         def __init__(self, session):
+            """Initializes the test double."""
             self._session = session
 
         def __enter__(self):
+            """Returns the wrapped context value."""
             return self._session
 
         def __exit__(self, exc_type, exc, tb):
+            """Leaves exception propagation unchanged."""
             return False
 
-    monkeypatch.setattr(database_module, "SessionLocal", lambda: _SessionContext(db_session))
+    def _session_local():
+        """Builds the fake session-local context factory."""
+        return _SessionContext(db_session)
+
+    monkeypatch.setattr(database_module, "SessionLocal", _session_local)
     monkeypatch.setattr(config_module.settings, "recommendations_online_learning_max_score", 0)
 
     real_query = db_session.query
     state = {"category": False, "city": False, "interaction": False}
 
     def _query(*args, **kwargs):
+        """Builds the query helper used by the test."""
         if message := _warning_path_query_error(args, state):
             raise RuntimeError(message)
         return real_query(*args, **kwargs)
@@ -524,16 +564,22 @@ def test_main_training_warning_paths_continue_on_query_failures(monkeypatch, db_
 
 
 def test_main_training_detects_feature_length_mismatch(monkeypatch, db_session, capsys) -> None:
+    """Exercises main training detects feature length mismatch."""
     module = _load_script_module()
     student, _event_candidate = _seed_training_rows(db_session)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
-    monkeypatch.setattr(module, "_build_feature_vector", lambda **_kwargs: [1.0])
+    def _single_feature_vector(**_kwargs):
+        """Returns a one-feature vector for mismatch validation."""
+        return [1.0]
+
+    monkeypatch.setattr(module, "_build_feature_vector", _single_feature_vector)
 
     assert _run_main(module, monkeypatch, "--dry-run", "--user-id", str(student.id)) == 2
     assert "feature vector length mismatch" in capsys.readouterr().out
 
 
 def test_recompute_recommendations_ml_main_guard_raises_system_exit(monkeypatch) -> None:
+    """Exercises recompute recommendations ml main guard raises system exit."""
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(sys, "argv", [str(script_path)])
@@ -543,6 +589,7 @@ def test_recompute_recommendations_ml_main_guard_raises_system_exit(monkeypatch)
 
 
 def _build_edge_training_entities(now: datetime):
+    """Builds the edge training entities fixture data."""
     organizer = _make_user(email="org-edge@test.ro", role=models.UserRole.organizator)
     student = _make_user(email="student-edge@test.ro", role=models.UserRole.student, city=None)
     shadow_org = _make_user(email="shadow-org@test.ro", role=models.UserRole.organizator)
@@ -563,6 +610,7 @@ def _build_edge_training_entities(now: datetime):
 
 
 def _persist_edge_training_entities(db_session, fixture) -> None:
+    """Persists the edge training entities fixture rows."""
     fixture["tag"].tags.append(fixture["tag_good"])
     fixture["no_match"].tags.append(fixture["tag_blank"])
     fixture["weak_tag"].tags.append(fixture["tag_good"])
@@ -573,6 +621,7 @@ def _persist_edge_training_entities(db_session, fixture) -> None:
 
 
 def _seed_edge_training_rows(db_session, fixture, now: datetime):
+    """Seeds the edge training rows fixture rows."""
     existing_model = models.RecommenderModel(model_version="edge-v2", feature_names=["stale"], weights=[99.0], meta={"stale": True}, is_active=True)
     previous_model = models.RecommenderModel(model_version="edge-v1", feature_names=["bias"], weights=[0.0], meta={}, is_active=False)
     rows = [
@@ -605,12 +654,16 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
 
 
 def _patch_rng_for_choices(monkeypatch, module, choices: list[int]) -> None:
+    """Patches the rng for choices helper for the test."""
     class _FakeRng:
+        """Test double for FakeRng."""
         def __init__(self, _seed: int) -> None:
+            """Initializes the test double."""
             self._remaining = list(choices)
             self._cursor = 0
 
         def choice(self, items):
+            """Returns the next deterministic choice."""
             ordered = list(items)
             if self._remaining:
                 wanted = self._remaining.pop(0)
@@ -621,12 +674,14 @@ def _patch_rng_for_choices(monkeypatch, module, choices: list[int]) -> None:
             return value
 
         def shuffle(self, items) -> None:
+            """Preserves deterministic ordering for the test."""
             return None
 
     monkeypatch.setattr(module, "_DeterministicRng", _FakeRng)
 
 
 def _assert_edge_training_results(db_session, module, fixture, existing_model, previous_model) -> None:
+    """Asserts the edge training results expectations."""
     db_session.refresh(existing_model)
     db_session.refresh(previous_model)
     assert existing_model.feature_names == list(module.FEATURE_NAMES)
@@ -638,6 +693,7 @@ def _assert_edge_training_results(db_session, module, fixture, existing_model, p
 
 
 def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(monkeypatch, db_session, capsys) -> None:
+    """Exercises main training edge rows cover sparse paths and existing model update."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
@@ -652,6 +708,7 @@ def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(mo
 
 
 def _seed_weak_city_fixture(db_session, now: datetime):
+    """Seeds the weak city fixture fixture rows."""
     organizer = _make_user(email="org-city@test.ro", role=models.UserRole.organizator)
     student = _make_user(email="student-city@test.ro", role=models.UserRole.student, city=None)
     event_positive = _make_event(owner=organizer, title="Positive City", now=now, days=2, location="Hall H")
@@ -670,6 +727,7 @@ def _seed_weak_city_fixture(db_session, now: datetime):
 
 
 def test_main_training_weak_city_match_branch(monkeypatch, db_session) -> None:
+    """Exercises main training weak city match branch."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
@@ -679,6 +737,7 @@ def test_main_training_weak_city_match_branch(monkeypatch, db_session) -> None:
 
 
 def test_patch_rng_choices_falls_back_when_requested_choice_is_missing(monkeypatch) -> None:
+    """Exercises patch rng choices falls back when requested choice is missing."""
     module = _load_script_module()
     _patch_rng_for_choices(monkeypatch, module, [999])
     rng = module._DeterministicRng(7)
@@ -687,6 +746,7 @@ def test_patch_rng_choices_falls_back_when_requested_choice_is_missing(monkeypat
 
 
 def test_helper_feature_vector_handles_missing_city_and_start_time() -> None:
+    """Exercises helper feature vector handles missing city and start time."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     user = module._UserFeatures(
@@ -717,14 +777,19 @@ def test_helper_feature_vector_handles_missing_city_and_start_time() -> None:
 
 
 def test_evaluate_hitrate_can_miss_positive(monkeypatch) -> None:
+    """Exercises evaluate hitrate can miss positive."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     user, pos_event, neg_event = _build_helper_user_and_events(module, now)
 
+    def _miss_positive_feature_vector(*, user, event, now):
+        """Returns lower-scoring features for the positive event."""
+        return [0.0] if event is pos_event else [1.0]
+
     monkeypatch.setattr(
         module,
         "_build_feature_vector",
-        lambda *, user, event, now: [0.0] if event is pos_event else [1.0],
+        _miss_positive_feature_vector,
     )
 
     hitrate = module._evaluate_hitrate_at_k(
@@ -742,22 +807,31 @@ def test_evaluate_hitrate_can_miss_positive(monkeypatch) -> None:
 
 
 def test_main_training_covers_sparse_meta_and_nondecayed_paths(monkeypatch, db_session) -> None:
+    """Exercises main training covers sparse meta and nondecayed paths."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
     import app.database as database_module
 
     class _SessionContext:
+        """Test double for SessionContext."""
         def __init__(self, session):
+            """Initializes the test double."""
             self._session = session
 
         def __enter__(self):
+            """Returns the wrapped context value."""
             return self._session
 
         def __exit__(self, exc_type, exc, tb):
+            """Leaves exception propagation unchanged."""
             return False
 
-    monkeypatch.setattr(database_module, "SessionLocal", lambda: _SessionContext(db_session))
+    def _session_local():
+        """Builds the fake session-local context factory."""
+        return _SessionContext(db_session)
+
+    monkeypatch.setattr(database_module, "SessionLocal", _session_local)
     student, candidate = _seed_training_rows(db_session)
     organizer = candidate.owner
     assert organizer is not None
@@ -803,19 +877,25 @@ def test_main_training_covers_sparse_meta_and_nondecayed_paths(monkeypatch, db_s
     real_query = db_session.query
 
     class _InterceptQuery:
+        """Test double for InterceptQuery."""
         def __init__(self, rows):
+            """Initializes the test double."""
             self._rows = rows
 
         def join(self, *_args, **_kwargs):
+            """Returns the fake query for chained joins."""
             return self
 
         def filter(self, *_args, **_kwargs):
+            """Returns the fake query for chained filters."""
             return self
 
         def all(self):
+            """Returns the intercepted rows."""
             return list(self._rows)
 
     def _query(*args, **kwargs):
+        """Builds the query helper used by the test."""
         is_implicit_tag_query = (
             len(args) == 4
             and args[0] is models.UserImplicitInterestTag.user_id

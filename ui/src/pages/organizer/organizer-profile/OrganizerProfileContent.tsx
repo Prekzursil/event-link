@@ -17,6 +17,82 @@ type LoadedController = OrganizerProfileController & {
   profile: NonNullable<OrganizerProfileController['profile']>;
 };
 
+type BackToEventsButtonProps = {
+  label: string;
+  className?: string;
+};
+
+type OrganizerContactLinksProps = {
+  email?: string | null;
+  website?: string | null;
+  websiteLabel: string;
+};
+
+type OrganizerStatsProps = {
+  totalEvents: number;
+  upcomingCount: number;
+  pastCount: number;
+  labels: LoadedController['t']['organizerProfile']['stats'];
+};
+
+/** Renders the shared back-to-events call to action. */
+function BackToEventsButton({ label, className }: BackToEventsButtonProps) {
+  return (
+    <Button variant="ghost" className={className} asChild>
+      <Link to="/events">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        {label}
+      </Link>
+    </Button>
+  );
+}
+
+/** Renders the organizer email and website links when they are available. */
+function OrganizerContactLinks({ email, website, websiteLabel }: OrganizerContactLinksProps) {
+  return (
+    <div className="flex flex-wrap justify-center gap-4 md:justify-start">
+      {email ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Mail className="h-4 w-4" />
+          <a href={`mailto:${email}`} className="hover:text-primary">
+            {email}
+          </a>
+        </div>
+      ) : null}
+
+      {website ? (
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <ExternalLink className="h-4 w-4" />
+          <a href={website} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
+            {websiteLabel}
+          </a>
+        </div>
+      ) : null}
+    </div>
+  );
+}
+
+/** Renders the organizer summary badges. */
+function OrganizerStats({ totalEvents, upcomingCount, pastCount, labels }: OrganizerStatsProps) {
+  return (
+    <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
+      <Badge variant="secondary" className="text-sm">
+        <CalendarDays className="mr-1 h-4 w-4" />
+        {totalEvents} {labels.events}
+      </Badge>
+      <Badge variant="secondary" className="text-sm">
+        <Calendar className="mr-1 h-4 w-4" />
+        {upcomingCount} {labels.upcoming}
+      </Badge>
+      <Badge variant="outline" className="text-sm">
+        <History className="mr-1 h-4 w-4" />
+        {pastCount} {labels.past}
+      </Badge>
+    </div>
+  );
+}
+
+/** Renders the organizer fallback state when the profile is missing or fails to load. */
 function NotFoundState({ controller }: Props) {
   return (
     <div className="container mx-auto px-4 py-16">
@@ -29,18 +105,14 @@ function NotFoundState({ controller }: Props) {
               ? controller.t.organizerProfile.loadErrorDescription
               : controller.t.organizerProfile.notFoundDescription}
           </p>
-          <Button asChild>
-            <Link to="/events">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {controller.t.organizerProfile.backToEvents}
-            </Link>
-          </Button>
+          <BackToEventsButton label={controller.t.organizerProfile.backToEvents} />
         </CardContent>
       </Card>
     </div>
   );
 }
 
+/** Renders the organizer hero card for a loaded profile. */
 function OrganizerHeader({ controller }: { controller: LoadedController }) {
   const { profile } = controller;
 
@@ -60,45 +132,17 @@ function OrganizerHeader({ controller }: { controller: LoadedController }) {
               <p className="mb-4 text-muted-foreground">{profile.org_description}</p>
             )}
 
-            <div className="flex flex-wrap justify-center gap-4 md:justify-start">
-              {profile.email && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <Mail className="h-4 w-4" />
-                  <a href={`mailto:${profile.email}`} className="hover:text-primary">
-                    {profile.email}
-                  </a>
-                </div>
-              )}
-
-              {profile.org_website && (
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <ExternalLink className="h-4 w-4" />
-                  <a
-                    href={profile.org_website}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="hover:text-primary"
-                  >
-                    {controller.t.organizerProfile.website}
-                  </a>
-                </div>
-              )}
-            </div>
-
-            <div className="mt-4 flex flex-wrap justify-center gap-4 md:justify-start">
-              <Badge variant="secondary" className="text-sm">
-                <CalendarDays className="mr-1 h-4 w-4" />
-                {profile.events.length} {controller.t.organizerProfile.stats.events}
-              </Badge>
-              <Badge variant="secondary" className="text-sm">
-                <Calendar className="mr-1 h-4 w-4" />
-                {controller.upcomingEvents.length} {controller.t.organizerProfile.stats.upcoming}
-              </Badge>
-              <Badge variant="outline" className="text-sm">
-                <History className="mr-1 h-4 w-4" />
-                {controller.pastEvents.length} {controller.t.organizerProfile.stats.past}
-              </Badge>
-            </div>
+            <OrganizerContactLinks
+              email={profile.email}
+              website={profile.org_website}
+              websiteLabel={controller.t.organizerProfile.website}
+            />
+            <OrganizerStats
+              totalEvents={profile.events.length}
+              upcomingCount={controller.upcomingEvents.length}
+              pastCount={controller.pastEvents.length}
+              labels={controller.t.organizerProfile.stats}
+            />
           </div>
         </div>
       </CardContent>
@@ -106,6 +150,7 @@ function OrganizerHeader({ controller }: { controller: LoadedController }) {
   );
 }
 
+/** Renders the empty-state card for a tab that has no events to show. */
 function EmptyEventsState({
   icon: Icon,
   title,
@@ -126,6 +171,7 @@ function EmptyEventsState({
   );
 }
 
+/** Renders the organizer event cards for a given tab. */
 function EventsGrid({
   events,
   showPastState = false,
@@ -142,6 +188,7 @@ function EventsGrid({
   );
 }
 
+/** Renders the tabbed organizer event sections for upcoming, past, and all events. */
 function OrganizerEventsTabs({ controller }: { controller: LoadedController }) {
   const { profile } = controller;
 
@@ -201,6 +248,7 @@ function OrganizerEventsTabs({ controller }: { controller: LoadedController }) {
   );
 }
 
+/** Renders the organizer profile page once the controller has finished loading. */
 export function OrganizerProfileContent({ controller }: Props) {
   const { profile } = controller;
   if (controller.hasError || !profile) {
@@ -211,12 +259,7 @@ export function OrganizerProfileContent({ controller }: Props) {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Button variant="ghost" className="mb-6" asChild>
-        <Link to="/events">
-          <ArrowLeft className="mr-2 h-4 w-4" />
-          {controller.t.organizerProfile.backToEvents}
-        </Link>
-      </Button>
+      <BackToEventsButton label={controller.t.organizerProfile.backToEvents} className="mb-6" />
 
       <OrganizerHeader controller={loadedController} />
       <OrganizerEventsTabs controller={loadedController} />

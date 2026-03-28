@@ -1,3 +1,4 @@
+"""Coverage-closure tests for API helper and endpoint edge paths."""
 from __future__ import annotations
 
 import asyncio
@@ -17,19 +18,23 @@ _CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
 
 
 def _auth_header(token: str) -> dict[str, str]:
+    """Builds the auth header helper used by the test."""
     return {"Authorization": f"Bearer {token}"}
 
 
 def _future_dt(*, days: int = 0, hours: int = 0) -> datetime:
+    """Builds the future dt helper used by the test."""
     return datetime.now(timezone.utc) + timedelta(days=days, hours=hours)
 
 
 def _set_settings(monkeypatch, **overrides) -> None:
+    """Builds the set settings helper used by the test."""
     for name, value in overrides.items():
         monkeypatch.setattr(api.settings, name, value, raising=False)
 
 
 def _make_event(*, title: str, owner_id: int | None = None, owner=None, start_time: datetime | None = None, end_time: datetime | None = None, **overrides):
+    """Creates the event fixture value."""
     payload = {
         "title": title,
         "description": "desc",
@@ -51,14 +56,23 @@ def _make_event(*, title: str, owner_id: int | None = None, owner=None, start_ti
 
 
 def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
+    """Builds the install fake alembic helper used by the test."""
     class _FakeConfig:
+        """Test double for FakeConfig."""
         def __init__(self, _path: str):
+            """Initializes the test double."""
             self.path = _path
 
-        def set_main_option(self, *_args, **_kwargs):
+        @staticmethod
+        def set_main_option(*_args, **_kwargs):
+            """Accepts Alembic configuration writes during the test."""
             return None
 
-    fake_command = SimpleNamespace(upgrade=lambda *_a, **_k: upgraded.append("head"))
+    def _upgrade(*_args, **_kwargs):
+        """Records the fake Alembic upgrade call."""
+        upgraded.append("head")
+
+    fake_command = SimpleNamespace(upgrade=_upgrade)
     fake_config = SimpleNamespace(Config=_FakeConfig)
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
@@ -66,6 +80,7 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
 
 
 def _cached_recommendation_context(helpers):
+    """Builds the cached recommendation context helper used by the test."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("events-owner@test.ro", "owner-fixture-A1")
@@ -87,6 +102,7 @@ def _cached_recommendation_context(helpers):
 
 
 def _mutation_context(helpers):
+    """Builds the mutation context helper used by the test."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("mut-owner@test.ro", "owner-fixture-A1")
@@ -126,6 +142,7 @@ def _mutation_context(helpers):
 
 
 def _admin_registration_context(helpers):
+    """Builds the admin registration context helper used by the test."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_admin"]("adm@test.ro", "admin-fixture-A1")
@@ -174,6 +191,7 @@ def _admin_registration_context(helpers):
 
 
 def _interaction_context(helpers):
+    """Builds the interaction context helper used by the test."""
     db = helpers["db"]
     student_token = helpers["register_student"]("interactions-extra@test.ro")
     student = db.query(models.User).filter(models.User.email == "interactions-extra@test.ro").first()
@@ -196,6 +214,7 @@ def _interaction_context(helpers):
 
 
 def test_helper_math_and_admin_branches(monkeypatch, helpers):
+    """Exercises helper math and admin branches."""
     db = helpers["db"]
     score, flags, status = api._compute_moderation(
         title="Title",
@@ -228,31 +247,49 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
 
 
 def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
+    """Exercises cleanup root and exception handler branches."""
     client = helpers["client"]
     calls: list[tuple[int, int]] = []
-    monkeypatch.setattr(api, "log_event", lambda *_a, **_k: calls.append((1, 1)))
+
+    def _log_event(*_args, **_kwargs):
+        """Captures cleanup log events during the test."""
+        calls.append((1, 1))
+
+    monkeypatch.setattr(api, "log_event", _log_event)
 
     class _FakeQuery:
+        """Test double for FakeQuery."""
         def filter(self, *_a, **_k):
+            """Returns the fake query for chained filters."""
             return self
 
         def delete(self, **_k):
+            """Returns the fake delete count."""
             return 0
 
         def join(self, *_a, **_k):
+            """Returns the fake query for chained joins."""
             return self
 
     class _FakeDb:
+        """Test double for FakeDb."""
         def query(self, *_a, **_k):
+            """Builds the fake query result used by the test."""
             return _FakeQuery()
 
         def commit(self):
+            """Commits the fake database transaction."""
             return None
 
         def close(self):
+            """Closes the fake database session."""
             return None
 
-    monkeypatch.setattr(api, "SessionLocal", lambda: _FakeDb())
+    def _session_local():
+        """Builds the fake session-local factory used by the test."""
+        return _FakeDb()
+
+    monkeypatch.setattr(api, "SessionLocal", _session_local)
     api._run_cleanup_once(retention_days=0)
     assert calls
 
@@ -272,6 +309,7 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
 
 
 def test_run_migrations_success_and_lifespan_branches(monkeypatch, tmp_path):
+    """Exercises run migrations success and lifespan branches."""
     base = tmp_path / "backend"
     app_dir = base / "app"
     app_dir.mkdir(parents=True)
@@ -284,7 +322,12 @@ def test_run_migrations_success_and_lifespan_branches(monkeypatch, tmp_path):
     upgraded: list[str] = []
     infos: list[str] = []
     _install_fake_alembic(monkeypatch, upgraded)
-    monkeypatch.setattr(api.logging, "info", lambda msg: infos.append(str(msg)))
+
+    def _capture_info(msg):
+        """Captures migration log messages."""
+        infos.append(str(msg))
+
+    monkeypatch.setattr(api.logging, "info", _capture_info)
     api._run_migrations()
     assert upgraded == ["head"]
     assert any("Migrations applied" in msg for msg in infos)
@@ -293,17 +336,31 @@ def test_run_migrations_success_and_lifespan_branches(monkeypatch, tmp_path):
     cleanup_ticks: list[str] = []
 
     async def _fake_cleanup_loop():
+        """Provides the fake cleanup loop used by the test."""
         cleanup_ticks.append("tick")
         await asyncio.sleep(0)
 
     async def _run_once():
+        """Runs the once helper path for the test."""
         async with api.lifespan(api.app):
             await asyncio.sleep(0)
 
-    monkeypatch.setattr(api, "_check_configuration", lambda: None)
+    def _check_configuration():
+        """Lets the lifespan preflight pass during the test."""
+        return None
+
+    def _track_migration():
+        """Records the migration branch invocation."""
+        lifecycle_calls.append("migrate")
+
+    def _track_create_all(**_kwargs):
+        """Records table creation during the lifespan branch."""
+        lifecycle_calls.append("create")
+
+    monkeypatch.setattr(api, "_check_configuration", _check_configuration)
     monkeypatch.setattr(api, "_cleanup_loop", _fake_cleanup_loop)
-    monkeypatch.setattr(api, "_run_migrations", lambda: lifecycle_calls.append("migrate"))
-    monkeypatch.setattr(api.models.Base.metadata, "create_all", lambda **_k: lifecycle_calls.append("create"))
+    monkeypatch.setattr(api, "_run_migrations", _track_migration)
+    monkeypatch.setattr(api.models.Base.metadata, "create_all", _track_create_all)
 
     _set_settings(monkeypatch, auto_run_migrations=True, auto_create_tables=True)
     asyncio.run(_run_once())
@@ -316,6 +373,7 @@ def test_run_migrations_success_and_lifespan_branches(monkeypatch, tmp_path):
 
 
 def test_events_filter_branches_return_cached_reason(monkeypatch, helpers):
+    """Exercises events filter branches return cached reason."""
     ctx = _cached_recommendation_context(helpers)
     assert ctx.client.get("/api/events", params={"page": 0}).status_code == 400
     assert ctx.client.get("/api/events", params={"page_size": 0}).status_code == 400
@@ -332,12 +390,18 @@ def test_events_filter_branches_return_cached_reason(monkeypatch, helpers):
 
 
 def test_cached_recommendations_handle_disabled_cache_and_empty_user(monkeypatch, helpers):
+    """Exercises cached recommendations handle disabled cache and empty user."""
     ctx = _cached_recommendation_context(helpers)
     now = datetime.now(timezone.utc)
     _set_settings(monkeypatch, recommendations_use_ml_cache=False)
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
     _set_settings(monkeypatch, recommendations_use_ml_cache=True)
-    monkeypatch.setattr(api, "_recommendations_cache_is_fresh", lambda **_k: True)
+
+    def _always_fresh(**_kwargs):
+        """Marks the cached recommendation result as fresh."""
+        return True
+
+    monkeypatch.setattr(api, "_recommendations_cache_is_fresh", _always_fresh)
     fresh_user = models.User(
         email="fresh-user@test.ro",
         password_hash=auth.get_password_hash("fixture-access-A1"),
@@ -348,30 +412,50 @@ def test_cached_recommendations_handle_disabled_cache_and_empty_user(monkeypatch
     assert api._load_cached_recommendations(db=ctx.db, user=fresh_user, now=now, registered_event_ids=[], lang="en") is None
 
 def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, helpers):
+    """Exercises cached recommendations skip registered and full events."""
     ctx = _cached_recommendation_context(helpers)
     now = datetime.now(timezone.utc)
     _set_settings(monkeypatch, recommendations_use_ml_cache=True)
-    monkeypatch.setattr(api, "_recommendations_cache_is_fresh", lambda **_k: True)
+
+    def _always_fresh(**_kwargs):
+        """Marks the cached recommendation rows as fresh."""
+        return True
+
+    monkeypatch.setattr(api, "_recommendations_cache_is_fresh", _always_fresh)
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[int(ctx.event.id)], lang="en") is None
 
     def _rows(*items):
-        return SimpleNamespace(all=lambda: list(items))
+        """Builds the rows helper used by the test."""
+        def _all():
+            """Returns the intercepted cached recommendation rows."""
+            return list(items)
+
+        return SimpleNamespace(all=_all)
+
+    def _unmatched_events_with_counts_query(*_args, **_kwargs):
+        """Returns cached rows for an unrelated event."""
+        return (_rows((SimpleNamespace(id=999, max_seats=5, city="Cluj"), 0)), None)
+
+    def _full_events_with_counts_query(*_args, **_kwargs):
+        """Returns cached rows for a full matching event."""
+        return (_rows((SimpleNamespace(id=int(ctx.event.id), max_seats=1, city="Cluj"), 1)), None)
 
     monkeypatch.setattr(
         api,
         "_events_with_counts_query",
-        lambda *_a, **_k: (_rows((SimpleNamespace(id=999, max_seats=5, city="Cluj"), 0)), None),
+        _unmatched_events_with_counts_query,
     )
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
     monkeypatch.setattr(
         api,
         "_events_with_counts_query",
-        lambda *_a, **_k: (_rows((SimpleNamespace(id=int(ctx.event.id), max_seats=1, city="Cluj"), 1)), None),
+        _full_events_with_counts_query,
     )
     assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
 
 
 def test_event_mutation_branches_cover_get_update_and_delete(helpers):
+    """Exercises event mutation branches cover get update and delete."""
     ctx = _mutation_context(helpers)
     assert ctx.client.get("/api/events/999999").status_code == 404
     update_ok = ctx.client.put(
@@ -401,6 +485,7 @@ def test_event_mutation_branches_cover_get_update_and_delete(helpers):
 
 
 def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
+    """Exercises bulk status and tag branches follow event lifecycle."""
     ctx = _mutation_context(helpers)
     event = ctx.db.query(models.Event).filter(models.Event.id == ctx.event_id).first()
     assert event is not None
@@ -425,6 +510,7 @@ def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
 
 
 def test_suggest_branches_infer_city_after_blank_tag_seed(helpers):
+    """Exercises suggest branches infer city after blank tag seed."""
     ctx = _mutation_context(helpers)
     ctx.db.add(models.Tag(name=""))
     ctx.db.commit()
@@ -438,6 +524,7 @@ def test_suggest_branches_infer_city_after_blank_tag_seed(helpers):
 
 
 def test_admin_registration_and_participant_branches(helpers):
+    """Exercises admin registration and participant branches."""
     ctx = _admin_registration_context(helpers)
     participants_name = ctx.client.get(
         f"/api/organizer/events/{int(ctx.events['future'].id)}/participants",
@@ -458,6 +545,7 @@ def test_admin_registration_and_participant_branches(helpers):
 
 
 def test_admin_filter_email_and_metadata_branches(helpers):
+    """Exercises admin filter email and metadata branches."""
     ctx = _admin_registration_context(helpers)
     filtered = ctx.client.get(
         "/api/admin/events",
@@ -477,16 +565,25 @@ def test_admin_filter_email_and_metadata_branches(helpers):
 
 
 def test_export_and_recommendation_branches(monkeypatch, helpers):
+    """Exercises export and recommendation branches."""
     ctx = _admin_registration_context(helpers)
     export = ctx.client.get("/api/me/export", headers=_auth_header(ctx.owner_token))
     assert export.status_code == 200
     assert "organized_events" in export.json()
     _set_settings(monkeypatch, recommendations_use_ml_cache=False)
     assert ctx.client.get("/api/recommendations", headers=_auth_header(ctx.student_token)).status_code == 200
+
+    def _cached_recommendations(**_kwargs):
+        """Returns cached recommendations that include a full and open event."""
+        return [
+            (ctx.events["full"], int(ctx.events["full"].max_seats or 0), "full"),
+            (ctx.events["open"], 0, "open"),
+        ]
+
     monkeypatch.setattr(
         api,
         "_load_cached_recommendations",
-        lambda **_k: [(ctx.events["full"], int(ctx.events["full"].max_seats or 0), "full"), (ctx.events["open"], 0, "open")],
+        _cached_recommendations,
     )
     filtered_recommendations = ctx.client.get("/api/recommendations", headers=_auth_header(ctx.student_token))
     assert filtered_recommendations.status_code == 200
@@ -496,6 +593,7 @@ def test_export_and_recommendation_branches(monkeypatch, helpers):
 
 
 def test_export_handles_organizer_without_events(helpers):
+    """Exercises export handles organizer without events."""
     client = helpers["client"]
     helpers["make_organizer"]("empty-export-owner@test.ro", "owner-fixture-A1")
     owner_token = helpers["login"]("empty-export-owner@test.ro", "owner-fixture-A1")
@@ -507,6 +605,7 @@ def test_export_handles_organizer_without_events(helpers):
 
 
 def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
+    """Exercises interaction learning hidden tag branches."""
     ctx = _interaction_context(helpers)
     _set_settings(
         monkeypatch,
@@ -530,6 +629,7 @@ def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
 
 
 def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
+    """Exercises interaction dwell refresh enqueues job."""
     ctx = _interaction_context(helpers)
     _set_settings(
         monkeypatch,
@@ -546,6 +646,7 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     import app.task_queue as tq
 
     def _enqueue(_db, job_type, payload, dedupe_key=None):
+        """Builds the enqueue helper used by the test."""
         jobs.append((job_type, payload))
         return SimpleNamespace(id=501, job_type=job_type, status="queued")
 
@@ -554,8 +655,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=_auth_header(ctx.student_token))
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
-
 
 
 

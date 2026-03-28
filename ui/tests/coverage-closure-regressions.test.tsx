@@ -64,6 +64,10 @@ import { useEventDetailController } from '@/pages/events/event-detail/useEventDe
 import { useEventFormController } from '@/pages/organizer/event-form/useEventFormController';
 import type { EventDetail } from '@/types';
 
+const swallowPromise = (result: void | Promise<unknown>) => {
+  Promise.resolve(result).catch(() => undefined);
+};
+
 function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDetail {
   return {
     id: 1,
@@ -108,15 +112,15 @@ function EventDetailControllerHarness() {
 
   return (
     <>
-      <button onClick={() => void controller.handleRegister()}>register</button>
-      <button onClick={() => void controller.handleUnregister()}>unregister</button>
-      <button onClick={() => void controller.handleResendRegistrationEmail()}>resend-email</button>
-      <button onClick={() => void controller.handleFavorite()}>favorite</button>
-      <button onClick={() => void controller.handleShare()}>share</button>
-      <button onClick={controller.handleExportCalendar}>export</button>
-      <button onClick={() => void controller.handleClone()}>clone</button>
-      <button onClick={() => void controller.handleHideTag()}>hide-tag</button>
-      <button onClick={() => void controller.handleBlockOrganizer()}>block-organizer</button>
+      <button onClick={() => swallowPromise(controller.handleRegister())}>register</button>
+      <button onClick={() => swallowPromise(controller.handleUnregister())}>unregister</button>
+      <button onClick={() => swallowPromise(controller.handleResendRegistrationEmail())}>resend-email</button>
+      <button onClick={() => swallowPromise(controller.handleFavorite())}>favorite</button>
+      <button onClick={() => swallowPromise(controller.handleShare())}>share</button>
+      <button onClick={() => swallowPromise(controller.handleExportCalendar())}>export</button>
+      <button onClick={() => swallowPromise(controller.handleClone())}>clone</button>
+      <button onClick={() => swallowPromise(controller.handleHideTag())}>hide-tag</button>
+      <button onClick={() => swallowPromise(controller.handleBlockOrganizer())}>block-organizer</button>
     </>
   );
 }

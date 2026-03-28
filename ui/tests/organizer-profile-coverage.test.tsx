@@ -117,5 +117,20 @@ describe('organizer profile coverage', () => {
     await waitFor(() => expect(eventServiceMock.getOrganizerProfile).toHaveBeenCalledWith(7));
     expect(await screen.findByRole('heading', { name: /^Organizer$/i })).toBeInTheDocument();
     expect(screen.getByTestId('organizer-event-5')).toBeInTheDocument();
+
+    cleanup();
+    eventServiceMock.getOrganizerProfile.mockResolvedValueOnce(
+      makeOrganizerProfile({
+        org_website: '',
+        email: '',
+        events: [makeEvent(6, 24)],
+      }),
+    );
+
+    renderLanguageRoute('/organizers/7', '/organizers/:id', <OrganizerProfilePage />);
+    await waitFor(() => expect(eventServiceMock.getOrganizerProfile).toHaveBeenCalledWith(7));
+    expect(await screen.findByTestId('organizer-event-6')).toBeInTheDocument();
+    expect(screen.queryByText('org@test.local')).not.toBeInTheDocument();
+    expect(screen.queryByRole('link', { name: /Website/i })).not.toBeInTheDocument();
   });
 });
