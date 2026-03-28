@@ -10,6 +10,8 @@ from app import api, auth, models
 
 ACCESS_CODE_FIELD = "pass" + "word"
 CONFIRM_ACCESS_CODE_FIELD = "confirm_" + ACCESS_CODE_FIELD
+MUTATION_OWNER_EMAIL = "mut-owner@test.ro"
+ADMIN_OWNER_EMAIL = "owner@test.ro"
 
 
 def auth_header(token: str) -> dict[str, str]:
@@ -102,12 +104,12 @@ def mutation_context(helpers):
     """Builds the mutation context helper used by the test."""
     client = helpers["client"]
     db = helpers["db"]
-    helpers["make_organizer"]("mut-owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"](MUTATION_OWNER_EMAIL, "owner-fixture-A1")
     helpers["make_organizer"]("mut-other@test.ro", "other-fixture-A1")
-    owner_token = helpers["login"]("mut-owner@test.ro", "owner-fixture-A1")
+    owner_token = helpers["login"](MUTATION_OWNER_EMAIL, "owner-fixture-A1")
     other_token = helpers["login"]("mut-other@test.ro", "other-fixture-A1")
     student_token = helpers["register_student"]("mut-student@test.ro")
-    owner_user = db.query(models.User).filter(models.User.email == "mut-owner@test.ro").first()
+    owner_user = db.query(models.User).filter(models.User.email == MUTATION_OWNER_EMAIL).first()
     assert owner_user is not None
     db.add(make_event(title="Totally unrelated title", owner_id=int(owner_user.id), start_time=future_dt(days=11), location="Side Hall", max_seats=40))
     db.commit()
@@ -143,14 +145,14 @@ def admin_registration_context(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_admin"]("adm@test.ro", "admin-fixture-A1")
-    helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
+    helpers["make_organizer"](ADMIN_OWNER_EMAIL, "owner-fixture-A1")
     helpers["make_organizer"]("other-owner@test.ro", "owner-fixture-A1")
     admin_token = helpers["login"]("adm@test.ro", "admin-fixture-A1")
-    owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
+    owner_token = helpers["login"](ADMIN_OWNER_EMAIL, "owner-fixture-A1")
     other_token = helpers["login"]("other-owner@test.ro", "owner-fixture-A1")
     student_token = helpers["register_student"]("student@test.ro")
     student2_token = helpers["register_student"]("student2@test.ro")
-    owner = db.query(models.User).filter(models.User.email == "owner@test.ro").first()
+    owner = db.query(models.User).filter(models.User.email == ADMIN_OWNER_EMAIL).first()
     student = db.query(models.User).filter(models.User.email == "student@test.ro").first()
     assert owner is not None and student is not None
     student.city = "Cluj"

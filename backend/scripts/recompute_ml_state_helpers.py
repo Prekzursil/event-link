@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 from __future__ import annotations
 
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -299,10 +300,10 @@ class _RecommendationBuildState:
 
 @dataclass(frozen=True)
 class _RecommendationDependencies:
-    build_feature_vector: object
-    reason_for: object
-    sigmoid: object
-    dot: object
+    build_feature_vector: Callable[..., list[float]]
+    reason_for: Callable[..., str]
+    sigmoid: Callable[[float], float]
+    dot: Callable[[list[float], list[float]], float]
 
 
 def build_recommendation_rows_impl(*, state: _RecommendationBuildState, deps: _RecommendationDependencies):

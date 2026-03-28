@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import math
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime, timezone
 
@@ -100,10 +101,10 @@ class _EvaluationState:
 
 @dataclass(frozen=True)
 class _EvaluationDependencies:
-    rng_factory: object
-    build_feature_vector: object
-    sigmoid: object
-    dot: object
+    rng_factory: Callable[[int], _DeterministicRng]
+    build_feature_vector: Callable[..., list[float]]
+    sigmoid: Callable[[float], float]
+    dot: Callable[[list[float], list[float]], float]
 
 
 FEATURE_NAMES = [

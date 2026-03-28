@@ -4,7 +4,12 @@ from __future__ import annotations
 from dataclasses import dataclass
 from datetime import datetime
 
-from recompute_ml_shared import _DeterministicRng, _EventFeatures, _PreparedState, _UserFeatures
+from recompute_ml_shared import (
+    _DeterministicRng,
+    _EventFeatures,
+    _PreparedState,
+    _UserFeatures,
+)
 from recompute_ml_state_helpers import (
     _history_from_positive_events,
     _holdout_positive_event_ids,
@@ -19,6 +24,7 @@ from recompute_ml_state_helpers import (
 
 
 def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
+    """Build user feature rows together with language and holdout state."""
     users: dict[int, _UserFeatures] = {}
     user_lang: dict[int, str] = {}
     holdout: dict[int, int] = {}
@@ -39,7 +45,11 @@ def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[i
             holdout=holdout,
             rng=rng,
         )
-        history_tags, history_categories, history_organizers = _history_from_positive_events(
+        (
+            history_tags,
+            history_categories,
+            history_organizers,
+        ) = _history_from_positive_events(
             positive_event_ids=positive_event_ids,
             events=kwargs["events"],
             implicit_categories=kwargs["implicit_categories_by_user"].get(user_id, set()),
@@ -59,6 +69,8 @@ def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[i
 
 @dataclass(frozen=True)
 class _PreparedUserStateInputs:
+    """Dependencies needed to build the prepared user feature state."""
+
     students: list[object]
     args: object
     events: dict[int, _EventFeatures]
@@ -72,6 +84,8 @@ class _PreparedUserStateInputs:
 
 @dataclass(frozen=True)
 class _PreparedAssemblyInputs:
+    """Dependencies needed to assemble the final prepared recommendation state."""
+
     user_ids: list[int]
     events: dict[int, _EventFeatures]
     all_event_ids: list[int]
@@ -89,6 +103,7 @@ class _PreparedAssemblyInputs:
 
 
 def _build_prepared_user_state(*, inputs: _PreparedUserStateInputs):
+    """Build user feature rows from the loaded interaction state."""
     positives_by_user = _positive_weights_by_user(inputs.positive_weights)
     return _build_users_and_holdout(
         students=inputs.students,
@@ -104,6 +119,7 @@ def _build_prepared_user_state(*, inputs: _PreparedUserStateInputs):
 
 
 def _assemble_prepared_state(*, inputs: _PreparedAssemblyInputs) -> _PreparedState:
+    """Assemble the prepared state payload consumed by training and scoring."""
     return _prepared_state_from_loaded_data(
         user_ids=inputs.user_ids,
         events=inputs.events,
@@ -123,12 +139,17 @@ def _assemble_prepared_state(*, inputs: _PreparedAssemblyInputs) -> _PreparedSta
 
 
 def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float, max_score: float) -> _PreparedState | None:
+    """Load and normalize the runtime state required for recommendation generation."""
     entity_rows = _student_event_state(db=db, models=models, func=func, args=args)
     if entity_rows[0] is None or entity_rows[1] is None or entity_rows[2] is None:
         return None
     students, events, all_event_ids = entity_rows
     user_ids = [int(user.id) for user in students]
-    interest_tag_weights_by_user, category_weights_by_user, city_weights_by_user = _load_decay_weight_buckets(
+    (
+        interest_tag_weights_by_user,
+        category_weights_by_user,
+        city_weights_by_user,
+    ) = _load_decay_weight_buckets(
         db=db,
         models=models,
         args=args,
@@ -136,7 +157,16 @@ def _prepare_state(*, db, models, func, args, now: datetime, decay_lambda: float
         decay_lambda=decay_lambda,
         max_score=max_score,
     )
-    registered_event_ids_by_user, positive_weights, negative_weights, seen_by_user, impression_position_by_user_event, implicit_interest_tags_by_user, implicit_categories_by_user, implicit_city_by_user = _interaction_training_state(
+    (
+        registered_event_ids_by_user,
+        positive_weights,
+        negative_weights,
+        seen_by_user,
+        impression_position_by_user_event,
+        implicit_interest_tags_by_user,
+        implicit_categories_by_user,
+        implicit_city_by_user,
+    ) = _interaction_training_state(
         db=db,
         models=models,
         args=args,

@@ -41,7 +41,13 @@ it('covers navbar system selectors and mobile link close handlers', async () => 
   screen.getAllByRole('button', { name: /^English$/i }).forEach((button) => fireEvent.click(button));
   await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalled());
 
-  fireEvent.click(screen.getAllByRole('link', { name: /Dashboard/i }).find((link) => link.className.includes('rounded-md'))!);
+  const dashboardLink = screen
+    .getAllByRole('link', { name: /Dashboard/i })
+    .find((link) => link.className.includes('rounded-md'));
+  if (!dashboardLink) {
+    throw new Error('Expected a rounded dashboard link in the mobile menu.');
+  }
+  fireEvent.click(dashboardLink);
   const newEventLinks = screen.getAllByRole('link', { name: /New event|Event nou/i });
   expect(newEventLinks.length).toBeGreaterThan(0);
   fireEvent.click(newEventLinks[newEventLinks.length - 1]);
