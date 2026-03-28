@@ -2341,6 +2341,7 @@ def _upsert_online_learning_scores(
     max_score: float,
     decay_lambda: float,
 ) -> None:
+    """Apply online-learning score deltas across tag, category, and city tables."""
     _upsert_implicit_tag_scores(
         db=db,
         user_id=user_id,
@@ -2372,6 +2373,7 @@ def _upsert_online_learning_scores(
 
 
 def _interaction_should_refresh(event: schemas.InteractionEventIn) -> bool:
+    """Return whether an interaction should trigger a realtime refresh."""
     if event.interaction_type in _REFRESHING_INTERACTION_TYPES:
         return True
     if event.interaction_type != "dwell" or not isinstance(event.meta, dict):
@@ -2381,6 +2383,7 @@ def _interaction_should_refresh(event: schemas.InteractionEventIn) -> bool:
 
 
 def _refresh_recommendations_too_soon(*, db: Session, user_id: int, now: datetime) -> bool:
+    """Return whether the last refresh is still inside the cooldown window."""
     latest_generated_at = (
         db.query(func.max(models.UserRecommendation.generated_at))
         .filter(models.UserRecommendation.user_id == user_id)
@@ -2390,7 +2393,9 @@ def _refresh_recommendations_too_soon(*, db: Session, user_id: int, now: datetim
         return False
     latest_generated_at = _coerce_utc_datetime(latest_generated_at, fallback=now)
     age_seconds = (now - latest_generated_at).total_seconds()
-    return age_seconds < float(settings.recommendations_realtime_refresh_min_interval_seconds)
+    return age_seconds < float(
+        settings.recommendations_realtime_refresh_min_interval_seconds
+    )
 
 
 def _maybe_enqueue_realtime_recommendation_refresh(
@@ -2400,6 +2405,7 @@ def _maybe_enqueue_realtime_recommendation_refresh(
     current_user: models.User | None,
     now: datetime,
 ) -> None:
+    """Queue a refresh job when realtime recommendation conditions are met."""
     if not _should_enqueue_realtime_recommendation_refresh(
         db=db,
         payload=payload,
@@ -2429,6 +2435,7 @@ def _should_enqueue_realtime_recommendation_refresh(
     current_user: models.User | None,
     now: datetime,
 ) -> bool:
+    """Return whether the current interaction batch should enqueue a refresh."""
     if current_user is None or current_user.role != models.UserRole.student:
         return False
     if not settings.task_queue_enabled or not settings.recommendations_use_ml_cache:
@@ -2437,10 +2444,17 @@ def _should_enqueue_realtime_recommendation_refresh(
         return False
     if not any(_interaction_should_refresh(event) for event in payload.events):
         return False
-    return not _refresh_recommendations_too_soon(db=db, user_id=int(current_user.id), now=now)
+    return not _refresh_recommendations_too_soon(
+        db=db,
+        user_id=int(current_user.id),
+        now=now,
+    )
 
 
-@app.post("/api/analytics/interactions", status_code=status.HTTP_204_NO_CONTENT)
+@app.post(
+    "/api/analytics/interactions",
+    status_code=status.HTTP_204_NO_CONTENT,
+)
 def record_interactions(
     payload: schemas.InteractionBatchIn,
     request: Request,
@@ -2461,17 +2475,31 @@ def record_interactions(
     )
 
     now = datetime.now(timezone.utc)
-    interactions = _build_event_interactions(db=db, payload=payload, current_user=current_user, now=now)
+    interactions = _build_event_interactions(
+        db=db,
+        payload=payload,
+        current_user=current_user,
+        now=now,
+    )
     if not interactions:
         return
 
     db.add_all(interactions)
     db.commit()
     _apply_online_learning(db=db, payload=payload, current_user=current_user, now=now)
-    _maybe_enqueue_realtime_recommendation_refresh(db=db, payload=payload, current_user=current_user, now=now)
+    _maybe_enqueue_realtime_recommendation_refresh(
+        db=db,
+        payload=payload,
+        current_user=current_user,
+        now=now,
+    )
 
 
-@app.get("/api/public/events", response_model=schemas.PaginatedPublicEvents, responses=_responses(400, 404))
+@app.get(
+    "/api/public/events",
+    response_model=schemas.PaginatedPublicEvents,
+    responses=_responses(400, 404),
+)
 def get_public_events(
     request: Request,
     search: Optional[str] = None,
@@ -2524,7 +2552,11 @@ def get_public_events(
     return {"items": items, "total": total, "page": page, "page_size": page_size}
 
 
-@app.get("/api/public/events/{event_id}", response_model=schemas.PublicEventDetailResponse, responses=_responses(404))
+@app.get(
+    "/api/public/events/{event_id}",
+    response_model=schemas.PublicEventDetailResponse,
+    responses=_responses(404),
+)
 def get_public_event(event_id: int, request: Request, db: DbSession):
     """Return a public event by identifier."""
     _enforce_rate_limit(
@@ -2535,7 +2567,10 @@ def get_public_event(event_id: int, request: Request, db: DbSession):
     )
     query, _ = _events_with_counts_query(
         db,
-        db.query(models.Event).filter(models.Event.id == event_id, models.Event.deleted_at.is_(None)),
+        db.query(models.Event).filter(
+            models.Event.id == event_id,
+            models.Event.deleted_at.is_(None),
+        ),
     )
     result = query.first()
     if not result:
@@ -2544,9 +2579,14 @@ def get_public_event(event_id: int, request: Request, db: DbSession):
     now = datetime.now(timezone.utc)
     if event.status != "published" or (event.publish_at and event.publish_at > now):
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
-    available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
+    available_seats = (
+        event.max_seats - seats_taken if event.max_seats is not None else None
+    )
     base = _serialize_public_event(event, seats_taken)
-    return schemas.PublicEventDetailResponse(**base.model_dump(), available_seats=available_seats)
+    return schemas.PublicEventDetailResponse(
+        **base.model_dump(),
+        available_seats=available_seats,
+    )
 
 
 @app.get("/api/events/{event_id}", response_model=schemas.EventDetailResponse, responses=_responses(400))
