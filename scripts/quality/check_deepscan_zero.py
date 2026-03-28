@@ -37,6 +37,8 @@ TOTAL_KEYS = {
 }
 STATUS_RETRY_ATTEMPTS = 6
 STATUS_RETRY_DELAY_SECONDS = 5.0
+PROVIDER_STATUS_RETRY_ATTEMPTS = 24
+PROVIDER_STATUS_RETRY_DELAY_SECONDS = 10.0
 
 
 def _parse_args() -> argparse.Namespace:
@@ -205,8 +207,16 @@ def _matching_statuses(status_payload: dict[str, Any], *, prefix: str) -> list[d
     ]
 
 
-def _unsuccessful_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
-    return [status for status in statuses if str(status.get("state") or "").strip().lower() != "success"]
+def _status_state(status: dict[str, Any]) -> str:
+    return str(status.get("state") or "").strip().lower()
+
+
+def _pending_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [status for status in statuses if _status_state(status) == "pending"]
+
+
+def _failed_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [status for status in statuses if _status_state(status) not in {"pending", "success"}]
 
 
 def _first_status_target_url(statuses: list[dict[str, Any]], *, allowed_host_suffixes: set[str]) -> str | None:
@@ -228,13 +238,46 @@ def _deepsource_status_summary(status_payload: dict[str, Any]) -> tuple[int, str
     if not matches:
         return None
 
-    failing = _unsuccessful_statuses(matches)
+    failing = _failed_statuses(matches)
     findings = [_status_finding(status) for status in failing]
     source_url = _first_status_target_url(
         [*failing, *matches],
         allowed_host_suffixes={DEEPSOURCE_HOST},
     )
     return len(failing), source_url, findings
+
+
+def _wait_for_deepsource_status_summary(*, owner: str, repo: str, sha: str, github_token: str) -> tuple[int, str | None, list[str]] | None:
+    pending_contexts: list[str] = []
+    source_url: str | None = None
+
+    for attempt in range(PROVIDER_STATUS_RETRY_ATTEMPTS):
+        status_payload = _github_status_payload(owner=owner, repo=repo, sha=sha, github_token=github_token)
+        matches = _matching_statuses(status_payload, prefix=DEEPSOURCE_CONTEXT_PREFIX)
+        if not matches:
+            return None
+
+        pending = _pending_statuses(matches)
+        if not pending:
+            summary = _deepsource_status_summary(status_payload)
+            if summary is None:
+                return None
+            return summary
+
+        pending_contexts = [str(status.get("context") or "").strip() for status in pending]
+        source_url = _first_status_target_url(
+            pending,
+            allowed_host_suffixes={DEEPSOURCE_HOST},
+        )
+        if attempt == PROVIDER_STATUS_RETRY_ATTEMPTS - 1:
+            break
+        time.sleep(PROVIDER_STATUS_RETRY_DELAY_SECONDS)
+
+    context_list = ", ".join(context for context in pending_contexts if context)
+    message = "DeepSource analysis is still in progress."
+    if context_list:
+        message = f"{message} Pending contexts: {context_list}."
+    return 0, source_url, [message]
 
 
 def _resolve_open_issues(
@@ -263,7 +306,12 @@ def _resolve_open_issues(
         try:
             dashboard_url = _deepscan_dashboard_url(status_payload)
         except RuntimeError:
-            deepsource_summary = _deepsource_status_summary(status_payload)
+            deepsource_summary = _wait_for_deepsource_status_summary(
+                owner=owner,
+                repo=repo_name,
+                sha=safe_sha,
+                github_token=github_token,
+            )
             if deepsource_summary is not None:
                 return deepsource_summary
             raise
@@ -369,6 +417,8 @@ def _evaluate_deepscan(
     except Exception as exc:  # pragma: no cover - network/runtime surface
         return "fail", None, [*findings, f"DeepScan API request failed: {exc}"], open_issues_url
 
+    if resolver_findings:
+        return "fail", open_issues, [*findings, *resolver_findings], source_url
     if open_issues != 0:
         issue_findings = resolver_findings or [f"DeepScan reports {open_issues} open issues (expected 0)."]
         return "fail", open_issues, [*findings, *issue_findings], source_url

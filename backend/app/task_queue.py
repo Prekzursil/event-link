@@ -27,6 +27,16 @@ from .task_queue_delivery import (
 )
 from .task_queue_shared import _coerce_bool, _load_personalization_exclusions
 
+__all__ = [
+    "JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS",
+    "JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML",
+    "JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML",
+    "JOB_TYPE_SEND_EMAIL",
+    "JOB_TYPE_SEND_FILLING_FAST_ALERTS",
+    "JOB_TYPE_SEND_WEEKLY_DIGEST",
+    "_coerce_bool",
+]
+
 
 JOB_TYPE_SEND_EMAIL = "send_email"
 JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML = "recompute_recommendations_ml"

@@ -196,6 +196,86 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
     assert source_url == "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
     assert findings == ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"]
 
+
+def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    module = _load_module()
+    success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/ready/javascript/"
+    payloads = [
+        {
+            "statuses": [
+                {
+                    "context": "DeepSource: JavaScript",
+                    "state": "pending",
+                    "description": "Analysis in progress...",
+                    "target_url": success_url,
+                }
+            ]
+        },
+        {
+            "statuses": [
+                {
+                    "context": "DeepSource: JavaScript",
+                    "state": "pending",
+                    "description": "Analysis in progress...",
+                    "target_url": success_url,
+                }
+            ]
+        },
+        {
+            "statuses": [
+                {
+                    "context": "DeepSource: JavaScript",
+                    "state": "success",
+                    "description": "Analysis complete",
+                    "target_url": success_url,
+                }
+            ]
+        },
+    ]
+    sleeps: list[float] = []
+
+    monkeypatch.setattr(
+        module,
+        "_github_status_payload",
+        lambda **_kwargs: payloads.pop(0),
+    )
+    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+
+    resolved = module._resolve_open_issues(
+        token="",
+        open_issues_url=None,
+        repo="Prekzursil/event-link",
+        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        github_token="gh-token",
+    )
+
+    assert resolved == (0, success_url, [])
+    assert sleeps == [module.PROVIDER_STATUS_RETRY_DELAY_SECONDS]
+
+
+def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> None:
+    module = _load_module()
+
+    status, open_issues, findings, source_url = module._evaluate_deepscan(
+        token="",
+        open_issues_url=None,
+        repo="Prekzursil/event-link",
+        sha="6d64df2d1be6d0d1225294b9ff979b98a5e712bf",
+        github_token="gh-token",
+        findings=[],
+        resolver=lambda **_kwargs: (
+            0,
+            "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/",
+            ["DeepSource analysis is still in progress."],
+        ),
+    )
+
+    assert status == "fail"
+    assert open_issues == 0
+    assert source_url == "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/"
+    assert findings == ["DeepSource analysis is still in progress."]
+
+
 def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
     module = _load_module()
     dashboard_url = (

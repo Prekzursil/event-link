@@ -18,14 +18,14 @@ export default function runEventsLoadtest() {
   const res = http.get(`${BASE_URL}/api/events?page=1&page_size=10`);
   check(res, {
     'status 200': (r) => r.status === 200,
-    'has items array': (r) => r.json('items') !== undefined,
+    'has items array': (r) => r.json('items') !== undefined
   });
 
   const rec = http.get(`${BASE_URL}/api/events/recommended?page=1&page_size=5`, {
     headers: { Authorization: __ENV.K6_TOKEN ? `Bearer ${__ENV.K6_TOKEN}` : '' }
   });
   check(rec, {
-    'rec returns 200/401': (r) => r.status === 200 || r.status === 401,
+    'rec returns 200/401': (r) => r.status === 200 || r.status === 401
   });
 
   sleep(1);

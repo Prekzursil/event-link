@@ -327,7 +327,7 @@ sorting for a percentage of students:
 ### “Reason” strings (“Why am I seeing this?”)
 
 The trainer writes a `reason` string to `user_recommendations`, which the API passes through as `recommendation_reason`.
-The API may append a “Near you: <city>” suffix when the event city matches the user city.
+The API may append a `Near you: city-name` suffix when the event city matches the user city.
 
 ## Interaction tracking + online learning + near-real-time refresh
 

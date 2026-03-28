@@ -1,6 +1,6 @@
 import type { ThemePreference } from '@/types';
 
-const STORAGE_KEY = 'theme_preference';
+const THEME_PREFERENCE_STORAGE_KEY = 'theme_preference';
 
 export function normalizeThemePreference(value: unknown): ThemePreference {
   if (value === 'light' || value === 'dark' || value === 'system') return value;
@@ -9,12 +9,12 @@ export function normalizeThemePreference(value: unknown): ThemePreference {
 
 export function getStoredThemePreference(): ThemePreference {
   if (!globalThis.window) return 'system';
-  return normalizeThemePreference(globalThis.localStorage.getItem(STORAGE_KEY));
+  return normalizeThemePreference(globalThis.localStorage.getItem(THEME_PREFERENCE_STORAGE_KEY));
 }
 
 export function storeThemePreference(preference: ThemePreference) {
   if (!globalThis.window) return;
-  globalThis.localStorage.setItem(STORAGE_KEY, preference);
+  globalThis.localStorage.setItem(THEME_PREFERENCE_STORAGE_KEY, preference);
 }
 
 export function getSystemTheme(): 'light' | 'dark' {

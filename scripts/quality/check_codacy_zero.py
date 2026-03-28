@@ -8,6 +8,7 @@ import sys
 import time
 from datetime import datetime, timezone
 from typing import Any
+from urllib.parse import quote
 
 from _security_import import load_security_helpers
 
@@ -82,6 +83,21 @@ def _issues_search_request(
         token=token,
         method="POST",
         body=body,
+    )
+
+
+def _repository_analysis_request(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+) -> tuple[int, dict[str, Any]]:
+    branch_query = f"?branch={quote(branch, safe='')}" if branch else ""
+    return _request_json(
+        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}{branch_query}",
+        token=token,
     )
 
 
@@ -165,6 +181,16 @@ def _validated_pr_number(pr_number: str) -> str:
     return validate_slug(value, field_name="pull request number")
 
 
+def _preferred_commit_sha(raw_commit: str) -> str:
+    value = raw_commit.strip()
+    if not value:
+        for env_name in ("CHECK_SHA", "TARGET_SHA", "GITHUB_SHA"):
+            value = os.environ.get(env_name, "").strip()
+            if value:
+                break
+    return validate_commit_sha(value) if value else ""
+
+
 def _quality_new_issues(payload: dict[str, Any]) -> int | None:
     quality = payload.get("quality")
     if isinstance(quality, dict):
@@ -185,7 +211,7 @@ def _evaluate_repo_total(
     token: str,
     branch: str,
 ) -> tuple[str, int | None, list[str]]:
-    status_code, payload = _issues_search_request(
+    status_code, payload = _repository_analysis_request(
         provider=provider,
         owner=owner,
         repo=repo,
@@ -197,12 +223,106 @@ def _evaluate_repo_total(
     if not 200 <= status_code < 300:
         return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
 
-    open_issues = extract_total_open(payload)
+    open_issues = _repository_open_issues(payload)
     if open_issues is None:
         return "fail", None, ["Codacy response did not include a parseable total issue count."]
     if open_issues != 0:
         return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
     return "pass", open_issues, []
+
+
+def _repository_open_issues(payload: dict[str, Any]) -> int | None:
+    data = payload.get("data")
+    if isinstance(data, dict):
+        issues_count = data.get("issuesCount")
+        if isinstance(issues_count, (int, float)):
+            return int(issues_count)
+        return extract_total_open(data)
+    return extract_total_open(payload)
+
+
+def _repository_analysis_state(payload: dict[str, Any]) -> tuple[str, str, int | None]:
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return "", "", extract_total_open(payload)
+
+    last_analysed_commit = data.get("lastAnalysedCommit")
+    selected_branch = data.get("selectedBranch")
+    branch_info = data.get("branch")
+    analysed_sha = str((last_analysed_commit or {}).get("sha") or "").strip()
+    branch_head_sha = str(
+        (selected_branch or {}).get("lastCommit") or (branch_info or {}).get("lastCommit") or ""
+    ).strip()
+    return analysed_sha, branch_head_sha, _repository_open_issues(payload)
+
+
+def _branch_analysis_result(
+    *,
+    analysed_sha: str,
+    branch_head_sha: str,
+    open_issues: int | None,
+    commit_sha: str,
+) -> tuple[str, int | None, list[str]] | None:
+    expected_sha = commit_sha or branch_head_sha
+    if not expected_sha:
+        return "fail", None, ["Codacy repository response did not include a branch head commit."]
+    if branch_head_sha and commit_sha and branch_head_sha != commit_sha:
+        return None
+    if analysed_sha != expected_sha:
+        return None
+    if open_issues is None:
+        return "fail", None, ["Codacy repository response did not include a parseable total issue count."]
+    if open_issues != 0:
+        return "fail", open_issues, [f"Codacy reports {open_issues} open issues (expected 0)."]
+    return "pass", open_issues, []
+
+
+def _wait_for_branch_analysis(
+    *,
+    provider: str,
+    owner: str,
+    repo: str,
+    token: str,
+    branch: str,
+    commit_sha: str,
+    timeout_seconds: int,
+    poll_seconds: int,
+) -> tuple[str, int | None, list[str]]:
+    deadline = time.time() + max(timeout_seconds, 1)
+
+    while True:
+        status_code, payload = _repository_analysis_request(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            branch=branch,
+        )
+        if status_code == 404:
+            return "retry", None, []
+        if not 200 <= status_code < 300:
+            return "fail", None, [f"Codacy API request failed: HTTP {status_code}"]
+
+        analysed_sha, branch_head_sha, open_issues = _repository_analysis_state(payload)
+        result = _branch_analysis_result(
+            analysed_sha=analysed_sha,
+            branch_head_sha=branch_head_sha,
+            open_issues=open_issues,
+            commit_sha=commit_sha,
+        )
+        if result is not None:
+            return result
+
+        if time.time() > deadline:
+            expected_sha = commit_sha or branch_head_sha or "unknown"
+            return (
+                "fail",
+                None,
+                [
+                    f"Codacy has not finished branch analysis for commit {expected_sha}; latest analyzed head is {analysed_sha or 'unknown'}."
+                ],
+            )
+        time.sleep(max(poll_seconds, 1))
 
 
 def _pr_analysis_state(payload: dict[str, Any]) -> tuple[str, bool, int | None]:
@@ -302,12 +422,15 @@ def _evaluate_candidate(
     poll_seconds: int,
 ) -> tuple[str, int | None, list[str]]:
     if branch:
-        return _evaluate_repo_total(
+        return _wait_for_branch_analysis(
             provider=provider,
             owner=owner,
             repo=repo,
             token=token,
             branch=branch,
+            commit_sha=commit_sha,
+            timeout_seconds=timeout_seconds,
+            poll_seconds=poll_seconds,
         )
     if pr_number and commit_sha:
         return _wait_for_pr_analysis(
@@ -379,7 +502,7 @@ def main() -> int:
         token, owner, repo, provider = _validated_inputs(args)
         branch = args.branch.strip()
         pr_number = _validated_pr_number(args.pr_number)
-        commit_sha = validate_commit_sha(args.commit) if args.commit.strip() else ""
+        commit_sha = _preferred_commit_sha(args.commit)
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

@@ -323,7 +323,7 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 
 ## Architecture Patterns
 
-### Backend
+### Application Backend
 
 - **Dependency Injection**: FastAPI's `Depends()` for database sessions
 - **Middleware**: CORS, request logging, request ID tracking
@@ -332,7 +332,7 @@ K6_BASE_URL=http://localhost:8000 k6 run loadtests/events.js
 - **Validation**: Pydantic models for request/response validation
 - **ORM**: SQLAlchemy 2.0 with relationship loading strategies
 
-### Frontend
+### Application Frontend
 
 - **Routing**: react-router routes in `ui/src/App.tsx` (guarded routes via wrappers)
 - **State**: Auth state via `AuthContext` (`ui/src/contexts/AuthContext.tsx`)

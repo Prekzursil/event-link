@@ -10,11 +10,16 @@ from . import models
 from .task_queue_guardrails import evaluate_personalization_guardrails
 from .task_queue_shared import (
     _coerce_bool,
-    _load_personalization_exclusions,
     _notification_exists,
     _preferred_lang,
     _send_email_payload,
 )
+
+__all__ = [
+    "evaluate_personalization_guardrails",
+    "send_filling_fast_alerts",
+    "send_weekly_digest",
+]
 
 
 def _weekly_digest_window(now: datetime) -> tuple[datetime, datetime, str]:

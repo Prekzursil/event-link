@@ -3,7 +3,7 @@ import type { LanguagePreference } from '@/types';
 
 export type ResolvedLanguage = 'ro' | 'en';
 
-const STORAGE_KEY = 'language_preference';
+const LANGUAGE_PREFERENCE_STORAGE_KEY = 'language_preference';
 
 export function normalizeLanguagePreference(value: unknown): LanguagePreference {
   if (value === 'ro' || value === 'en' || value === 'system') return value;
@@ -12,12 +12,12 @@ export function normalizeLanguagePreference(value: unknown): LanguagePreference 
 
 export function getStoredLanguagePreference(): LanguagePreference {
   if (!globalThis.window) return 'system';
-  return normalizeLanguagePreference(globalThis.localStorage.getItem(STORAGE_KEY));
+  return normalizeLanguagePreference(globalThis.localStorage.getItem(LANGUAGE_PREFERENCE_STORAGE_KEY));
 }
 
 export function storeLanguagePreference(preference: LanguagePreference) {
   if (!globalThis.window) return;
-  globalThis.localStorage.setItem(STORAGE_KEY, preference);
+  globalThis.localStorage.setItem(LANGUAGE_PREFERENCE_STORAGE_KEY, preference);
 }
 
 export function getSystemLanguage(): ResolvedLanguage {

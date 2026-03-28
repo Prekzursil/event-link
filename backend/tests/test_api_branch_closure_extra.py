@@ -678,7 +678,7 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
             raise AssertionError("query should not run")
 
     assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
-    assert api._event_learning_delta(interaction_type="dwell", meta={"seconds": "slow"}) == 0.0
+    assert api._event_learning_delta(interaction_type="dwell", meta={"seconds": "slow"}) == pytest.approx(0.0)
     with pytest.raises(AssertionError, match="query should not run"):
         _NoQueryDb().query()
 
