@@ -1768,6 +1768,7 @@ def _ordered_event_list_query(
     current_user: models.User | None,
     use_recommended_sort: bool,
 ):  # noqa: ANN001
+    """Apply the deterministic ordering for the event list query."""
     if not use_recommended_sort:
         return query.order_by(models.Event.start_time.asc(), models.Event.id.asc())
     rec = models.UserRecommendation
@@ -1789,10 +1790,15 @@ def _recommended_event_items(
     db: Session,
     events: list[tuple[models.Event, int]],
 ) -> list[dict[str, object]]:
+    """Serialize event rows while attaching the localized recommendation reason."""
     lang = _preferred_lang(request=request, user=current_user)
     user_city = _normalized_user_city(current_user)
     event_ids = [event.id for event, _seats in events]
-    reason_by_event_id = _recommendation_reason_map(db=db, user_id=current_user.id, event_ids=event_ids)
+    reason_by_event_id = _recommendation_reason_map(
+        db=db,
+        user_id=current_user.id,
+        event_ids=event_ids,
+    )
     return [
         _serialize_event(
             event,
@@ -1808,7 +1814,11 @@ def _recommended_event_items(
     ]
 
 
-@app.get("/api/events", response_model=schemas.PaginatedEvents, responses=_responses(400))
+@app.get(
+    "/api/events",
+    response_model=schemas.PaginatedEvents,
+    responses=_responses(400),
+)
 def get_events(
     request: Request,
     filters: Annotated[schemas.EventListQuery, Depends(_build_event_list_query)],
@@ -1826,34 +1836,69 @@ def get_events(
     )
 
     if _is_student_user(current_user):
-        hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(db=db, user_id=current_user.id)
+        hidden_tag_ids, blocked_organizer_ids = _load_personalization_exclusions(
+            db=db,
+            user_id=current_user.id,
+        )
         query = _apply_personalization_exclusions(
             query,
             hidden_tag_ids=hidden_tag_ids,
             blocked_organizer_ids=blocked_organizer_ids,
         )
     total = query.count()
-    sort_value = _default_events_sort(filters.sort, db=db, current_user=current_user, now=now)
-    use_recommended_sort = _use_recommended_sort(sort_value, db=db, current_user=current_user, now=now)
+    sort_value = _default_events_sort(
+        filters.sort,
+        db=db,
+        current_user=current_user,
+        now=now,
+    )
+    use_recommended_sort = _use_recommended_sort(
+        sort_value,
+        db=db,
+        current_user=current_user,
+        now=now,
+    )
     query = _ordered_event_list_query(
         query,
         current_user=current_user,
         use_recommended_sort=use_recommended_sort,
     )
     query, _ = _events_with_counts_query(db, query)
-    query = query.offset((filters.page - 1) * filters.page_size).limit(filters.page_size)
+    query = query.offset(
+        (filters.page - 1) * filters.page_size,
+    ).limit(filters.page_size)
     events = query.all()
     if use_recommended_sort:
-        items = _recommended_event_items(request=request, current_user=current_user, db=db, events=events)
+        items = _recommended_event_items(
+            request=request,
+            current_user=current_user,
+            db=db,
+            events=events,
+        )
     else:
         items = [_serialize_event(event, seats) for event, seats in events]
-    return {"items": items, "total": total, "page": filters.page, "page_size": filters.page_size}
+    return {
+        "items": items,
+        "total": total,
+        "page": filters.page,
+        "page_size": filters.page_size,
+    }
 
 
-_REFRESHING_INTERACTION_TYPES = {"click", "view", "share", "favorite", "register", "unregister", "search", "filter"}
+_REFRESHING_INTERACTION_TYPES = {
+    "click",
+    "view",
+    "share",
+    "favorite",
+    "register",
+    "unregister",
+    "search",
+    "filter",
+}
 
 
 def _normalize_interest_value(value: str | None) -> str | None:
+    """Normalize free-form interest text into a comparable lowercase token."""
     if not value:
         return None
     normalized = value.strip().lower()
@@ -1861,6 +1906,7 @@ def _normalize_interest_value(value: str | None) -> str | None:
 
 
 def _coerce_utc_datetime(value: datetime | None, *, fallback: datetime) -> datetime:
+    """Return a timezone-aware UTC datetime using the provided fallback when needed."""
     dt = value or fallback
     if dt.tzinfo is None:
         return dt.replace(tzinfo=timezone.utc)
@@ -1868,6 +1914,7 @@ def _coerce_utc_datetime(value: datetime | None, *, fallback: datetime) -> datet
 
 
 def _event_learning_delta(*, interaction_type: str, meta: object) -> float:
+    """Map an interaction payload to the online-learning score adjustment."""
     normalized_type = (interaction_type or "").strip().lower()
     signal_delta = {
         "click": 1.0,
@@ -1883,7 +1930,9 @@ def _event_learning_delta(*, interaction_type: str, meta: object) -> float:
     seconds = meta.get("seconds")
     if not isinstance(seconds, (int, float)):
         return 0.0
-    if float(seconds) < float(settings.recommendations_online_learning_dwell_threshold_seconds):
+    if float(seconds) < float(
+        settings.recommendations_online_learning_dwell_threshold_seconds,
+    ):
         return 0.0
     return 0.8 + min(1.0, float(seconds) / 60.0) * 0.4
 

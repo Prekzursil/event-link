@@ -70,6 +70,26 @@ function requireForm(buttonName: RegExp): HTMLFormElement {
   return form;
 }
 
+function renderRegisterPage() {
+  cleanup();
+  renderWithProviders(<RegisterPage />, '/register');
+}
+
+function populateRegisterForm(
+  password: string,
+  confirmPassword: string,
+  options: Readonly<{
+    email?: string;
+  }> = {},
+) {
+  const { email = 'x@test.ro' } = options;
+  fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: email } });
+  fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: password } });
+  fireEvent.change(screen.getByLabelText(/Confirm access code/i), {
+    target: { value: confirmPassword },
+  });
+}
+
 describe('auth pages', () => {
   beforeEach(() => {
     cleanup();
@@ -109,37 +129,46 @@ describe('auth pages', () => {
   });
 
   it('covers RegisterPage mismatch, invalid password, success, and failure', async () => {
-    renderWithProviders(<RegisterPage />, '/register');
-
-    fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
-    fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'AccessCode123A' } });
+    renderRegisterPage();
     const registerToggle = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
     expect(registerToggle).not.toBeNull();
     fireEvent.click(registerToggle);
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'OtherCode123A' } });
+    populateRegisterForm('AccessCode123A', 'OtherCode123A');
     fireEvent.submit(requireForm(/Create account/i));
     expect(toastSpy).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'short' } });
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'short' } });
+    renderRegisterPage();
+    populateRegisterForm('short', 'short');
     fireEvent.submit(requireForm(/Create account/i));
     expect(toastSpy).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/^Access code$/i), { target: { value: 'AccessCode123A' } });
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'AccessCode123A' } });
+    renderRegisterPage();
+    populateRegisterForm('AccessCode123A', 'AccessCode123A');
     fireEvent.submit(requireForm(/Create account/i));
     await waitFor(() => expect(authState.register).toHaveBeenCalled());
     expect(navigateSpy).toHaveBeenCalledWith('/');
 
     authState.register.mockRejectedValueOnce({ response: { data: { detail: 'register error' } } });
+    renderRegisterPage();
+    populateRegisterForm('AccessCode123A', 'AccessCode123A', {
+      email: 'detail@test.ro',
+    });
     fireEvent.submit(requireForm(/Create account/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     authState.register.mockRejectedValueOnce({ response: { data: { error: { message: 'nested register error' } } } });
+    renderRegisterPage();
+    populateRegisterForm('AccessCode123A', 'AccessCode123A', {
+      email: 'nested@test.ro',
+    });
     fireEvent.submit(requireForm(/Create account/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     authState.register.mockRejectedValueOnce(new Error('plain register failure'));
+    renderRegisterPage();
+    populateRegisterForm('AccessCode123A', 'AccessCode123A', {
+      email: 'plain@test.ro',
+    });
     fireEvent.submit(requireForm(/Create account/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   });
