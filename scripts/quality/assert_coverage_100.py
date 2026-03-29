@@ -52,11 +52,32 @@ _XML_CONDITION_COVERAGE_RE = re.compile(r'condition-coverage="(\d+)% \((\d+)/(\d
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert 100% coverage for all declared components.")
-    parser.add_argument("--xml", action="append", default=[], help="Coverage XML input: name=path")
-    parser.add_argument("--lcov", action="append", default=[], help="LCOV input: name=path")
-    parser.add_argument("--out-json", default="coverage-100/coverage.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="coverage-100/coverage.md", help="Output markdown path")
+    """Parse CLI arguments for the coverage gate."""
+    parser = argparse.ArgumentParser(
+        description="Assert 100% coverage for all declared components."
+    )
+    parser.add_argument(
+        "--xml",
+        action="append",
+        default=[],
+        help="Coverage XML input: name=path",
+    )
+    parser.add_argument(
+        "--lcov",
+        action="append",
+        default=[],
+        help="LCOV input: name=path",
+    )
+    parser.add_argument(
+        "--out-json",
+        default="coverage-100/coverage.json",
+        help="Output JSON path",
+    )
+    parser.add_argument(
+        "--out-md",
+        default="coverage-100/coverage.md",
+        help="Output markdown path",
+    )
     return parser.parse_args()
 
 
@@ -87,7 +108,13 @@ def _metric_stats_from_xml_attributes(
     branches_valid_match: re.Match[str] | None,
     branches_covered_match: re.Match[str] | None,
 ) -> CoverageStats | None:
-    if not (lines_valid_match and lines_covered_match and branches_valid_match and branches_covered_match):
+    """Build coverage stats directly from XML summary attributes."""
+    if not (
+        lines_valid_match
+        and lines_covered_match
+        and branches_valid_match
+        and branches_covered_match
+    ):
         return None
     return CoverageStats(
         name="",
@@ -104,6 +131,7 @@ def _metric_stats_from_xml_attributes(
 
 
 def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
+    """Infer coverage stats by scanning XML line entries."""
     line_total = 0
     line_covered = 0
     branch_total = 0
@@ -117,7 +145,9 @@ def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
         except ValueError:
             continue
 
-    for _percent_raw, covered_raw, total_raw in _XML_CONDITION_COVERAGE_RE.findall(text):
+    for _percent_raw, covered_raw, total_raw in (
+        _XML_CONDITION_COVERAGE_RE.findall(text)
+    ):
         branch_covered += int(covered_raw)
         branch_total += int(total_raw)
 
@@ -185,7 +215,12 @@ def parse_lcov(name: str, path: Path) -> CoverageStats:
     )
 
 
-def _metric_finding(component_name: str, metric_name: str, stats: MetricStats) -> str | None:
+def _metric_finding(
+    component_name: str,
+    metric_name: str,
+    stats: MetricStats,
+) -> str | None:
+    """Return a human-readable finding when a metric is below 100 percent."""
     if stats.percent >= 100.0:
         return None
     return (
@@ -195,6 +230,7 @@ def _metric_finding(component_name: str, metric_name: str, stats: MetricStats) -
 
 
 def _combined_metric(stats: list[CoverageStats], metric_name: str) -> MetricStats:
+    """Combine one metric across all component coverage reports."""
     metrics = [getattr(item, metric_name) for item in stats]
     return MetricStats(
         covered=sum(item.covered for item in metrics),
@@ -203,6 +239,7 @@ def _combined_metric(stats: list[CoverageStats], metric_name: str) -> MetricStat
 
 
 def _metric_label(metric_name: str) -> str:
+    """Map internal metric keys to report-friendly labels."""
     return "line" if metric_name == "lines" else "branch"
 
 
@@ -211,7 +248,11 @@ def evaluate(stats: list[CoverageStats]) -> tuple[str, list[str]]:
     findings: list[str] = []
     for item in stats:
         for metric_name in ("lines", "branches"):
-            finding = _metric_finding(item.name, _metric_label(metric_name), getattr(item, metric_name))
+            finding = _metric_finding(
+                item.name,
+                _metric_label(metric_name),
+                getattr(item, metric_name),
+            )
             if finding is not None:
                 findings.append(finding)
 
@@ -226,6 +267,7 @@ def evaluate(stats: list[CoverageStats]) -> tuple[str, list[str]]:
 
 
 def _render_md(payload: dict) -> str:
+    """Render the coverage gate result as markdown."""
     lines = [
         "# Coverage 100 Gate",
         "",
@@ -237,8 +279,11 @@ def _render_md(payload: dict) -> str:
 
     for item in payload.get("components", []):
         lines.append(
-            f"- `{item['name']}`: lines `{item['lines']['percent']:.2f}%` ({item['lines']['covered']}/{item['lines']['total']}), "
-            f"branches `{item['branches']['percent']:.2f}%` ({item['branches']['covered']}/{item['branches']['total']}) "
+            f"- `{item['name']}`: lines "
+            f"`{item['lines']['percent']:.2f}%` "
+            f"({item['lines']['covered']}/{item['lines']['total']}), "
+            f"branches `{item['branches']['percent']:.2f}%` "
+            f"({item['branches']['covered']}/{item['branches']['total']}) "
             f"from `{item['path']}`"
         )
 
@@ -256,10 +301,17 @@ def _render_md(payload: dict) -> str:
 
 
 def _safe_output_path(raw: str, fallback: str) -> Path:
-    return resolve_workspace_relative_path(raw, fallback=fallback, must_exist=False, must_be_file=False)
+    """Resolve an output path while allowing new files to be created."""
+    return resolve_workspace_relative_path(
+        raw,
+        fallback=fallback,
+        must_exist=False,
+        must_be_file=False,
+    )
 
 
 def _load_stats(args: argparse.Namespace) -> list[CoverageStats]:
+    """Load all declared coverage inputs into normalized stats objects."""
     stats: list[CoverageStats] = []
     for item in args.xml:
         name, path = parse_named_path(item)
@@ -271,6 +323,7 @@ def _load_stats(args: argparse.Namespace) -> list[CoverageStats]:
 
 
 def _component_payload(item: CoverageStats) -> dict[str, object]:
+    """Serialize one component's coverage stats for output artifacts."""
     return {
         "name": item.name,
         "path": item.path,
@@ -293,6 +346,7 @@ def _coverage_payload(
     findings: list[str],
     stats: list[CoverageStats],
 ) -> dict[str, object]:
+    """Build the structured payload written by the coverage gate."""
     return {
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
@@ -302,9 +356,13 @@ def _coverage_payload(
 
 
 def _write_outputs(*, out_json: Path, out_md: Path, payload: dict[str, object]) -> None:
+    """Write JSON and markdown coverage reports to disk."""
     out_json.parent.mkdir(parents=True, exist_ok=True)
     out_md.parent.mkdir(parents=True, exist_ok=True)
-    out_json.write_text(json.dumps(payload, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    out_json.write_text(
+        json.dumps(payload, indent=2, sort_keys=True) + "\n",
+        encoding="utf-8",
+    )
     out_md.write_text(_render_md(payload), encoding="utf-8")
 
 
@@ -314,7 +372,9 @@ def main() -> int:
     stats = _load_stats(args)
 
     if not stats:
-        raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
+        raise SystemExit(
+            "No coverage files were provided; pass --xml and/or --lcov inputs."
+        )
 
     status, findings = evaluate(stats)
     payload = _coverage_payload(status=status, findings=findings, stats=stats)
