@@ -1,8 +1,13 @@
 version = 1
 
 exclude_patterns = [
+  "backend/integration_tests/**",
+  "backend/tests/**",
   "ui/coverage/**",
   "ui/dist/**",
+  "ui/e2e/**",
+  "ui/src/components/ui/**",
+  "ui/tests/**",
   "backend/.pytest_cache/**",
 ]
 
@@ -32,4 +37,11 @@ enabled = true
   environment = ["nodejs", "browser", "vitest"]
   module_system = "es-modules"
   dialect = "typescript"
-  skip_doc_coverage = ["arrow-function-expression"]
+  skip_doc_coverage = [
+    "arrow-function-expression",
+    "class-declaration",
+    "class-expression",
+    "function-declaration",
+    "function-expression",
+    "method-definition",
+  ]

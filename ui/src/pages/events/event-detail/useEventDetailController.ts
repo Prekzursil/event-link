@@ -103,7 +103,7 @@ export function useEventDetailController() {
   const eventId = event?.id;
   useEffect(function trackEventDwellEffect() {
     if (!eventId) {
-      return;
+      return undefined;
     }
     const trackedEventId = eventId;
     const startedAt = Date.now();

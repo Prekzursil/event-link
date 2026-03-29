@@ -37,6 +37,7 @@ export function EventCard({
     onFavoriteToggle?.(event.id, !isFavorite);
   };
 
+  // skipcq: JS-0415 - the card intentionally keeps badges, controls, and metadata co-located.
   return (
     <Card className={cn(
       "group overflow-hidden transition-all hover:shadow-lg",

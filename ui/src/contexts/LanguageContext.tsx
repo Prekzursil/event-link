@@ -16,7 +16,7 @@ interface LanguageContextType {
   setPreference: (preference: LanguagePreference) => void;
 }
 
-const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
+const LanguageContext = createContext<LanguageContextType | null>(null);
 
 export function LanguageProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<LanguagePreference>(() => getStoredLanguagePreference());

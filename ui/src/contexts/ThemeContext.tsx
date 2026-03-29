@@ -14,7 +14,7 @@ interface ThemeContextType {
   setPreference: (preference: ThemePreference) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | null>(null);
 
 export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
@@ -27,7 +27,9 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, [preference]);
 
   useEffect(() => {
-    if (preference !== 'system') return;
+    if (preference !== 'system') {
+      return undefined;
+    }
     return subscribeToSystemThemeChanges((theme) => {
       setResolvedTheme(theme);
       applyThemePreference('system');

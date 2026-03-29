@@ -41,7 +41,7 @@ export function useStudentProfileController() {
   const [university, setUniversity] = useState('');
   const [faculty, setFaculty] = useState('');
   const [studyLevel, setStudyLevel] = useState<StudyLevel | ''>('');
-  const [studyYear, setStudyYear] = useState<number | undefined>(undefined);
+  const [studyYear, setStudyYear] = useState<number | undefined>();
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [personalization, setPersonalization] = useState<PersonalizationSettings | null>(null);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
@@ -136,8 +136,7 @@ export function useStudentProfileController() {
       } catch {
         setUniversityCatalog([]);
       }
-    } catch (error) {
-      console.error('Failed to load profile:', error);
+    } catch {
       toast({
         title: t.profile.loadErrorTitle,
         description: t.profile.loadErrorDescription,
@@ -211,8 +210,7 @@ export function useStudentProfileController() {
         title: t.profile.saveSuccessTitle,
         description: t.profile.saveSuccessDescription,
       });
-    } catch (error) {
-      console.error('Failed to save profile:', error);
+    } catch {
       toast({
         title: t.profile.saveErrorTitle,
         description: t.profile.saveErrorDescription,

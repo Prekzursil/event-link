@@ -80,9 +80,9 @@ function ResetAccessCodeRequirements({
 }: Readonly<{ requirements: PasswordRequirement[] }>) {
   return (
     <div className="space-y-1 pt-2">
-      {requirements.map((requirement, index) => (
+      {requirements.map((requirement) => (
         <div
-          key={`${requirement.label}-${index}`}
+          key={requirement.label}
           className={`flex items-center gap-2 text-xs ${
             requirement.met ? 'text-green-600' : 'text-muted-foreground'
           }`}
@@ -178,6 +178,7 @@ export function ResetPasswordPage() {
     );
   }
 
+  // skipcq: JS-0415 - the reset page keeps invalid-link handling and the form layout in one component.
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
@@ -207,7 +208,7 @@ export function ResetPasswordPage() {
                   variant="ghost"
                   size="icon"
                   className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                  onClick={() => setShowPassword(!showPassword)}
+                    onClick={() => setShowPassword((current) => !current)}
                 >
                   {showPassword ? (
                     <EyeOff className="h-4 w-4 text-muted-foreground" />

@@ -50,7 +50,7 @@ export function createSelectMockModule() {
 export function createDropdownMenuMockModule() {
   return {
     DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
-    DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+    DropdownMenuTrigger: ({ children }: { children: React.ReactNode }) => children,
     DropdownMenuContent: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     DropdownMenuItem: ({
       children,

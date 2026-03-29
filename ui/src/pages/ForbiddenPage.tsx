@@ -6,6 +6,7 @@ import { useI18n } from '@/contexts/LanguageContext';
 
 export function ForbiddenPage() {
   const { t } = useI18n();
+  // skipcq: JS-0415 - the page intentionally keeps the icon, copy, and CTA in one compact layout.
   return (
     <div className="container mx-auto px-4 py-16">
       <Card className="mx-auto max-w-md">

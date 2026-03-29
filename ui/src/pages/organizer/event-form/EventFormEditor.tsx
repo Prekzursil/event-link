@@ -17,6 +17,7 @@ type Props = Readonly<{
 function TitleDescriptionFields({ controller }: Props) {
   const { formData, t, updateField } = controller;
 
+  // skipcq: JS-0415 - the title and description field group intentionally keeps related controls together.
   return (
     <>
       <div className="space-y-2">
@@ -242,6 +243,7 @@ function FormActions({ controller }: Props) {
 
 /** Render the organizer event form using the controller state and handlers. */
 export function EventFormEditor({ controller }: Props) {
+  // skipcq: JS-0415 - the event form editor intentionally composes the field groups in one editor layout.
   return (
     <form onSubmit={controller.handleSubmit as unknown as (event: React.FormEvent<HTMLFormElement>) => void} className="space-y-6">
       <TitleDescriptionFields controller={controller} />

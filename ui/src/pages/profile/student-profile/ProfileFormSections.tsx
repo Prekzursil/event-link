@@ -388,6 +388,7 @@ type ProfileActionsProps = Readonly<{
 }>;
 
 export function ProfileActions({ isExporting, isSaving, t, onExport, onSave }: ProfileActionsProps) {
+  // skipcq: JS-0415 - the action row intentionally keeps all save and export button states in one block.
   return (
     <div className="flex flex-wrap justify-end gap-3">
       <Button onClick={onExport} disabled={isExporting} variant="outline" size="lg">

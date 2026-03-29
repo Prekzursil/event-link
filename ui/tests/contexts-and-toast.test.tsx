@@ -256,6 +256,12 @@ describe('contexts and toast hook', () => {
     );
     expect(removedAll.toasts).toEqual([]);
 
+    const unchangedDefault = reducer(
+      { toasts: [{ id: '1', open: true }] } as never,
+      { type: 'UNKNOWN' } as never,
+    );
+    expect(unchangedDefault.toasts).toHaveLength(1);
+
     const unchangedUpdate = reducer(
       { toasts: [{ id: '1', open: true, title: 'kept' }] } as never,
       { type: 'UPDATE_TOAST', toast: { id: 'missing', title: 'ignored' } } as never,
@@ -325,6 +331,9 @@ describe('contexts and toast hook', () => {
       handle.dismiss();
       vi.advanceTimersByTime(5000);
     });
+
+    const cleanupHook = renderHook(() => useToast());
+    cleanupHook.unmount();
 
     const originalIndexOf = Array.prototype.indexOf;
     const indexOfSpy = vi.spyOn(Array.prototype, 'indexOf').mockImplementation(function (...args) {

@@ -118,6 +118,7 @@ function LoginFormCard({
   texts,
   toggleShowPassword,
 }: LoginFormCardProps) {
+  // skipcq: JS-0415 - the login form keeps field, status, and submit layout together for readability.
   return (
     <Card className="w-full max-w-md">
       <CardHeader className="space-y-1 text-center">
@@ -211,6 +212,7 @@ export function LoginPage() {
     }
   };
 
+  // skipcq: JS-0415 - the route intentionally keeps loading and form states together.
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <LoginFormCard

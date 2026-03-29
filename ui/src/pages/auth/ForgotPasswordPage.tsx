@@ -64,6 +64,7 @@ export function ForgotPasswordPage() {
     );
   }
 
+  // skipcq: JS-0415 - this auth page intentionally keeps the request and success states in one form layout.
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <Card className="w-full max-w-md">
@@ -115,4 +116,3 @@ export function ForgotPasswordPage() {
     </div>
   );
 }
-

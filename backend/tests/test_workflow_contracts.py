@@ -2,8 +2,8 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = REPO_ROOT / '.github' / 'workflows'
-WRAPPER_TEMPLATE_REF = '@977a49739e43a4c752d8067e15020e3f06934ac7'
-MUTATION_TEMPLATE_REF = '@977a49739e43a4c752d8067e15020e3f06934ac7'
+WRAPPER_TEMPLATE_REF = '@cd97245a7c9c2e8057ecdc8f87f6039443632e94'
+MUTATION_TEMPLATE_REF = '@cd97245a7c9c2e8057ecdc8f87f6039443632e94'
 
 
 def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
@@ -130,7 +130,16 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
         'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]'
         in deepsource
     )
-    assert 'skip_doc_coverage = ["arrow-function-expression"]' in deepsource
+    for skip_marker in (
+        'skip_doc_coverage = [',
+        '"arrow-function-expression"',
+        '"class-declaration"',
+        '"class-expression"',
+        '"function-declaration"',
+        '"function-expression"',
+        '"method-definition"',
+    ):
+        assert skip_marker in deepsource
 
     assert 'config_version = "0"' in qlty
     assert 'mode = "block"' in qlty

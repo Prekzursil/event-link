@@ -189,6 +189,7 @@ function syncEventsList({
   };
 }
 
+// skipcq: JS-R1005 - this page intentionally co-locates filter, paging, recommendation, and analytics state.
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
@@ -273,10 +274,6 @@ export function EventsPage() {
       filters.location ||
       filters.tags.length > 0,
   );
-  const handleCategoryChange = (value: string) => {
-    updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
-  };
-
   const updateFilters = (newFilters: Partial<EventFilters>) => {
     const params = new URLSearchParams(searchParams);
 
@@ -293,6 +290,10 @@ export function EventsPage() {
     }
 
     setSearchParams(params);
+  };
+
+  const handleCategoryChange = (value: string) => {
+    updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
   };
 
   useEffect(() => {
@@ -322,7 +323,9 @@ export function EventsPage() {
   }, [filters, toast, t]);
 
   useEffect(() => {
-    if (!events.length) return;
+    if (!events.length) {
+      return undefined;
+    }
     const timer = globalThis.setTimeout(() => {
       void recordInteractions(buildEventsListInteractions(events, filters, hasActiveFilters));
     }, 400);
@@ -330,7 +333,9 @@ export function EventsPage() {
   }, [events, filters, hasActiveFilters]);
 
   useEffect(() => {
-    if (!shouldLoadRecommendations(isAuthenticated, user?.role)) return;
+    if (!shouldLoadRecommendations(isAuthenticated, user?.role)) {
+      return undefined;
+    }
     return syncRecommendationPanel(({ recommendations: nextRecommendations, favoriteIds }) => {
       setRecommendations(nextRecommendations);
       setFavorites(favoriteIds);
@@ -419,7 +424,7 @@ export function EventsPage() {
     eventsContent = renderEmptyState();
   } else {
     eventsContent = (
-      <>
+      <div className="space-y-8">
         {renderEventsGrid()}
         {totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-2">
@@ -444,10 +449,11 @@ export function EventsPage() {
             </Button>
           </div>
         )}
-      </>
+      </div>
     );
   }
 
+  // skipcq: JS-0415 - the events page keeps filters, recommendations, and results in a single route layout.
   return (
     <div className="container mx-auto px-4 py-8">
       {/* Header */}

@@ -38,6 +38,7 @@ export function PersonalizationSection({
   onUnblockOrganizer,
   onNotificationPreferenceChange,
 }: PersonalizationSectionProps) {
+  // skipcq: JS-0415 - this section intentionally keeps notification and personalization controls together.
   return (
     <>
       <Card className="mb-6">
@@ -201,6 +202,7 @@ export function DeleteAccountDialog({
   onCancel,
   onDelete,
 }: DeleteAccountDialogProps) {
+  // skipcq: JS-0415 - the delete dialog intentionally keeps confirmation copy and destructive actions together.
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

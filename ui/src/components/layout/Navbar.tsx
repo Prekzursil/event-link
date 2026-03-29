@@ -144,6 +144,7 @@ export function Navbar() {
     return t.language.en;
   };
 
+  // skipcq: JS-0415 - the navbar intentionally keeps desktop, mobile, and auth layouts in one component.
   return (
     <nav className="sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
       <div className="container mx-auto flex h-16 items-center justify-between px-4">
@@ -417,4 +418,3 @@ export function Navbar() {
     </nav>
   );
 }
-

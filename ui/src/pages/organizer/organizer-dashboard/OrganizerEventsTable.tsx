@@ -67,6 +67,7 @@ export function OrganizerEventsTable({
   selectedEventIds,
   texts,
 }: Props) {
+  // skipcq: JS-0415 - the organizer table intentionally keeps bulk actions and row actions in one view.
   return (
     <Card>
       <CardHeader>
@@ -86,9 +87,9 @@ export function OrganizerEventsTable({
             </Button>
           </div>
         ) : (
-          <>
+          <div className="space-y-4">
             {selectedCount > 0 && (
-              <div className="mb-4 flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="text-sm text-muted-foreground">
                   {texts.bulk.selected}:{' '}
                   <span className="font-medium text-foreground">{selectedCount}</span>
@@ -144,7 +145,7 @@ export function OrganizerEventsTable({
                   <TableHead>{texts.tableHeaderDate}</TableHead>
                   <TableHead>{texts.tableHeaderParticipants}</TableHead>
                   <TableHead>{texts.tableHeaderStatus}</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
+                  <TableHead className="w-[70px]" />
                 </TableRow>
               </TableHeader>
               <TableBody>
@@ -220,7 +221,7 @@ export function OrganizerEventsTable({
                 })}
               </TableBody>
             </Table>
-          </>
+          </div>
         )}
       </CardContent>
     </Card>

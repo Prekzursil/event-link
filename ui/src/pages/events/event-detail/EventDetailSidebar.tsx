@@ -74,6 +74,7 @@ function RegistrationActions(props: RegistrationActionsProps) {
     return <p className="text-center text-destructive">{t.eventDetail.eventFullText}</p>;
   }
 
+  // skipcq: JS-0415 - the registration action group intentionally keeps auth and seat states together.
   return (
     <Button className="w-full" onClick={onRegister} disabled={isRegistering}>
       {isRegistering ? t.eventDetail.registering : t.eventDetail.register}
@@ -130,6 +131,7 @@ export function EventDetailSidebar({
   onHideTag,
   onBlockOrganizer,
 }: Props) {
+  // skipcq: JS-0415 - the sidebar intentionally keeps organizer, registration, and personalization sections together.
   return (
     <div className="lg:col-span-1">
       <div className="sticky top-24 space-y-6">

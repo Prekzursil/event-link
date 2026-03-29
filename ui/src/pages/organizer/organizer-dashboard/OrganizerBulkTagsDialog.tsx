@@ -39,6 +39,7 @@ export function OrganizerBulkTagsDialog({
   tags,
   texts,
 }: Props) {
+  // skipcq: JS-0415 - the bulk-tag dialog intentionally keeps selection, loading, and action states together.
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>

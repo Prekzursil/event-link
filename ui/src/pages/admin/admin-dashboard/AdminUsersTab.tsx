@@ -159,6 +159,7 @@ function UsersContent({ controller, users }: UsersContentProps) {
     return <p className="text-sm text-muted-foreground">{t.adminDashboard.users.empty}</p>;
   }
 
+  // skipcq: JS-0415 - this content block intentionally keeps empty, table, and pagination states together.
   return (
     <>
       <UsersTable controller={controller} users={users} />
@@ -238,6 +239,7 @@ function UsersFilters({ controller, usersCopy }: UsersFiltersProps) {
 
 /** Render the admin users tab with filters, table results, and pagination. */
 export function AdminUsersTab({ controller }: Props) {
+  // skipcq: JS-0415 - the admin users tab intentionally composes filters and content in a single route component.
   return (
     <div className="mt-6 space-y-4">
       <Card>

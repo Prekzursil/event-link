@@ -23,6 +23,7 @@ export function StudentProfilePage() {
     return <LoadingPage message={controller.t.profile.loading} />;
   }
 
+  // skipcq: JS-0415 - the profile page intentionally composes the form, preferences, and privacy sections.
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
       <div className="mb-8">

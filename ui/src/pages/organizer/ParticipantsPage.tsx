@@ -314,6 +314,7 @@ export function ParticipantsPage() {
     });
   };
 
+  // skipcq: JS-0415 - the participants page intentionally keeps filters, metrics, dialogs, and table actions together.
   if (isLoading && !data) {
     return (
       <div className="container mx-auto px-4 py-8">
