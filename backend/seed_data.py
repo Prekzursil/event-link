@@ -473,6 +473,7 @@ ADMINS = [
 
 
 def _clear_existing_data(session) -> None:  # noqa: ANN001
+    """Delete existing seed-managed rows before repopulating the database."""
     print("⚠️  Database already has data. Clearing existing data...")
     tables_to_clear = [
         user_interest_tags,
@@ -494,6 +495,7 @@ def _clear_existing_data(session) -> None:  # noqa: ANN001
 
 
 def _create_tags(session):  # noqa: ANN001
+    """Create tag rows and return them keyed by tag name."""
     print("📌 Creating tags...")
     tag_objects = {}
     for tag_name in TAGS:
@@ -513,6 +515,7 @@ def _create_users(
     label: str,
     extra_fields: tuple[str, ...] = (),
 ):  # noqa: ANN001
+    """Create users for one role and return them in insertion order."""
     print(label)
     created_users = []
     for row in user_rows:
@@ -534,6 +537,7 @@ def _create_users(
 def _assign_student_interest_tags(
     student_objects, tag_objects: dict[str, Tag]
 ) -> None:
+    """Assign a deterministic sample of interest tags to each student."""
     print("🏷️  Assigning interest tags to students...")
     available_tags = list(tag_objects.values())
     for student in student_objects:
@@ -547,6 +551,7 @@ def _build_seed_event(
     now: datetime,
     index: int,
 ) -> Event:
+    """Build one seeded event instance for a specific organizer."""
     is_past_event = index < 3
     if is_past_event:
         start_time = now - timedelta(
@@ -573,6 +578,7 @@ def _build_seed_event(
 
 
 def _create_events(session, organizer_objects):  # noqa: ANN001
+    """Create seeded events and return them with their declared tag names."""
     print("📅 Creating events...")
     event_objects = []
     now = datetime.now(timezone.utc)
@@ -588,6 +594,7 @@ def _create_events(session, organizer_objects):  # noqa: ANN001
 
 
 def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
+    """Attach the declared tag objects to each seeded event."""
     for event, tag_names in event_objects:
         for tag_name in tag_names:
             if tag_name in tag_objects:
@@ -597,6 +604,7 @@ def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
 def _create_registrations(
     session, event_objects, student_objects, *, now: datetime
 ) -> int:  # noqa: ANN001
+    """Create seeded registrations linking students to sample events."""
     print("📝 Creating registrations...")
     registration_count = 0
     for event, _ in event_objects:
@@ -618,6 +626,7 @@ def _create_registrations(
 def _create_favorites(
     session, event_objects, student_objects
 ) -> int:  # noqa: ANN001
+    """Create seeded favorite-event rows for sample students."""
     print("❤️  Creating favorites...")
     favorite_count = 0
     created_events = [event for event, _ in event_objects]
@@ -634,6 +643,7 @@ def _create_favorites(
 
 
 def _print_seed_summary() -> None:
+    """Print the default accounts created by the seed script."""
     print("\n✅ Database seeding completed successfully!")
     print("\n📋 Test accounts:")
     print("   Students:")

@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Assert 100 percent line and branch coverage for declared components."""
+
 from __future__ import annotations
 
 import argparse
@@ -17,11 +19,14 @@ resolve_workspace_relative_path = _security_helpers.resolve_workspace_relative_p
 
 @dataclass
 class MetricStats:
+    """Covered and total counts for a single coverage metric."""
+
     covered: int
     total: int
 
     @property
     def percent(self) -> float:
+        """Return the covered percentage for the metric."""
         if self.total <= 0:
             return 100.0
         return (self.covered / self.total) * 100.0
@@ -29,6 +34,8 @@ class MetricStats:
 
 @dataclass
 class CoverageStats:
+    """Coverage statistics for a named report input."""
+
     name: str
     path: str
     lines: MetricStats
@@ -54,6 +61,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def parse_named_path(value: str) -> tuple[str, Path]:
+    """Parse a ``name=path`` argument and validate the referenced file."""
     match = _PAIR_RE.match(value.strip())
     if not match:
         raise ValueError(f"Invalid input '{value}'. Expected format: name=path")
@@ -120,6 +128,7 @@ def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
 
 
 def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
+    """Load component coverage statistics from a Cobertura XML report."""
     text = path.read_text(encoding="utf-8")
     lines_valid_match = _XML_LINES_VALID_RE.search(text)
     lines_covered_match = _XML_LINES_COVERED_RE.search(text)
@@ -151,6 +160,7 @@ def parse_coverage_xml(name: str, path: Path) -> CoverageStats:
 
 
 def parse_lcov(name: str, path: Path) -> CoverageStats:
+    """Load component coverage statistics from an LCOV report."""
     line_total = 0
     line_covered = 0
     branch_total = 0
@@ -197,6 +207,7 @@ def _metric_label(metric_name: str) -> str:
 
 
 def evaluate(stats: list[CoverageStats]) -> tuple[str, list[str]]:
+    """Evaluate component and combined coverage against the 100 percent gate."""
     findings: list[str] = []
     for item in stats:
         for metric_name in ("lines", "branches"):
@@ -298,6 +309,7 @@ def _write_outputs(*, out_json: Path, out_md: Path, payload: dict[str, object]) 
 
 
 def main() -> int:
+    """Run the coverage gate CLI and write report artifacts."""
     args = _parse_args()
     stats = _load_stats(args)
 

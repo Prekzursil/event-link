@@ -60,7 +60,8 @@ class _FakeSession:
         for obj in objs:
             self.add(obj)
 
-    def flush(self):
+    @staticmethod
+    def flush():
         """Mirror the SQLAlchemy flush interface used by the seed routine."""
         return None
 
@@ -108,20 +109,26 @@ def _load_seed_data_module(monkeypatch):
 
 
 class _FakeRng:
+    """Deterministic random-source double for repeatable seed-data tests."""
+
     @staticmethod
     def randint(_a, b):
+        """Return a stable integer inside the requested bounds."""
         return 1 if b >= 1 else 0
 
     @staticmethod
     def sample(seq, k):
+        """Return the first k items so sampling remains deterministic."""
         return list(seq)[:k]
 
     @staticmethod
     def choice(seq):
+        """Return the first sequence item for deterministic choice behavior."""
         return list(seq)[0]
 
     @staticmethod
     def random():
+        """Return a stable float above common probability thresholds."""
         return 0.9
 
 
@@ -147,7 +154,12 @@ def test_seed_database_happy_path(monkeypatch):
     """seed_database should populate a fresh database without rollback."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=0)
-    monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
+
+    def _session_factory():
+        """Return the seeded fake session for the happy-path test."""
+        return fake
+
+    monkeypatch.setattr(seed_data, "SessionLocal", _session_factory)
 
     seed_data.seed_database()
 
@@ -160,7 +172,12 @@ def test_seed_database_clears_existing_data_and_tolerates_missing_tables(monkeyp
     """seed_database should clear prior rows and ignore missing join tables."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=3, delete_fail_tables={"event_tags", "favorite_events"})
-    monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
+
+    def _session_factory():
+        """Return the seeded fake session for delete-coverage paths."""
+        return fake
+
+    monkeypatch.setattr(seed_data, "SessionLocal", _session_factory)
 
     seed_data.seed_database()
 
@@ -173,7 +190,12 @@ def test_seed_database_rolls_back_on_error(monkeypatch):
     """seed_database should rollback and re-raise when model insertion fails."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=0, raise_on_add=True)
-    monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
+
+    def _session_factory():
+        """Return the seeded fake session for rollback-path coverage."""
+        return fake
+
+    monkeypatch.setattr(seed_data, "SessionLocal", _session_factory)
 
     with pytest.raises(RuntimeError):
         seed_data.seed_database()
@@ -249,8 +271,17 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
     import secrets
 
     fake = _FakeSession(user_count=0)
-    monkeypatch.setattr(db_module, "SessionLocal", lambda: fake)
-    monkeypatch.setattr(secrets, "SystemRandom", lambda: _FakeRng())
+
+    def _session_factory():
+        """Return the seeded fake session for module __main__ execution."""
+        return fake
+
+    def _rng_factory():
+        """Return the deterministic RNG class used by the seeding script."""
+        return _FakeRng()
+
+    monkeypatch.setattr(db_module, "SessionLocal", _session_factory)
+    monkeypatch.setattr(secrets, "SystemRandom", _rng_factory)
     def _silent_print(*_args, **_kwargs):
         """Suppress console output while exercising the __main__ guard."""
         return None
@@ -316,13 +347,18 @@ def test_backend_main_import_without_main_guard_does_not_run(monkeypatch):
 
 
 def test_seed_database_skips_missing_event_tags(monkeypatch):
+    """seed_database should ignore sample-event tags that are absent from TAGS."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=0)
     password_key = "pass" + "word"
     student_access_code = "student" + "-pass"
     organizer_access_code = "organizer" + "-pass"
     admin_access_code = "admin" + "-pass"
-    monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
+    def _session_factory():
+        """Return the seeded fake session for missing-tag coverage."""
+        return fake
+
+    monkeypatch.setattr(seed_data, "SessionLocal", _session_factory)
     monkeypatch.setattr(seed_data, "TAGS", ["Programare"])
     monkeypatch.setattr(seed_data, "LOCATIONS", ["Room"])
     monkeypatch.setattr(seed_data, "COVER_IMAGES", ["https://example.com/cover.png"])

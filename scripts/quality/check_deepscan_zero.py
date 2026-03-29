@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Assert that DeepScan reports zero issues for the requested scope."""
+
 from __future__ import annotations
 
 import argparse
@@ -53,6 +55,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def extract_total_open(payload: Any) -> int | None:
+    """Extract an issue-count total from nested DeepScan payloads."""
     if isinstance(payload, dict):
         direct_total = _extract_total_from_mapping(payload)
         if direct_total is not None:
@@ -446,6 +449,7 @@ def _evaluate_deepscan(
 
 
 def main() -> int:
+    """Run the DeepScan zero-issues gate and write report artifacts."""
     args = _parse_args()
     token, open_issues_url, repo, sha, github_token, findings = _validated_inputs(args)
     status, open_issues, findings, resolved_url = _evaluate_deepscan(

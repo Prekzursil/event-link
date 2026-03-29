@@ -19,6 +19,7 @@ from .task_queue import (
 
 
 def _default_worker_id() -> str:
+    """Build a default worker identifier from host and process id."""
     return f"{socket.gethostname()}:{os.getpid()}"
 
 
@@ -30,6 +31,7 @@ def main() -> None:
     shutdown_requested = False
 
     def _handle_signal(signum, _frame):  # noqa: ANN001
+        """Request a graceful shutdown after receiving a process signal."""
         nonlocal shutdown_requested
         shutdown_requested = True
         log_warning(
@@ -73,6 +75,7 @@ def main() -> None:
 
 
 def _maybe_run_main(module_name: str) -> None:
+    """Run the worker only when the module is executed as a script."""
     if module_name == "__main__":
         main()
 

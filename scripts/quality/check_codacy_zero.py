@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Assert that Codacy reports zero issues for the requested scope."""
+
 from __future__ import annotations
 
 import argparse
@@ -25,6 +27,8 @@ _CODACY_PROVIDERS = {"gh", "github"}
 
 
 class CodacyRequest(NamedTuple):
+    """Validated Codacy lookup parameters for one evaluation attempt."""
+
     provider: str
     owner: str
     repo: str
@@ -36,6 +40,7 @@ class CodacyRequest(NamedTuple):
     poll_seconds: int
 
     def with_provider(self, provider: str) -> "CodacyRequest":
+        """Return a copy of the request using a different provider slug."""
         return CodacyRequest(
             provider=provider,
             owner=self.owner,
@@ -50,12 +55,16 @@ class CodacyRequest(NamedTuple):
 
 
 class BranchAnalysisState(NamedTuple):
+    """Repository-branch analysis metadata returned by Codacy."""
+
     analysed_sha: str
     branch_head_sha: str
     open_issues: int | None
 
 
 class PrAnalysisState(NamedTuple):
+    """Pull-request analysis metadata returned by Codacy."""
+
     analyzed_commit: str
     analysis_in_progress: bool
     open_issues: int | None
@@ -158,6 +167,7 @@ def _extract_total_from_values(payload: dict[str, Any]) -> int | None:
 
 
 def extract_total_open(payload: Any) -> int | None:
+    """Extract an issue-count total from nested Codacy response payloads."""
     if isinstance(payload, dict):
         direct_total = _extract_total_from_mapping(payload)
         if direct_total is not None:
@@ -476,6 +486,7 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
 
 
 def main() -> int:
+    """Run the Codacy zero-issues gate and write report artifacts."""
     args = _parse_args()
     try:
         token, owner, repo, provider = _validated_inputs(args)

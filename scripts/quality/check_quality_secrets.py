@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Validate that required quality-gate secrets and variables exist."""
+
 from __future__ import annotations
 
 import argparse
@@ -58,6 +60,7 @@ def _partition_present_and_missing(names: list[str]) -> tuple[list[str], list[st
 
 
 def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
+    """Return which required secrets and variables are present or missing."""
     missing_secrets, present_secrets = _partition_present_and_missing(required_secrets)
     missing_vars, present_vars = _partition_present_and_missing(required_vars)
     return {
@@ -94,6 +97,7 @@ def _render_md(payload: dict) -> str:
 
 
 def main() -> int:
+    """Run the quality-secrets preflight check and write report artifacts."""
     args = _parse_args()
     required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))

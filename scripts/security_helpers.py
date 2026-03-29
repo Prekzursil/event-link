@@ -1,3 +1,5 @@
+"""Shared validation and workspace I/O helpers for quality scripts."""
+
 from __future__ import annotations
 
 import ipaddress
@@ -93,7 +95,6 @@ def normalize_https_url(
     - optional hostname allowlist,
     - optional hostname suffix allowlist.
     """
-
     parsed = _parse_https_url(raw_url)
     hostname = _normalized_hostname(parsed, raw_url)
     _validate_host_allowlists(
@@ -110,6 +111,7 @@ def normalize_https_url(
 
 
 def validate_slug(value: str, *, field_name: str) -> str:
+    """Validate a slug-like identifier used in API paths and arguments."""
     slug = (value or "").strip()
     if not slug or not _SLUG_RE.fullmatch(slug):
         raise ValueError(f"Invalid {field_name}: {value!r}")
@@ -117,6 +119,7 @@ def validate_slug(value: str, *, field_name: str) -> str:
 
 
 def validate_repo_full_name(value: str) -> tuple[str, str]:
+    """Validate and split a GitHub-style owner/repo identifier."""
     raw = (value or "").strip()
     parts = raw.split("/", 1)
     if len(parts) != 2:
@@ -127,6 +130,7 @@ def validate_repo_full_name(value: str) -> tuple[str, str]:
 
 
 def validate_commit_sha(value: str) -> str:
+    """Validate a Git commit SHA used in provider lookups."""
     sha = (value or "").strip()
     if not _SHA_RE.fullmatch(sha):
         raise ValueError(f"Invalid commit SHA: {value!r}")
@@ -134,6 +138,7 @@ def validate_commit_sha(value: str) -> str:
 
 
 def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None) -> str:
+    """Build and validate a normalized HTTPS URL from host, path, and query."""
     safe_host = (host or "").strip().lower().strip(".")
     if not _HOST_RE.fullmatch(safe_host):
         raise ValueError(f"Invalid host: {host!r}")
@@ -173,6 +178,7 @@ def request_https_json(
     allowed_hosts: set[str] | None = None,
     allowed_host_suffixes: set[str] | None = None,
 ) -> tuple[object | None, dict[str, str], int]:
+    """Perform an HTTPS JSON request and return payload, headers, and status."""
     safe_url = normalize_https_url(
         raw_url,
         allowed_hosts=allowed_hosts,
@@ -240,6 +246,7 @@ def resolve_workspace_relative_path(
     must_exist: bool = False,
     must_be_file: bool = False,
 ) -> Path:
+    """Resolve a workspace-relative path without allowing path escapes."""
     root = _workspace_root(base)
     candidate = _candidate_relative_path(raw_path, fallback)
     resolved = _resolve_workspace_path(root, candidate)
@@ -259,6 +266,7 @@ def build_github_api_url(
     resource: tuple[str, ...],
     query: dict[str, str] | None = None,
 ) -> str:
+    """Build a validated GitHub REST API URL for a repository resource."""
     safe_owner = validate_slug(owner, field_name="repo owner")
     safe_repo = validate_slug(repo, field_name="repo name")
     path_segments = (
@@ -275,6 +283,7 @@ def build_github_api_url(
 
 
 def build_github_commit_checks_url(*, owner: str, repo: str, sha: str, per_page: int = 100) -> str:
+    """Build the GitHub commit check-runs API URL for a commit."""
     safe_sha = validate_commit_sha(sha)
     return build_github_api_url(
         owner=owner,
@@ -285,6 +294,7 @@ def build_github_commit_checks_url(*, owner: str, repo: str, sha: str, per_page:
 
 
 def build_github_commit_status_url(*, owner: str, repo: str, sha: str) -> str:
+    """Build the GitHub commit status API URL for a commit."""
     safe_sha = validate_commit_sha(sha)
     return build_github_api_url(
         owner=owner,
@@ -300,6 +310,7 @@ def write_workspace_text(
     text: str,
     base: Path | None = None,
 ) -> Path:
+    """Write text to a validated workspace-relative file path."""
     target = resolve_workspace_relative_path(raw_path, fallback=fallback, base=base)
     target.parent.mkdir(parents=True, exist_ok=True)
     target.write_text(text, encoding="utf-8")
@@ -313,6 +324,7 @@ def write_workspace_json(
     payload: object,
     base: Path | None = None,
 ) -> Path:
+    """Write JSON to a validated workspace-relative file path."""
     return write_workspace_text(
         raw_path=raw_path,
         fallback=fallback,

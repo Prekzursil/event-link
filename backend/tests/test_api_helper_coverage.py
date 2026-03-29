@@ -124,7 +124,8 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
         def __init__(self, _path: str):
             self.path = _path
 
-        def set_main_option(self, *_args, **_kwargs):
+        @staticmethod
+        def set_main_option(*_args, **_kwargs):
             """Accept config updates without persisting anything."""
             return None
 
@@ -215,6 +216,7 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
     assert missing_ini_upgrades == []
 
     def _boom(*_args, **_kwargs):
+        """Raise a deterministic upgrade failure for exception-path coverage."""
         raise RuntimeError("upgrade failed")
 
     def _record_exception(*_args, **_kwargs):
@@ -282,6 +284,7 @@ def test_experiment_treatment_boundary_values():
 
 
 def test_clone_event_branches_and_success(helpers):
+    """Clone route should cover missing, forbidden, and successful branches."""
     client = helpers["client"]
     db = helpers["db"]
 
@@ -331,6 +334,7 @@ def test_clone_event_branches_and_success(helpers):
 
 
 def test_organizer_profile_not_found_and_update_validation(helpers):
+    """Organizer profile routes should validate missing and update paths."""
     client = helpers["client"]
 
     missing = client.get("/api/organizers/999999")
@@ -356,6 +360,7 @@ def test_organizer_profile_not_found_and_update_validation(helpers):
 
 
 def test_hidden_tag_personalization_endpoints(helpers):
+    """Hidden-tag endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 404
@@ -365,6 +370,7 @@ def test_hidden_tag_personalization_endpoints(helpers):
 
 
 def test_blocked_organizer_personalization_endpoints(helpers):
+    """Blocked-organizer endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 404
@@ -374,6 +380,7 @@ def test_blocked_organizer_personalization_endpoints(helpers):
 
 
 def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
+    """Favorite routes should cover missing, exists, list, and delete branches."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
@@ -389,6 +396,7 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
 
 
 def test_admin_activate_missing_personalization_model_returns_404(helpers):
+    """Admin activation should return 404 when the target model is missing."""
     client = helpers["client"]
     helpers["make_admin"]("admin-queues@test.ro", "admin-fixture-A1")
     admin_token = helpers["login"]("admin-queues@test.ro", "admin-fixture-A1")
@@ -401,6 +409,7 @@ def test_admin_activate_missing_personalization_model_returns_404(helpers):
 
 
 def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypatch, helpers):
+    """Admin activation should return both non-recompute and recompute payloads."""
     context = _seed_admin_context(helpers, monkeypatch)
     headers = helpers["auth_header"](context.admin_token)
     activate_no_recompute = context.client.post(
@@ -421,6 +430,7 @@ def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypat
 
 
 def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpers):
+    """Admin queue endpoints should return created responses for each job type."""
     context = _seed_admin_context(helpers, monkeypatch)
     headers = helpers["auth_header"](context.admin_token)
     retrain = context.client.post(
@@ -450,6 +460,7 @@ def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpe
 
 
 def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, helpers):
+    """Interaction recording should update visible interests and skip hidden tags."""
     context = _seed_record_interactions_context(helpers, monkeypatch)
     response = context.client.post(
         "/api/analytics/interactions",
@@ -477,6 +488,7 @@ def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, h
 
 
 def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
+    """Interaction recording should enqueue a refresh job when realtime updates are enabled."""
     context = _seed_record_interactions_context(helpers, monkeypatch)
     response = context.client.post(
         "/api/analytics/interactions",
@@ -488,6 +500,7 @@ def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
 
 
 def test_register_route_rejects_mismatched_confirmation(monkeypatch):
+    """Registration should reject mismatched access-code confirmation fields."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     register_db = SimpleNamespace(query=lambda *_args, **_kwargs: _FirstQuery(None))
     request = Request({"type": "http", "method": "POST", "path": "/register", "headers": []})
@@ -507,6 +520,7 @@ def test_register_route_rejects_mismatched_confirmation(monkeypatch):
 
 
 def test_update_event_rejects_invalid_status(monkeypatch):
+    """Event updates should reject unsupported status values before mutating data."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     db_event = SimpleNamespace(
         id=1,
@@ -537,6 +551,7 @@ def test_update_event_rejects_invalid_status(monkeypatch):
 
 
 def test_bulk_organizer_routes_require_selected_events(monkeypatch):
+    """Bulk organizer routes should reject requests without selected events."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     current_user = SimpleNamespace(id=7, role=models.UserRole.organizator)
     with pytest.raises(HTTPException) as bulk_status_exc:
@@ -559,6 +574,7 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
 
 
 def test_record_interactions_disabled_and_empty_paths(monkeypatch, helpers):
+    """Interaction recording should no-op when analytics or learning is disabled."""
     client = helpers["client"]
     db = helpers["db"]
 

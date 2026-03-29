@@ -103,6 +103,7 @@ class RequestIdMiddleware:
         token = request_id_ctx.set(request_id)
 
         async def send_wrapper(message):
+            """Append the request id header to the outgoing HTTP response."""
             if message.get("type") == "http.response.start":
                 headers_list = message.setdefault("headers", [])
                 headers_list.append((b"x-request-id", request_id.encode()))
