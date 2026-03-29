@@ -16,6 +16,72 @@ import {
 } from './student-profile/ProfileMetaSections';
 import { useStudentProfileController } from './student-profile/useStudentProfileController';
 
+/** Render the heading copy and spacing for the student profile page. */
+function StudentProfileHeader({
+  subtitle,
+  title,
+}: Readonly<{ subtitle: string; title: string }>) {
+  return (
+    <div className="mb-8">
+      <h1 className="text-3xl font-bold">{title}</h1>
+      <p className="text-muted-foreground">{subtitle}</p>
+    </div>
+  );
+}
+
+/** Render the immutable email field and editable full-name field for a profile. */
+function StudentBasicInfoCard({
+  email,
+  emailLabel,
+  emailNote,
+  fullName,
+  fullNameLabel,
+  fullNamePlaceholder,
+  onFullNameChange,
+  sectionDescription,
+  sectionTitle,
+}: Readonly<{
+  email: string;
+  emailLabel: string;
+  emailNote: string;
+  fullName: string;
+  fullNameLabel: string;
+  fullNamePlaceholder: string;
+  onFullNameChange: (value: string) => void;
+  sectionDescription: string;
+  sectionTitle: string;
+}>) {
+  return (
+    <Card className="mb-6">
+      <CardHeader>
+        <CardTitle className="flex items-center gap-2">
+          <User className="h-5 w-5" />
+          {sectionTitle}
+        </CardTitle>
+        <CardDescription>{sectionDescription}</CardDescription>
+      </CardHeader>
+      <CardContent className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="email">{emailLabel}</Label>
+          <Input id="email" value={email} disabled className="bg-muted" />
+          <p className="text-xs text-muted-foreground">{emailNote}</p>
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="fullName">{fullNameLabel}</Label>
+          <Input
+            id="fullName"
+            value={fullName}
+            onChange={(event) => onFullNameChange(event.target.value)}
+            placeholder={fullNamePlaceholder}
+          />
+        </div>
+      </CardContent>
+    </Card>
+  );
+}
+
+/** Render the complete student profile form and personalization sections. */
 export function StudentProfilePage() {
   const controller = useStudentProfileController();
 
@@ -23,40 +89,23 @@ export function StudentProfilePage() {
     return <LoadingPage message={controller.t.profile.loading} />;
   }
 
-  // skipcq: JS-0415 - the profile page intentionally composes the form, preferences, and privacy sections.
   return (
     <div className="container mx-auto max-w-2xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">{controller.t.profile.title}</h1>
-        <p className="text-muted-foreground">{controller.t.profile.subtitle}</p>
-      </div>
-
-      <Card className="mb-6">
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <User className="h-5 w-5" />
-            {controller.t.profile.basicInfoTitle}
-          </CardTitle>
-          <CardDescription>{controller.t.profile.basicInfoDescription}</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{controller.t.profile.emailLabel}</Label>
-            <Input id="email" value={controller.profile?.email || ''} disabled className="bg-muted" />
-            <p className="text-xs text-muted-foreground">{controller.t.profile.emailNote}</p>
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="fullName">{controller.t.profile.fullNameLabel}</Label>
-            <Input
-              id="fullName"
-              value={controller.fullName}
-              onChange={(event) => controller.setFullName(event.target.value)}
-              placeholder={controller.t.profile.fullNamePlaceholder}
-            />
-          </div>
-        </CardContent>
-      </Card>
+      <StudentProfileHeader
+        subtitle={controller.t.profile.subtitle}
+        title={controller.t.profile.title}
+      />
+      <StudentBasicInfoCard
+        email={controller.profile?.email || ''}
+        emailLabel={controller.t.profile.emailLabel}
+        emailNote={controller.t.profile.emailNote}
+        fullName={controller.fullName}
+        fullNameLabel={controller.t.profile.fullNameLabel}
+        fullNamePlaceholder={controller.t.profile.fullNamePlaceholder}
+        onFullNameChange={controller.setFullName}
+        sectionDescription={controller.t.profile.basicInfoDescription}
+        sectionTitle={controller.t.profile.basicInfoTitle}
+      />
 
       <AcademicProfileCard
         city={controller.city}

@@ -75,6 +75,35 @@ type ParticipantsOverviewHeaderProps = Readonly<{
   participantData: ParticipantList;
   t: ParticipantsTexts;
 }>;
+type ParticipantsEmailDialogProps = Readonly<{
+  emailDialogOpen: boolean;
+  emailMessage: string;
+  emailSubject: string;
+  isEmailing: boolean;
+  onEmailMessageChange: (value: string) => void;
+  onEmailSubjectChange: (value: string) => void;
+  onOpenChange: (open: boolean) => void;
+  onSend: () => void;
+  t: ParticipantsTexts;
+}>;
+type ParticipantsTableProps = Readonly<{
+  data: ParticipantList;
+  handleAttendanceChange: (participant: Participant, attended: boolean) => Promise<void>;
+  isLoading: boolean;
+  language: ReturnType<typeof useI18n>['language'];
+  onToggleSort: (column: string) => void;
+  skeletonRowKeys: string[];
+  t: ParticipantsTexts;
+  updatingAttendance: Set<number>;
+}>;
+type ParticipantsPaginationProps = Readonly<{
+  page: number;
+  pageSize: number;
+  setPage: Dispatch<SetStateAction<number>>;
+  setPageSize: Dispatch<SetStateAction<number>>;
+  t: ParticipantsTexts;
+  totalPages: number;
+}>;
 
 /** Generate a bounded list of placeholder-row keys for the loading skeleton. */
 function skeletonKeys(pageSize: number) {
@@ -292,6 +321,302 @@ function ParticipantsOverviewHeader({
   );
 }
 
+/** Render the email-composer dialog used to message event participants in bulk. */
+function ParticipantsEmailDialog({
+  emailDialogOpen,
+  emailMessage,
+  emailSubject,
+  isEmailing,
+  onEmailMessageChange,
+  onEmailSubjectChange,
+  onOpenChange,
+  onSend,
+  t,
+}: ParticipantsEmailDialogProps) {
+  return (
+    <Dialog open={emailDialogOpen} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>{t.participants.emailDialogTitle}</DialogTitle>
+          <DialogDescription>{t.participants.emailDialogDescription}</DialogDescription>
+        </DialogHeader>
+
+        <div className="space-y-2">
+          <Label htmlFor="email-subject">{t.participants.emailSubjectLabel}</Label>
+          <Input
+            id="email-subject"
+            value={emailSubject}
+            onChange={(event) => onEmailSubjectChange(event.target.value)}
+            placeholder={t.participants.emailSubjectPlaceholder}
+          />
+        </div>
+        <div className="space-y-2">
+          <Label htmlFor="email-message">{t.participants.emailMessageLabel}</Label>
+          <Textarea
+            id="email-message"
+            value={emailMessage}
+            onChange={(event) => onEmailMessageChange(event.target.value)}
+            placeholder={t.participants.emailMessagePlaceholder}
+            rows={6}
+          />
+        </div>
+
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)} disabled={isEmailing}>
+            {t.common.cancel}
+          </Button>
+          <Button onClick={onSend} disabled={isEmailing}>
+            {t.participants.emailSend}
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/** Render the loading skeleton for the organizer participants view. */
+function ParticipantsLoadingState({ t }: Readonly<{ t: ParticipantsTexts }>) {
+  return (
+    <div className="container mx-auto px-4 py-8">
+      <Skeleton className="mb-6 h-10 w-48" />
+
+      <Card>
+        <CardHeader>
+          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <div className="space-y-2">
+              <Skeleton className="h-6 w-40" />
+              <Skeleton className="h-4 w-56" />
+            </div>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-6 w-24" />
+              <Skeleton className="h-10 w-32" />
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-3">
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+            <Skeleton className="h-10 w-full" />
+          </div>
+        </CardContent>
+      </Card>
+      <span className="sr-only">{t.participants.title}</span>
+    </div>
+  );
+}
+
+/** Render one sortable column header for the participants table. */
+function ParticipantsSortHeader({
+  column,
+  label,
+  onToggleSort,
+}: Readonly<{
+  column: string;
+  label: string;
+  onToggleSort: (column: string) => void;
+}>) {
+  return (
+    <Button
+      variant="ghost"
+      size="sm"
+      className="p-0 font-medium"
+      onClick={() => onToggleSort(column)}
+    >
+      {label}
+      <ArrowUpDown className="ml-2 h-4 w-4" />
+    </Button>
+  );
+}
+
+/** Render one loading row in the participants table while data is refreshing. */
+function ParticipantsSkeletonRow({ rowKey }: Readonly<{ rowKey: string }>) {
+  return (
+    <TableRow key={rowKey}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Skeleton className="h-4 w-4 rounded" />
+          <Skeleton className="h-4 w-48" />
+        </div>
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-32" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-4 w-40" />
+      </TableCell>
+      <TableCell>
+        <Skeleton className="h-5 w-5 rounded" />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/** Render one participant row with email, registration date, and attendance toggle. */
+function ParticipantRow({
+  handleAttendanceChange,
+  language,
+  participant,
+  updatingAttendance,
+}: Readonly<{
+  handleAttendanceChange: (participant: Participant, attended: boolean) => Promise<void>;
+  language: ReturnType<typeof useI18n>['language'];
+  participant: Participant;
+  updatingAttendance: Set<number>;
+}>) {
+  return (
+    <TableRow key={participant.id}>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Mail className="h-4 w-4 text-muted-foreground" />
+          <a href={`mailto:${participant.email}`} className="hover:underline">
+            {participant.email}
+          </a>
+        </div>
+      </TableCell>
+      <TableCell>{participant.full_name || '-'}</TableCell>
+      <TableCell>{formatDateTime(participant.registration_time, language)}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <Checkbox
+            checked={participant.attended}
+            disabled={updatingAttendance.has(participant.id)}
+            onCheckedChange={(checked) => handleAttendanceChange(participant, checked === true)}
+          />
+          {updatingAttendance.has(participant.id) && <LoadingSpinner size="sm" />}
+        </div>
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/** Render the participant rows and sortable headers for the organizer table. */
+function ParticipantsTable({
+  data,
+  handleAttendanceChange,
+  isLoading,
+  language,
+  onToggleSort,
+  skeletonRowKeys,
+  t,
+  updatingAttendance,
+}: ParticipantsTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>
+            <ParticipantsSortHeader
+              column="email"
+              label={t.participants.table.email}
+              onToggleSort={onToggleSort}
+            />
+          </TableHead>
+          <TableHead>
+            <ParticipantsSortHeader
+              column="full_name"
+              label={t.participants.table.name}
+              onToggleSort={onToggleSort}
+            />
+          </TableHead>
+          <TableHead>
+            <ParticipantsSortHeader
+              column="registration_time"
+              label={t.participants.table.registrationDate}
+              onToggleSort={onToggleSort}
+            />
+          </TableHead>
+          <TableHead className="w-[100px]">{t.participants.table.attended}</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {isLoading
+          ? skeletonRowKeys.map((rowKey) => <ParticipantsSkeletonRow key={rowKey} rowKey={rowKey} />)
+          : data.participants.map((participant) => (
+              <ParticipantRow
+                key={participant.id}
+                handleAttendanceChange={handleAttendanceChange}
+                language={language}
+                participant={participant}
+                updatingAttendance={updatingAttendance}
+              />
+            ))}
+      </TableBody>
+    </Table>
+  );
+}
+
+/** Render the empty-state card body for events with no registered participants. */
+function ParticipantsEmptyState({ t }: Readonly<{ t: ParticipantsTexts }>) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <Users className="mb-4 h-12 w-12 text-muted-foreground" />
+      <h3 className="text-lg font-semibold">{t.participants.emptyTitle}</h3>
+      <p className="mt-2 text-muted-foreground">{t.participants.emptyDescription}</p>
+    </div>
+  );
+}
+
+/** Render the participants pagination controls and page-size selector. */
+function ParticipantsPagination({
+  page,
+  pageSize,
+  setPage,
+  setPageSize,
+  t,
+  totalPages,
+}: ParticipantsPaginationProps) {
+  return (
+    <div className="mt-4 flex items-center justify-between">
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-muted-foreground">{t.participants.perPage}</span>
+        <Select
+          value={String(pageSize)}
+          onValueChange={(value) => {
+            setPageSize(Number.parseInt(value, 10));
+            setPage(1);
+          }}
+        >
+          <SelectTrigger className="w-[70px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="10">10</SelectItem>
+            <SelectItem value="20">20</SelectItem>
+            <SelectItem value="50">50</SelectItem>
+            <SelectItem value="100">100</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+
+      <div className="flex items-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={page === 1}
+          onClick={() => setPage((value) => value - 1)}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm">
+          {t.participants.paginationPage} {page} {t.participants.paginationOf} {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={page === totalPages}
+          onClick={() => setPage((value) => value + 1)}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Render the organizer participant-management page for one event. */
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
@@ -364,38 +689,8 @@ export function ParticipantsPage() {
     });
   };
 
-  // skipcq: JS-0415 - the participants page intentionally keeps filters, metrics, dialogs, and table actions together.
   if (isLoading && !data) {
-    return (
-      <div className="container mx-auto px-4 py-8">
-        <Skeleton className="mb-6 h-10 w-48" />
-
-        <Card>
-          <CardHeader>
-            <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-              <div className="space-y-2">
-                <Skeleton className="h-6 w-40" />
-                <Skeleton className="h-4 w-56" />
-              </div>
-              <div className="flex items-center gap-4">
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-6 w-24" />
-                <Skeleton className="h-10 w-32" />
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-              <Skeleton className="h-10 w-full" />
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-    );
+    return <ParticipantsLoadingState t={t} />;
   }
 
   if (!data) {
@@ -427,43 +722,17 @@ export function ParticipantsPage() {
 
   return (
     <div className="container mx-auto px-4 py-8">
-      <Dialog open={emailDialogOpen} onOpenChange={setEmailDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>{t.participants.emailDialogTitle}</DialogTitle>
-            <DialogDescription>{t.participants.emailDialogDescription}</DialogDescription>
-          </DialogHeader>
-
-          <div className="space-y-2">
-            <Label htmlFor="email-subject">{t.participants.emailSubjectLabel}</Label>
-            <Input
-              id="email-subject"
-              value={emailSubject}
-              onChange={(e) => setEmailSubject(e.target.value)}
-              placeholder={t.participants.emailSubjectPlaceholder}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email-message">{t.participants.emailMessageLabel}</Label>
-            <Textarea
-              id="email-message"
-              value={emailMessage}
-              onChange={(e) => setEmailMessage(e.target.value)}
-              placeholder={t.participants.emailMessagePlaceholder}
-              rows={6}
-            />
-          </div>
-
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailDialogOpen(false)} disabled={isEmailing}>
-              {t.common.cancel}
-            </Button>
-            <Button onClick={sendEmailToParticipants} disabled={isEmailing}>
-              {t.participants.emailSend}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      <ParticipantsEmailDialog
+        emailDialogOpen={emailDialogOpen}
+        emailMessage={emailMessage}
+        emailSubject={emailSubject}
+        isEmailing={isEmailing}
+        onEmailMessageChange={setEmailMessage}
+        onEmailSubjectChange={setEmailSubject}
+        onOpenChange={setEmailDialogOpen}
+        onSend={sendEmailToParticipants}
+        t={t}
+      />
 
       <Button variant="ghost" className="mb-6" onClick={() => navigate('/organizer')}>
         <ArrowLeft className="mr-2 h-4 w-4" />
@@ -483,150 +752,29 @@ export function ParticipantsPage() {
         </CardHeader>
         <CardContent>
           {data.participants.length === 0 ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <Users className="mb-4 h-12 w-12 text-muted-foreground" />
-              <h3 className="text-lg font-semibold">{t.participants.emptyTitle}</h3>
-              <p className="mt-2 text-muted-foreground">
-                {t.participants.emptyDescription}
-              </p>
-            </div>
+            <ParticipantsEmptyState t={t} />
           ) : (
             <>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-0 font-medium"
-                        onClick={() => toggleSort('email')}
-                      >
-                        {t.participants.table.email}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-0 font-medium"
-                        onClick={() => toggleSort('full_name')}
-                      >
-                        {t.participants.table.name}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </TableHead>
-                    <TableHead>
-                      <Button
-                        variant="ghost"
-                        size="sm"
-                        className="p-0 font-medium"
-                        onClick={() => toggleSort('registration_time')}
-                      >
-                        {t.participants.table.registrationDate}
-                        <ArrowUpDown className="ml-2 h-4 w-4" />
-                      </Button>
-                    </TableHead>
-                    <TableHead className="w-[100px]">{t.participants.table.attended}</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {isLoading
-                    ? skeletonRowKeys.map((rowKey) => (
-                        <TableRow key={rowKey}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Skeleton className="h-4 w-4 rounded" />
-                              <Skeleton className="h-4 w-48" />
-                            </div>
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-32" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-4 w-40" />
-                          </TableCell>
-                          <TableCell>
-                            <Skeleton className="h-5 w-5 rounded" />
-                          </TableCell>
-                        </TableRow>
-                      ))
-                    : data.participants.map((participant) => (
-                        <TableRow key={participant.id}>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Mail className="h-4 w-4 text-muted-foreground" />
-                              <a href={`mailto:${participant.email}`} className="hover:underline">
-                                {participant.email}
-                              </a>
-                            </div>
-                          </TableCell>
-                          <TableCell>{participant.full_name || '-'}</TableCell>
-                          <TableCell>{formatDateTime(participant.registration_time, language)}</TableCell>
-                          <TableCell>
-                            <div className="flex items-center gap-2">
-                              <Checkbox
-                                checked={participant.attended}
-                                disabled={updatingAttendance.has(participant.id)}
-                                onCheckedChange={(checked) =>
-                                  handleAttendanceChange(participant, checked === true)
-                                }
-                              />
-                              {updatingAttendance.has(participant.id) && <LoadingSpinner size="sm" />}
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
-                </TableBody>
-              </Table>
+              <ParticipantsTable
+                data={data}
+                handleAttendanceChange={handleAttendanceChange}
+                isLoading={isLoading}
+                language={language}
+                onToggleSort={toggleSort}
+                skeletonRowKeys={skeletonRowKeys}
+                t={t}
+                updatingAttendance={updatingAttendance}
+              />
 
-              {/* Pagination */}
               {totalPages > 1 && (
-                <div className="mt-4 flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-sm text-muted-foreground">{t.participants.perPage}</span>
-                    <Select
-                      value={String(pageSize)}
-                      onValueChange={(value) => {
-                        setPageSize(Number.parseInt(value, 10));
-                        setPage(1);
-                      }}
-                    >
-                      <SelectTrigger className="w-[70px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="10">10</SelectItem>
-                        <SelectItem value="20">20</SelectItem>
-                        <SelectItem value="50">50</SelectItem>
-                        <SelectItem value="100">100</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-
-                  <div className="flex items-center gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      disabled={page === 1}
-                      onClick={() => setPage((p) => p - 1)}
-                    >
-                      <ChevronLeft className="h-4 w-4" />
-                    </Button>
-                    <span className="text-sm">
-                      {t.participants.paginationPage} {page} {t.participants.paginationOf} {totalPages}
-                    </span>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      disabled={page === totalPages}
-                      onClick={() => setPage((p) => p + 1)}
-                    >
-                      <ChevronRight className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
+                <ParticipantsPagination
+                  page={page}
+                  pageSize={pageSize}
+                  setPage={setPage}
+                  setPageSize={setPageSize}
+                  t={t}
+                  totalPages={totalPages}
+                />
               )}
             </>
           )}
