@@ -29,7 +29,7 @@ it('covers click tracking failure fallback', async () => {
   recordInteractionsSpy.mockReturnValueOnce({
     catch: (handler: (error: Error) => void) => {
       handler(new Error('click-fail'));
-      return undefined;
+      return Promise.resolve();
     },
   });
   eventServiceMock.getEvents.mockResolvedValueOnce({

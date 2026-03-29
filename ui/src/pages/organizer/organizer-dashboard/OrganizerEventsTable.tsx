@@ -235,6 +235,30 @@ function OrganizerEventRow({
   );
 }
 
+/** Render the selection header row for the organizer events table. */
+function OrganizerEventsTableHeaderRow({
+  onSelectAll,
+  selectAllState,
+  texts,
+}: Pick<OrganizerEventsSelectionTableProps, 'onSelectAll' | 'selectAllState' | 'texts'>) {
+  return (
+    <TableRow>
+      <TableHead className="w-[40px]">
+        <Checkbox
+          checked={selectAllState}
+          onCheckedChange={(checked) => onSelectAll(checked === true)}
+          aria-label={texts.bulk.selectAllAria}
+        />
+      </TableHead>
+      <TableHead>{texts.tableHeaderTitle}</TableHead>
+      <TableHead>{texts.tableHeaderDate}</TableHead>
+      <TableHead>{texts.tableHeaderParticipants}</TableHead>
+      <TableHead>{texts.tableHeaderStatus}</TableHead>
+      <TableHead className="w-[70px]" />
+    </TableRow>
+  );
+}
+
 /** Render the organizer events table once at least one event exists. */
 function OrganizerEventsSelectionTable({
   onSelectAll,
@@ -245,20 +269,11 @@ function OrganizerEventsSelectionTable({
   return (
     <Table>
       <TableHeader>
-        <TableRow>
-          <TableHead className="w-[40px]">
-            <Checkbox
-              checked={selectAllState}
-              onCheckedChange={(checked) => onSelectAll(checked === true)}
-              aria-label={texts.bulk.selectAllAria}
-            />
-          </TableHead>
-          <TableHead>{texts.tableHeaderTitle}</TableHead>
-          <TableHead>{texts.tableHeaderDate}</TableHead>
-          <TableHead>{texts.tableHeaderParticipants}</TableHead>
-          <TableHead>{texts.tableHeaderStatus}</TableHead>
-          <TableHead className="w-[70px]" />
-        </TableRow>
+        <OrganizerEventsTableHeaderRow
+          onSelectAll={onSelectAll}
+          selectAllState={selectAllState}
+          texts={texts}
+        />
       </TableHeader>
       <TableBody>{tableRows}</TableBody>
     </Table>
