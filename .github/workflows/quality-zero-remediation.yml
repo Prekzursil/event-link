@@ -14,7 +14,7 @@ jobs:
     permissions:
       contents: write
       pull-requests: write
-    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-remediation-loop.yml@6e8e87edd0c457f3722e401f0ffed86dac90e9e1
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-remediation-loop.yml@49690f22e146194c4b8efd801d31d7faf4975b60
     with:
       repo_slug: ${{ github.repository }}
       failure_context: Quality Zero Gate
