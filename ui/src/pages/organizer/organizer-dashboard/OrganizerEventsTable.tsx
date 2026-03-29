@@ -281,22 +281,24 @@ function OrganizerEventsSelectionTable({
 }
 
 /** Render the organizer events table once at least one event exists. */
-function OrganizerEventsTableContent({
-  events,
-  isBulkUpdating,
-  language,
-  now,
-  onBulkStatusUpdate,
-  onClearSelection,
-  onDelete,
-  onOpenBulkTags,
-  onSelectAll,
-  onToggleSelected,
-  selectAllState,
-  selectedCount,
-  selectedEventIds,
-  texts,
-}: Props) {
+function OrganizerEventsTableContent(props: Props) {
+  const {
+    events,
+    isBulkUpdating,
+    language,
+    now,
+    onBulkStatusUpdate,
+    onClearSelection,
+    onDelete,
+    onOpenBulkTags,
+    onSelectAll,
+    onToggleSelected,
+    selectAllState,
+    selectedCount,
+    selectedEventIds,
+    texts,
+  } = props;
+
   const bulkActions =
     selectedCount > 0 ? (
       <OrganizerBulkActionsBar
@@ -335,22 +337,24 @@ function OrganizerEventsTableContent({
 }
 
 /** Render the organizer-owned event list with selection and per-row actions. */
-export function OrganizerEventsTable({
-  events,
-  isBulkUpdating,
-  language,
-  now,
-  onBulkStatusUpdate,
-  onClearSelection,
-  onDelete,
-  onOpenBulkTags,
-  onSelectAll,
-  onToggleSelected,
-  selectAllState,
-  selectedCount,
-  selectedEventIds,
-  texts,
-}: Props) {
+export function OrganizerEventsTable(props: Props) {
+  const {
+    events,
+    isBulkUpdating,
+    language,
+    now,
+    onBulkStatusUpdate,
+    onClearSelection,
+    onDelete,
+    onOpenBulkTags,
+    onSelectAll,
+    onToggleSelected,
+    selectAllState,
+    selectedCount,
+    selectedEventIds,
+    texts,
+  } = props;
+
   return (
     <Card>
       <CardHeader>

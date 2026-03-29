@@ -43,6 +43,12 @@ export default tseslint.config(
     },
   },
   {
+    files: ['tests/mock-component-modules.tsx'],
+    rules: {
+      'react-refresh/only-export-components': 'off',
+    },
+  },
+  {
     files: [
       'tests/high-impact-pages-coverage.fixtures.tsx',
       'tests/mega-pages-branches.fixtures.tsx',

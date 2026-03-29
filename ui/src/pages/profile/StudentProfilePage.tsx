@@ -29,18 +29,7 @@ function StudentProfileHeader({
   );
 }
 
-/** Render the immutable email field and editable full-name field for a profile. */
-function StudentBasicInfoCard({
-  email,
-  emailLabel,
-  emailNote,
-  fullName,
-  fullNameLabel,
-  fullNamePlaceholder,
-  onFullNameChange,
-  sectionDescription,
-  sectionTitle,
-}: Readonly<{
+type StudentBasicInfoCardProps = Readonly<{
   email: string;
   emailLabel: string;
   emailNote: string;
@@ -50,7 +39,22 @@ function StudentBasicInfoCard({
   onFullNameChange: (value: string) => void;
   sectionDescription: string;
   sectionTitle: string;
-}>) {
+}>;
+
+/** Render the immutable email field and editable full-name field for a profile. */
+function StudentBasicInfoCard(props: StudentBasicInfoCardProps) {
+  const {
+    email,
+    emailLabel,
+    emailNote,
+    fullName,
+    fullNameLabel,
+    fullNamePlaceholder,
+    onFullNameChange,
+    sectionDescription,
+    sectionTitle,
+  } = props;
+
   return (
     <Card className="mb-6">
       <CardHeader>

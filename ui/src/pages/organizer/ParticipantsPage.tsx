@@ -506,16 +506,18 @@ function ParticipantRow({
 }
 
 /** Render the participant rows and sortable headers for the organizer table. */
-function ParticipantsTable({
-  data,
-  handleAttendanceChange,
-  isLoading,
-  language,
-  onToggleSort,
-  skeletonRowKeys,
-  t,
-  updatingAttendance,
-}: ParticipantsTableProps) {
+function ParticipantsTable(props: ParticipantsTableProps) {
+  const {
+    data,
+    handleAttendanceChange,
+    isLoading,
+    language,
+    onToggleSort,
+    skeletonRowKeys,
+    t,
+    updatingAttendance,
+  } = props;
+
   return (
     <Table>
       <TableHeader>
