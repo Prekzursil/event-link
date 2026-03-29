@@ -50,6 +50,12 @@ type OrganizerEventRowProps = Readonly<{
   selectedEventIds: Set<number>;
   texts: UiStrings['organizerDashboard'];
 }>;
+type OrganizerEventsSelectionTableProps = Readonly<{
+  onSelectAll: (checked: boolean) => void;
+  selectAllState: boolean | 'indeterminate';
+  tableRows: React.ReactNode;
+  texts: UiStrings['organizerDashboard'];
+}>;
 
 /** Render the localized status badge shown for one organizer-owned event row. */
 function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['status'], isPast: boolean) {
@@ -230,6 +236,36 @@ function OrganizerEventRow({
 }
 
 /** Render the organizer events table once at least one event exists. */
+function OrganizerEventsSelectionTable({
+  onSelectAll,
+  selectAllState,
+  tableRows,
+  texts,
+}: OrganizerEventsSelectionTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[40px]">
+            <Checkbox
+              checked={selectAllState}
+              onCheckedChange={(checked) => onSelectAll(checked === true)}
+              aria-label={texts.bulk.selectAllAria}
+            />
+          </TableHead>
+          <TableHead>{texts.tableHeaderTitle}</TableHead>
+          <TableHead>{texts.tableHeaderDate}</TableHead>
+          <TableHead>{texts.tableHeaderParticipants}</TableHead>
+          <TableHead>{texts.tableHeaderStatus}</TableHead>
+          <TableHead className="w-[70px]" />
+        </TableRow>
+      </TableHeader>
+      <TableBody>{tableRows}</TableBody>
+    </Table>
+  );
+}
+
+/** Render the organizer events table once at least one event exists. */
 function OrganizerEventsTableContent({
   events,
   isBulkUpdating,
@@ -271,28 +307,15 @@ function OrganizerEventsTableContent({
   ));
 
   return (
-    <>
+    <div className="space-y-4">
       {bulkActions}
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead className="w-[40px]">
-              <Checkbox
-                checked={selectAllState}
-                onCheckedChange={(checked) => onSelectAll(checked === true)}
-                aria-label={texts.bulk.selectAllAria}
-              />
-            </TableHead>
-            <TableHead>{texts.tableHeaderTitle}</TableHead>
-            <TableHead>{texts.tableHeaderDate}</TableHead>
-            <TableHead>{texts.tableHeaderParticipants}</TableHead>
-            <TableHead>{texts.tableHeaderStatus}</TableHead>
-            <TableHead className="w-[70px]" />
-          </TableRow>
-        </TableHeader>
-        <TableBody>{tableRows}</TableBody>
-      </Table>
-    </>
+      <OrganizerEventsSelectionTable
+        onSelectAll={onSelectAll}
+        selectAllState={selectAllState}
+        tableRows={tableRows}
+        texts={texts}
+      />
+    </div>
   );
 }
 

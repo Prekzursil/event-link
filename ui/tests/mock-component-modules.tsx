@@ -5,10 +5,12 @@ type SelectContextValue = {
   disabled?: boolean
 }
 
+/** Create test doubles for the select primitives used across page-level tests. */
 export function createSelectMockModule() {
   const SelectContext = React.createContext<SelectContextValue>({})
 
-  const Select = ({
+  /** Provide select context state to descendant mock controls. */
+  function Select({
     children,
     onValueChange,
     disabled,
@@ -25,17 +27,27 @@ export function createSelectMockModule() {
     return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>
   }
 
-  const SelectTrigger = ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button type="button" {...props}>
-      {children}
-    </button>
-  )
+  /** Render the interactive trigger button for the select mock. */
+  function SelectTrigger({ children, ...props }: React.ComponentProps<'button'>) {
+    return (
+      <button type="button" {...props}>
+        {children}
+      </button>
+    )
+  }
 
-  const SelectValue = ({ placeholder }: { placeholder?: string }) => <span>{placeholder ?? 'value'}</span>
+  /** Render the current value or placeholder for the select mock. */
+  function SelectValue({ placeholder }: { placeholder?: string }) {
+    return <span>{placeholder ?? 'value'}</span>
+  }
 
-  const SelectContent = ({ children }: { children: React.ReactNode }) => <div>{children}</div>
+  /** Render the option list container for the select mock. */
+  function SelectContent({ children }: { children: React.ReactNode }) {
+    return <div>{children}</div>
+  }
 
-  const SelectItem = ({ value, children }: { value: string; children: React.ReactNode }) => {
+  /** Render one selectable option in the select mock. */
+  function SelectItem({ value, children }: { value: string; children: React.ReactNode }) {
     const context = React.useContext(SelectContext)
     return (
       <button type="button" disabled={context.disabled} onClick={() => context.onValueChange?.(value)}>
@@ -47,6 +59,7 @@ export function createSelectMockModule() {
   return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
 }
 
+/** Create test doubles for the dropdown-menu primitives used in page tests. */
 export function createDropdownMenuMockModule() {
   return {
     DropdownMenu: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
@@ -79,6 +92,7 @@ export function createDropdownMenuMockModule() {
   }
 }
 
+/** Create a checkbox primitive that toggles boolean state in tests. */
 export function createCheckboxMockModule() {
   return {
     Checkbox: ({
@@ -102,6 +116,7 @@ export function createCheckboxMockModule() {
   }
 }
 
+/** Create a calendar primitive that emits a fixed date range in tests. */
 export function createCalendarMockModule() {
   return {
     Calendar: ({ onSelect }: { onSelect?: (range: { from?: Date; to?: Date }) => void }) => (

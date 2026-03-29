@@ -86,7 +86,7 @@ describe('contexts and toast hook', () => {
     authServiceMock.getMe.mockResolvedValue(null);
     authServiceMock.login.mockResolvedValue();
     authServiceMock.register.mockResolvedValue();
-    authServiceMock.logout.mockImplementation(() => {});
+    authServiceMock.logout.mockResolvedValue();
   });
 
   it('throws when hooks are used outside providers', () => {
