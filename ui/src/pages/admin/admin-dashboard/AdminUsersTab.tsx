@@ -50,36 +50,137 @@ type UsersFiltersProps = Readonly<{
   usersCopy: UsersCopy;
 }>;
 
+/** Render the email and optional full name for one admin user row. */
+function UserIdentityCell({ user }: Readonly<{ user: UserRecord }>) {
+  return (
+    <TableCell>
+      <div className="font-medium">{user.email}</div>
+      {user.full_name ? (
+        <div className="text-xs text-muted-foreground">{user.full_name}</div>
+      ) : null}
+    </TableCell>
+  );
+}
+
+/** Render the editable role selector for one admin user row. */
+function UserRoleCell({
+  controller,
+  user,
+}: Readonly<{
+  controller: Controller;
+  user: UserRecord;
+}>) {
+  const { handleUpdateUser, roleLabels, t } = controller;
+
+  return (
+    <TableCell>
+      <div className="flex items-center gap-2">
+        <Badge variant={roleBadgeVariant(user.role)}>{roleLabels[user.role]}</Badge>
+        <Select
+          value={user.role}
+          onValueChange={(value) => handleUpdateUser(user.id, { role: value as UserRole })}
+        >
+          <SelectTrigger className="h-8 w-[150px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+            <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+            <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
+    </TableCell>
+  );
+}
+
+/** Render the free-text search control above the admin users table. */
+function UsersSearchField({
+  onChange,
+  value,
+  usersCopy,
+}: Readonly<{
+  onChange: (value: string) => void;
+  value: string;
+  usersCopy: UsersCopy;
+}>) {
+  return (
+    <div className="flex-1">
+      <label className="mb-1 block text-sm font-medium">{usersCopy.searchLabel}</label>
+      <Input
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={usersCopy.searchPlaceholder}
+      />
+    </div>
+  );
+}
+
+/** Render the role filter shown above the admin users table. */
+function UsersRoleFilter({
+  onChange,
+  t,
+  usersCopy,
+  value,
+}: Readonly<{
+  onChange: (value: 'all' | UserRole) => void;
+  t: Controller['t'];
+  usersCopy: UsersCopy;
+  value: 'all' | UserRole;
+}>) {
+  return (
+    <div className="w-full md:w-56">
+      <label className="mb-1 block text-sm font-medium">{usersCopy.roleLabel}</label>
+      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as 'all' | UserRole)}>
+        <SelectTrigger>
+          <SelectValue placeholder={usersCopy.all} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{usersCopy.all}</SelectItem>
+          <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+          <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+          <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** Render the active-status filter shown above the admin users table. */
+function UsersStatusFilter({
+  onChange,
+  usersCopy,
+  value,
+}: Readonly<{
+  onChange: (value: 'all' | 'active' | 'inactive') => void;
+  usersCopy: UsersCopy;
+  value: 'all' | 'active' | 'inactive';
+}>) {
+  return (
+    <div className="w-full md:w-56">
+      <label className="mb-1 block text-sm font-medium">{usersCopy.statusLabel}</label>
+      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as 'all' | 'active' | 'inactive')}>
+        <SelectTrigger>
+          <SelectValue placeholder={usersCopy.all} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="all">{usersCopy.all}</SelectItem>
+          <SelectItem value="active">{usersCopy.statusActive}</SelectItem>
+          <SelectItem value="inactive">{usersCopy.statusInactive}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
 /** Render the editable role and activity cells for a single admin user row. */
 function UserRow({ controller, user }: UserRowProps) {
-  const { handleUpdateUser, language, roleLabels, t } = controller;
+  const { handleUpdateUser, language } = controller;
 
   return (
     <TableRow key={user.id}>
-      <TableCell>
-        <div className="font-medium">{user.email}</div>
-        {user.full_name ? (
-          <div className="text-xs text-muted-foreground">{user.full_name}</div>
-        ) : null}
-      </TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <Badge variant={roleBadgeVariant(user.role)}>{roleLabels[user.role]}</Badge>
-          <Select
-            value={user.role}
-            onValueChange={(value) => handleUpdateUser(user.id, { role: value as UserRole })}
-          >
-            <SelectTrigger className="h-8 w-[150px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-              <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-              <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
-            </SelectContent>
-          </Select>
-        </div>
-      </TableCell>
+      <UserIdentityCell user={user} />
+      <UserRoleCell controller={controller} user={user} />
       <TableCell>
         <Checkbox
           checked={user.is_active}
@@ -191,44 +292,22 @@ function UsersFilters({ controller, usersCopy }: UsersFiltersProps) {
 
   return (
     <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
-      <div className="flex-1">
-        <label className="mb-1 block text-sm font-medium">{usersCopy.searchLabel}</label>
-        <Input
-          value={usersSearch}
-          onChange={(event) => setUsersSearch(event.target.value)}
-          placeholder={usersCopy.searchPlaceholder}
-        />
-      </div>
-      <div className="w-full md:w-56">
-        <label className="mb-1 block text-sm font-medium">{usersCopy.roleLabel}</label>
-        <Select value={usersRole} onValueChange={(value) => setUsersRole(value as 'all' | UserRole)}>
-          <SelectTrigger>
-            <SelectValue placeholder={usersCopy.all} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{usersCopy.all}</SelectItem>
-            <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-            <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-            <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
-      <div className="w-full md:w-56">
-        <label className="mb-1 block text-sm font-medium">{usersCopy.statusLabel}</label>
-        <Select
-          value={usersActive}
-          onValueChange={(value) => setUsersActive(value as 'all' | 'active' | 'inactive')}
-        >
-          <SelectTrigger>
-            <SelectValue placeholder={usersCopy.all} />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">{usersCopy.all}</SelectItem>
-            <SelectItem value="active">{usersCopy.statusActive}</SelectItem>
-            <SelectItem value="inactive">{usersCopy.statusInactive}</SelectItem>
-          </SelectContent>
-        </Select>
-      </div>
+      <UsersSearchField
+        onChange={setUsersSearch}
+        value={usersSearch}
+        usersCopy={usersCopy}
+      />
+      <UsersRoleFilter
+        onChange={setUsersRole}
+        t={t}
+        usersCopy={usersCopy}
+        value={usersRole}
+      />
+      <UsersStatusFilter
+        onChange={setUsersActive}
+        usersCopy={usersCopy}
+        value={usersActive}
+      />
       <Button onClick={() => loadUsers(1)} disabled={isLoadingUsers}>
         <RefreshCw className="mr-2 h-4 w-4" />
         {usersCopy.apply}

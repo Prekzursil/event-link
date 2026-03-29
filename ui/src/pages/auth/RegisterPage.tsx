@@ -164,6 +164,61 @@ function RegisterAccessCodeFields({
 }
 
 /** Render the full registration card while keeping the page shell shallow. */
+function RegisterCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
+  return (
+    <CardHeader className="space-y-1 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+        <Calendar className="h-6 w-6 text-primary" />
+      </div>
+      <CardTitle className="text-2xl">{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
+    </CardHeader>
+  );
+}
+
+/** Render the registration submit button and its loading state. */
+function RegisterSubmitButton({
+  isLoading,
+  submitLabel,
+  submittingLabel,
+}: Readonly<{
+  isLoading: boolean;
+  submitLabel: string;
+  submittingLabel: string;
+}>) {
+  return (
+    <Button type="submit" className="w-full" disabled={isLoading}>
+      {isLoading ? (
+        <>
+          <LoadingSpinner size="sm" className="mr-2" />
+          {submittingLabel}
+        </>
+      ) : (
+        submitLabel
+      )}
+    </Button>
+  );
+}
+
+/** Render the footer prompt that sends existing users back to login. */
+function RegisterFooterHint({
+  label,
+  linkLabel,
+}: Readonly<{
+  label: string;
+  linkLabel: string;
+}>) {
+  return (
+    <p className="text-center text-sm text-muted-foreground">
+      {label}{' '}
+      <Link to="/login" className="text-primary hover:underline">
+        {linkLabel}
+      </Link>
+    </p>
+  );
+}
+
+/** Render the full registration card while keeping the page shell shallow. */
 function RegisterFormCard({
   formData,
   handleChange,
@@ -174,16 +229,9 @@ function RegisterFormCard({
   texts,
   toggleShowPassword,
 }: RegisterFormCardProps) {
-  // skipcq: JS-0415 - this form card intentionally keeps field groups and submit controls together.
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <Calendar className="h-6 w-6 text-primary" />
-        </div>
-        <CardTitle className="text-2xl">{texts.title}</CardTitle>
-        <CardDescription>{texts.description}</CardDescription>
-      </CardHeader>
+      <RegisterCardHeader title={texts.title} description={texts.description} />
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           <div className="space-y-2">
@@ -222,22 +270,15 @@ function RegisterFormCard({
           />
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                {texts.submitting}
-              </>
-            ) : (
-              texts.submit
-            )}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            {texts.haveAccount}{' '}
-            <Link to="/login" className="text-primary hover:underline">
-              {texts.loginLink}
-            </Link>
-          </p>
+          <RegisterSubmitButton
+            isLoading={isLoading}
+            submitLabel={texts.submit}
+            submittingLabel={texts.submitting}
+          />
+          <RegisterFooterHint
+            label={texts.haveAccount}
+            linkLabel={texts.loginLink}
+          />
         </CardFooter>
       </form>
     </Card>

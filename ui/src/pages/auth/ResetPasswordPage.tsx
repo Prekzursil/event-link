@@ -27,6 +27,7 @@ type PasswordRequirement = {
   met: boolean;
 };
 
+/** Compare two access codes without exposing timing differences for early mismatches. */
 function constantTimeEquals(left: string, right: string): boolean {
   const length = Math.max(left.length, right.length);
   let mismatch = left.length ^ right.length;
@@ -38,9 +39,10 @@ function constantTimeEquals(left: string, right: string): boolean {
   return mismatch === 0;
 }
 
+/** Return whether the password contains at least one ASCII letter. */
 function containsAsciiLetter(value: string): boolean {
   return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0)!;
+    const codePoint = Number(character.codePointAt(0));
     return (
       (codePoint >= 65 && codePoint <= 90) ||
       (codePoint >= 97 && codePoint <= 122)
@@ -48,13 +50,15 @@ function containsAsciiLetter(value: string): boolean {
   });
 }
 
+/** Return whether the password contains at least one digit. */
 function containsDigit(value: string): boolean {
   return Array.from(value).some((character) => {
-    const codePoint = character.codePointAt(0)!;
+    const codePoint = Number(character.codePointAt(0));
     return codePoint >= 48 && codePoint <= 57;
   });
 }
 
+/** Build the localized password requirement checklist. */
 function buildPasswordRequirements(
   password: string,
   resetStrings: ReturnType<typeof useI18n>['t']['auth']['resetAccessCode'],
@@ -66,6 +70,7 @@ function buildPasswordRequirements(
   ];
 }
 
+/** Show one localized reset-password toast. */
 function showToast(
   toast: ReturnType<typeof useToast>['toast'],
   title: string,
@@ -75,6 +80,7 @@ function showToast(
   toast({ title, description, variant });
 }
 
+/** Render the inline password requirement checklist. */
 function ResetAccessCodeRequirements({
   requirements,
 }: Readonly<{ requirements: PasswordRequirement[] }>) {
@@ -97,6 +103,7 @@ function ResetAccessCodeRequirements({
   );
 }
 
+/** Render the invalid reset-link state with a path back to the request form. */
 function ResetAccessCodeInvalidLink({
   invalidTitle,
   invalidDescription,
@@ -123,6 +130,7 @@ function ResetAccessCodeInvalidLink({
   );
 }
 
+/** Render the reset-access-code screen and submit the new access code. */
 export function ResetPasswordPage() {
   const { t } = useI18n();
   const resetStrings = t.auth.resetAccessCode;
@@ -136,6 +144,7 @@ export function ResetPasswordPage() {
   const { toast } = useToast();
   const passwordRequirements = buildPasswordRequirements(password, resetStrings);
 
+  /** Submit the replacement access code after validating the current reset token. */
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
 

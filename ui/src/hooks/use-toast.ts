@@ -147,11 +147,13 @@ type Toast = Omit<ToasterToast, "id">
 function toast({ ...props }: Toast) {
   const id = genId()
 
+  /** Update the current toast instance in place. */
   const update = (props: ToasterToast) =>
     dispatch({
       type: actionTypes.UPDATE_TOAST,
       toast: { ...props, id },
     })
+  /** Dismiss the current toast instance. */
   const dismiss = () => dispatch({ type: actionTypes.DISMISS_TOAST, toastId: id })
 
   dispatch({

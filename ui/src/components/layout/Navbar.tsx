@@ -35,6 +35,111 @@ import authService from '@/services/auth.service';
 import { useToast } from '@/hooks/use-toast';
 import type { LanguagePreference, ThemePreference } from '@/types';
 
+type NavTexts = ReturnType<typeof useI18n>['t']['nav'];
+
+/** Render the avatar button that opens the authenticated desktop user menu. */
+function NavbarUserAvatarButton({ initials }: Readonly<{ initials: string }>) {
+  return (
+    <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+      <Avatar className="h-9 w-9">
+        <AvatarFallback className="bg-primary text-primary-foreground">
+          {initials}
+        </AvatarFallback>
+      </Avatar>
+    </Button>
+  );
+}
+
+/** Render the identity block at the top of the authenticated user menu. */
+function NavbarUserMenuIdentity({
+  email,
+  fallbackLabel,
+  fullName,
+}: Readonly<{
+  email?: string | null;
+  fallbackLabel: string;
+  fullName?: string | null;
+}>) {
+  return (
+    <DropdownMenuLabel className="font-normal">
+      <div className="flex flex-col space-y-1">
+        <p className="text-sm font-medium leading-none">
+          {fullName || fallbackLabel}
+        </p>
+        <p className="text-xs leading-none text-muted-foreground">
+          {email}
+        </p>
+      </div>
+    </DropdownMenuLabel>
+  );
+}
+
+/** Render the authenticated desktop dropdown menu and its navigation actions. */
+function NavbarUserMenu({
+  email,
+  fallbackLabel,
+  fullName,
+  initials,
+  isAdmin,
+  onLogout,
+  texts,
+}: Readonly<{
+  email?: string | null;
+  fallbackLabel: string;
+  fullName?: string | null;
+  initials: string;
+  isAdmin: boolean;
+  onLogout: () => void;
+  texts: NavTexts;
+}>) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <NavbarUserAvatarButton initials={initials} />
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        <NavbarUserMenuIdentity
+          email={email}
+          fallbackLabel={fallbackLabel}
+          fullName={fullName}
+        />
+        <DropdownMenuSeparator />
+        <DropdownMenuItem asChild>
+          <Link to="/my-events">
+            <Calendar className="mr-2 h-4 w-4" />
+            {texts.myEvents}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/favorites">
+            <Heart className="mr-2 h-4 w-4" />
+            {texts.favorites}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to="/profile">
+            <User className="mr-2 h-4 w-4" />
+            {texts.profile}
+          </Link>
+        </DropdownMenuItem>
+        {isAdmin ? (
+          <DropdownMenuItem asChild>
+            <Link to="/admin">
+              <Shield className="mr-2 h-4 w-4" />
+              {texts.admin}
+            </Link>
+          </DropdownMenuItem>
+        ) : null}
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={onLogout}>
+          <LogOut className="mr-2 h-4 w-4" />
+          {texts.logout}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
 /** Render the global navigation, profile controls, and mobile menu. */
 export function Navbar() {
   const { user, isAuthenticated, isOrganizer, isAdmin, logout, refreshUser } = useAuth();
@@ -250,78 +355,18 @@ export function Navbar() {
     </Button>
   );
 
-  const userMenuIdentity = (
-    <DropdownMenuLabel className="font-normal">
-      <div className="flex flex-col space-y-1">
-        <p className="text-sm font-medium leading-none">
-          {user?.full_name || t.nav.userFallback}
-        </p>
-        <p className="text-xs leading-none text-muted-foreground">
-          {user?.email}
-        </p>
-      </div>
-    </DropdownMenuLabel>
-  );
-
-  const userMenuItems = (
-    <>
-      <DropdownMenuItem asChild>
-        <Link to="/my-events">
-          <Calendar className="mr-2 h-4 w-4" />
-          {t.nav.myEvents}
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link to="/favorites">
-          <Heart className="mr-2 h-4 w-4" />
-          {t.nav.favorites}
-        </Link>
-      </DropdownMenuItem>
-      <DropdownMenuItem asChild>
-        <Link to="/profile">
-          <User className="mr-2 h-4 w-4" />
-          {t.nav.profile}
-        </Link>
-      </DropdownMenuItem>
-      {isAdmin && (
-        <DropdownMenuItem asChild>
-          <Link to="/admin">
-            <Shield className="mr-2 h-4 w-4" />
-            {t.nav.admin}
-          </Link>
-        </DropdownMenuItem>
-      )}
-      <DropdownMenuSeparator />
-      <DropdownMenuItem onClick={handleLogout}>
-        <LogOut className="mr-2 h-4 w-4" />
-        {t.nav.logout}
-      </DropdownMenuItem>
-    </>
-  );
-
-  const userMenu = (
-    <DropdownMenu>
-      <DropdownMenuTrigger asChild>
-        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-          <Avatar className="h-9 w-9">
-            <AvatarFallback className="bg-primary text-primary-foreground">
-              {getInitials(user?.full_name, user?.email)}
-            </AvatarFallback>
-          </Avatar>
-        </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-56" align="end" forceMount>
-        {userMenuIdentity}
-        <DropdownMenuSeparator />
-        {userMenuItems}
-      </DropdownMenuContent>
-    </DropdownMenu>
-  );
-
   const authenticatedDesktopActions = (
     <>
       {organizerCreateAction}
-      {userMenu}
+      <NavbarUserMenu
+        email={user?.email}
+        fallbackLabel={t.nav.userFallback}
+        fullName={user?.full_name}
+        initials={getInitials(user?.full_name, user?.email)}
+        isAdmin={isAdmin}
+        onLogout={handleLogout}
+        texts={t.nav}
+      />
     </>
   );
 

@@ -75,7 +75,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const value = useMemo(
     () => ({
       user,
-      isAuthenticated: !!user,
+      isAuthenticated: Boolean(user),
       isOrganizer: user?.role === 'organizator' || user?.role === 'admin',
       isAdmin: user?.role === 'admin',
       isLoading,
