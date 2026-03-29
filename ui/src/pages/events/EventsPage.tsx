@@ -52,6 +52,17 @@ type EventsListPayload = Readonly<{
   total: number;
 }>;
 
+/** Format a local calendar date for query-string use without timezone conversion. */
+function formatEventDateForQuery(date: Date | undefined): string {
+  if (!date) {
+    return '';
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
 /** Read the responsive calendar layout preference from the current viewport. */
 function readShowTwoMonthsCalendar() {
   return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
@@ -164,6 +175,7 @@ type EventsListSyncArgs = Readonly<{
   onSettled: () => void;
 }>;
 
+/** Synchronize the main events list while preventing stale async results from mutating state. */
 function syncEventsList({
   filters,
   onLoaded,
@@ -283,6 +295,13 @@ export function EventsPage() {
       filters.location ||
       filters.tags.length > 0,
   );
+  const selectedDateRange = {
+    from: filters.start_date ? new Date(filters.start_date + 'T00:00:00') : undefined,
+    to: filters.end_date ? new Date(filters.end_date + 'T00:00:00') : undefined,
+  };
+  const defaultCalendarMonth = filters.start_date
+    ? new Date(filters.start_date + 'T00:00:00')
+    : new Date();
 
   /** Persist partial filter changes into the URL and reset paging unless the caller overrides it. */
   function updateFilters(newFilters: Partial<EventFilters>) {
@@ -357,6 +376,14 @@ export function EventsPage() {
   /** Clear every active filter and return the page to the default route state. */
   function clearFilters() {
     setSearchParams({});
+  }
+
+  /** Apply the selected calendar range to the query-string backed filter state. */
+  function handleDateRangeSelect(range: { from?: Date; to?: Date } | undefined) {
+    updateFilters({
+      start_date: formatEventDateForQuery(range?.from),
+      end_date: formatEventDateForQuery(range?.to),
+    });
   }
 
   /** Toggle the favorite state for an event card while keeping the local favorite set in sync. */
@@ -524,143 +551,139 @@ export function EventsPage() {
     </div>
   ) : null;
 
+  const searchFilter = (
+    <div className="relative flex-1 min-w-[200px]">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        placeholder={t.events.searchPlaceholder}
+        value={filters.search || ''}
+        onChange={(event) => updateFilters({ search: event.target.value })}
+        className="pl-10"
+      />
+    </div>
+  );
+
+  const categoryFilter = (
+    <Select
+      value={filters.category || ALL_CATEGORIES_VALUE}
+      onValueChange={handleCategoryChange}
+    >
+      <SelectTrigger className="w-full sm:w-[180px]">
+        <SelectValue placeholder={t.events.categoryPlaceholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {categoryOptions.map((cat) => (
+          <SelectItem key={cat.value} value={cat.value}>
+            {cat.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const dateRangeFilter = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-full justify-start sm:w-[240px]">
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {dateRangeLabel}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          selected={selectedDateRange}
+          onSelect={handleDateRangeSelect}
+          numberOfMonths={showTwoMonthsCalendar ? 2 : 1}
+          defaultMonth={defaultCalendarMonth}
+          locale={dateFnsLocale}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+
+  const cityFilter = (
+    <Input
+      placeholder={t.events.cityPlaceholder}
+      value={filters.city || ''}
+      onChange={(event) => updateFilters({ city: event.target.value })}
+      className="w-full sm:w-[180px]"
+    />
+  );
+
+  const locationFilter = (
+    <Input
+      placeholder={t.events.locationPlaceholder}
+      value={filters.location || ''}
+      onChange={(event) => updateFilters({ location: event.target.value })}
+      className="w-full sm:w-[180px]"
+    />
+  );
+
+  const activeFiltersSection = hasActiveFilters ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm text-muted-foreground">{t.events.activeFilters}</span>
+      {filters.search && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterSearch}: {filters.search}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ search: '' })}
+          />
+        </Badge>
+      )}
+      {filters.category && (
+        <Badge variant="secondary" className="gap-1">
+          {getEventCategoryLabel(filters.category, language)}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ category: '' })}
+          />
+        </Badge>
+      )}
+      {filters.start_date && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterFrom}: {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ start_date: '', end_date: '' })}
+          />
+        </Badge>
+      )}
+      {filters.city && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterCity}: {filters.city}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ city: '' })}
+          />
+        </Badge>
+      )}
+      {filters.location && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterLocation}: {filters.location}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ location: '' })}
+          />
+        </Badge>
+      )}
+      <Button variant="ghost" size="sm" onClick={clearFilters}>
+        {t.events.clearAll}
+      </Button>
+    </div>
+  ) : null;
+
   const filtersSection = (
     <div className="mb-6 space-y-4">
       <div className="flex flex-wrap gap-4">
-        {/* Search */}
-        <div className="relative flex-1 min-w-[200px]">
-          <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-          <Input
-            placeholder={t.events.searchPlaceholder}
-            value={filters.search || ''}
-            onChange={(e) => updateFilters({ search: e.target.value })}
-            className="pl-10"
-          />
-        </div>
-
-        {/* Category */}
-        <Select
-          value={filters.category || ALL_CATEGORIES_VALUE}
-          onValueChange={handleCategoryChange}
-        >
-          <SelectTrigger className="w-full sm:w-[180px]">
-            <SelectValue placeholder={t.events.categoryPlaceholder} />
-          </SelectTrigger>
-          <SelectContent>
-            {categoryOptions.map((cat) => (
-              <SelectItem key={cat.value} value={cat.value}>
-                {cat.label}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        {/* Date Range */}
-        <Popover>
-          <PopoverTrigger asChild>
-            <Button variant="outline" className="w-full justify-start sm:w-[240px]">
-              <CalendarIcon className="mr-2 h-4 w-4" />
-              {dateRangeLabel}
-            </Button>
-          </PopoverTrigger>
-          <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={{
-                from: filters.start_date ? new Date(filters.start_date + 'T00:00:00') : undefined,
-                to: filters.end_date ? new Date(filters.end_date + 'T00:00:00') : undefined,
-              }}
-              onSelect={(range: { from?: Date; to?: Date } | undefined) => {
-                // Format date as YYYY-MM-DD without timezone conversion
-                const formatLocalDate = (date: Date | undefined) => {
-                  if (!date) return '';
-                  const year = date.getFullYear();
-                  const month = String(date.getMonth() + 1).padStart(2, '0');
-                  const day = String(date.getDate()).padStart(2, '0');
-                  return `${year}-${month}-${day}`;
-                };
-                updateFilters({
-                  start_date: formatLocalDate(range?.from),
-                  end_date: formatLocalDate(range?.to),
-                });
-              }}
-              numberOfMonths={showTwoMonthsCalendar ? 2 : 1}
-              defaultMonth={filters.start_date ? new Date(filters.start_date + 'T00:00:00') : new Date()}
-              locale={dateFnsLocale}
-            />
-          </PopoverContent>
-        </Popover>
-
-        {/* Location */}
-        <Input
-          placeholder={t.events.cityPlaceholder}
-          value={filters.city || ''}
-          onChange={(e) => updateFilters({ city: e.target.value })}
-          className="w-full sm:w-[180px]"
-        />
-
-        <Input
-          placeholder={t.events.locationPlaceholder}
-          value={filters.location || ''}
-          onChange={(e) => updateFilters({ location: e.target.value })}
-          className="w-full sm:w-[180px]"
-        />
+        {searchFilter}
+        {categoryFilter}
+        {dateRangeFilter}
+        {cityFilter}
+        {locationFilter}
       </div>
-
-      {/* Active Filters */}
-      {hasActiveFilters && (
-        <div className="flex flex-wrap items-center gap-2">
-          <span className="text-sm text-muted-foreground">{t.events.activeFilters}</span>
-          {filters.search && (
-            <Badge variant="secondary" className="gap-1">
-              {t.events.filterSearch}: {filters.search}
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => updateFilters({ search: '' })}
-              />
-            </Badge>
-          )}
-          {filters.category && (
-            <Badge variant="secondary" className="gap-1">
-              {getEventCategoryLabel(filters.category, language)}
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => updateFilters({ category: '' })}
-              />
-            </Badge>
-          )}
-          {filters.start_date && (
-            <Badge variant="secondary" className="gap-1">
-              {t.events.filterFrom}: {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => updateFilters({ start_date: '', end_date: '' })}
-              />
-            </Badge>
-          )}
-          {filters.city && (
-            <Badge variant="secondary" className="gap-1">
-              {t.events.filterCity}: {filters.city}
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => updateFilters({ city: '' })}
-              />
-            </Badge>
-          )}
-          {filters.location && (
-            <Badge variant="secondary" className="gap-1">
-              {t.events.filterLocation}: {filters.location}
-              <X
-                className="h-3 w-3 cursor-pointer"
-                onClick={() => updateFilters({ location: '' })}
-              />
-            </Badge>
-          )}
-          <Button variant="ghost" size="sm" onClick={clearFilters}>
-            {t.events.clearAll}
-          </Button>
-        </div>
-      )}
+      {activeFiltersSection}
     </div>
   );
 

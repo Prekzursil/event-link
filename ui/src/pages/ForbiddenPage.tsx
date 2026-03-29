@@ -4,8 +4,23 @@ import { Button } from '@/components/ui/button';
 import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/contexts/LanguageContext';
 
+/** Render the back-to-events call to action for the forbidden page. */
+function ForbiddenBackButton({ label }: Readonly<{ label: string }>) {
+  return (
+    <Button asChild>
+      <Link to="/">
+        <ArrowLeft className="mr-2 h-4 w-4" />
+        {label}
+      </Link>
+    </Button>
+  );
+}
+
+/** Render the permission-denied page shown when the current user lacks access. */
 export function ForbiddenPage() {
   const { t } = useI18n();
+  const pageAction = <ForbiddenBackButton label={t.pages.forbidden.backToEvents} />;
+
   // skipcq: JS-0415 - the page intentionally keeps the icon, copy, and CTA in one compact layout.
   return (
     <div className="container mx-auto px-4 py-16">
@@ -16,12 +31,7 @@ export function ForbiddenPage() {
           <p className="mb-6 text-muted-foreground">
             {t.pages.forbidden.description}
           </p>
-          <Button asChild>
-            <Link to="/">
-              <ArrowLeft className="mr-2 h-4 w-4" />
-              {t.pages.forbidden.backToEvents}
-            </Link>
-          </Button>
+          {pageAction}
         </CardContent>
       </Card>
     </div>
