@@ -2,14 +2,21 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = REPO_ROOT / '.github' / 'workflows'
-WRAPPER_TEMPLATE_REF = '@d3aabc77c858e27cb7ade824e9fbf3dd9203f256'
-MUTATION_TEMPLATE_REF = '@7268fee30f1cf796938d97fe460259f27386a8cd'
+WRAPPER_TEMPLATE_REF = '@977a49739e43a4c752d8067e15020e3f06934ac7'
+MUTATION_TEMPLATE_REF = '@977a49739e43a4c752d8067e15020e3f06934ac7'
 
 
 def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
-    quality_platform = (WORKFLOWS_DIR / 'quality-zero-platform.yml').read_text(encoding='utf-8')
-    quality_gate = (WORKFLOWS_DIR / 'quality-zero-gate.yml').read_text(encoding='utf-8')
-    analytics = (WORKFLOWS_DIR / 'codecov-analytics.yml').read_text(encoding='utf-8')
+    """Validate that wrapper workflows point at the shared platform templates."""
+    quality_platform = (WORKFLOWS_DIR / 'quality-zero-platform.yml').read_text(
+        encoding='utf-8'
+    )
+    quality_gate = (WORKFLOWS_DIR / 'quality-zero-gate.yml').read_text(
+        encoding='utf-8'
+    )
+    analytics = (WORKFLOWS_DIR / 'codecov-analytics.yml').read_text(
+        encoding='utf-8'
+    )
 
     assert 'name: Quality Zero Platform' in quality_platform
     assert WRAPPER_TEMPLATE_REF in quality_platform
@@ -35,8 +42,11 @@ def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
 
 
 def test_quality_zero_mutation_wrappers_are_present_and_scoped() -> None:
+    """Validate that mutation wrappers are present and limited to quality lanes."""
     backlog = (WORKFLOWS_DIR / 'quality-zero-backlog.yml').read_text(encoding='utf-8')
-    remediation = (WORKFLOWS_DIR / 'quality-zero-remediation.yml').read_text(encoding='utf-8')
+    remediation = (WORKFLOWS_DIR / 'quality-zero-remediation.yml').read_text(
+        encoding='utf-8'
+    )
 
     assert MUTATION_TEMPLATE_REF in backlog
     assert 'lane: quality' in backlog
@@ -51,6 +61,7 @@ def test_quality_zero_mutation_wrappers_are_present_and_scoped() -> None:
 
 
 def test_legacy_repo_owned_quality_workflows_have_been_removed() -> None:
+    """Ensure legacy repo-owned quality workflows were removed after migration."""
     for filename in (
         'coverage-100.yml',
         'codacy-zero.yml',
@@ -63,6 +74,7 @@ def test_legacy_repo_owned_quality_workflows_have_been_removed() -> None:
 
 
 def test_ci_and_wrapper_workflows_define_explicit_top_level_permissions() -> None:
+    """Ensure CI and governance workflows declare explicit top-level permissions."""
     expected_permissions = {
         'ci.yml': ['permissions: {}'],
         'quality-zero-platform.yml': [
@@ -70,6 +82,7 @@ def test_ci_and_wrapper_workflows_define_explicit_top_level_permissions() -> Non
             '  contents: read',
             '  id-token: write',
             '  pull-requests: write',
+            '      pull-requests: write',
         ],
         'quality-zero-gate.yml': [
             'permissions:',
@@ -92,6 +105,7 @@ def test_ci_and_wrapper_workflows_define_explicit_top_level_permissions() -> Non
 
 
 def test_repo_contract_files_exist_for_platform_governance() -> None:
+    """Ensure repo contract files for governance and local verification exist."""
     agents = (REPO_ROOT / 'AGENTS.md').read_text(encoding='utf-8')
     verify = (REPO_ROOT / 'scripts' / 'verify').read_text(encoding='utf-8')
     deepsource = (REPO_ROOT / '.deepsource.toml').read_text(encoding='utf-8')
@@ -112,7 +126,10 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
 
     assert 'version = 1' in deepsource
     assert 'test_patterns' in deepsource
-    assert 'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]' in deepsource
+    assert (
+        'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]'
+        in deepsource
+    )
     assert 'skip_doc_coverage = ["arrow-function-expression"]' in deepsource
 
     assert 'config_version = "0"' in qlty
@@ -120,8 +137,13 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
 
 
 def test_e2e_default_access_code_matches_seed_default() -> None:
-    seed_content = (REPO_ROOT / 'backend' / 'seed_data.py').read_text(encoding='utf-8')
-    e2e_utils_content = (REPO_ROOT / 'ui' / 'e2e' / 'utils.ts').read_text(encoding='utf-8')
+    """Ensure the seeded default access code stays aligned with E2E helpers."""
+    seed_content = (REPO_ROOT / 'backend' / 'seed_data.py').read_text(
+        encoding='utf-8'
+    )
+    e2e_utils_content = (REPO_ROOT / 'ui' / 'e2e' / 'utils.ts').read_text(
+        encoding='utf-8'
+    )
 
     assert 'seed-access-A1' in seed_content
     assert 'seed-access-A1' in e2e_utils_content

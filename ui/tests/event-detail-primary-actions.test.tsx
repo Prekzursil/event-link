@@ -93,7 +93,7 @@ describe('event detail primary actions', () => {
     fireEvent.click(actionButtons[1]);
     await waitFor(() => expect(navigator.clipboard.writeText).toHaveBeenCalled());
 
-    defineMutableValue(navigator, 'share', vi.fn().mockResolvedValue(undefined));
+    defineMutableValue(navigator, 'share', vi.fn().mockResolvedValue());
     fireEvent.click(actionButtons[1]);
     await waitFor(() => expect(navigator.share).toHaveBeenCalled());
 
@@ -110,7 +110,7 @@ describe('event detail primary actions', () => {
     await waitFor(() => expect(eventServiceMock.resendRegistrationEmail).toHaveBeenCalledWith(1));
 
     eventServiceMock.resendRegistrationEmail.mockRejectedValueOnce(new Error('resend-fail'));
-    fireEvent.click(screen.getByRole('button', { name: /Resend confirmation email/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Resend confirmation email/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     eventServiceMock.unregisterFromEvent.mockRejectedValueOnce(new Error('unregister-fail'));

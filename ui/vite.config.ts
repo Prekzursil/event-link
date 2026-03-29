@@ -22,7 +22,7 @@ export default defineConfig({
     exclude: ['e2e/**', 'node_modules/**', 'dist/**', 'coverage/**'],
     coverage: {
       provider: 'v8',
-      reporter: ['text', 'json-summary', 'lcov'],
+      reporter: ['text', 'json-summary', 'lcov', 'cobertura'],
       reportsDirectory: './coverage',
       include: ['src/**/*.{ts,tsx}'],
       exclude: ['src/**/*.d.ts', 'src/types/**', 'tests/**', '**/*.test.*', '**/*.spec.*'],
