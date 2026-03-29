@@ -1,3 +1,5 @@
+"""Development entrypoint for running the FastAPI application."""
+
 import ipaddress
 import os
 
@@ -23,7 +25,8 @@ def _resolve_host() -> str:
     host = os.environ.get("APP_HOST", _DEFAULT_HOST).strip() or _DEFAULT_HOST
     if _is_unspecified_host(host):
         raise RuntimeError(
-            "APP_HOST must not bind to all network interfaces in this entrypoint."
+            "APP_HOST must not bind to all network interfaces in this"
+            " entrypoint."
         )
     return host
 

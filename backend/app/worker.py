@@ -1,3 +1,5 @@
+"""Task queue worker entrypoint."""
+
 from __future__ import annotations
 
 import os
@@ -21,6 +23,7 @@ def _default_worker_id() -> str:
 
 
 def main() -> None:
+    """Run the background worker loop until a shutdown signal arrives."""
     configure_logging()
 
     worker_id = os.getenv("WORKER_ID") or _default_worker_id()

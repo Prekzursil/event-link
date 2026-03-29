@@ -10,14 +10,19 @@ import pytest
 
 
 class _FakeResult:
+    """Simple result wrapper that mimics SQLAlchemy scalar() responses."""
+
     def __init__(self, value):
         self._value = value
 
     def scalar(self):
+        """Return the stored scalar value."""
         return self._value
 
 
 class _FakeSession:
+    """Session double that records statements and transaction calls."""
+
     def __init__(self, *, user_count=0, delete_fail_tables=None, raise_on_add=False):
         self.user_count = user_count
         self.delete_fail_tables = set(delete_fail_tables or [])
@@ -28,6 +33,7 @@ class _FakeSession:
         self.executed = []
 
     def execute(self, stmt):
+        """Record and optionally fail executed SQL statements."""
         text_stmt = str(stmt)
         self.executed.append(text_stmt)
         if text_stmt.startswith("DELETE FROM"):
@@ -37,6 +43,7 @@ class _FakeSession:
         return _FakeResult(0)
 
     def scalar(self, stmt):
+        """Return canned scalar values for seed-data queries."""
         text_stmt = str(stmt)
         self.executed.append(text_stmt)
         if "from users" in text_stmt.lower() and "count" in text_stmt.lower():
@@ -44,33 +51,45 @@ class _FakeSession:
         return 0
 
     def add(self, _obj):
+        """Optionally raise when the seed routine adds a model."""
         if self.raise_on_add:
             raise RuntimeError("add failed")
 
     def add_all(self, objs):
+        """Delegate add_all to add for branch coverage in tests."""
         for obj in objs:
             self.add(obj)
 
     def flush(self):
+        """Mirror the SQLAlchemy flush interface used by the seed routine."""
         return None
 
     def commit(self):
+        """Track commit calls from the seed routine."""
         self.commits += 1
 
     def rollback(self):
+        """Track rollback calls from the seed routine."""
         self.rollbacks += 1
 
     def close(self):
+        """Record when the session is closed."""
         self.closed = True
 
 
 def _load_seed_data_module(monkeypatch):
+    """Import the seed_data module with a fake passlib CryptContext."""
+
     class _FakeCryptContext:
+        """Minimal passlib context replacement for seed-data import tests."""
+
         def __init__(self, *args, **kwargs):
             # Intentional empty fake context for seed-data import tests.
             return None
 
-        def hash(self, value):
+        @staticmethod
+        def hash(value):
+            """Return a deterministic hash marker for the provided value."""
             return f"hash:{value}"
 
     fake_passlib = types.ModuleType("passlib")
@@ -107,17 +126,25 @@ class _FakeRng:
 
 
 def _patch_rng(monkeypatch, seed_module):
+    """Replace the seed-data random generator with deterministic behavior."""
     monkeypatch.setattr(seed_module, "_rng", _FakeRng())
 
 
 def _prepare_seed(monkeypatch):
+    """Load seed_data with deterministic I/O and RNG behavior for tests."""
     seed_module = _load_seed_data_module(monkeypatch)
-    monkeypatch.setattr("builtins.print", lambda *args, **kwargs: None)
+
+    def _silent_print(*_args, **_kwargs):
+        """Suppress console output while importing or seeding test data."""
+        return None
+
+    monkeypatch.setattr("builtins.print", _silent_print)
     _patch_rng(monkeypatch, seed_module)
     return seed_module
 
 
 def test_seed_database_happy_path(monkeypatch):
+    """seed_database should populate a fresh database without rollback."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=0)
     monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
@@ -130,6 +157,7 @@ def test_seed_database_happy_path(monkeypatch):
 
 
 def test_seed_database_clears_existing_data_and_tolerates_missing_tables(monkeypatch):
+    """seed_database should clear prior rows and ignore missing join tables."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=3, delete_fail_tables={"event_tags", "favorite_events"})
     monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
@@ -142,6 +170,7 @@ def test_seed_database_clears_existing_data_and_tolerates_missing_tables(monkeyp
 
 
 def test_seed_database_rolls_back_on_error(monkeypatch):
+    """seed_database should rollback and re-raise when model insertion fails."""
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=0, raise_on_add=True)
     monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
@@ -154,9 +183,11 @@ def test_seed_database_rolls_back_on_error(monkeypatch):
 
 
 def test_backend_main_entrypoint_invokes_uvicorn(monkeypatch):
+    """The backend __main__ path should invoke uvicorn with env overrides."""
     calls = []
 
     def _fake_run(app, host, port):
+        """Record uvicorn invocation arguments for assertions."""
         calls.append((app, host, port))
 
     monkeypatch.setenv("APP_HOST", "")
@@ -174,6 +205,7 @@ def test_backend_main_entrypoint_invokes_uvicorn(monkeypatch):
 
 
 def test_backend_main_entrypoint_rejects_wildcard_host(monkeypatch):
+    """The backend entrypoint must reject IPv4 wildcard hosts."""
     monkeypatch.setenv("APP_HOST", "0.0.0.0")
     monkeypatch.setenv("APP_PORT", "9001")
 
@@ -183,6 +215,7 @@ def test_backend_main_entrypoint_rejects_wildcard_host(monkeypatch):
 
 
 def test_backend_main_entrypoint_rejects_ipv6_wildcard_host(monkeypatch):
+    """The backend entrypoint must reject IPv6 wildcard hosts."""
     monkeypatch.setenv("APP_HOST", "[::]")
     monkeypatch.setenv("APP_PORT", "9001")
 
@@ -192,12 +225,18 @@ def test_backend_main_entrypoint_rejects_ipv6_wildcard_host(monkeypatch):
 
 
 def test_seed_data_module_main_guard_executes(monkeypatch):
+    """Running seed_data as __main__ should complete using fake dependencies."""
+
     class _FakeCryptContext:
+        """Minimal passlib context replacement for the __main__ execution path."""
+
         def __init__(self, *args, **kwargs):
             # Intentional empty fake context for module __main__ path coverage.
             return None
 
-        def hash(self, value):
+        @staticmethod
+        def hash(value):
+            """Return a deterministic hash marker for the provided value."""
             return f"hash:{value}"
 
     fake_passlib = types.ModuleType("passlib")
@@ -212,7 +251,11 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
     fake = _FakeSession(user_count=0)
     monkeypatch.setattr(db_module, "SessionLocal", lambda: fake)
     monkeypatch.setattr(secrets, "SystemRandom", lambda: _FakeRng())
-    monkeypatch.setattr("builtins.print", lambda *args, **kwargs: None)
+    def _silent_print(*_args, **_kwargs):
+        """Suppress console output while exercising the __main__ guard."""
+        return None
+
+    monkeypatch.setattr("builtins.print", _silent_print)
 
     seed_path = Path(__file__).resolve().parents[1] / "seed_data.py"
     runpy.run_path(str(seed_path), run_name="__main__")
@@ -221,12 +264,14 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
 
 
 def test_fake_session_add_all_executes_add_path():
+    """add_all should route through add without changing commit counters."""
     fake = _FakeSession(user_count=0)
     fake.add_all([object(), object()])
     assert fake.commits == 0
 
 
 def test_fake_helpers_cover_scalar_and_host_allow_path(monkeypatch):
+    """Helper doubles should expose scalar results and allow safe host values."""
     assert _FakeResult(5).scalar() == 5
     fake = _FakeSession(user_count=7)
     assert fake.execute("SELECT 1").scalar() == 0
@@ -236,6 +281,7 @@ def test_fake_helpers_cover_scalar_and_host_allow_path(monkeypatch):
     calls = []
 
     def _fake_run(app, host, port):
+        """Record uvicorn invocation arguments for assertions."""
         calls.append((app, host, port))
 
     monkeypatch.setenv("APP_HOST", "dev.local")
@@ -251,11 +297,16 @@ def test_fake_helpers_cover_scalar_and_host_allow_path(monkeypatch):
 
 
 def test_backend_main_import_without_main_guard_does_not_run(monkeypatch):
+    """Importing main.py as a module should not eagerly run uvicorn."""
     calls = []
 
     import uvicorn
 
-    monkeypatch.setattr(uvicorn, "run", lambda *_args, **_kwargs: calls.append("run"))
+    def _record_uvicorn_run(*_args, **_kwargs):
+        """Record unexpected uvicorn execution during import-only paths."""
+        calls.append("run")
+
+    monkeypatch.setattr(uvicorn, "run", _record_uvicorn_run)
     main_path = Path(__file__).resolve().parents[1] / "main.py"
     spec = importlib.util.spec_from_file_location("backend_main_import_only", main_path)
     assert spec is not None and spec.loader is not None

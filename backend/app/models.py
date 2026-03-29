@@ -468,7 +468,7 @@ user_hidden_tags = Table(
 )
 
 
-# User blocked organizers - organizer/user IDs that students want to mute from feeds/recommendations
+# User blocked organizers that students want to mute from recommendations.
 user_blocked_organizers = Table(
     "user_blocked_organizers",
     Base.metadata,
