@@ -34,6 +34,9 @@ it('covers student profile controller guards when personalization state is unava
   expect(controller).toBeDefined();
 
   await act(async () => {
+    controller.setDeletePassword('secret-access-code');
+    controller.setDeleteDialogOpen(true);
+    controller.setDeleteDialogOpen((previous) => !previous);
     await controller.handleNotificationPreferenceChange({ email_digest_enabled: true });
     await controller.handleUnhideTag(1);
     await controller.handleUnblockOrganizer(2);

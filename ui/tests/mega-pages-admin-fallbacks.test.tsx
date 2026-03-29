@@ -171,6 +171,7 @@ describe('mega pages admin fallbacks', () => {
 
     renderLanguageRoute('/admin', '/admin', <AdminDashboardPage />);
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
+    await screen.findByRole('button', { name: /Reload/i });
     expect(screen.getByText(/Loading personalization metrics/i)).toBeInTheDocument();
     resolveMetrics?.(makePersonalizationMetrics());
     await waitFor(() =>

@@ -103,7 +103,7 @@ function DropdownMenuMock({ children }: SelectContentProps) {
 
 /** Render the dropdown trigger used across page-level tests. */
 function DropdownMenuTriggerMock({ children }: SelectContentProps) {
-  return <>{children}</>
+  return React.isValidElement(children) ? children : <span>{children}</span>
 }
 
 /** Render the dropdown content wrapper used across page-level tests. */
