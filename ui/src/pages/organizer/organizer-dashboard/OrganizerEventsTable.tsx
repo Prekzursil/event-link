@@ -41,6 +41,7 @@ type Props = Readonly<{
   texts: UiStrings['organizerDashboard'];
 }>;
 
+/** Render the localized status badge shown for one organizer-owned event row. */
 function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['status'], isPast: boolean) {
   if (status === 'draft') {
     return <Badge variant="secondary">{texts.statusDraft}</Badge>;
@@ -49,6 +50,65 @@ function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['stat
     return <Badge variant="outline">{texts.statusEnded}</Badge>;
   }
   return <Badge variant="default">{texts.statusActive}</Badge>;
+}
+
+/** Render the bulk action toolbar that appears after organizer event selection. */
+function OrganizerBulkActionsBar({
+  isBulkUpdating,
+  onBulkStatusUpdate,
+  onClearSelection,
+  onOpenBulkTags,
+  selectedCount,
+  texts,
+}: Readonly<{
+  isBulkUpdating: boolean;
+  onBulkStatusUpdate: (status: 'draft' | 'published') => void;
+  onClearSelection: () => void;
+  onOpenBulkTags: () => void;
+  selectedCount: number;
+  texts: UiStrings['organizerDashboard'];
+}>) {
+  return (
+    <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm text-muted-foreground">
+        {texts.bulk.selected}: <span className="font-medium text-foreground">{selectedCount}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={() => onBulkStatusUpdate('published')}
+        >
+          {texts.bulk.publish}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={() => onBulkStatusUpdate('draft')}
+        >
+          {texts.bulk.unpublish}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={onOpenBulkTags}
+        >
+          {texts.bulk.tags}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={onClearSelection}
+        >
+          {texts.bulk.clear}
+        </Button>
+      </div>
+    </div>
+  );
 }
 
 export function OrganizerEventsTable({
@@ -89,46 +149,14 @@ export function OrganizerEventsTable({
         ) : (
           <div className="space-y-4">
             {selectedCount > 0 && (
-              <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {texts.bulk.selected}:{' '}
-                  <span className="font-medium text-foreground">{selectedCount}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={() => onBulkStatusUpdate('published')}
-                  >
-                    {texts.bulk.publish}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={() => onBulkStatusUpdate('draft')}
-                  >
-                    {texts.bulk.unpublish}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={onOpenBulkTags}
-                  >
-                    {texts.bulk.tags}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={onClearSelection}
-                  >
-                    {texts.bulk.clear}
-                  </Button>
-                </div>
-              </div>
+              <OrganizerBulkActionsBar
+                isBulkUpdating={isBulkUpdating}
+                onBulkStatusUpdate={onBulkStatusUpdate}
+                onClearSelection={onClearSelection}
+                onOpenBulkTags={onOpenBulkTags}
+                selectedCount={selectedCount}
+                texts={texts}
+              />
             )}
 
             <Table>

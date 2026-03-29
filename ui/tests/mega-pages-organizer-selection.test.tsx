@@ -1,4 +1,4 @@
-import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
+import { cleanup, fireEvent, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import {
@@ -11,7 +11,7 @@ import { renderLanguageRoute } from './page-test-helpers';
 const { adminServiceMock, eventServiceMock } = getMegaPageFixtures();
 
 it('covers the users previous-page handler and organizer deselection branch', async () => {
-  adminServiceMock.getUsers.mockResolvedValueOnce({
+  adminServiceMock.getUsers.mockResolvedValue({
     items: [
       {
         id: 1,
@@ -36,6 +36,7 @@ it('covers the users previous-page handler and organizer deselection branch', as
   fireEvent.mouseDown(usersTab);
   fireEvent.click(usersTab);
   await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
+  await waitForElementToBeRemoved(() => screen.queryByText(/Loading users/i));
 
   const usersPrevButtons = await screen.findAllByRole('button', {
     name: /Back|Prev|Previous|Înapoi|Anterior/i,

@@ -63,6 +63,11 @@ function formatEventDateForQuery(date: Date | undefined): string {
   return `${year}-${month}-${day}`;
 }
 
+/** Parse a query-string date into a local midnight Date object for the calendar widget. */
+function parseQueryDate(value: string | undefined): Date | undefined {
+  return value ? new Date(`${value}T00:00:00`) : undefined;
+}
+
 /** Read the responsive calendar layout preference from the current viewport. */
 function readShowTwoMonthsCalendar() {
   return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
@@ -152,7 +157,7 @@ function syncRecommendationPanel(
   onLoaded: (payload: { recommendations: Event[]; favoriteIds: Set<number> }) => void,
 ): () => void {
   let cancelled = false;
-  void loadRecommendationPanel().then((payload) => {
+  loadRecommendationPanel().then((payload) => {
     if (!cancelled) {
       onLoaded(payload);
     }
@@ -186,7 +191,7 @@ function syncEventsList({
   let cancelled = false;
   onStarted();
 
-  void eventService
+  eventService
     .getEvents(filters)
     .then((response) => {
       if (!cancelled) {
@@ -296,12 +301,10 @@ export function EventsPage() {
       filters.tags.length > 0,
   );
   const selectedDateRange = {
-    from: filters.start_date ? new Date(filters.start_date + 'T00:00:00') : undefined,
-    to: filters.end_date ? new Date(filters.end_date + 'T00:00:00') : undefined,
+    from: parseQueryDate(filters.start_date),
+    to: parseQueryDate(filters.end_date),
   };
-  const defaultCalendarMonth = filters.start_date
-    ? new Date(filters.start_date + 'T00:00:00')
-    : new Date();
+  const defaultCalendarMonth = parseQueryDate(filters.start_date) ?? new Date();
 
   /** Persist partial filter changes into the URL and reset paging unless the caller overrides it. */
   function updateFilters(newFilters: Partial<EventFilters>) {
@@ -358,7 +361,9 @@ export function EventsPage() {
       return undefined;
     }
     const timer = globalThis.setTimeout(() => {
-      void recordInteractions(buildEventsListInteractions(events, filters, hasActiveFilters));
+      Promise.resolve(
+        recordInteractions(buildEventsListInteractions(events, filters, hasActiveFilters)),
+      ).catch(ignoreInteractionError);
     }, 400);
     return () => globalThis.clearTimeout(timer);
   }, [events, filters, hasActiveFilters]);
@@ -420,7 +425,7 @@ export function EventsPage() {
 
   /** Emit analytics when a recommended event is opened from the recommendation rail. */
   function handleRecommendationClick(eventId: number) {
-    void Promise.resolve(
+    Promise.resolve(
       recordInteractions([
         {
           interaction_type: 'click',

@@ -173,17 +173,7 @@ function ResetAccessCodeInvalidLink({
 }
 
 /** Render the password and confirmation fields for the reset-password form. */
-function ResetAccessCodeFields({
-  confirmPassword,
-  isLoading,
-  onConfirmPasswordChange,
-  onPasswordChange,
-  onToggleShowPassword,
-  password,
-  requirements,
-  resetStrings,
-  showPassword,
-}: Readonly<{
+function ResetAccessCodeFields(props: Readonly<{
   confirmPassword: string;
   isLoading: boolean;
   onConfirmPasswordChange: (value: string) => void;
@@ -194,6 +184,17 @@ function ResetAccessCodeFields({
   resetStrings: ResetStrings;
   showPassword: boolean;
 }>) {
+  const {
+    confirmPassword,
+    isLoading,
+    onConfirmPasswordChange,
+    onPasswordChange,
+    onToggleShowPassword,
+    password,
+    requirements,
+    resetStrings,
+    showPassword,
+  } = props;
   return (
     <>
       <div className="space-y-2">

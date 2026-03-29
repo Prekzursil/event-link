@@ -67,6 +67,14 @@ type EmailSendArgs = Readonly<{
   t: ParticipantsTexts;
   toast: ReturnType<typeof useToast>['toast'];
 }>;
+type ParticipantsOverviewHeaderProps = Readonly<{
+  attendedCount: number;
+  isLoading: boolean;
+  onExport: () => void;
+  onOpenEmail: () => void;
+  participantData: ParticipantList;
+  t: ParticipantsTexts;
+}>;
 
 /** Generate a bounded list of placeholder-row keys for the loading skeleton. */
 function skeletonKeys(pageSize: number) {
@@ -244,6 +252,46 @@ async function sendParticipantsEmail({
   }
 }
 
+/** Render the organizer summary header with counts and participant actions. */
+function ParticipantsOverviewHeader({
+  attendedCount,
+  isLoading,
+  onExport,
+  onOpenEmail,
+  participantData,
+  t,
+}: ParticipantsOverviewHeaderProps) {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div>
+        <CardTitle className="flex items-center gap-2">
+          <Users className="h-5 w-5" />
+          {t.participants.title}
+          {isLoading && <LoadingSpinner size="sm" className="ml-2" />}
+        </CardTitle>
+        <CardDescription className="mt-1">{participantData.title}</CardDescription>
+      </div>
+      <div className="flex items-center gap-4">
+        <Badge variant="outline">
+          {participantData.seats_taken}
+          {participantData.max_seats && ` / ${participantData.max_seats}`} {t.participants.registeredSuffix}
+        </Badge>
+        <Badge variant="secondary">
+          {attendedCount} {t.participants.attendedSuffix}
+        </Badge>
+        <Button variant="outline" disabled={participantData.total === 0} onClick={onOpenEmail}>
+          <Mail className="mr-2 h-4 w-4" />
+          {t.participants.emailParticipants}
+        </Button>
+        <Button variant="outline" onClick={onExport}>
+          <Download className="mr-2 h-4 w-4" />
+          {t.participants.exportCsv}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
 /** Render the organizer participant-management page for one event. */
 export function ParticipantsPage() {
   const { id } = useParams<{ id: string }>();
@@ -289,6 +337,7 @@ export function ParticipantsPage() {
     loadParticipants();
   }, [loadParticipants]);
 
+  /** Toggle the active participant sort key and reverse direction on repeated clicks. */
   const toggleSort = (column: string) => {
     if (sortBy === column) {
       setSortDir((prev) => (prev === 'asc' ? 'desc' : 'asc'));
@@ -298,6 +347,7 @@ export function ParticipantsPage() {
     }
   };
 
+  /** Send the currently composed participant email draft and reset the dialog on success. */
   const sendEmailToParticipants = async () => {
     await sendParticipantsEmail({
       emailMessage,
@@ -356,6 +406,7 @@ export function ParticipantsPage() {
   const totalPages = Math.ceil(participantData.total / pageSize);
   const attendedCount = participantData.participants.filter((p) => p.attended).length;
 
+  /** Persist an attendance toggle while keeping the UI optimistic and localized. */
   const handleAttendanceChange = async (participant: Participant, attended: boolean) => {
     await mutateAttendance({
       attended,
@@ -369,6 +420,7 @@ export function ParticipantsPage() {
     });
   };
 
+  /** Export the currently loaded participant rows to CSV using the active language. */
   const exportToCSV = () => {
     downloadParticipantsCsv(participantData, language, t);
   };
@@ -420,37 +472,14 @@ export function ParticipantsPage() {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="h-5 w-5" />
-                {t.participants.title}
-                {isLoading && <LoadingSpinner size="sm" className="ml-2" />}
-              </CardTitle>
-              <CardDescription className="mt-1">{data.title}</CardDescription>
-            </div>
-            <div className="flex items-center gap-4">
-              <Badge variant="outline">
-                {data.seats_taken}
-                {data.max_seats && ` / ${data.max_seats}`} {t.participants.registeredSuffix}
-              </Badge>
-              <Badge variant="secondary">
-                {attendedCount} {t.participants.attendedSuffix}
-              </Badge>
-              <Button
-                variant="outline"
-                disabled={data.total === 0}
-                onClick={() => setEmailDialogOpen(true)}
-              >
-                <Mail className="mr-2 h-4 w-4" />
-                {t.participants.emailParticipants}
-              </Button>
-              <Button variant="outline" onClick={exportToCSV}>
-                <Download className="mr-2 h-4 w-4" />
-                {t.participants.exportCsv}
-              </Button>
-            </div>
-          </div>
+          <ParticipantsOverviewHeader
+            attendedCount={attendedCount}
+            isLoading={isLoading}
+            onExport={exportToCSV}
+            onOpenEmail={() => setEmailDialogOpen(true)}
+            participantData={participantData}
+            t={t}
+          />
         </CardHeader>
         <CardContent>
           {data.participants.length === 0 ? (
