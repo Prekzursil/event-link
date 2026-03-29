@@ -24,6 +24,7 @@ const actionTypes = {
 
 let count = 0
 
+/** Allocate a stable toast identifier for the in-memory reducer state. */
 function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()
@@ -55,6 +56,7 @@ interface State {
 
 const toastTimeouts = new Map<string, ReturnType<typeof setTimeout>>()
 
+/** Queue one toast for delayed removal after it has been dismissed. */
 const addToRemoveQueue = (toastId: string) => {
   if (toastTimeouts.has(toastId)) {
     return
@@ -71,6 +73,7 @@ const addToRemoveQueue = (toastId: string) => {
   toastTimeouts.set(toastId, timeout)
 }
 
+/** Apply one toast action to the current in-memory toast state. */
 export const reducer = (state: State, action: Action): State => {
   switch (action.type) {
     case actionTypes.ADD_TOAST:
@@ -130,6 +133,7 @@ const listeners: Array<(state: State) => void> = []
 
 let memoryState: State = { toasts: [] }
 
+/** Broadcast one toast action to every subscribed toast listener. */
 function dispatch(action: Action) {
   memoryState = reducer(memoryState, action)
   listeners.forEach((listener) => {
@@ -139,6 +143,7 @@ function dispatch(action: Action) {
 
 type Toast = Omit<ToasterToast, "id">
 
+/** Create, update, and dismiss one toast instance. */
 function toast({ ...props }: Toast) {
   const id = genId()
 
@@ -168,6 +173,7 @@ function toast({ ...props }: Toast) {
   }
 }
 
+/** Subscribe a component to the shared toast reducer state. */
 function useToast() {
   const [state, setState] = useState<State>(memoryState)
 

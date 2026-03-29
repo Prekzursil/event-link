@@ -39,6 +39,43 @@ export function EventCard({
     onFavoriteToggle?.(event.id, !isFavorite);
   };
 
+  const statusBadges = (
+    <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+      {isPast && <Badge variant="secondary">{t.eventCard.ended}</Badge>}
+      {event.status === 'draft' && <Badge variant="secondary">{t.eventCard.draft}</Badge>}
+      {isFull && !isPast && <Badge variant="destructive">{t.eventCard.full}</Badge>}
+    </div>
+  );
+
+  const favoriteButton = onFavoriteToggle && (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'absolute right-2 top-2 bg-background/80 backdrop-blur-sm hover:bg-background',
+        isFavorite && 'text-red-500'
+      )}
+      onClick={handleFavoriteClick}
+    >
+      <Heart className={cn('h-5 w-5', isFavorite && 'fill-current')} />
+    </Button>
+  );
+
+  const editButton = showEditButton && (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="absolute right-2 bottom-2 bg-background/80 backdrop-blur-sm hover:bg-background"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        globalThis.location.href = `/organizer/events/${event.id}/edit`;
+      }}
+    >
+      <Pencil className="h-4 w-4" />
+    </Button>
+  );
+
   const mediaSection = (
     <div className="relative aspect-video overflow-hidden bg-muted">
       {event.cover_url ? (
@@ -59,41 +96,9 @@ export function EventCard({
           <Calendar className="h-12 w-12 text-primary/40" />
         </div>
       )}
-
-      <div className="absolute left-2 top-2 flex flex-wrap gap-1">
-        {isPast && <Badge variant="secondary">{t.eventCard.ended}</Badge>}
-        {event.status === 'draft' && <Badge variant="secondary">{t.eventCard.draft}</Badge>}
-        {isFull && !isPast && <Badge variant="destructive">{t.eventCard.full}</Badge>}
-      </div>
-
-      {onFavoriteToggle && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className={cn(
-            'absolute right-2 top-2 bg-background/80 backdrop-blur-sm hover:bg-background',
-            isFavorite && 'text-red-500'
-          )}
-          onClick={handleFavoriteClick}
-        >
-          <Heart className={cn('h-5 w-5', isFavorite && 'fill-current')} />
-        </Button>
-      )}
-
-      {showEditButton && (
-        <Button
-          variant="ghost"
-          size="icon"
-          className="absolute right-2 bottom-2 bg-background/80 backdrop-blur-sm hover:bg-background"
-          onClick={(e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            globalThis.location.href = `/organizer/events/${event.id}/edit`;
-          }}
-        >
-          <Pencil className="h-4 w-4" />
-        </Button>
-      )}
+      {statusBadges}
+      {favoriteButton}
+      {editButton}
     </div>
   );
 
@@ -137,6 +142,37 @@ export function EventCard({
     </>
   );
 
+  const cardLink = (
+    <Link to={`/events/${event.id}`} onClick={() => onEventClick?.(event.id)}>
+      {mediaSection}
+
+      <CardHeader className="pb-2">
+        {event.category && (
+          <Badge variant="outline" className="w-fit">
+            {getEventCategoryLabel(event.category, language)}
+          </Badge>
+        )}
+        <h3 className="line-clamp-2 text-lg font-semibold leading-tight">
+          {event.title}
+        </h3>
+      </CardHeader>
+
+      <CardContent className="space-y-2 pb-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          <span>{formatDate(event.start_time, language)}</span>
+          <Clock className="ml-2 h-4 w-4" />
+          <span>{formatTime(event.start_time, language)}</span>
+        </div>
+        {locationDetails}
+        {seatDetails}
+        {recommendationCallout}
+      </CardContent>
+
+      <CardFooter className="flex flex-wrap gap-1 pt-0">{tagBadges}</CardFooter>
+    </Link>
+  );
+
   return (
     <Card
       className={cn(
@@ -144,34 +180,7 @@ export function EventCard({
         isPast && 'opacity-75'
       )}
     >
-      <Link to={`/events/${event.id}`} onClick={() => onEventClick?.(event.id)}>
-        {mediaSection}
-
-        <CardHeader className="pb-2">
-          {event.category && (
-            <Badge variant="outline" className="w-fit">
-              {getEventCategoryLabel(event.category, language)}
-            </Badge>
-          )}
-          <h3 className="line-clamp-2 text-lg font-semibold leading-tight">
-            {event.title}
-          </h3>
-        </CardHeader>
-
-        <CardContent className="space-y-2 pb-2">
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>{formatDate(event.start_time, language)}</span>
-            <Clock className="ml-2 h-4 w-4" />
-            <span>{formatTime(event.start_time, language)}</span>
-          </div>
-          {locationDetails}
-          {seatDetails}
-          {recommendationCallout}
-        </CardContent>
-
-        <CardFooter className="flex flex-wrap gap-1 pt-0">{tagBadges}</CardFooter>
-      </Link>
+      {cardLink}
     </Card>
   );
 }

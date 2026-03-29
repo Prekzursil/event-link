@@ -18,6 +18,7 @@ interface LanguageContextType {
 
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
+/** Provide the active UI language, strings, and preference setter. */
 export function LanguageProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<LanguagePreference>(() => getStoredLanguagePreference());
   const [language, setLanguage] = useState<ResolvedLanguage>(() => resolveLanguage(getStoredLanguagePreference()));
@@ -41,6 +42,7 @@ export function LanguageProvider({ children }: Readonly<{ children: ReactNode }>
   return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
+/** Read the current language context. */
 export function useI18n() {
   const ctx = useContext(LanguageContext);
   if (!ctx) {

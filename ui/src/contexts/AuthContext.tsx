@@ -18,6 +18,7 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | null>(null);
 
+/** Provide authentication state and actions to the React tree. */
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, [setLanguagePreference, setThemePreference]);
 
   useEffect(() => {
+    /** Hydrate the initial auth session and mark the provider ready. */
     const initAuth = async () => {
       await refreshUser();
       setIsLoading(false);
@@ -92,6 +94,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
+/** Read the current authentication context. */
 export function useAuth() {
   const context = useContext(AuthContext);
   if (context === null) {

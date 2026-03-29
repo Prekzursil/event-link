@@ -250,64 +250,78 @@ export function Navbar() {
     </Button>
   );
 
+  const userMenuIdentity = (
+    <DropdownMenuLabel className="font-normal">
+      <div className="flex flex-col space-y-1">
+        <p className="text-sm font-medium leading-none">
+          {user?.full_name || t.nav.userFallback}
+        </p>
+        <p className="text-xs leading-none text-muted-foreground">
+          {user?.email}
+        </p>
+      </div>
+    </DropdownMenuLabel>
+  );
+
+  const userMenuItems = (
+    <>
+      <DropdownMenuItem asChild>
+        <Link to="/my-events">
+          <Calendar className="mr-2 h-4 w-4" />
+          {t.nav.myEvents}
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link to="/favorites">
+          <Heart className="mr-2 h-4 w-4" />
+          {t.nav.favorites}
+        </Link>
+      </DropdownMenuItem>
+      <DropdownMenuItem asChild>
+        <Link to="/profile">
+          <User className="mr-2 h-4 w-4" />
+          {t.nav.profile}
+        </Link>
+      </DropdownMenuItem>
+      {isAdmin && (
+        <DropdownMenuItem asChild>
+          <Link to="/admin">
+            <Shield className="mr-2 h-4 w-4" />
+            {t.nav.admin}
+          </Link>
+        </DropdownMenuItem>
+      )}
+      <DropdownMenuSeparator />
+      <DropdownMenuItem onClick={handleLogout}>
+        <LogOut className="mr-2 h-4 w-4" />
+        {t.nav.logout}
+      </DropdownMenuItem>
+    </>
+  );
+
+  const userMenu = (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" className="relative h-9 w-9 rounded-full">
+          <Avatar className="h-9 w-9">
+            <AvatarFallback className="bg-primary text-primary-foreground">
+              {getInitials(user?.full_name, user?.email)}
+            </AvatarFallback>
+          </Avatar>
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent className="w-56" align="end" forceMount>
+        {userMenuIdentity}
+        <DropdownMenuSeparator />
+        {userMenuItems}
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+
   const authenticatedDesktopActions = (
     <>
       {organizerCreateAction}
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-            <Avatar className="h-9 w-9">
-              <AvatarFallback className="bg-primary text-primary-foreground">
-                {getInitials(user?.full_name, user?.email)}
-              </AvatarFallback>
-            </Avatar>
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent className="w-56" align="end" forceMount>
-          <DropdownMenuLabel className="font-normal">
-            <div className="flex flex-col space-y-1">
-              <p className="text-sm font-medium leading-none">
-                {user?.full_name || t.nav.userFallback}
-              </p>
-              <p className="text-xs leading-none text-muted-foreground">
-                {user?.email}
-              </p>
-            </div>
-          </DropdownMenuLabel>
-          <DropdownMenuSeparator />
-          <DropdownMenuItem asChild>
-            <Link to="/my-events">
-              <Calendar className="mr-2 h-4 w-4" />
-              {t.nav.myEvents}
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/favorites">
-              <Heart className="mr-2 h-4 w-4" />
-              {t.nav.favorites}
-            </Link>
-          </DropdownMenuItem>
-          <DropdownMenuItem asChild>
-            <Link to="/profile">
-              <User className="mr-2 h-4 w-4" />
-              {t.nav.profile}
-            </Link>
-          </DropdownMenuItem>
-          {isAdmin && (
-            <DropdownMenuItem asChild>
-              <Link to="/admin">
-                <Shield className="mr-2 h-4 w-4" />
-                {t.nav.admin}
-              </Link>
-            </DropdownMenuItem>
-          )}
-          <DropdownMenuSeparator />
-          <DropdownMenuItem onClick={handleLogout}>
-            <LogOut className="mr-2 h-4 w-4" />
-            {t.nav.logout}
-          </DropdownMenuItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+      {userMenu}
     </>
   );
 
