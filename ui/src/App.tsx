@@ -102,6 +102,7 @@ function GuestRoute({ children }: RouteProps) {
   return children;
 }
 
+/** Render the routed application screens. */
 function AppRoutes() {
   return (
     <Routes>
@@ -209,6 +210,7 @@ function AppRoutes() {
   );
 }
 
+/** Mount the app-wide providers and router shell. */
 function App() {
   return (
     <BrowserRouter>
