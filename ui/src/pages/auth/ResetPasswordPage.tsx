@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, type ReactNode } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import authService from '@/services/auth.service';
 import { Button } from '@/components/ui/button';
@@ -26,6 +26,16 @@ type PasswordRequirement = {
   label: string;
   met: boolean;
 };
+type ResetStrings = ReturnType<typeof useI18n>['t']['auth']['resetAccessCode'];
+
+/** Center reset-password cards inside the shared auth page shell. */
+function ResetPasswordPageShell({ children }: Readonly<{ children: ReactNode }>) {
+  return (
+    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
+      {children}
+    </div>
+  );
+}
 
 /** Compare two access codes without exposing timing differences for early mismatches. */
 function constantTimeEquals(left: string, right: string): boolean {
@@ -103,6 +113,44 @@ function ResetAccessCodeRequirements({
   );
 }
 
+/** Render the icon and copy at the top of the reset-password form card. */
+function ResetPasswordCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
+  return (
+    <CardHeader className="space-y-1 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+        <Calendar className="h-6 w-6 text-primary" />
+      </div>
+      <CardTitle className="text-2xl">{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
+    </CardHeader>
+  );
+}
+
+/** Render the invalid-link card content that sends users back to the request flow. */
+function ResetAccessCodeInvalidCard({
+  invalidTitle,
+  invalidDescription,
+  requestNewLink,
+}: Readonly<{
+  invalidTitle: string;
+  invalidDescription: string;
+  requestNewLink: string;
+}>) {
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader className="space-y-1 text-center">
+        <CardTitle className="text-2xl">{invalidTitle}</CardTitle>
+        <CardDescription>{invalidDescription}</CardDescription>
+      </CardHeader>
+      <CardFooter>
+        <Button asChild className="w-full">
+          <Link to="/forgot-password">{requestNewLink}</Link>
+        </Button>
+      </CardFooter>
+    </Card>
+  );
+}
+
 /** Render the invalid reset-link state with a path back to the request form. */
 function ResetAccessCodeInvalidLink({
   invalidTitle,
@@ -114,19 +162,108 @@ function ResetAccessCodeInvalidLink({
   requestNewLink: string;
 }>) {
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <CardTitle className="text-2xl">{invalidTitle}</CardTitle>
-          <CardDescription>{invalidDescription}</CardDescription>
-        </CardHeader>
-        <CardFooter>
-          <Button asChild className="w-full">
-            <Link to="/forgot-password">{requestNewLink}</Link>
+    <ResetPasswordPageShell>
+      <ResetAccessCodeInvalidCard
+        invalidTitle={invalidTitle}
+        invalidDescription={invalidDescription}
+        requestNewLink={requestNewLink}
+      />
+    </ResetPasswordPageShell>
+  );
+}
+
+/** Render the password and confirmation fields for the reset-password form. */
+function ResetAccessCodeFields({
+  confirmPassword,
+  isLoading,
+  onConfirmPasswordChange,
+  onPasswordChange,
+  onToggleShowPassword,
+  password,
+  requirements,
+  resetStrings,
+  showPassword,
+}: Readonly<{
+  confirmPassword: string;
+  isLoading: boolean;
+  onConfirmPasswordChange: (value: string) => void;
+  onPasswordChange: (value: string) => void;
+  onToggleShowPassword: () => void;
+  password: string;
+  requirements: PasswordRequirement[];
+  resetStrings: ResetStrings;
+  showPassword: boolean;
+}>) {
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="password">{resetStrings.newAccessCodeLabel}</Label>
+        <div className="relative">
+          <Input
+            id="password"
+            type={showPassword ? 'text' : 'password'}
+            placeholder="••••••••"
+            value={password}
+            onChange={(event) => onPasswordChange(event.target.value)}
+            required
+            disabled={isLoading}
+          />
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
+            onClick={onToggleShowPassword}
+          >
+            {showPassword ? (
+              <EyeOff className="h-4 w-4 text-muted-foreground" />
+            ) : (
+              <Eye className="h-4 w-4 text-muted-foreground" />
+            )}
           </Button>
-        </CardFooter>
-      </Card>
-    </div>
+        </div>
+        <ResetAccessCodeRequirements requirements={requirements} />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="confirmPassword">{resetStrings.confirmAccessCodeLabel}</Label>
+        <Input
+          id="confirmPassword"
+          type={showPassword ? 'text' : 'password'}
+          placeholder="••••••••"
+          value={confirmPassword}
+          onChange={(event) => onConfirmPasswordChange(event.target.value)}
+          required
+          disabled={isLoading}
+        />
+        {confirmPassword && !constantTimeEquals(password, confirmPassword) ? (
+          <p className="text-xs text-destructive">{resetStrings.accessCodeMismatchInline}</p>
+        ) : null}
+      </div>
+    </>
+  );
+}
+
+/** Render the footer submit button for the reset-password form. */
+function ResetPasswordFormFooter({
+  isLoading,
+  resetStrings,
+}: Readonly<{
+  isLoading: boolean;
+  resetStrings: ResetStrings;
+}>) {
+  return (
+    <CardFooter>
+      <Button type="submit" className="w-full" disabled={isLoading}>
+        {isLoading ? (
+          <>
+            <LoadingSpinner size="sm" className="mr-2" />
+            {resetStrings.submitting}
+          </>
+        ) : (
+          resetStrings.submit
+        )}
+      </Button>
+    </CardFooter>
   );
 }
 
@@ -187,77 +324,30 @@ export function ResetPasswordPage() {
     );
   }
 
-  // skipcq: JS-0415 - the reset page keeps invalid-link handling and the form layout in one component.
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
+    <ResetPasswordPageShell>
       <Card className="w-full max-w-md">
-        <CardHeader className="space-y-1 text-center">
-          <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-            <Calendar className="h-6 w-6 text-primary" />
-          </div>
-          <CardTitle className="text-2xl">{resetStrings.title}</CardTitle>
-          <CardDescription>{resetStrings.description}</CardDescription>
-        </CardHeader>
+        <ResetPasswordCardHeader
+          title={resetStrings.title}
+          description={resetStrings.description}
+        />
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="password">{resetStrings.newAccessCodeLabel}</Label>
-              <div className="relative">
-                <Input
-                  id="password"
-                  type={showPassword ? 'text' : 'password'}
-                  placeholder="••••••••"
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  disabled={isLoading}
-                />
-                <Button
-                  type="button"
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-                    onClick={() => setShowPassword((current) => !current)}
-                >
-                  {showPassword ? (
-                    <EyeOff className="h-4 w-4 text-muted-foreground" />
-                  ) : (
-                    <Eye className="h-4 w-4 text-muted-foreground" />
-                  )}
-                </Button>
-              </div>
-              <ResetAccessCodeRequirements requirements={passwordRequirements} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="confirmPassword">{resetStrings.confirmAccessCodeLabel}</Label>
-              <Input
-                id="confirmPassword"
-                type={showPassword ? 'text' : 'password'}
-                placeholder="••••••••"
-                value={confirmPassword}
-                onChange={(e) => setConfirmPassword(e.target.value)}
-                required
-                disabled={isLoading}
-              />
-              {confirmPassword && !constantTimeEquals(password, confirmPassword) && (
-                <p className="text-xs text-destructive">{resetStrings.accessCodeMismatchInline}</p>
-              )}
-            </div>
+            <ResetAccessCodeFields
+              confirmPassword={confirmPassword}
+              isLoading={isLoading}
+              onConfirmPasswordChange={setConfirmPassword}
+              onPasswordChange={setPassword}
+              onToggleShowPassword={() => setShowPassword((current) => !current)}
+              password={password}
+              requirements={passwordRequirements}
+              resetStrings={resetStrings}
+              showPassword={showPassword}
+            />
           </CardContent>
-          <CardFooter>
-            <Button type="submit" className="w-full" disabled={isLoading}>
-              {isLoading ? (
-                <>
-                  <LoadingSpinner size="sm" className="mr-2" />
-                  {resetStrings.submitting}
-                </>
-              ) : (
-                resetStrings.submit
-              )}
-            </Button>
-          </CardFooter>
+          <ResetPasswordFormFooter isLoading={isLoading} resetStrings={resetStrings} />
         </form>
       </Card>
-    </div>
+    </ResetPasswordPageShell>
   );
 }

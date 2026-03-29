@@ -163,7 +163,7 @@ function RegisterAccessCodeFields({
   );
 }
 
-/** Render the full registration card while keeping the page shell shallow. */
+/** Render the icon and copy at the top of the registration card. */
 function RegisterCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
   return (
     <CardHeader className="space-y-1 text-center">
@@ -218,6 +218,72 @@ function RegisterFooterHint({
   );
 }
 
+/** Render the profile identity fields at the top of the registration form. */
+function RegisterIdentityFields({
+  formData,
+  handleChange,
+  isLoading,
+  texts,
+}: Readonly<{
+  formData: RegisterFormCardProps['formData'];
+  handleChange: RegisterFormCardProps['handleChange'];
+  isLoading: boolean;
+  texts: RegisterTexts;
+}>) {
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="fullName">{texts.fullNameLabel}</Label>
+        <Input
+          id="fullName"
+          name="fullName"
+          type="text"
+          placeholder={texts.fullNamePlaceholder}
+          value={formData.fullName}
+          onChange={handleChange}
+          disabled={isLoading}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">{texts.emailLabel}</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          placeholder={texts.emailPlaceholder}
+          value={formData.email}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+      </div>
+    </>
+  );
+}
+
+/** Render the footer actions shown at the bottom of the registration form. */
+function RegisterFormFooter({
+  isLoading,
+  texts,
+}: Readonly<{
+  isLoading: boolean;
+  texts: RegisterTexts;
+}>) {
+  return (
+    <CardFooter className="flex flex-col gap-4">
+      <RegisterSubmitButton
+        isLoading={isLoading}
+        submitLabel={texts.submit}
+        submittingLabel={texts.submitting}
+      />
+      <RegisterFooterHint
+        label={texts.haveAccount}
+        linkLabel={texts.loginLink}
+      />
+    </CardFooter>
+  );
+}
+
 /** Render the full registration card while keeping the page shell shallow. */
 function RegisterFormCard({
   formData,
@@ -234,31 +300,12 @@ function RegisterFormCard({
       <RegisterCardHeader title={texts.title} description={texts.description} />
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">{texts.fullNameLabel}</Label>
-            <Input
-              id="fullName"
-              name="fullName"
-              type="text"
-              placeholder={texts.fullNamePlaceholder}
-              value={formData.fullName}
-              onChange={handleChange}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">{texts.emailLabel}</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder={texts.emailPlaceholder}
-              value={formData.email}
-              onChange={handleChange}
-              required
-              disabled={isLoading}
-            />
-          </div>
+          <RegisterIdentityFields
+            formData={formData}
+            handleChange={handleChange}
+            isLoading={isLoading}
+            texts={texts}
+          />
           <RegisterAccessCodeFields
             formData={formData}
             handleChange={handleChange}
@@ -269,17 +316,7 @@ function RegisterFormCard({
             toggleShowPassword={toggleShowPassword}
           />
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <RegisterSubmitButton
-            isLoading={isLoading}
-            submitLabel={texts.submit}
-            submittingLabel={texts.submitting}
-          />
-          <RegisterFooterHint
-            label={texts.haveAccount}
-            linkLabel={texts.loginLink}
-          />
-        </CardFooter>
+        <RegisterFormFooter isLoading={isLoading} texts={texts} />
       </form>
     </Card>
   );

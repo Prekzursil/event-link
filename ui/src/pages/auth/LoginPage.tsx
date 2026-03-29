@@ -161,6 +161,57 @@ function LoginFooterHint({
   );
 }
 
+/** Render the email field shown at the top of the login form. */
+function LoginEmailField({
+  email,
+  isLoading,
+  onEmailChange,
+  texts,
+}: Readonly<{
+  email: string;
+  isLoading: boolean;
+  onEmailChange: (value: string) => void;
+  texts: LoginTexts;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="email">{texts.emailLabel}</Label>
+      <Input
+        id="email"
+        type="email"
+        placeholder={texts.emailPlaceholder}
+        value={email}
+        onChange={(event) => onEmailChange(event.target.value)}
+        required
+        disabled={isLoading}
+      />
+    </div>
+  );
+}
+
+/** Render the footer section for the login form. */
+function LoginFormFooter({
+  isLoading,
+  texts,
+}: Readonly<{
+  isLoading: boolean;
+  texts: LoginTexts;
+}>) {
+  return (
+    <CardFooter className="flex flex-col gap-4">
+      <LoginSubmitButton
+        isLoading={isLoading}
+        submitLabel={texts.submit}
+        submittingLabel={texts.submitting}
+      />
+      <LoginFooterHint
+        label={texts.noAccount}
+        linkLabel={texts.registerLink}
+      />
+    </CardFooter>
+  );
+}
+
 /** Render the full login card while keeping the page shell shallow. */
 function LoginFormCard({
   email,
@@ -178,18 +229,12 @@ function LoginFormCard({
       <LoginCardHeader title={texts.title} description={texts.description} />
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{texts.emailLabel}</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder={texts.emailPlaceholder}
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
+          <LoginEmailField
+            email={email}
+            isLoading={isLoading}
+            onEmailChange={onEmailChange}
+            texts={texts}
+          />
           <LoginAccessCodeField
             isLoading={isLoading}
             password={password}
@@ -199,17 +244,7 @@ function LoginFormCard({
             toggleShowPassword={toggleShowPassword}
           />
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <LoginSubmitButton
-            isLoading={isLoading}
-            submitLabel={texts.submit}
-            submittingLabel={texts.submitting}
-          />
-          <LoginFooterHint
-            label={texts.noAccount}
-            linkLabel={texts.registerLink}
-          />
-        </CardFooter>
+        <LoginFormFooter isLoading={isLoading} texts={texts} />
       </form>
     </Card>
   );

@@ -113,6 +113,54 @@ function ForgotPasswordSubmitButton({
   );
 }
 
+/** Render the email field shown on the forgot-password request form. */
+function ForgotPasswordEmailField({
+  email,
+  isLoading,
+  onEmailChange,
+  texts,
+}: Readonly<{
+  email: string;
+  isLoading: boolean;
+  onEmailChange: (value: string) => void;
+  texts: ForgotPasswordTexts;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="email">{texts.emailLabel}</Label>
+      <Input
+        id="email"
+        type="email"
+        placeholder={texts.emailPlaceholder}
+        value={email}
+        onChange={(event) => onEmailChange(event.target.value)}
+        required
+        disabled={isLoading}
+      />
+    </div>
+  );
+}
+
+/** Render the footer actions for the forgot-password request form. */
+function ForgotPasswordFormFooter({
+  isLoading,
+  texts,
+}: Readonly<{
+  isLoading: boolean;
+  texts: ForgotPasswordTexts;
+}>) {
+  return (
+    <CardFooter className="flex flex-col gap-4">
+      <ForgotPasswordSubmitButton
+        isLoading={isLoading}
+        submitLabel={texts.submit}
+        submittingLabel={texts.submitting}
+      />
+      <ForgotPasswordInlineBackLink label={texts.backToLogin} />
+    </CardFooter>
+  );
+}
+
 /** Render the success card after a password-reset request is submitted. */
 function ForgotPasswordSubmittedCard({
   email,
@@ -163,27 +211,14 @@ function ForgotPasswordFormCard({
       />
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{texts.emailLabel}</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder={texts.emailPlaceholder}
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
-        </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <ForgotPasswordSubmitButton
+          <ForgotPasswordEmailField
+            email={email}
             isLoading={isLoading}
-            submitLabel={texts.submit}
-            submittingLabel={texts.submitting}
+            onEmailChange={onEmailChange}
+            texts={texts}
           />
-          <ForgotPasswordInlineBackLink label={texts.backToLogin} />
-        </CardFooter>
+        </CardContent>
+        <ForgotPasswordFormFooter isLoading={isLoading} texts={texts} />
       </form>
     </Card>
   );

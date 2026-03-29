@@ -63,6 +63,30 @@ function UserIdentityCell({ user }: Readonly<{ user: UserRecord }>) {
 }
 
 /** Render the editable role selector for one admin user row. */
+function UserRoleSelect({
+  onChange,
+  t,
+  value,
+}: Readonly<{
+  onChange: (value: UserRole) => void;
+  t: Controller['t'];
+  value: UserRole;
+}>) {
+  return (
+    <Select value={value} onValueChange={(nextValue) => onChange(nextValue as UserRole)}>
+      <SelectTrigger className="h-8 w-[150px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
+        <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
+        <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Render the editable role selector for one admin user row. */
 function UserRoleCell({
   controller,
   user,
@@ -76,19 +100,11 @@ function UserRoleCell({
     <TableCell>
       <div className="flex items-center gap-2">
         <Badge variant={roleBadgeVariant(user.role)}>{roleLabels[user.role]}</Badge>
-        <Select
+        <UserRoleSelect
           value={user.role}
-          onValueChange={(value) => handleUpdateUser(user.id, { role: value as UserRole })}
-        >
-          <SelectTrigger className="h-8 w-[150px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-            <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-            <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
-          </SelectContent>
-        </Select>
+          t={t}
+          onChange={(value) => handleUpdateUser(user.id, { role: value })}
+        />
       </div>
     </TableCell>
   );

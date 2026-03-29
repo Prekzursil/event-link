@@ -35,6 +35,7 @@ import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const PAGE_SIZES = [6, 12, 24, 48];
 const ALL_CATEGORIES_VALUE = '__all__';
+/** Ignore analytics-side interaction failures so the UI can continue normally. */
 const ignoreInteractionError = () => undefined;
 
 const RECOMMENDATIONS_ENABLED =
@@ -51,10 +52,12 @@ type EventsListPayload = Readonly<{
   total: number;
 }>;
 
+/** Read the responsive calendar layout preference from the current viewport. */
 function readShowTwoMonthsCalendar() {
   return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
 }
 
+/** Subscribe to viewport changes that affect the calendar month layout. */
 function bindCalendarMedia(listener: (matches: boolean) => void): (() => void) | undefined {
   const media = globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY);
   if (
@@ -64,11 +67,13 @@ function bindCalendarMedia(listener: (matches: boolean) => void): (() => void) |
   ) {
     return undefined;
   }
+  /** Forward media-query changes to the caller using a plain boolean payload. */
   const handler = (event: MediaQueryListEvent) => listener(event.matches);
   media.addEventListener('change', handler);
   return () => media.removeEventListener('change', handler);
 }
 
+/** Build the analytics impressions emitted for the current events list. */
 function buildEventsListInteractions(
   events: Event[],
   filters: EventsPageFilters,
@@ -116,6 +121,7 @@ function buildEventsListInteractions(
   return interactions;
 }
 
+/** Load the recommendation rail and the favorite set needed to decorate it. */
 async function loadRecommendationPanel(): Promise<{ recommendations: Event[]; favoriteIds: Set<number> }> {
   const [recommendationsResult, favoritesResult] = await Promise.allSettled([
     eventService.getEvents({ page: 1, page_size: 4, sort: 'recommended' }),
@@ -130,6 +136,7 @@ async function loadRecommendationPanel(): Promise<{ recommendations: Event[]; fa
   return { recommendations, favoriteIds };
 }
 
+/** Synchronize the recommendation rail while guarding against stale async updates. */
 function syncRecommendationPanel(
   onLoaded: (payload: { recommendations: Event[]; favoriteIds: Set<number> }) => void,
 ): () => void {
