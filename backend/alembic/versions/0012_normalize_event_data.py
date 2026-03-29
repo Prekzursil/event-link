@@ -1,4 +1,4 @@
-"""Normalize event cover URLs and tag names
+"""Normalize event cover URLs and tag names.
 
 Revision ID: 0012_normalize_event_data
 Revises: 0011_add_language_preference
@@ -39,6 +39,7 @@ def _dedupe_join_table(
     canonical_id: int,
     dup_id: int,
 ) -> None:
+    """Retarget duplicate join-table rows to the canonical tag id."""
     owner_column = join_table.c[owner_col]
     tag_column = join_table.c.tag_id
     canonical_owners = sa.select(owner_column).where(
@@ -57,6 +58,7 @@ def _dedupe_join_table(
 
 
 def _trim_expression(conn) -> sa.Function:
+    """Return a dialect-aware SQL trim expression for cover URLs."""
     if conn.dialect.name == "postgresql":
         return sa.func.btrim(_EVENTS.c.cover_url)
     return sa.func.trim(_EVENTS.c.cover_url)
@@ -128,4 +130,4 @@ def downgrade() -> None:
     """Revert the event-data normalization migration where possible."""
     # Normalization merged duplicate tags and trimmed stored values
     # in place; downgrade cannot reconstruct the original data.
-    pass
+    return None

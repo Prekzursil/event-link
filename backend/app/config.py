@@ -1,3 +1,5 @@
+"""Application settings loaded from environment variables."""
+
 import json
 
 from pydantic import field_validator
@@ -14,10 +16,12 @@ DEFAULT_ALLOWED_ORIGINS = [
 
 
 def _is_empty_setting(value: object) -> bool:
+    """Return whether an environment-provided setting is effectively empty."""
     return value is None or value == ""
 
 
 def _json_list(value: str) -> list[object] | None:
+    """Parse a JSON list string when possible."""
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:
@@ -28,6 +32,7 @@ def _json_list(value: str) -> list[object] | None:
 def _string_items(
     values: list[object] | tuple[object, ...], *, lower: bool = False
 ) -> list[str]:
+    """Normalize an iterable of raw items into trimmed strings."""
     items: list[str] = []
     for raw in values:
         text = str(raw).strip()
@@ -38,6 +43,7 @@ def _string_items(
 
 
 def _parse_list_setting(value: object, *, lower: bool = False) -> list[str]:
+    """Accept JSON, CSV, or list inputs for string-list settings."""
     if isinstance(value, str):
         parsed = _json_list(value)
         if parsed is not None:
@@ -49,6 +55,8 @@ def _parse_list_setting(value: object, *, lower: bool = False) -> list[str]:
 
 
 class Settings(BaseSettings):
+    """Runtime configuration for the API and background workers."""
+
     database_url: str
     secret_key: str
     algorithm: str = "HS256"
@@ -99,8 +107,9 @@ class Settings(BaseSettings):
 
     experiments_personalization_ml_percent: int = 0
 
-    # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
-    # so our validator can handle both formats.
+    # `allowed_origins` supports comma-separated strings or JSON lists.
+    # Disable pydantic-settings JSON decoding so our validator can handle
+    # both formats.
     model_config = SettingsConfigDict(
         env_file=".topsecret",
         extra="ignore",
@@ -112,6 +121,7 @@ class Settings(BaseSettings):
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, value):
+        """Normalize allowed CORS origins from env-compatible inputs."""
         if _is_empty_setting(value):
             return list(DEFAULT_ALLOWED_ORIGINS)
         try:
@@ -124,6 +134,7 @@ class Settings(BaseSettings):
     @field_validator("admin_emails", mode="before")
     @classmethod
     def parse_admin_emails(cls, value):
+        """Normalize administrator email addresses from env-compatible inputs."""
         if _is_empty_setting(value):
             return []
         try:

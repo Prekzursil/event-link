@@ -11,6 +11,7 @@ import { OrganizerEventsTable } from './organizer-dashboard/OrganizerEventsTable
 import { OrganizerStatsGrid } from './organizer-dashboard/OrganizerStatsGrid';
 import { Plus } from 'lucide-react';
 
+/** Render the organizer dashboard with stats, bulk actions, and event management. */
 export function OrganizerDashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
@@ -54,6 +55,7 @@ export function OrganizerDashboardPage() {
     selectAllState = 'indeterminate';
   }
 
+  /** Toggle the selection state for one organizer-owned event. */
   const toggleSelected = (eventId: number, checked: boolean) => {
     setSelectedEventIds((prev) => {
       const next = new Set(prev);
@@ -66,6 +68,7 @@ export function OrganizerDashboardPage() {
     });
   };
 
+  /** Toggle the selection state for all currently visible organizer events. */
   const toggleSelectAll = (checked: boolean) => {
     setIsBulkDraftConfirmationPending(false);
     if (!checked) {
@@ -75,6 +78,7 @@ export function OrganizerDashboardPage() {
     setSelectedEventIds(new Set(events.map((event) => event.id)));
   };
 
+  /** Apply a bulk status change to the currently selected organizer events. */
   const handleBulkStatusUpdate = async (status: 'draft' | 'published') => {
     if (status === 'draft' && !isBulkDraftConfirmationPending) {
       setIsBulkDraftConfirmationPending(true);
@@ -112,6 +116,7 @@ export function OrganizerDashboardPage() {
     }
   };
 
+  /** Open the bulk-tag dialog with a clean input state. */
   const openBulkTags = () => {
     setIsBulkDraftConfirmationPending(false);
     setBulkTags([]);
@@ -119,6 +124,7 @@ export function OrganizerDashboardPage() {
     setBulkTagsOpen(true);
   };
 
+  /** Add the current bulk-tag input value to the pending tag list. */
   const addBulkTag = () => {
     const tag = bulkTagInput.trim();
     if (!tag) return;
@@ -134,10 +140,12 @@ export function OrganizerDashboardPage() {
     setBulkTagInput('');
   };
 
+  /** Remove one pending bulk tag before submitting the bulk update. */
   const removeBulkTag = (tagToRemove: string) => {
     setBulkTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   };
 
+  /** Apply the pending bulk tags to the currently selected organizer events. */
   const applyBulkTags = async () => {
     setIsBulkUpdating(true);
     try {
@@ -159,6 +167,7 @@ export function OrganizerDashboardPage() {
     }
   };
 
+  /** Delete one organizer-owned event after the in-app confirmation toast handshake. */
   const handleDelete = async (eventId: number) => {
     if (pendingDeleteEventId !== eventId) {
       setPendingDeleteEventId(eventId);

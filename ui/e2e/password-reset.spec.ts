@@ -12,7 +12,7 @@ const credentialSelector = `#${credentialFieldId}`;
 const confirmCredentialSelector = `#confirm${credentialFieldId[0].toUpperCase()}${credentialFieldId.slice(1)}`;
 const forgotRoute = `/forgot-${credentialFieldId}`;
 const resetRoute = `/reset-${credentialFieldId}`;
-const resetQueryField = 'to' + 'ken';
+const resetQueryField = 'token';
 
 test('Access code reset flow: request + reset', async ({ page }) => {
   await setLanguagePreference(page, 'en');

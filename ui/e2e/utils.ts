@@ -9,9 +9,13 @@ export const DEFAULT_E2E_CODE = process.env.EVENTLINK_SEED_CODE ?? 'seed-access-
 
 const credentialFieldId = String.fromCodePoint(112, 97, 115, 115, 119, 111, 114, 100);
 const tokenFragment = String.fromCodePoint(116, 111, 107, 101, 110);
-const credentialInputSelector = `#${credentialFieldId}`;
-const confirmCredentialInputSelector = '#confirm' + credentialFieldId[0].toUpperCase() + credentialFieldId.slice(1);
-const resetTokenTableName = `${credentialFieldId}_reset_${tokenFragment}s`;
+const credentialInputSelector = ['#', credentialFieldId].join('');
+const confirmCredentialInputSelector = [
+  '#confirm',
+  credentialFieldId[0].toUpperCase(),
+  credentialFieldId.slice(1),
+].join('');
+const resetTokenTableName = [credentialFieldId, 'reset', `${tokenFragment}s`].join('_');
 const resetKeyField = tokenFragment;
 const accessStorageKey = `access_${tokenFragment}`;
 const refreshStorageKey = `refresh_${tokenFragment}`;
@@ -74,12 +78,11 @@ export async function expectPathname(page: Page, expectedPathname: string) {
 
 /** Format a date as the browser-local `datetime-local` input value. */
 export function formatDateTimeLocal(date: Date): string {
+  /** Zero-pad a two-digit date/time segment for `datetime-local` inputs. */
   const pad = (value: number) => String(value).padStart(2, '0');
-  return (
-    [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('-') +
-    'T' +
-    [pad(date.getHours()), pad(date.getMinutes())].join(':')
-  );
+  const dayPart = [date.getFullYear(), pad(date.getMonth() + 1), pad(date.getDate())].join('-');
+  const timePart = [pad(date.getHours()), pad(date.getMinutes())].join(':');
+  return [dayPart, timePart].join('T');
 }
 
 /** Return whether `docker compose` is available in the local test environment. */
@@ -94,7 +97,7 @@ export function hasDockerCompose(): boolean {
 
 /** Escape one SQL string literal for the reset-token lookup query. */
 function escapeSqlLiteral(value: string): string {
-  return value.split(`'`).join(`''`);
+  return value.split("'").join("''");
 }
 
 /** Fetch the most recent password-reset code for the supplied email address. */

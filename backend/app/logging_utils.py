@@ -1,3 +1,5 @@
+"""Structured logging helpers and request-id propagation middleware."""
+
 import contextvars
 import json
 import logging
@@ -6,6 +8,7 @@ from uuid import uuid4
 
 
 def _sanitize_log_text(value: str) -> str:
+    """Strip line breaks from log messages before emission."""
     # Prevent forged multi-line entries in downstream plain-text log sinks.
     return value.replace("\r", "").replace("\n", "")
 
@@ -17,13 +20,15 @@ request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
 
 def _inject_request_id(record: logging.LogRecord) -> bool:
     """Attach the request id to every log record."""
-
     record.request_id = request_id_ctx.get() or "-"
     return True
 
 
 class JsonFormatter(logging.Formatter):
+    """Render log records as JSON payloads."""
+
     def format(self, record: logging.LogRecord) -> str:
+        """Serialize a log record into the API log schema."""
         payload: Dict[str, Any] = {
             "timestamp": self.formatTime(record, self.datefmt),
             "level": record.levelname,
@@ -64,6 +69,7 @@ class JsonFormatter(logging.Formatter):
 
 
 def configure_logging(level: int = logging.INFO) -> None:
+    """Configure root logging with JSON output and request ids."""
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
     handler.addFilter(_inject_request_id)
@@ -77,10 +83,14 @@ def configure_logging(level: int = logging.INFO) -> None:
 
 
 class RequestIdMiddleware:
+    """Attach a request identifier to each HTTP request lifecycle."""
+
     def __init__(self, app):
+        """Store the downstream ASGI application."""
         self.app = app
 
     async def __call__(self, scope, receive, send):
+        """Inject and echo a request id for HTTP traffic."""
         if scope.get("type") != "http":
             await self.app(scope, receive, send)
             return
@@ -109,14 +119,17 @@ _EVENT_LOG_TEMPLATE = "event=%s"
 
 
 def log_event(message: str, **_kwargs: Any) -> None:
+    """Emit an informational structured event log."""
     # Fixed-format logging avoids user-controlled format strings and avoids
     # leaking raw dynamic context data.
     logger.info(_EVENT_LOG_TEMPLATE, _sanitize_log_text(message))
 
 
 def log_warning(message: str, **_kwargs: Any) -> None:
+    """Emit a warning structured event log."""
     logger.warning(_EVENT_LOG_TEMPLATE, _sanitize_log_text(message))
 
 
 def log_error(message: str, **_kwargs: Any) -> None:
+    """Emit an error structured event log."""
     logger.error(_EVENT_LOG_TEMPLATE, _sanitize_log_text(message))

@@ -9,6 +9,7 @@ import type { AdminTab } from './shared';
 const USERS_PAGE_SIZE = 20;
 const EVENTS_PAGE_SIZE = 20;
 
+/** Build the server-side filter payload for the users table. */
 function buildUsersFilters(
   page: number,
   search: string,
@@ -24,6 +25,7 @@ function buildUsersFilters(
   };
 }
 
+/** Build the server-side filter payload for the moderated events table. */
 function buildEventsFilters(
   page: number,
   search: string,
@@ -41,6 +43,7 @@ function buildEventsFilters(
   };
 }
 
+/** Drive the admin dashboard tabs, filters, moderation actions, and queue actions. */
 export function useAdminDashboardController() {
   const { toast } = useToast();
   const { language, t } = useI18n();

@@ -25,7 +25,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
 
   // Create a user for admin management tests (avoid mutating shared seed accounts).
   const managedUserEmail = `e2e-admin-mgmt-${Date.now()}@test.com`;
-  const managedUserCode = 'Managed' + '123';
+  const managedUserCode = 'Managed123';
   await clearAuth(page);
   await registerStudent(page, managedUserEmail, managedUserCode, 'E2E Managed User');
   await expect(page).toHaveURL(/\/($|\?)/);

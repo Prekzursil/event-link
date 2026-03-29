@@ -60,7 +60,9 @@ test('organizer: duplicate event + soft-delete + admin restore', async ({ page }
   await expect(originalRow).toBeVisible();
 
   await originalRow.locator('button[aria-haspopup="menu"]').click();
-  page.once('dialog', (dialog) => dialog.accept());
+  await page.getByRole('menuitem', { name: 'Delete' }).click();
+  await expect(page.getByText('Delete this event?')).toBeVisible();
+  await originalRow.locator('button[aria-haspopup="menu"]').click();
   await page.getByRole('menuitem', { name: 'Delete' }).click();
   await expect(originalRow).toHaveCount(0);
 
@@ -100,6 +102,4 @@ test('organizer: duplicate event + soft-delete + admin restore', async ({ page }
   await page.getByPlaceholder('Search events...').fill(title);
   await expect(page.getByRole('heading', { name: title }).first()).toBeVisible();
 });
-
-
 

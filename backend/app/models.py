@@ -1,3 +1,5 @@
+"""SQLAlchemy models for the event-link backend."""
+
 import enum
 from sqlalchemy import (
     Column,
@@ -24,12 +26,16 @@ CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 
 
 class UserRole(str, enum.Enum):
+    """Supported application roles."""
+
     student = "student"
     organizator = "organizator"
     admin = "admin"
 
 
 class User(Base):
+    """Application user account."""
+
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -80,6 +86,8 @@ class User(Base):
 
 
 class Tag(Base):
+    """Canonical event tag."""
+
     __tablename__ = "tags"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -91,6 +99,8 @@ class Tag(Base):
 
 
 class Event(Base):
+    """Event created by an organizer."""
+
     __tablename__ = "events"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -138,6 +148,8 @@ class Event(Base):
 
 
 class Registration(Base):
+    """Student registration for an event."""
+
     __tablename__ = "registrations"
     __table_args__ = (
         UniqueConstraint("user_id", "event_id", name="uq_registration"),
@@ -161,6 +173,8 @@ class Registration(Base):
 
 
 class FavoriteEvent(Base):
+    """User bookmark of an event."""
+
     __tablename__ = "favorite_events"
     __table_args__ = (
         UniqueConstraint("user_id", "event_id", name="uq_favorite_event"),
@@ -178,6 +192,8 @@ class FavoriteEvent(Base):
 
 
 class PasswordResetToken(Base):
+    """Single-use password reset token."""
+
     __tablename__ = "password_reset_tokens"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -193,6 +209,8 @@ class PasswordResetToken(Base):
 
 
 class BackgroundJob(Base):
+    """Persisted background task queue item."""
+
     __tablename__ = "background_jobs"
     __table_args__ = (
         UniqueConstraint(
@@ -225,6 +243,8 @@ class BackgroundJob(Base):
 
 
 class NotificationDelivery(Base):
+    """Recorded outbound notification delivery."""
+
     __tablename__ = "notification_deliveries"
     __table_args__ = (
         UniqueConstraint(
@@ -251,6 +271,8 @@ class NotificationDelivery(Base):
 
 
 class AuditLog(Base):
+    """Audit trail entry for administrative actions."""
+
     __tablename__ = "audit_logs"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -269,6 +291,8 @@ class AuditLog(Base):
 
 
 class UserRecommendation(Base):
+    """Stored recommendation scored for a user-event pair."""
+
     __tablename__ = "user_recommendations"
     __table_args__ = (
         UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),
@@ -294,6 +318,8 @@ class UserRecommendation(Base):
 
 
 class RecommenderModel(Base):
+    """Metadata and weights for a trained recommender model."""
+
     __tablename__ = "recommender_models"
     __table_args__ = (
         UniqueConstraint(
@@ -313,6 +339,8 @@ class RecommenderModel(Base):
 
 
 class EventInteraction(Base):
+    """Behavioral interaction recorded against an event."""
+
     __tablename__ = "event_interactions"
 
     id = Column(Integer, primary_key=True, index=True)
@@ -336,6 +364,8 @@ class EventInteraction(Base):
 
 
 class UserImplicitInterestTag(Base):
+    """Derived tag affinity for a user."""
+
     __tablename__ = "user_implicit_interest_tags"
     __table_args__ = (
         UniqueConstraint(
@@ -361,6 +391,8 @@ class UserImplicitInterestTag(Base):
 
 
 class UserImplicitInterestCategory(Base):
+    """Derived category affinity for a user."""
+
     __tablename__ = "user_implicit_interest_categories"
     __table_args__ = (
         UniqueConstraint(
@@ -385,6 +417,8 @@ class UserImplicitInterestCategory(Base):
 
 
 class UserImplicitInterestCity(Base):
+    """Derived city affinity for a user."""
+
     __tablename__ = "user_implicit_interest_cities"
     __table_args__ = (
         UniqueConstraint(
