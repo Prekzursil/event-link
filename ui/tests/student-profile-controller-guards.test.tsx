@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import { useEffect } from 'react';
 import { act, waitFor } from '@testing-library/react';
 import { expect, it, vi } from 'vitest';
 
@@ -8,6 +8,7 @@ import { getHighImpactPageFixtures } from './high-impact-pages-coverage.fixtures
 const { authState, eventServiceMock } = getHighImpactPageFixtures();
 const { useStudentProfileController } = await import('@/pages/profile/student-profile/useStudentProfileController');
 
+/** Capture the loaded student-profile controller so guard methods can be exercised directly. */
 function ControllerHarness({
   onReady,
 }: Readonly<{ onReady: (controller: ReturnType<typeof useStudentProfileController>) => void }>) {
