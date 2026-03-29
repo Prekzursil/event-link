@@ -1,5 +1,5 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 
 import {
   OrganizerDashboardPage,
@@ -26,10 +26,20 @@ it('covers organizer dashboard display, bulk tags, and status actions', async ()
   fireEvent.click(organizerCheckboxes[organizerCheckboxes.length - 1]);
   expect(screen.getAllByRole('checkbox')[0]).toHaveAttribute('data-state', 'indeterminate');
 
-  vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
-  fireEvent.click(screen.getByRole('button', { name: /Unpublish|Set as draft|Draft/i }));
-  expect(eventServiceMock.bulkUpdateEventStatus).not.toHaveBeenCalledWith([3], 'draft');
+  const draftButton = screen.getByRole('button', { name: /Unpublish|Set as draft|Draft/i });
+  const initialStatusCallCount = eventServiceMock.bulkUpdateEventStatus.mock.calls.length;
+  fireEvent.click(draftButton);
+  expect(eventServiceMock.bulkUpdateEventStatus.mock.calls).toHaveLength(initialStatusCallCount);
+  fireEvent.click(draftButton);
+  await waitFor(() =>
+    expect(eventServiceMock.bulkUpdateEventStatus).toHaveBeenLastCalledWith(
+      expect.any(Array),
+      'draft',
+    ),
+  );
 
+  const organizerCheckboxesAfterDraft = screen.getAllByRole('checkbox');
+  fireEvent.click(organizerCheckboxesAfterDraft[organizerCheckboxesAfterDraft.length - 1]);
   fireEvent.click(screen.getByRole('button', { name: /Set tags/i }));
   const bulkTagsDialog = await screen.findByRole('dialog');
   fireEvent.click(within(bulkTagsDialog).getByRole('button', { name: /Add/i }));

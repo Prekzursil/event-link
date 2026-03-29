@@ -14,6 +14,7 @@ const uiGlobals = { ...globals.browser };
 const uiAutomationGlobals = { ...globals.browser, ...globals.node };
 const loadtestGlobals = { ...globals.node };
 
+/** Scope a shared ESLint config object to one file glob set. */
 const scopeConfig = (config, files) => ({
   ...config,
   files,

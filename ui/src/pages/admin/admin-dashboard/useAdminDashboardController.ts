@@ -9,6 +9,7 @@ import type { AdminTab } from './shared';
 const USERS_PAGE_SIZE = 20;
 const EVENTS_PAGE_SIZE = 20;
 
+/** Build the server-side filter payload for the users table. */
 function buildUsersFilters(
   page: number,
   search: string,
@@ -24,6 +25,7 @@ function buildUsersFilters(
   };
 }
 
+/** Build the server-side filter payload for the moderated events table. */
 function buildEventsFilters(
   page: number,
   search: string,
@@ -41,6 +43,7 @@ function buildEventsFilters(
   };
 }
 
+/** Drive the admin dashboard tabs, filters, moderation actions, and queue actions. */
 export function useAdminDashboardController() {
   const { toast } = useToast();
   const { language, t } = useI18n();
@@ -65,6 +68,7 @@ export function useAdminDashboardController() {
   const [eventsIncludeDeleted, setEventsIncludeDeleted] = useState(false);
   const [eventsFlaggedOnly, setEventsFlaggedOnly] = useState(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [pendingDeleteEventId, setPendingDeleteEventId] = useState<number | null>(null);
   const [reviewingEventId, setReviewingEventId] = useState<number | null>(null);
 
   const [personalizationMetrics, setPersonalizationMetrics] =
@@ -217,9 +221,15 @@ export function useAdminDashboardController() {
   }, [t, toast, users]);
 
   const handleDeleteEvent = useCallback(async (eventId: number) => {
-    if (!confirm(t.adminDashboard.deleteConfirm)) {
+    if (pendingDeleteEventId !== eventId) {
+      setPendingDeleteEventId(eventId);
+      toast({
+        title: t.adminDashboard.deleteConfirm,
+      });
       return;
     }
+
+    setPendingDeleteEventId(null);
     try {
       await eventService.deleteEvent(eventId);
       toast({
@@ -234,7 +244,7 @@ export function useAdminDashboardController() {
         variant: 'destructive',
       });
     }
-  }, [eventsPage, loadEvents, t, toast]);
+  }, [eventsPage, loadEvents, pendingDeleteEventId, t, toast]);
 
   const handleRestoreEvent = useCallback(async (eventId: number) => {
     try {

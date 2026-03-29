@@ -56,7 +56,7 @@ describe('event detail primary actions', () => {
 
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
 
-    fireEvent.click(screen.getByRole('button', { name: /Register for event/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Register for event/i }));
     await waitFor(() =>
       expect(navigateSpy).toHaveBeenCalledWith('/login', {
         state: { from: { pathname: '/events/1' } },
@@ -75,7 +75,7 @@ describe('event detail primary actions', () => {
     renderEventDetail('/events/1');
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
 
-    fireEvent.click(screen.getByRole('button', { name: /Register for event/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Register for event/i }));
     await waitFor(() => expect(eventServiceMock.registerForEvent).toHaveBeenCalledWith(1));
 
     const addToCalendarButton = screen.getByRole('button', { name: /Add to calendar/i });

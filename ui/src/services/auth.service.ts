@@ -73,7 +73,7 @@ export const authService = {
   },
 
   isAuthenticated(): boolean {
-    return !!localStorage.getItem('access_token');
+    return localStorage.getItem('access_token') !== null;
   },
 
   getStoredUser(): { id: number; role: string } | null {

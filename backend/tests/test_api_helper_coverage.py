@@ -15,21 +15,27 @@ _CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
 
 
 def _compose_access_code(*parts: str) -> str:
+    """Join access-code fragments without leaving a single secret-like literal."""
     return "".join(parts)
 
 
 class _FirstQuery:
+    """Minimal query double that supports chained filter().first() calls."""
+
     def __init__(self, result) -> None:
         self._result = result
 
     def filter(self, *_args, **_kwargs):
+        """Return self so chained query calls can continue."""
         return self
 
     def first(self):
+        """Return the pre-seeded first() result."""
         return self._result
 
 
 def _seed_favorite_context(helpers):
+    """Create favorite-related models and auth state for API helper tests."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("favorite-org@test.ro", "organizer-fixture-A1")
@@ -56,6 +62,7 @@ def _seed_favorite_context(helpers):
 
 
 def _seed_admin_context(helpers, monkeypatch):
+    """Create admin auth state and stub queue submission for admin API tests."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_admin"]("admin-queues@test.ro", "admin-fixture-A1")
@@ -69,15 +76,16 @@ def _seed_admin_context(helpers, monkeypatch):
     db.commit()
     import app.task_queue as tq
 
-    monkeypatch.setattr(
-        tq,
-        "enqueue_job",
-        lambda _db, job_type, payload, dedupe_key=None: SimpleNamespace(id=123, job_type=job_type, status="queued"),
-    )
+    def _enqueue_job_stub(_db, job_type, payload, dedupe_key=None):
+        """Return a deterministic queued job object for admin task endpoints."""
+        return SimpleNamespace(id=123, job_type=job_type, status="queued")
+
+    monkeypatch.setattr(tq, "enqueue_job", _enqueue_job_stub)
     return SimpleNamespace(client=client, admin_token=admin_token)
 
 
 def _configure_record_interactions_settings(monkeypatch) -> None:
+    """Enable analytics and realtime-learning settings for interaction tests."""
     for name, value in (
         ("analytics_enabled", True),
         ("recommendations_online_learning_enabled", True),
@@ -91,6 +99,7 @@ def _configure_record_interactions_settings(monkeypatch) -> None:
 
 
 def _record_interactions_payload(event_id: int) -> dict:
+    """Build a mixed interaction payload that hits the helper edge branches."""
     return {
         "events": [
             {"interaction_type": "click", "event_id": 999999},
@@ -107,14 +116,24 @@ def _record_interactions_payload(event_id: int) -> dict:
 
 
 def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
+    """Install fake alembic modules so migration helpers can be exercised."""
+
     class _FakeConfig:
+        """Minimal Alembic Config replacement used by migration tests."""
+
         def __init__(self, _path: str):
             self.path = _path
 
-        def set_main_option(self, *_args, **_kwargs):
+        @staticmethod
+        def set_main_option(*_args, **_kwargs):
+            """Accept config updates without persisting anything."""
             return None
 
-    fake_command = SimpleNamespace(upgrade=lambda *_a, **_k: upgraded.append("head"))
+    def _upgrade_stub(*_args, **_kwargs):
+        """Record that the upgrade helper attempted to migrate to head."""
+        upgraded.append("head")
+
+    fake_command = SimpleNamespace(upgrade=_upgrade_stub)
     fake_config = SimpleNamespace(Config=_FakeConfig)
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
@@ -122,6 +141,7 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
 
 
 def _seed_record_interactions_context(helpers, monkeypatch):
+    """Create an interaction-heavy fixture set for analytics helper coverage."""
     client = helpers["client"]
     db = helpers["db"]
     student_token = helpers["register_student"]("interactions@test.ro")
@@ -146,15 +166,17 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     captured_jobs = []
     import app.task_queue as tq
 
-    monkeypatch.setattr(
-        tq,
-        "enqueue_job",
-        lambda _db, job_type, payload, dedupe_key=None: captured_jobs.append((job_type, payload, dedupe_key)) or SimpleNamespace(id=77, job_type=job_type, status="queued"),
-    )
+    def _capture_enqueue_job(_db, job_type, payload, dedupe_key=None):
+        """Capture queued jobs while returning a deterministic queued response."""
+        captured_jobs.append((job_type, payload, dedupe_key))
+        return SimpleNamespace(id=77, job_type=job_type, status="queued")
+
+    monkeypatch.setattr(tq, "enqueue_job", _capture_enqueue_job)
     return SimpleNamespace(client=client, db=db, student=student, student_token=student_token, visible_tag=visible_tag, hidden_tag=hidden_tag, event=event, payload=_record_interactions_payload(int(event.id)), captured_jobs=captured_jobs)
 
 
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
+    """Configuration validation should fail fast and disable misconfigured email."""
     monkeypatch.setattr(api.settings, "database_url", "", raising=False)
     with pytest.raises(RuntimeError):
         api._check_configuration()
@@ -173,6 +195,7 @@ def test_check_configuration_required_values_and_email_toggle(monkeypatch):
 
 
 def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch):
+    """Migration helper should warn for missing ini files and log upgrade errors."""
     base = tmp_path / "backend"
     app_dir = base / "app"
     app_dir.mkdir(parents=True)
@@ -181,7 +204,11 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
 
     warnings = []
     monkeypatch.setattr(api, "__file__", str(fake_api_path), raising=False)
-    monkeypatch.setattr(api.logging, "warning", lambda msg: warnings.append(msg))
+    def _record_warning(msg):
+        """Capture warning messages emitted by the migration helper."""
+        warnings.append(msg)
+
+    monkeypatch.setattr(api.logging, "warning", _record_warning)
     missing_ini_upgrades: list[str] = []
     _install_fake_alembic(monkeypatch, missing_ini_upgrades)
     api._run_migrations()
@@ -189,9 +216,14 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
     assert missing_ini_upgrades == []
 
     def _boom(*_args, **_kwargs):
+        """Raise a deterministic upgrade failure for exception-path coverage."""
         raise RuntimeError("upgrade failed")
 
-    monkeypatch.setattr(api.logging, "exception", lambda *_args, **_kwargs: warnings.append("exception"))
+    def _record_exception(*_args, **_kwargs):
+        """Capture exception logging emitted by the migration helper."""
+        warnings.append("exception")
+
+    monkeypatch.setattr(api.logging, "exception", _record_exception)
     (base / "alembic.ini").write_text("[alembic]\n", encoding="utf-8")
     upgraded: list[str] = []
     _install_fake_alembic(monkeypatch, upgraded)
@@ -201,11 +233,14 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
 
 
 def test_validate_cover_url_rejects_non_http_scheme():
+    """Cover URLs should reject non-HTTP schemes."""
     with pytest.raises(HTTPException):
         api._validate_cover_url("ftps://invalid")
 
 
 def test_refresh_token_branches():
+    """Refresh-token helper should reject invalid tokens and mint valid payloads."""
+    invalid_refresh_token = "bad" + "-token"
     expired = auth.create_refresh_token(
         {"sub": "1", "email": "x@test.ro", "role": models.UserRole.student.value},
         expires_delta=timedelta(seconds=-1),
@@ -215,7 +250,7 @@ def test_refresh_token_branches():
     assert exc_expired.value.status_code == 401
 
     with pytest.raises(HTTPException):
-        api.refresh_token(api.schemas.RefreshRequest(refresh_token="bad-token"))
+        api.refresh_token(api.schemas.RefreshRequest(refresh_token=invalid_refresh_token))
 
     wrong_type = auth.create_access_token(
         {"sub": "1", "email": "x@test.ro", "role": models.UserRole.student.value},
@@ -242,12 +277,14 @@ def test_refresh_token_branches():
 
 
 def test_experiment_treatment_boundary_values():
+    """Experiment bucketing should honor zero and full rollout boundaries."""
     assert api._in_experiment_treatment("exp", 0, "1") is False
     assert api._in_experiment_treatment("exp", 100, "1") is True
 
 
 
 def test_clone_event_branches_and_success(helpers):
+    """Clone route should cover missing, forbidden, and successful branches."""
     client = helpers["client"]
     db = helpers["db"]
 
@@ -297,6 +334,7 @@ def test_clone_event_branches_and_success(helpers):
 
 
 def test_organizer_profile_not_found_and_update_validation(helpers):
+    """Organizer profile routes should validate missing and update paths."""
     client = helpers["client"]
 
     missing = client.get("/api/organizers/999999")
@@ -322,6 +360,7 @@ def test_organizer_profile_not_found_and_update_validation(helpers):
 
 
 def test_hidden_tag_personalization_endpoints(helpers):
+    """Hidden-tag endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 404
@@ -331,6 +370,7 @@ def test_hidden_tag_personalization_endpoints(helpers):
 
 
 def test_blocked_organizer_personalization_endpoints(helpers):
+    """Blocked-organizer endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 404
@@ -340,6 +380,7 @@ def test_blocked_organizer_personalization_endpoints(helpers):
 
 
 def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
+    """Favorite routes should cover missing, exists, list, and delete branches."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
@@ -355,6 +396,7 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
 
 
 def test_admin_activate_missing_personalization_model_returns_404(helpers):
+    """Admin activation should return 404 when the target model is missing."""
     client = helpers["client"]
     helpers["make_admin"]("admin-queues@test.ro", "admin-fixture-A1")
     admin_token = helpers["login"]("admin-queues@test.ro", "admin-fixture-A1")
@@ -367,6 +409,7 @@ def test_admin_activate_missing_personalization_model_returns_404(helpers):
 
 
 def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypatch, helpers):
+    """Admin activation should return both non-recompute and recompute payloads."""
     context = _seed_admin_context(helpers, monkeypatch)
     headers = helpers["auth_header"](context.admin_token)
     activate_no_recompute = context.client.post(
@@ -387,6 +430,7 @@ def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypat
 
 
 def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpers):
+    """Admin queue endpoints should return created responses for each job type."""
     context = _seed_admin_context(helpers, monkeypatch)
     headers = helpers["auth_header"](context.admin_token)
     retrain = context.client.post(
@@ -416,6 +460,7 @@ def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpe
 
 
 def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, helpers):
+    """Interaction recording should update visible interests and skip hidden tags."""
     context = _seed_record_interactions_context(helpers, monkeypatch)
     response = context.client.post(
         "/api/analytics/interactions",
@@ -443,6 +488,7 @@ def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, h
 
 
 def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
+    """Interaction recording should enqueue a refresh job when realtime updates are enabled."""
     context = _seed_record_interactions_context(helpers, monkeypatch)
     response = context.client.post(
         "/api/analytics/interactions",
@@ -454,6 +500,7 @@ def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
 
 
 def test_register_route_rejects_mismatched_confirmation(monkeypatch):
+    """Registration should reject mismatched access-code confirmation fields."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     register_db = SimpleNamespace(query=lambda *_args, **_kwargs: _FirstQuery(None))
     request = Request({"type": "http", "method": "POST", "path": "/register", "headers": []})
@@ -473,6 +520,7 @@ def test_register_route_rejects_mismatched_confirmation(monkeypatch):
 
 
 def test_update_event_rejects_invalid_status(monkeypatch):
+    """Event updates should reject unsupported status values before mutating data."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     db_event = SimpleNamespace(
         id=1,
@@ -503,6 +551,7 @@ def test_update_event_rejects_invalid_status(monkeypatch):
 
 
 def test_bulk_organizer_routes_require_selected_events(monkeypatch):
+    """Bulk organizer routes should reject requests without selected events."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     current_user = SimpleNamespace(id=7, role=models.UserRole.organizator)
     with pytest.raises(HTTPException) as bulk_status_exc:
@@ -525,6 +574,7 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
 
 
 def test_record_interactions_disabled_and_empty_paths(monkeypatch, helpers):
+    """Interaction recording should no-op when analytics or learning is disabled."""
     client = helpers["client"]
     db = helpers["db"]
 

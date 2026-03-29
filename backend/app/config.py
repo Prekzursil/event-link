@@ -1,8 +1,9 @@
+"""Application settings loaded from environment variables."""
+
 import json
 
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
-
 
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:4200",
@@ -10,15 +11,17 @@ DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
-    "http://127.0.0.1:5173"
+    "http://127.0.0.1:5173",
 ]
 
 
 def _is_empty_setting(value: object) -> bool:
+    """Return whether an environment-provided setting is effectively empty."""
     return value is None or value == ""
 
 
 def _json_list(value: str) -> list[object] | None:
+    """Parse a JSON list string when possible."""
     try:
         parsed = json.loads(value)
     except json.JSONDecodeError:
@@ -26,7 +29,10 @@ def _json_list(value: str) -> list[object] | None:
     return parsed if isinstance(parsed, list) else None
 
 
-def _string_items(values: list[object] | tuple[object, ...], *, lower: bool = False) -> list[str]:
+def _string_items(
+    values: list[object] | tuple[object, ...], *, lower: bool = False
+) -> list[str]:
+    """Normalize an iterable of raw items into trimmed strings."""
     items: list[str] = []
     for raw in values:
         text = str(raw).strip()
@@ -37,6 +43,7 @@ def _string_items(values: list[object] | tuple[object, ...], *, lower: bool = Fa
 
 
 def _parse_list_setting(value: object, *, lower: bool = False) -> list[str]:
+    """Accept JSON, CSV, or list inputs for string-list settings."""
     if isinstance(value, str):
         parsed = _json_list(value)
         if parsed is not None:
@@ -48,6 +55,8 @@ def _parse_list_setting(value: object, *, lower: bool = False) -> list[str]:
 
 
 class Settings(BaseSettings):
+    """Runtime configuration for the API and background workers."""
+
     database_url: str
     secret_key: str
     algorithm: str = "HS256"
@@ -97,9 +106,10 @@ class Settings(BaseSettings):
     analytics_rate_window_seconds: int = 60
 
     experiments_personalization_ml_percent: int = 0
-    
-    # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
-    # so our validator can handle both formats.
+
+    # `allowed_origins` supports comma-separated strings or JSON lists.
+    # Disable pydantic-settings JSON decoding so our validator can handle
+    # both formats.
     model_config = SettingsConfigDict(
         env_file=".topsecret",
         extra="ignore",
@@ -111,22 +121,28 @@ class Settings(BaseSettings):
     @field_validator("allowed_origins", mode="before")
     @classmethod
     def parse_allowed_origins(cls, value):
+        """Normalize allowed CORS origins from env-compatible inputs."""
         if _is_empty_setting(value):
             return list(DEFAULT_ALLOWED_ORIGINS)
         try:
             return _parse_list_setting(value)
         except ValueError as exc:
-            raise ValueError("allowed_origins must be a list or comma-separated string") from exc
+            raise ValueError(
+                "allowed_origins must be a list or comma-separated string"
+            ) from exc
 
     @field_validator("admin_emails", mode="before")
     @classmethod
     def parse_admin_emails(cls, value):
+        """Normalize administrator email addresses from env-compatible inputs."""
         if _is_empty_setting(value):
             return []
         try:
             return _parse_list_setting(value, lower=True)
         except ValueError as exc:
-            raise ValueError("admin_emails must be a list or comma-separated string") from exc
+            raise ValueError(
+                "admin_emails must be a list or comma-separated string"
+            ) from exc
 
 
 settings = Settings()

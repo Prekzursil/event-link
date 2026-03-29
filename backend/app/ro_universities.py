@@ -1,3 +1,5 @@
+"""Romanian university catalog helpers."""
+
 from __future__ import annotations
 
 import json
@@ -8,6 +10,8 @@ from typing import TypedDict
 
 
 class UniversityCatalogItem(TypedDict, total=False):
+    """Serialized university catalog entry."""
+
     name: str
     city: str | None
     faculties: list[str]
@@ -15,6 +19,7 @@ class UniversityCatalogItem(TypedDict, total=False):
 
 
 def _normalize_university_key(value: str) -> str:
+    """Normalize a university name into a stable lookup key."""
     value = value.strip().casefold()
     value = (
         value.replace("“", '"')
@@ -30,10 +35,12 @@ def _normalize_university_key(value: str) -> str:
 
 
 def _catalog_path() -> Path:
+    """Return the path to the bundled university catalog JSON file."""
     return Path(__file__).with_name("ro_universities_catalog.json")
 
 
 def _load_catalog() -> list[UniversityCatalogItem]:
+    """Load and normalize the bundled university catalog."""
     raw_items = json.loads(_catalog_path().read_text(encoding="utf-8"))
     items: list[UniversityCatalogItem] = []
     for raw in raw_items:
@@ -52,22 +59,30 @@ _UNIVERSITY_CATALOG = _load_catalog()
 _UNIVERSITY_KEY_TO_CANONICAL: dict[str, str] = {}
 for item in _UNIVERSITY_CATALOG:
     canonical = item["name"]
-    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = canonical
+    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = (
+        canonical
+    )
     for alias in item.get("aliases", []):
-        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = canonical
+        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = (
+            canonical
+        )
 
 
 def normalize_university_name(name: str | None) -> str | None:
+    """Resolve an input name to the catalog's canonical university name."""
     if name is None:
         return None
     trimmed = name.strip()
     if not trimmed:
         return None
-    canonical = _UNIVERSITY_KEY_TO_CANONICAL.get(_normalize_university_key(trimmed))
-    return canonical or trimmed
+    canonical_name = _UNIVERSITY_KEY_TO_CANONICAL.get(
+        _normalize_university_key(trimmed)
+    )
+    return canonical_name or trimmed
 
 
 def get_university_catalog() -> list[UniversityCatalogItem]:
+    """Return a defensive copy of the university catalog."""
     return [
         {
             "name": item["name"],

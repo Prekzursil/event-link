@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
 import { Calendar, CalendarPlus, Clock, History, Search, Plus, Megaphone } from 'lucide-react';
 
+/** Render the current user's saved, upcoming, past, and organizer-owned events. */
 export function MyEventsPage() {
   const { isOrganizer } = useAuth();
   const { t } = useI18n();
@@ -85,6 +86,7 @@ export function MyEventsPage() {
     loadFavorites();
   }, [loadEvents, loadFavorites]);
 
+  /** Toggle one event in the favorites collection and keep local state in sync. */
   const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
     try {
       if (shouldFavorite) {
@@ -107,18 +109,19 @@ export function MyEventsPage() {
     }
   };
 
+  /** Download the current user's calendar feed as an ICS file. */
   const handleDownloadCalendar = async () => {
     setIsDownloadingCalendar(true);
     try {
       const ics = await eventService.getMyCalendar();
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'eventlink-calendar.ics';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = 'eventlink-calendar.ics';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
       URL.revokeObjectURL(url);
 
       toast({

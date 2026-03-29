@@ -171,7 +171,7 @@ Event "1" --> "0..*" Registration : registrations
 User "1" --> "0..*" FavoriteEvent : favorites
 Event "1" --> "0..*" FavoriteEvent : favorited_by
 
-User "1" --> "0..*" PasswordResetToken : password_resets
+User "1" --> "0..*" PasswordResetToken : reset_records
 
 Event "0..*" -- "0..*" Tag : tags
 User "0..*" -- "0..*" Tag : interest_tags

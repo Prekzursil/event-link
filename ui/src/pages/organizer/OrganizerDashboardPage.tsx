@@ -11,14 +11,17 @@ import { OrganizerEventsTable } from './organizer-dashboard/OrganizerEventsTable
 import { OrganizerStatsGrid } from './organizer-dashboard/OrganizerStatsGrid';
 import { Plus } from 'lucide-react';
 
+/** Render the organizer dashboard with stats, bulk actions, and event management. */
 export function OrganizerDashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedEventIds, setSelectedEventIds] = useState<Set<number>>(() => new Set());
   const [isBulkUpdating, setIsBulkUpdating] = useState(false);
+  const [isBulkDraftConfirmationPending, setIsBulkDraftConfirmationPending] = useState(false);
   const [bulkTagsOpen, setBulkTagsOpen] = useState(false);
   const [bulkTagInput, setBulkTagInput] = useState('');
   const [bulkTags, setBulkTags] = useState<string[]>([]);
+  const [pendingDeleteEventId, setPendingDeleteEventId] = useState<number | null>(null);
   const { toast } = useToast();
   const { language, t } = useI18n();
 
@@ -52,6 +55,7 @@ export function OrganizerDashboardPage() {
     selectAllState = 'indeterminate';
   }
 
+  /** Toggle the selection state for one organizer-owned event. */
   const toggleSelected = (eventId: number, checked: boolean) => {
     setSelectedEventIds((prev) => {
       const next = new Set(prev);
@@ -64,22 +68,34 @@ export function OrganizerDashboardPage() {
     });
   };
 
+  /** Toggle the selection state for all currently visible organizer events. */
   const toggleSelectAll = (checked: boolean) => {
+    setIsBulkDraftConfirmationPending(false);
     if (!checked) {
       setSelectedEventIds(new Set());
       return;
     }
-    setSelectedEventIds(new Set(events.map((e) => e.id)));
+    setSelectedEventIds(new Set(events.map((event) => event.id)));
   };
 
+  /** Apply a bulk status change to the currently selected organizer events. */
   const handleBulkStatusUpdate = async (status: 'draft' | 'published') => {
-    if (status === 'draft' && !confirm(t.organizerDashboard.bulk.confirmDraft)) return;
+    if (status === 'draft' && !isBulkDraftConfirmationPending) {
+      setIsBulkDraftConfirmationPending(true);
+      toast({
+        title: t.organizerDashboard.bulk.confirmDraft,
+      });
+      return;
+    }
 
+    setIsBulkDraftConfirmationPending(false);
     setIsBulkUpdating(true);
     try {
       await eventService.bulkUpdateEventStatus(Array.from(selectedEventIds), status);
       setEvents((prev) =>
-        prev.map((e) => (selectedEventIds.has(e.id) ? { ...e, status } : e))
+        prev.map((event) => (
+          selectedEventIds.has(event.id) ? { ...event, status } : event
+        ))
       );
       setSelectedEventIds(new Set());
       toast({
@@ -100,12 +116,15 @@ export function OrganizerDashboardPage() {
     }
   };
 
+  /** Open the bulk-tag dialog with a clean input state. */
   const openBulkTags = () => {
+    setIsBulkDraftConfirmationPending(false);
     setBulkTags([]);
     setBulkTagInput('');
     setBulkTagsOpen(true);
   };
 
+  /** Add the current bulk-tag input value to the pending tag list. */
   const addBulkTag = () => {
     const tag = bulkTagInput.trim();
     if (!tag) return;
@@ -121,10 +140,12 @@ export function OrganizerDashboardPage() {
     setBulkTagInput('');
   };
 
+  /** Remove one pending bulk tag before submitting the bulk update. */
   const removeBulkTag = (tagToRemove: string) => {
-    setBulkTags((prev) => prev.filter((t) => t !== tagToRemove));
+    setBulkTags((prev) => prev.filter((tag) => tag !== tagToRemove));
   };
 
+  /** Apply the pending bulk tags to the currently selected organizer events. */
   const applyBulkTags = async () => {
     setIsBulkUpdating(true);
     try {
@@ -146,12 +167,20 @@ export function OrganizerDashboardPage() {
     }
   };
 
+  /** Delete one organizer-owned event after the in-app confirmation toast handshake. */
   const handleDelete = async (eventId: number) => {
-    if (!confirm(t.organizerDashboard.deleteConfirm)) return;
+    if (pendingDeleteEventId !== eventId) {
+      setPendingDeleteEventId(eventId);
+      toast({
+        title: t.organizerDashboard.deleteConfirm,
+      });
+      return;
+    }
 
+    setPendingDeleteEventId(null);
     try {
       await eventService.deleteEvent(eventId);
-      setEvents((prev) => prev.filter((e) => e.id !== eventId));
+      setEvents((prev) => prev.filter((event) => event.id !== eventId));
       toast({
         title: t.organizerDashboard.deleteSuccessTitle,
         description: t.organizerDashboard.deleteSuccessDescription,

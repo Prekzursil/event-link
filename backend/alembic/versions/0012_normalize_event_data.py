@@ -1,4 +1,4 @@
-"""Normalize event cover URLs and tag names
+"""Normalize event cover URLs and tag names.
 
 Revision ID: 0012_normalize_event_data
 Revises: 0011_add_language_preference
@@ -7,7 +7,6 @@ Create Date: 2025-12-18
 
 from alembic import op
 import sqlalchemy as sa
-
 
 # revision identifiers, used by Alembic.
 revision = "0012_normalize_event_data"
@@ -33,10 +32,19 @@ _TAGS = sa.table(
 _EVENTS = sa.table("events", sa.column("cover_url"))
 
 
-def _dedupe_join_table(conn, join_table: sa.TableClause, owner_col: str, canonical_id: int, dup_id: int) -> None:
+def _dedupe_join_table(
+    conn,
+    join_table: sa.TableClause,
+    owner_col: str,
+    canonical_id: int,
+    dup_id: int,
+) -> None:
+    """Retarget duplicate join-table rows to the canonical tag id."""
     owner_column = join_table.c[owner_col]
     tag_column = join_table.c.tag_id
-    canonical_owners = sa.select(owner_column).where(tag_column == canonical_id)
+    canonical_owners = sa.select(owner_column).where(
+        tag_column == canonical_id
+    )
     conn.execute(
         sa.delete(join_table)
         .where(tag_column == dup_id)
@@ -50,12 +58,14 @@ def _dedupe_join_table(conn, join_table: sa.TableClause, owner_col: str, canonic
 
 
 def _trim_expression(conn) -> sa.Function:
+    """Return a dialect-aware SQL trim expression for cover URLs."""
     if conn.dialect.name == "postgresql":
         return sa.func.btrim(_EVENTS.c.cover_url)
     return sa.func.trim(_EVENTS.c.cover_url)
 
 
 def upgrade() -> None:
+    """Apply the event-data normalization migration."""
     conn = op.get_bind()
     trimmed_cover_url = _trim_expression(conn)
 
@@ -80,11 +90,19 @@ def upgrade() -> None:
         if not trimmed:
             empty_tag_ids.append(int(tag_id))
             continue
-        groups.setdefault(trimmed.lower(), []).append((int(tag_id), trimmed, raw))
+        groups.setdefault(trimmed.lower(), []).append(
+            (int(tag_id), trimmed, raw)
+        )
 
     for tag_id in empty_tag_ids:
-        conn.execute(sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id))
-        conn.execute(sa.delete(_USER_INTEREST_TAGS).where(_USER_INTEREST_TAGS.c.tag_id == tag_id))
+        conn.execute(
+            sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id)
+        )
+        conn.execute(
+            sa.delete(_USER_INTEREST_TAGS).where(
+                _USER_INTEREST_TAGS.c.tag_id == tag_id
+            )
+        )
         conn.execute(sa.delete(_TAGS).where(_TAGS.c.id == tag_id))
 
     for _normalized, entries in groups.items():
@@ -99,11 +117,17 @@ def upgrade() -> None:
             )
 
         for dup_id, _dup_trimmed, _dup_raw in entries[1:]:
-            _dedupe_join_table(conn, _EVENT_TAGS, "event_id", canonical_id, dup_id)
-            _dedupe_join_table(conn, _USER_INTEREST_TAGS, "user_id", canonical_id, dup_id)
+            _dedupe_join_table(
+                conn, _EVENT_TAGS, "event_id", canonical_id, dup_id
+            )
+            _dedupe_join_table(
+                conn, _USER_INTEREST_TAGS, "user_id", canonical_id, dup_id
+            )
             conn.execute(sa.delete(_TAGS).where(_TAGS.c.id == dup_id))
 
 
 def downgrade() -> None:
-    # Normalization merged duplicate tags and trimmed stored values in place; downgrade cannot reconstruct the original data.
-    pass
+    """Revert the event-data normalization migration where possible."""
+    # Normalization merged duplicate tags and trimmed stored values
+    # in place; downgrade cannot reconstruct the original data.
+    return None

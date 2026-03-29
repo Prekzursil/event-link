@@ -7,7 +7,13 @@ import { applyThemePreference, getStoredThemePreference } from '@/lib/theme'
 
 applyThemePreference(getStoredThemePreference())
 
-createRoot(document.getElementById('root')!).render(
+const rootElement = document.getElementById('root')
+
+if (!rootElement) {
+  throw new Error('Missing root element')
+}
+
+createRoot(rootElement).render(
   <StrictMode>
     <App />
   </StrictMode>,

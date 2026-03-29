@@ -2,6 +2,7 @@
   "components": {
     "schemas": {
       "AccountDeleteRequest": {
+        "description": "Payload for confirming account deletion.",
         "properties": {
           "password": {
             "maxLength": 255,
@@ -17,6 +18,7 @@
         "type": "object"
       },
       "AdminActivatePersonalizationModelRequest": {
+        "description": "Payload for activating a trained personalization model.",
         "properties": {
           "model_version": {
             "maxLength": 100,
@@ -44,6 +46,7 @@
         "type": "object"
       },
       "AdminActivatePersonalizationModelResponse": {
+        "description": "Result of activating a personalization model.",
         "properties": {
           "active_model_version": {
             "title": "Active Model Version",
@@ -67,6 +70,7 @@
         "type": "object"
       },
       "AdminEvaluateGuardrailsRequest": {
+        "description": "Payload for evaluating personalization guardrails.",
         "properties": {
           "click_to_register_window_hours": {
             "anyOf": [
@@ -138,6 +142,7 @@
         "type": "object"
       },
       "AdminEventResponse": {
+        "description": "Administrative view of an event.",
         "properties": {
           "category": {
             "anyOf": [
@@ -341,7 +346,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -362,6 +367,7 @@
         "type": "object"
       },
       "AdminFillingFastRequest": {
+        "description": "Payload for sending filling-fast notifications.",
         "properties": {
           "max_per_user": {
             "anyOf": [
@@ -410,6 +416,7 @@
         "type": "object"
       },
       "AdminPersonalizationStatusResponse": {
+        "description": "Administrative status of personalization subsystems.",
         "properties": {
           "active_model_created_at": {
             "anyOf": [
@@ -456,6 +463,7 @@
         "type": "object"
       },
       "AdminRetrainRecommendationsRequest": {
+        "description": "Payload for retraining the recommendations model.",
         "properties": {
           "epochs": {
             "anyOf": [
@@ -549,6 +557,7 @@
         "type": "object"
       },
       "AdminStatsResponse": {
+        "description": "Administrative statistics summary.",
         "properties": {
           "registrations_by_day": {
             "items": {
@@ -588,6 +597,7 @@
         "type": "object"
       },
       "AdminUserResponse": {
+        "description": "Administrative view of a user.",
         "properties": {
           "attended_count": {
             "default": 0,
@@ -671,6 +681,7 @@
         "type": "object"
       },
       "AdminUserUpdate": {
+        "description": "Administrative update payload for a user.",
         "properties": {
           "is_active": {
             "anyOf": [
@@ -698,6 +709,7 @@
         "type": "object"
       },
       "AdminWeeklyDigestRequest": {
+        "description": "Payload for sending weekly digests.",
         "properties": {
           "top_n": {
             "anyOf": [
@@ -718,6 +730,7 @@
         "type": "object"
       },
       "EnqueuedJobResponse": {
+        "description": "Metadata for a newly queued background job.",
         "properties": {
           "job_id": {
             "title": "Job Id",
@@ -741,6 +754,7 @@
         "type": "object"
       },
       "EventCreate": {
+        "description": "Payload for creating an event.",
         "properties": {
           "category": {
             "maxLength": 100,
@@ -857,6 +871,7 @@
         "type": "object"
       },
       "EventDetailResponse": {
+        "description": "Detailed event payload for authenticated viewers.",
         "properties": {
           "available_seats": {
             "anyOf": [
@@ -1026,7 +1041,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -1048,6 +1063,7 @@
         "type": "object"
       },
       "EventDuplicateCandidate": {
+        "description": "Potential duplicate event surfaced by suggestion tooling.",
         "properties": {
           "city": {
             "anyOf": [
@@ -1088,6 +1104,7 @@
         "type": "object"
       },
       "EventResponse": {
+        "description": "Serialized event for authenticated endpoints.",
         "properties": {
           "category": {
             "anyOf": [
@@ -1231,7 +1248,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -1253,6 +1270,7 @@
         "type": "object"
       },
       "EventSuggestRequest": {
+        "description": "Payload for event suggestion and duplicate detection.",
         "properties": {
           "category": {
             "anyOf": [
@@ -1324,6 +1342,7 @@
         "type": "object"
       },
       "EventSuggestResponse": {
+        "description": "Suggested metadata and duplicate candidates for an event.",
         "properties": {
           "duplicates": {
             "default": [],
@@ -1386,6 +1405,7 @@
         "type": "object"
       },
       "EventUpdate": {
+        "description": "Payload for updating an existing event.",
         "properties": {
           "category": {
             "anyOf": [
@@ -1533,6 +1553,7 @@
         "type": "object"
       },
       "FavoriteListResponse": {
+        "description": "List of favorited events.",
         "properties": {
           "items": {
             "items": {
@@ -1562,6 +1583,7 @@
         "type": "object"
       },
       "InteractionBatchIn": {
+        "description": "Batch of client-side interaction events.",
         "properties": {
           "events": {
             "items": {
@@ -1580,6 +1602,7 @@
         "type": "object"
       },
       "InteractionEventIn": {
+        "description": "Single client-side interaction event payload.",
         "properties": {
           "event_id": {
             "anyOf": [
@@ -1640,6 +1663,7 @@
         "type": "object"
       },
       "LanguagePreferenceUpdate": {
+        "description": "Language preference update payload.",
         "properties": {
           "language_preference": {
             "enum": [
@@ -1658,6 +1682,7 @@
         "type": "object"
       },
       "NotificationPreferencesResponse": {
+        "description": "Current notification preference settings.",
         "properties": {
           "email_digest_enabled": {
             "title": "Email Digest Enabled",
@@ -1676,6 +1701,7 @@
         "type": "object"
       },
       "NotificationPreferencesUpdate": {
+        "description": "Payload for updating notification preferences.",
         "properties": {
           "email_digest_enabled": {
             "anyOf": [
@@ -1704,6 +1730,7 @@
         "type": "object"
       },
       "OrganizerBulkStatusUpdate": {
+        "description": "Bulk event status update payload for organizers.",
         "properties": {
           "event_ids": {
             "items": {
@@ -1730,6 +1757,7 @@
         "type": "object"
       },
       "OrganizerBulkTagsUpdate": {
+        "description": "Bulk tag update payload for organizers.",
         "properties": {
           "event_ids": {
             "items": {
@@ -1754,6 +1782,7 @@
         "type": "object"
       },
       "OrganizerEmailParticipantsRequest": {
+        "description": "Payload for emailing participants of an event.",
         "properties": {
           "message": {
             "maxLength": 10000,
@@ -1776,6 +1805,7 @@
         "type": "object"
       },
       "OrganizerEmailParticipantsResponse": {
+        "description": "Summary of an organizer participant email send.",
         "properties": {
           "recipients": {
             "title": "Recipients",
@@ -1789,6 +1819,7 @@
         "type": "object"
       },
       "OrganizerProfileResponse": {
+        "description": "Organizer profile returned by the API.",
         "properties": {
           "email": {
             "format": "email",
@@ -1875,6 +1906,7 @@
         "type": "object"
       },
       "OrganizerProfileUpdate": {
+        "description": "Payload for updating organizer profile details.",
         "properties": {
           "org_description": {
             "anyOf": [
@@ -1930,6 +1962,7 @@
         "type": "object"
       },
       "OrganizerSummaryResponse": {
+        "description": "Compact organizer identity used in personalization settings.",
         "properties": {
           "email": {
             "format": "email",
@@ -1971,6 +2004,7 @@
         "type": "object"
       },
       "PaginatedAdminEvents": {
+        "description": "Paginated admin event listing.",
         "properties": {
           "items": {
             "items": {
@@ -2002,6 +2036,7 @@
         "type": "object"
       },
       "PaginatedAdminUsers": {
+        "description": "Paginated admin user listing.",
         "properties": {
           "items": {
             "items": {
@@ -2033,6 +2068,7 @@
         "type": "object"
       },
       "PaginatedEvents": {
+        "description": "Paginated event listing for authenticated endpoints.",
         "properties": {
           "items": {
             "items": {
@@ -2064,6 +2100,7 @@
         "type": "object"
       },
       "PaginatedPublicEvents": {
+        "description": "Paginated public event listing.",
         "properties": {
           "items": {
             "items": {
@@ -2095,6 +2132,7 @@
         "type": "object"
       },
       "ParticipantListResponse": {
+        "description": "Paginated participant list for a single event.",
         "properties": {
           "city": {
             "anyOf": [
@@ -2174,6 +2212,7 @@
         "type": "object"
       },
       "ParticipantResponse": {
+        "description": "Serialized participant entry for organizer views.",
         "properties": {
           "attended": {
             "title": "Attended",
@@ -2215,6 +2254,7 @@
         "type": "object"
       },
       "PasswordResetConfirm": {
+        "description": "Payload for completing a password reset.",
         "properties": {
           "confirm_password": {
             "title": "Confirm Password",
@@ -2239,6 +2279,7 @@
         "type": "object"
       },
       "PasswordResetRequest": {
+        "description": "Payload for initiating a password reset.",
         "properties": {
           "email": {
             "format": "email",
@@ -2253,6 +2294,7 @@
         "type": "object"
       },
       "PersonalizationMetricsDay": {
+        "description": "Daily personalization performance metrics.",
         "properties": {
           "clicks": {
             "title": "Clicks",
@@ -2291,6 +2333,7 @@
         "type": "object"
       },
       "PersonalizationMetricsResponse": {
+        "description": "Time-series and totals for personalization metrics.",
         "properties": {
           "items": {
             "items": {
@@ -2311,6 +2354,7 @@
         "type": "object"
       },
       "PersonalizationMetricsTotals": {
+        "description": "Aggregate personalization performance metrics.",
         "properties": {
           "clicks": {
             "title": "Clicks",
@@ -2344,6 +2388,7 @@
         "type": "object"
       },
       "PersonalizationSettingsResponse": {
+        "description": "User-specific personalization settings.",
         "properties": {
           "blocked_organizers": {
             "items": {
@@ -2354,7 +2399,7 @@
           },
           "hidden_tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Hidden Tags",
             "type": "array"
@@ -2364,6 +2409,7 @@
         "type": "object"
       },
       "PublicEventDetailResponse": {
+        "description": "Detailed event payload for public viewers.",
         "properties": {
           "available_seats": {
             "anyOf": [
@@ -2480,7 +2526,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -2501,6 +2547,7 @@
         "type": "object"
       },
       "PublicEventResponse": {
+        "description": "Serialized event for public listings.",
         "properties": {
           "category": {
             "anyOf": [
@@ -2606,7 +2653,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -2627,6 +2674,7 @@
         "type": "object"
       },
       "RefreshRequest": {
+        "description": "Payload for refreshing an access token.",
         "properties": {
           "refresh_token": {
             "title": "Refresh Token",
@@ -2640,6 +2688,7 @@
         "type": "object"
       },
       "RegistrationDayStat": {
+        "description": "Registration volume for a single day.",
         "properties": {
           "date": {
             "title": "Date",
@@ -2658,6 +2707,7 @@
         "type": "object"
       },
       "StudentProfileResponse": {
+        "description": "Student profile returned by the API.",
         "properties": {
           "city": {
             "anyOf": [
@@ -2699,7 +2749,7 @@
           },
           "interest_tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Interest Tags",
             "type": "array"
@@ -2756,6 +2806,7 @@
         "type": "object"
       },
       "StudentProfileUpdate": {
+        "description": "Payload for updating student profile details.",
         "properties": {
           "city": {
             "anyOf": [
@@ -2854,6 +2905,7 @@
         "type": "object"
       },
       "StudentRegister": {
+        "description": "Payload for registering a student account.",
         "properties": {
           "confirm_password": {
             "title": "Confirm Password",
@@ -2889,10 +2941,11 @@
         "type": "object"
       },
       "TagListResponse": {
+        "description": "List of tags.",
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Items",
             "type": "array"
@@ -2905,6 +2958,7 @@
         "type": "object"
       },
       "TagPopularityStat": {
+        "description": "Popularity metrics for a single tag.",
         "properties": {
           "events": {
             "title": "Events",
@@ -2927,7 +2981,27 @@
         "title": "TagPopularityStat",
         "type": "object"
       },
+      "TagResponse": {
+        "description": "Serialized tag.",
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TagResponse",
+        "type": "object"
+      },
       "ThemePreferenceUpdate": {
+        "description": "Theme preference update payload.",
         "properties": {
           "theme_preference": {
             "enum": [
@@ -2946,6 +3020,7 @@
         "type": "object"
       },
       "Token": {
+        "description": "Authentication tokens returned after login or refresh.",
         "properties": {
           "access_token": {
             "title": "Access Token",
@@ -2984,6 +3059,7 @@
         "type": "object"
       },
       "UniversityCatalogItem": {
+        "description": "University catalog entry returned by the API.",
         "properties": {
           "aliases": {
             "items": {
@@ -3022,6 +3098,7 @@
         "type": "object"
       },
       "UniversityCatalogResponse": {
+        "description": "Full university catalog response.",
         "properties": {
           "items": {
             "items": {
@@ -3038,6 +3115,7 @@
         "type": "object"
       },
       "UserLogin": {
+        "description": "Credentials used for user login.",
         "properties": {
           "email": {
             "format": "email",
@@ -3057,6 +3135,7 @@
         "type": "object"
       },
       "UserResponse": {
+        "description": "Serialized user returned by API endpoints.",
         "properties": {
           "email": {
             "format": "email",
@@ -3111,6 +3190,7 @@
         "type": "object"
       },
       "UserRole": {
+        "description": "Supported application roles.",
         "enum": [
           "student",
           "organizator",
@@ -3150,24 +3230,6 @@
           "type"
         ],
         "title": "ValidationError",
-        "type": "object"
-      },
-      "app__schemas__TagResponse": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ],
-        "title": "TagResponse",
         "type": "object"
       }
     },

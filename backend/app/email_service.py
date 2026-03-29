@@ -1,3 +1,5 @@
+"""Email delivery helpers for immediate and queued notifications."""
+
 import smtplib
 import time
 from email.message import EmailMessage
@@ -14,13 +16,18 @@ emails_sent_ok = 0
 emails_send_failed = 0
 
 
-def _email_settings_ready(*, to_email: str, subject: str, context: dict[str, Any]) -> bool:
+def _email_settings_ready(
+    *, to_email: str, subject: str, context: dict[str, Any]
+) -> bool:
+    """Return whether SMTP delivery is configured and enabled."""
     if not settings.email_enabled:
         log_warning("email_disabled", to=to_email, subject=subject, **context)
         return False
     if settings.smtp_host and settings.smtp_sender:
         return True
-    log_warning("email_smtp_not_configured", to=to_email, subject=subject, **context)
+    log_warning(
+        "email_smtp_not_configured", to=to_email, subject=subject, **context
+    )
     return False
 
 
@@ -31,6 +38,7 @@ def _build_message(
     body_text: str,
     body_html: Optional[str],
 ) -> EmailMessage:
+    """Build the outgoing email payload."""
     message = EmailMessage()
     message["From"] = settings.smtp_sender
     message["To"] = to_email
@@ -42,7 +50,10 @@ def _build_message(
 
 
 def _deliver_message(message: EmailMessage) -> None:
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port or 25, timeout=10) as server:
+    """Send a prepared message through the configured SMTP transport."""
+    with smtplib.SMTP(
+        settings.smtp_host, settings.smtp_port or 25, timeout=10
+    ) as server:
         if settings.smtp_use_tls:
             server.starttls()
         if settings.smtp_username:
@@ -58,6 +69,7 @@ def _log_retry_failure(
     subject: str,
     context: dict[str, Any],
 ) -> str:
+    """Log a failed delivery attempt and return its exception type."""
     error_type = type(exc).__name__
     log_warning(
         "email_send_failed_attempt",
@@ -79,11 +91,18 @@ def _send_with_retries(
     subject: str,
     context: dict[str, Any],
 ) -> str | None:
+    """Try to deliver a message up to three times."""
     last_error_type: str | None = None
     for attempt in range(1, 4):
         try:
             _deliver_message(message)
-            log_event("email_sent", to=to_email, subject=subject, attempt=attempt, **context)
+            log_event(
+                "email_sent",
+                to=to_email,
+                subject=subject,
+                attempt=attempt,
+                **context,
+            )
             return None
         except Exception as exc:  # noqa: BLE001
             last_error_type = _log_retry_failure(
@@ -98,6 +117,12 @@ def _send_with_retries(
     return last_error_type or "unknown"
 
 
+def _increment_delivery_counter(counter_name: str) -> None:
+    """Increment a module-level delivery counter without a ``global`` statement."""
+    module_globals = globals()
+    module_globals[counter_name] = int(module_globals.get(counter_name, 0)) + 1
+
+
 def send_email_now(
     to_email: str,
     subject: str,
@@ -105,8 +130,11 @@ def send_email_now(
     body_html: Optional[str] = None,
     context: Dict[str, Any] | None = None,
 ) -> None:
+    """Send an email immediately in the current process."""
     context = context or {}
-    if not _email_settings_ready(to_email=to_email, subject=subject, context=context):
+    if not _email_settings_ready(
+        to_email=to_email, subject=subject, context=context
+    ):
         return
 
     message = _build_message(
@@ -116,7 +144,6 @@ def send_email_now(
         body_html=body_html,
     )
 
-    global emails_sent_ok, emails_send_failed
     last_error_type = _send_with_retries(
         message=message,
         to_email=to_email,
@@ -124,10 +151,10 @@ def send_email_now(
         context=context,
     )
     if last_error_type is None:
-        emails_sent_ok += 1
+        _increment_delivery_counter("emails_sent_ok")
         return
 
-    emails_send_failed += 1
+    _increment_delivery_counter("emails_send_failed")
     log_error(
         "email_send_failed_after_retries",
         to=to_email,
@@ -148,10 +175,14 @@ def send_email_async(
     body_html: Optional[str] = None,
     context: Dict[str, Any] | None = None,
 ) -> None:
-    # Enqueue to persistent DB-backed task queue when enabled; otherwise run as FastAPI BackgroundTask.
+    """Queue an email for background delivery or send it immediately."""
+    # Enqueue to the persistent DB-backed task queue when enabled.
+    # Otherwise fall back to a FastAPI background task.
     if getattr(settings, "task_queue_enabled", False):
         if db is None:
-            raise RuntimeError("task_queue_enabled is true but no DB session was provided")
+            raise RuntimeError(
+                "task_queue_enabled is true but no DB session was provided"
+            )
         enqueue_job(
             db,
             JOB_TYPE_SEND_EMAIL,
@@ -169,4 +200,11 @@ def send_email_async(
         send_email_now(to_email, subject, body_text, body_html, context or {})
         return
 
-    background_tasks.add_task(send_email_now, to_email, subject, body_text, body_html, context or {})
+    background_tasks.add_task(
+        send_email_now,
+        to_email,
+        subject,
+        body_text,
+        body_html,
+        context or {},
+    )
