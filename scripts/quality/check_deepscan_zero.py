@@ -454,6 +454,7 @@ def _resolve_open_issues(
 
 
 def _render_md(payload: dict[str, Any]) -> str:
+    """Render the Markdown summary for the DeepScan gate payload."""
     lines = [
         "# DeepScan Zero Gate",
         "",

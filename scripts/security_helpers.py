@@ -8,7 +8,7 @@ import re
 import urllib.error
 import urllib.request
 from pathlib import Path
-from urllib.parse import urlencode, urlparse, urlunparse
+from urllib.parse import ParseResult, urlencode, urlparse, urlunparse
 
 _SLUG_RE = re.compile(r"^[A-Za-z0-9_.-]+$")
 _SHA_RE = re.compile(r"^[0-9a-fA-F]{7,64}$")
@@ -23,7 +23,8 @@ _FORBIDDEN_IP_ATTRIBUTES = (
 _LOCAL_HOSTS = {"localhost", "localhost.localdomain"}
 
 
-def _parse_https_url(raw_url: str):
+def _parse_https_url(raw_url: str) -> ParseResult:
+    """Parse a candidate URL and reject unsupported schemes or credentials."""
     parsed = urlparse((raw_url or "").strip())
     if parsed.scheme != "https":
         raise ValueError(f"Only https URLs are allowed: {raw_url!r}")
@@ -32,13 +33,15 @@ def _parse_https_url(raw_url: str):
     return parsed
 
 
-def _normalized_hostname(parsed, raw_url: str) -> str:
+def _normalized_hostname(parsed: ParseResult, raw_url: str) -> str:
+    """Return the normalized hostname for a parsed URL."""
     if not parsed.hostname:
         raise ValueError(f"URL is missing a hostname: {raw_url!r}")
     return parsed.hostname.lower().strip(".")
 
 
 def _normalized_set(values: set[str] | None) -> set[str]:
+    """Normalize an optional hostname set for allowlist comparisons."""
     if values is None:
         return set()
     return {value.lower().strip(".") for value in values if value.strip(".")}
@@ -50,29 +53,39 @@ def _validate_host_allowlists(
     allowed_hosts: set[str] | None,
     allowed_host_suffixes: set[str] | None,
 ) -> None:
+    """Validate explicit host and suffix allowlists for a target hostname."""
     normalized_hosts = _normalized_set(allowed_hosts)
     if normalized_hosts and hostname not in normalized_hosts:
         raise ValueError(f"URL host is not in allowlist: {hostname}")
 
     suffixes = _normalized_set(allowed_host_suffixes)
-    if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
+    if suffixes and not any(
+        hostname == suffix or hostname.endswith(f".{suffix}")
+        for suffix in suffixes
+    ):
         raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
 
 
-def _parse_ip_address(hostname: str):
+def _parse_ip_address(hostname: str) -> ipaddress._BaseAddress | None:
+    """Parse a hostname as an IP address when possible."""
     try:
         return ipaddress.ip_address(hostname)
     except ValueError:
         return None
 
 
-def _is_forbidden_ip(ip_value) -> bool:
+def _is_forbidden_ip(ip_value: ipaddress._BaseAddress | None) -> bool:
+    """Return whether an IP address points to a non-public target."""
     if ip_value is None:
         return False
-    return any(bool(getattr(ip_value, attribute, False)) for attribute in _FORBIDDEN_IP_ATTRIBUTES)
+    return any(
+        bool(getattr(ip_value, attribute, False))
+        for attribute in _FORBIDDEN_IP_ATTRIBUTES
+    )
 
 
 def _reject_local_target(hostname: str) -> None:
+    """Reject localhost and private IP targets for outbound HTTPS calls."""
     if hostname in _LOCAL_HOSTS:
         raise ValueError("Localhost URLs are not allowed.")
     if _is_forbidden_ip(_parse_ip_address(hostname)):
@@ -137,12 +150,16 @@ def validate_commit_sha(value: str) -> str:
     return sha
 
 
-def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None) -> str:
+def build_https_url(
+    *, host: str, path: str, query: dict[str, str] | None = None
+) -> str:
     """Build and validate a normalized HTTPS URL from host, path, and query."""
     safe_host = (host or "").strip().lower().strip(".")
     if not _HOST_RE.fullmatch(safe_host):
         raise ValueError(f"Invalid host: {host!r}")
-    normalized_path = "/" + "/".join(segment for segment in (path or "").split("/") if segment)
+    normalized_path = "/" + "/".join(
+        segment for segment in (path or "").split("/") if segment
+    )
     encoded_query = urlencode(query or {})
     return normalize_https_url(
         urlunparse(("https", safe_host, normalized_path, "", encoded_query, "")),
@@ -151,6 +168,7 @@ def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None
 
 
 def _decode_json_payload(raw_text: str) -> object | None:
+    """Decode JSON when possible and preserve raw text otherwise."""
     raw = raw_text.strip()
     if not raw:
         return None
@@ -160,7 +178,10 @@ def _decode_json_payload(raw_text: str) -> object | None:
         return {"raw_text": raw_text}
 
 
-def _open_https_request(request: urllib.request.Request, *, timeout: int):
+def _open_https_request(
+    request: urllib.request.Request, *, timeout: int
+) -> urllib.response.addinfourl | urllib.error.HTTPError:
+    """Open an HTTPS request and preserve HTTP errors as response objects."""
     opener = urllib.request.build_opener(urllib.request.HTTPSHandler())
     try:
         return opener.open(request, timeout=timeout)
@@ -206,10 +227,12 @@ def request_https_json(
 
 
 def _workspace_root(base: Path | None) -> Path:
+    """Return the resolved workspace root for report writes."""
     return (base or Path.cwd()).resolve()
 
 
 def _candidate_relative_path(raw_path: str, fallback: str) -> Path:
+    """Build a relative output path from a raw CLI argument or fallback."""
     candidate = Path((raw_path or "").strip() or fallback).expanduser()
     if candidate.is_absolute():
         raise ValueError(f"Absolute paths are not allowed: {candidate}")
@@ -217,6 +240,7 @@ def _candidate_relative_path(raw_path: str, fallback: str) -> Path:
 
 
 def _resolve_workspace_path(root: Path, candidate: Path) -> Path:
+    """Resolve a candidate path beneath the workspace root."""
     resolved = (root / candidate).resolve(strict=False)
     try:
         resolved.relative_to(root)
@@ -232,6 +256,7 @@ def _validate_resolved_path(
     must_exist: bool,
     must_be_file: bool,
 ) -> None:
+    """Validate a resolved workspace path against caller requirements."""
     if must_exist and not resolved.exists():
         raise ValueError(f"Path does not exist: {candidate}")
     if must_be_file and resolved.exists() and not resolved.is_file():
@@ -282,7 +307,9 @@ def build_github_api_url(
     )
 
 
-def build_github_commit_checks_url(*, owner: str, repo: str, sha: str, per_page: int = 100) -> str:
+def build_github_commit_checks_url(
+    *, owner: str, repo: str, sha: str, per_page: int = 100
+) -> str:
     """Build the GitHub commit check-runs API URL for a commit."""
     safe_sha = validate_commit_sha(sha)
     return build_github_api_url(
