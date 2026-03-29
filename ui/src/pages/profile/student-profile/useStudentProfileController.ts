@@ -100,15 +100,51 @@ const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   email_filling_fast_enabled: false,
 };
 
-function applyProfileSnapshot(profileData: StudentProfile, setters: ProfileSnapshotSetters) {
+function applyProfileIdentitySnapshot(profileData: StudentProfile, setters: Pick<
+  ProfileSnapshotSetters,
+  'setCity' | 'setFaculty' | 'setFullName' | 'setProfile' | 'setUniversity'
+>) {
   setters.setProfile(profileData);
   setters.setFullName(profileData.full_name ?? '');
   setters.setCity(profileData.city ?? '');
   setters.setUniversity(profileData.university ?? '');
   setters.setFaculty(profileData.faculty ?? '');
+}
+
+function applyProfileAcademicSnapshot(profileData: StudentProfile, setters: Pick<
+  ProfileSnapshotSetters,
+  'setSelectedTagIds' | 'setStudyLevel' | 'setStudyYear'
+>) {
   setters.setStudyLevel(profileData.study_level ?? '');
   setters.setStudyYear(profileData.study_year ?? undefined);
   setters.setSelectedTagIds(profileData.interest_tags.map((tag) => tag.id));
+}
+
+function applyProfileSnapshot(profileData: StudentProfile, setters: ProfileSnapshotSetters) {
+  applyProfileIdentitySnapshot(profileData, setters);
+  applyProfileAcademicSnapshot(profileData, setters);
+}
+
+function useManagedDeleteDialogState() {
+  const [deleteDialogOpen, setDeleteDialogOpenState] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+
+  const setDeleteDialogOpen = useCallback((nextValue: SetStateAction<boolean>) => {
+    setDeleteDialogOpenState((previous) => {
+      const resolvedValue = typeof nextValue === 'function' ? nextValue(previous) : nextValue;
+      if (!resolvedValue) {
+        setDeletePassword('');
+      }
+      return resolvedValue;
+    });
+  }, []);
+
+  return {
+    deleteDialogOpen,
+    deletePassword,
+    setDeleteDialogOpen,
+    setDeletePassword,
+  };
 }
 
 function findSelectedUniversity(university: string, universityCatalog: UniversityCatalogItem[]) {
@@ -625,8 +661,6 @@ export function useStudentProfileController() {
   const navigate = useNavigate();
   const isStudent = user?.role === 'student';
   const [isLoading, setIsLoading] = useState(true);
-  const [deleteDialogOpen, setDeleteDialogOpenState] = useState(false);
-  const [deletePassword, setDeletePassword] = useState('');
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [universityCatalog, setUniversityCatalog] = useState<UniversityCatalogItem[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -639,6 +673,12 @@ export function useStudentProfileController() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [personalization, setPersonalization] = useState<PersonalizationSettings | null>(null);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
+  const {
+    deleteDialogOpen,
+    deletePassword,
+    setDeleteDialogOpen,
+    setDeletePassword,
+  } = useManagedDeleteDialogState();
 
   const musicTags = useMemo(
     () => allTags.filter((tag) => MUSIC_INTEREST_NAMES.has(tag.name)),
@@ -681,16 +721,6 @@ export function useStudentProfileController() {
     t,
     toast,
   });
-
-  const setDeleteDialogOpen = useCallback((nextValue: SetStateAction<boolean>) => {
-    setDeleteDialogOpenState((previous) => {
-      const resolvedValue = typeof nextValue === 'function' ? nextValue(previous) : nextValue;
-      if (!resolvedValue) {
-        setDeletePassword('');
-      }
-      return resolvedValue;
-    });
-  }, []);
 
   const {
     handleSave,

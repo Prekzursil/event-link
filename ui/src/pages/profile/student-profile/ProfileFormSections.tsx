@@ -79,16 +79,7 @@ type AcademicProfileCardProps = Readonly<{
 }>;
 
 /** Render one datalist-backed input field for academic profile text values. */
-function AcademicTextField({
-  datalistId,
-  label,
-  listValues,
-  note,
-  onChange,
-  placeholder,
-  testId,
-  value,
-}: Readonly<{
+function AcademicTextField(props: Readonly<{
   datalistId?: string;
   label: string;
   listValues?: string[];
@@ -98,6 +89,17 @@ function AcademicTextField({
   testId: string;
   value: string;
 }>) {
+  const {
+    datalistId,
+    label,
+    listValues,
+    note,
+    onChange,
+    placeholder,
+    testId,
+    value,
+  } = props;
+
   return (
     <div className="space-y-2">
       <Label htmlFor={testId}>{label}</Label>

@@ -505,6 +505,70 @@ function ParticipantRow({
   );
 }
 
+/** Render the sortable header row for the organizer participants table. */
+function ParticipantsTableHeader({
+  onToggleSort,
+  t,
+}: Pick<ParticipantsTableProps, 'onToggleSort' | 't'>) {
+  return (
+    <TableHeader>
+      <TableRow>
+        <TableHead>
+          <ParticipantsSortHeader
+            column="email"
+            label={t.participants.table.email}
+            onToggleSort={onToggleSort}
+          />
+        </TableHead>
+        <TableHead>
+          <ParticipantsSortHeader
+            column="full_name"
+            label={t.participants.table.name}
+            onToggleSort={onToggleSort}
+          />
+        </TableHead>
+        <TableHead>
+          <ParticipantsSortHeader
+            column="registration_time"
+            label={t.participants.table.registrationDate}
+            onToggleSort={onToggleSort}
+          />
+        </TableHead>
+        <TableHead className="w-[100px]">{t.participants.table.attended}</TableHead>
+      </TableRow>
+    </TableHeader>
+  );
+}
+
+/** Render either loading skeletons or participant rows for the organizer table. */
+function ParticipantsTableBodyContent({
+  data,
+  handleAttendanceChange,
+  isLoading,
+  language,
+  skeletonRowKeys,
+  updatingAttendance,
+}: Pick<
+  ParticipantsTableProps,
+  'data' | 'handleAttendanceChange' | 'isLoading' | 'language' | 'skeletonRowKeys' | 'updatingAttendance'
+>) {
+  return (
+    <TableBody>
+      {isLoading
+        ? skeletonRowKeys.map((rowKey) => <ParticipantsSkeletonRow key={rowKey} rowKey={rowKey} />)
+        : data.participants.map((participant) => (
+            <ParticipantRow
+              key={participant.id}
+              handleAttendanceChange={handleAttendanceChange}
+              language={language}
+              participant={participant}
+              updatingAttendance={updatingAttendance}
+            />
+          ))}
+    </TableBody>
+  );
+}
+
 /** Render the participant rows and sortable headers for the organizer table. */
 function ParticipantsTable(props: ParticipantsTableProps) {
   const {
@@ -520,45 +584,15 @@ function ParticipantsTable(props: ParticipantsTableProps) {
 
   return (
     <Table>
-      <TableHeader>
-        <TableRow>
-          <TableHead>
-            <ParticipantsSortHeader
-              column="email"
-              label={t.participants.table.email}
-              onToggleSort={onToggleSort}
-            />
-          </TableHead>
-          <TableHead>
-            <ParticipantsSortHeader
-              column="full_name"
-              label={t.participants.table.name}
-              onToggleSort={onToggleSort}
-            />
-          </TableHead>
-          <TableHead>
-            <ParticipantsSortHeader
-              column="registration_time"
-              label={t.participants.table.registrationDate}
-              onToggleSort={onToggleSort}
-            />
-          </TableHead>
-          <TableHead className="w-[100px]">{t.participants.table.attended}</TableHead>
-        </TableRow>
-      </TableHeader>
-      <TableBody>
-        {isLoading
-          ? skeletonRowKeys.map((rowKey) => <ParticipantsSkeletonRow key={rowKey} rowKey={rowKey} />)
-          : data.participants.map((participant) => (
-              <ParticipantRow
-                key={participant.id}
-                handleAttendanceChange={handleAttendanceChange}
-                language={language}
-                participant={participant}
-                updatingAttendance={updatingAttendance}
-              />
-            ))}
-      </TableBody>
+      <ParticipantsTableHeader onToggleSort={onToggleSort} t={t} />
+      <ParticipantsTableBodyContent
+        data={data}
+        handleAttendanceChange={handleAttendanceChange}
+        isLoading={isLoading}
+        language={language}
+        skeletonRowKeys={skeletonRowKeys}
+        updatingAttendance={updatingAttendance}
+      />
     </Table>
   );
 }
