@@ -10,17 +10,19 @@ type AcademicHandlersArgs = ProfileSnapshotSetters & Readonly<{
 }>;
 
 /** Derive field-level profile handlers for academic and university inputs. */
-export function useStudentProfileAcademicHandlers({
-  setCity,
-  setFaculty,
-  setSelectedTagIds,
-  setStudyLevel,
-  setStudyYear,
-  setUniversity,
-  studyYear,
-  university,
-  universityCatalog,
-}: AcademicHandlersArgs) {
+export function useStudentProfileAcademicHandlers(args: AcademicHandlersArgs) {
+  const {
+    setCity,
+    setFaculty,
+    setSelectedTagIds,
+    setStudyLevel,
+    setStudyYear,
+    setUniversity,
+    studyYear,
+    university,
+    universityCatalog,
+  } = args;
+
   const handleTagToggle = useCallback((tagId: number) => {
     setSelectedTagIds((previous) => (
       previous.includes(tagId)

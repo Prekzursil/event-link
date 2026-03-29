@@ -49,10 +49,12 @@ export const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreferences = {
   email_filling_fast_enabled: false,
 };
 
+/** Copy a nullable text field into a controlled string input setter. */
 function applyTextSnapshot(setter: Dispatch<SetStateAction<string>>, value: string | null | undefined) {
   setter(value ?? '');
 }
 
+/** Copy an optional study-level value into a controlled select setter. */
 function applyOptionalStudyLevelSnapshot(
   setter: Dispatch<SetStateAction<StudyLevel | ''>>,
   value: StudyLevel | null | undefined,
@@ -60,6 +62,7 @@ function applyOptionalStudyLevelSnapshot(
   setter(value ?? '');
 }
 
+/** Copy an optional numeric study year into the corresponding controlled setter. */
 function applyOptionalStudyYearSnapshot(
   setter: Dispatch<SetStateAction<number | undefined>>,
   value: number | null | undefined,
@@ -67,6 +70,7 @@ function applyOptionalStudyYearSnapshot(
   setter(typeof value === 'number' ? value : undefined);
 }
 
+/** Project the selected interest-tag identifiers from a loaded tag collection. */
 function applyInterestTagSnapshot(setter: Dispatch<SetStateAction<number[]>>, tags: Tag[]) {
   setter(tags.map((tag) => tag.id));
 }

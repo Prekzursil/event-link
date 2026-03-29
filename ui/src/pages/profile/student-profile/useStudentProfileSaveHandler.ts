@@ -21,25 +21,28 @@ type SaveHandlerArgs = ProfileSnapshotSetters & Readonly<{
   university: string;
 }>;
 
-async function saveStudentProfileUpdates({
-  city,
-  faculty,
-  fullName,
-  selectedTagIds,
-  setCity,
-  setFaculty,
-  setFullName,
-  setProfile,
-  setSelectedTagIds,
-  setStudyLevel,
-  setStudyYear,
-  setUniversity,
-  studyLevel,
-  studyYear,
-  t,
-  toast,
-  university,
-}: SaveHandlerArgs) {
+/** Persist the edited student profile and project the saved snapshot back into form state. */
+async function saveStudentProfileUpdates(args: SaveHandlerArgs) {
+  const {
+    city,
+    faculty,
+    fullName,
+    selectedTagIds,
+    setCity,
+    setFaculty,
+    setFullName,
+    setProfile,
+    setSelectedTagIds,
+    setStudyLevel,
+    setStudyYear,
+    setUniversity,
+    studyLevel,
+    studyYear,
+    t,
+    toast,
+    university,
+  } = args;
+
   const updatedProfile = await eventService.updateStudentProfile(buildProfileUpdatePayload({
     city,
     faculty,

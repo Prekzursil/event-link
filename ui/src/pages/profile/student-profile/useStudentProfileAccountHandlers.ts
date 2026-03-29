@@ -12,12 +12,14 @@ type AccountHandlerArgs = Readonly<{
   toast: ToastFn;
 }>;
 
+/** Export the current student's retained account data as a downloadable blob. */
 async function exportStudentProfileData(t: TranslationStrings, toast: ToastFn) {
   const blob = await eventService.exportMyData();
   triggerDataExport(blob);
   toast({ title: t.profile.exportGeneratedTitle, description: t.profile.exportGeneratedDescription });
 }
 
+/** Delete the current account after validating the supplied access code. */
 async function deleteStudentProfileAccount({
   closeDeleteDialog,
   deletePassword,
