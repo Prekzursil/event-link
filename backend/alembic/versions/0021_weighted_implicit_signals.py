@@ -8,7 +8,6 @@ Create Date: 2025-12-19
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
 revision = "0021_weighted_implicit_signals"
 down_revision = "0020_user_implicit_interest_tags"
@@ -26,7 +25,9 @@ def _create_weighted_interest_table(
     op.create_table(
         table_name,
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column(
+            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
+        ),
         sa.Column(value_column, sa.String(length=100), nullable=False),
         sa.Column("score", sa.Float(), nullable=False, server_default="1.0"),
         sa.Column(
@@ -42,11 +43,13 @@ def _create_weighted_interest_table(
         (value_column, [value_column]),
         ("last_seen_at", ["last_seen_at"]),
     ):
-        op.create_index(f"ix_{table_name}_{suffix}", table_name, columns, unique=False)
+        op.create_index(
+            f"ix_{table_name}_{suffix}", table_name, columns, unique=False
+        )
 
 
 def upgrade() -> None:
-    """Add weighted implicit-interest tables used by the v3 recommendation model."""
+    """Add weighted implicit-interest tables for the v3 model."""
     op.add_column(
         "user_implicit_interest_tags",
         sa.Column("score", sa.Float(), nullable=False, server_default="1.0"),

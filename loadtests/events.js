@@ -1,9 +1,10 @@
 import http from 'k6/http';
 import { check, sleep } from 'k6';
 
-const BASE_URL = __ENV.K6_BASE_URL || 'http://localhost:8000';
-const STRESS_USERS = Number(__ENV.K6_VUS || 10);
-const DURATION = __ENV.K6_DURATION || '30s';
+const env = globalThis.__ENV ?? {};
+const BASE_URL = env.K6_BASE_URL || 'http://localhost:8000';
+const STRESS_USERS = Number(env.K6_VUS || 10);
+const DURATION = env.K6_DURATION || '30s';
 
 export const options = {
   vus: STRESS_USERS,
@@ -14,6 +15,7 @@ export const options = {
   }
 };
 
+/** Exercise the public and personalized event feeds under k6. */
 export default function runEventsLoadtest() {
   const res = http.get(`${BASE_URL}/api/events?page=1&page_size=10`);
   check(res, {
@@ -22,7 +24,9 @@ export default function runEventsLoadtest() {
   });
 
   const rec = http.get(`${BASE_URL}/api/events/recommended?page=1&page_size=5`, {
-    headers: { Authorization: __ENV.K6_TOKEN ? `Bearer ${__ENV.K6_TOKEN}` : '' }
+    headers: {
+      Authorization: env.K6_TOKEN ? `Bearer ${env.K6_TOKEN}` : '',
+    }
   });
   check(rec, {
     'rec returns 200/401': (r) => r.status === 200 || r.status === 401

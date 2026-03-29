@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { renderLanguageRoute, requireElement } from './page-test-helpers';
 import {
@@ -43,19 +43,22 @@ async function coverOrganizerAndParticipantsCallbackEdgeBranches() {
   await waitFor(() => expect(toastSpy).toHaveBeenCalled());
   fireEvent.click(screen.getByRole('button', { name: /Cancel/i }));
 
-  vi.mocked(globalThis.confirm).mockReturnValueOnce(true);
-  eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
-  fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
-  await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+  const deleteButton = screen.getByRole('button', { name: /Delete/i });
+  fireEvent.click(deleteButton);
+  expect(eventServiceMock.deleteEvent).not.toHaveBeenCalled();
 
-  vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
-  fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+  eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
+  fireEvent.click(deleteButton);
+  await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+  await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledTimes(1));
+
+  fireEvent.click(deleteButton);
   expect(eventServiceMock.deleteEvent).toHaveBeenCalledTimes(1);
 
-  vi.mocked(globalThis.confirm).mockReturnValueOnce(true);
   eventServiceMock.deleteEvent.mockResolvedValueOnce();
-  fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
-  await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledWith(3));
+  fireEvent.click(deleteButton);
+  await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledTimes(2));
+  expect(eventServiceMock.deleteEvent).toHaveBeenLastCalledWith(3);
 
   cleanup();
   eventServiceMock.getEventParticipants.mockRejectedValueOnce(

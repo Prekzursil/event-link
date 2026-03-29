@@ -1,8 +1,14 @@
 from datetime import date, datetime
 from typing import Any, List, Optional, Literal
-from pydantic import BaseModel, ConfigDict, EmailStr, Field, HttpUrl, field_validator
+from pydantic import (
+    BaseModel,
+    ConfigDict,
+    EmailStr,
+    Field,
+    HttpUrl,
+    field_validator,
+)
 from .models import UserRole
-
 
 ThemePreference = Literal["system", "light", "dark"]
 LanguagePreference = Literal["system", "ro", "en"]
@@ -25,7 +31,9 @@ class UserCreate(BaseModel):
     def validate_password(cls, v: str) -> str:
         if len(v) < 8:
             raise ValueError("Password must be at least 8 characters")
-        if not any(ch.isalpha() for ch in v) or not any(ch.isdigit() for ch in v):
+        if not any(ch.isalpha() for ch in v) or not any(
+            ch.isdigit() for ch in v
+        ):
             raise ValueError("Password must include letters and numbers")
         return v
 
@@ -54,8 +62,10 @@ class UserResponse(UserBase):
 
     model_config = ConfigDict(from_attributes=True)
 
+
 class ThemePreferenceUpdate(BaseModel):
     theme_preference: ThemePreference
+
 
 class LanguagePreferenceUpdate(BaseModel):
     language_preference: LanguagePreference
@@ -93,7 +103,9 @@ class EventBase(BaseModel):
     max_seats: int
     cover_url: Optional[HttpUrl] = None
     tags: List[str] = Field(default_factory=list)
-    status: Optional[str] = Field(default="published", pattern="^(published|draft)$")
+    status: Optional[str] = Field(
+        default="published", pattern="^(published|draft)$"
+    )
     publish_at: Optional[datetime] = None
 
 
@@ -237,13 +249,6 @@ class PaginatedEvents(BaseModel):
     page_size: int
 
 
-class TagResponse(BaseModel):
-    id: int
-    name: str
-
-    model_config = ConfigDict(from_attributes=True)
-
-
 class TagListResponse(BaseModel):
     items: List[TagResponse]
 
@@ -292,7 +297,9 @@ class OrganizerSummaryResponse(BaseModel):
 
 class PersonalizationSettingsResponse(BaseModel):
     hidden_tags: List[TagResponse] = Field(default_factory=list)
-    blocked_organizers: List[OrganizerSummaryResponse] = Field(default_factory=list)
+    blocked_organizers: List[OrganizerSummaryResponse] = Field(
+        default_factory=list
+    )
 
 
 class NotificationPreferencesResponse(BaseModel):
@@ -445,7 +452,9 @@ class AdminEvaluateGuardrailsRequest(BaseModel):
     min_impressions: Optional[int] = Field(default=None, ge=1, le=1000000)
     ctr_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
     conversion_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
-    click_to_register_window_hours: Optional[int] = Field(default=None, ge=1, le=24 * 30)
+    click_to_register_window_hours: Optional[int] = Field(
+        default=None, ge=1, le=24 * 30
+    )
 
 
 class AdminActivatePersonalizationModelRequest(BaseModel):

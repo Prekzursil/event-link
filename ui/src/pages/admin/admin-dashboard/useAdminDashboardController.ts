@@ -65,6 +65,7 @@ export function useAdminDashboardController() {
   const [eventsIncludeDeleted, setEventsIncludeDeleted] = useState(false);
   const [eventsFlaggedOnly, setEventsFlaggedOnly] = useState(false);
   const [isLoadingEvents, setIsLoadingEvents] = useState(false);
+  const [pendingDeleteEventId, setPendingDeleteEventId] = useState<number | null>(null);
   const [reviewingEventId, setReviewingEventId] = useState<number | null>(null);
 
   const [personalizationMetrics, setPersonalizationMetrics] =
@@ -217,9 +218,15 @@ export function useAdminDashboardController() {
   }, [t, toast, users]);
 
   const handleDeleteEvent = useCallback(async (eventId: number) => {
-    if (!confirm(t.adminDashboard.deleteConfirm)) {
+    if (pendingDeleteEventId !== eventId) {
+      setPendingDeleteEventId(eventId);
+      toast({
+        title: t.adminDashboard.deleteConfirm,
+      });
       return;
     }
+
+    setPendingDeleteEventId(null);
     try {
       await eventService.deleteEvent(eventId);
       toast({
@@ -234,7 +241,7 @@ export function useAdminDashboardController() {
         variant: 'destructive',
       });
     }
-  }, [eventsPage, loadEvents, t, toast]);
+  }, [eventsPage, loadEvents, pendingDeleteEventId, t, toast]);
 
   const handleRestoreEvent = useCallback(async (eventId: number) => {
     try {

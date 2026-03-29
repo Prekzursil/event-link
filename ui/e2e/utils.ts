@@ -18,17 +18,20 @@ const refreshStorageKey = `refresh_${tokenFragment}`;
 const DOCKER_CANDIDATES = ['/usr/bin/docker', '/usr/local/bin/docker'] as const;
 const dockerBinary = DOCKER_CANDIDATES.find((candidate) => existsSync(candidate)) ?? DOCKER_CANDIDATES[0];
 
+/** Resolve the repository root from the Playwright utilities directory. */
 export function repoRoot(): string {
   const currentDir = path.dirname(fileURLToPath(import.meta.url));
   return path.resolve(currentDir, '..', '..');
 }
 
+/** Seed the preferred UI language before page scripts execute. */
 export async function setLanguagePreference(page: Page, preference: 'en' | 'ro' | 'system' = 'en') {
   await page.addInitScript((pref) => {
     globalThis.localStorage.setItem('language_preference', pref);
   }, preference);
 }
 
+/** Remove locally stored auth state for a clean browser session. */
 export async function clearAuth(page: Page) {
   if (page.url() === 'about:blank') {
     await page.goto('/');
@@ -40,6 +43,7 @@ export async function clearAuth(page: Page) {
   }, [accessStorageKey, refreshStorageKey]);
 }
 
+/** Sign in with the given email and access code. */
 export async function login(page: Page, email: string, accessCode: string) {
   await page.goto('/login');
   await page.locator('#email').fill(email);
@@ -53,6 +57,7 @@ export async function login(page: Page, email: string, accessCode: string) {
   await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('user'))).not.toBeNull();
 }
 
+/** Register a student user through the public sign-up flow. */
 export async function registerStudent(page: Page, email: string, accessCode: string, fullName = 'E2E Student') {
   await page.goto('/register');
   await page.locator('#fullName').fill(fullName);
@@ -62,9 +67,12 @@ export async function registerStudent(page: Page, email: string, accessCode: str
   await page.locator('button[type="submit"]').click();
 }
 
+/** Assert that the current browser pathname matches the expected route. */
 export async function expectPathname(page: Page, expectedPathname: string) {
   await expect.poll(() => new URL(page.url()).pathname).toBe(expectedPathname);
 }
+
+/** Format a date as the browser-local `datetime-local` input value. */
 export function formatDateTimeLocal(date: Date): string {
   const pad = (value: number) => String(value).padStart(2, '0');
   return (
@@ -74,6 +82,7 @@ export function formatDateTimeLocal(date: Date): string {
   );
 }
 
+/** Return whether `docker compose` is available in the local test environment. */
 export function hasDockerCompose(): boolean {
   try {
     execFileSync(dockerBinary, ['compose', 'version'], { stdio: 'ignore' });
@@ -83,10 +92,12 @@ export function hasDockerCompose(): boolean {
   }
 }
 
+/** Escape one SQL string literal for the reset-token lookup query. */
 function escapeSqlLiteral(value: string): string {
   return value.split(`'`).join(`''`);
 }
 
+/** Fetch the most recent password-reset code for the supplied email address. */
 export async function fetchLatestResetLinkCode(email: string): Promise<string> {
   const trimmedEmail = email.trim();
   if (!trimmedEmail) {

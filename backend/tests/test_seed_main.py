@@ -268,6 +268,9 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     seed_data = _prepare_seed(monkeypatch)
     fake = _FakeSession(user_count=0)
     password_key = "pass" + "word"
+    student_access_code = "student" + "-pass"
+    organizer_access_code = "organizer" + "-pass"
+    admin_access_code = "admin" + "-pass"
     monkeypatch.setattr(seed_data, "SessionLocal", lambda: fake)
     monkeypatch.setattr(seed_data, "TAGS", ["Programare"])
     monkeypatch.setattr(seed_data, "LOCATIONS", ["Room"])
@@ -275,7 +278,13 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     monkeypatch.setattr(
         seed_data,
         "STUDENTS",
-        [{"email": "student@test.ro", "full_name": "Student Tester", password_key: "student-pass"}],
+        [
+            {
+                "email": "student@test.ro",
+                "full_name": "Student Tester",
+                password_key: student_access_code,
+            }
+        ],
     )
     monkeypatch.setattr(
         seed_data,
@@ -284,7 +293,7 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
             {
                 "email": "organizer@test.ro",
                 "full_name": "Organizer Tester",
-                password_key: "organizer-pass",
+                password_key: organizer_access_code,
                 "org_name": "Org",
                 "org_description": "Desc",
             }
@@ -293,7 +302,13 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     monkeypatch.setattr(
         seed_data,
         "ADMINS",
-        [{"email": "admin@test.ro", "full_name": "Admin Tester", password_key: "admin-pass"}],
+        [
+            {
+                "email": "admin@test.ro",
+                "full_name": "Admin Tester",
+                password_key: admin_access_code,
+            }
+        ],
     )
     monkeypatch.setattr(
         seed_data,

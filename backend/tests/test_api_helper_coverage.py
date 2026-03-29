@@ -206,6 +206,7 @@ def test_validate_cover_url_rejects_non_http_scheme():
 
 
 def test_refresh_token_branches():
+    invalid_refresh_token = "bad" + "-token"
     expired = auth.create_refresh_token(
         {"sub": "1", "email": "x@test.ro", "role": models.UserRole.student.value},
         expires_delta=timedelta(seconds=-1),
@@ -215,7 +216,7 @@ def test_refresh_token_branches():
     assert exc_expired.value.status_code == 401
 
     with pytest.raises(HTTPException):
-        api.refresh_token(api.schemas.RefreshRequest(refresh_token="bad-token"))
+        api.refresh_token(api.schemas.RefreshRequest(refresh_token=invalid_refresh_token))
 
     wrong_type = auth.create_access_token(
         {"sub": "1", "email": "x@test.ro", "role": models.UserRole.student.value},

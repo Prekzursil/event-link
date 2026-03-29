@@ -341,7 +341,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -1026,7 +1026,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -1231,7 +1231,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -2354,7 +2354,7 @@
           },
           "hidden_tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Hidden Tags",
             "type": "array"
@@ -2480,7 +2480,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -2606,7 +2606,7 @@
           },
           "tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Tags",
             "type": "array"
@@ -2699,7 +2699,7 @@
           },
           "interest_tags": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Interest Tags",
             "type": "array"
@@ -2892,7 +2892,7 @@
         "properties": {
           "items": {
             "items": {
-              "$ref": "#/components/schemas/app__schemas__TagResponse"
+              "$ref": "#/components/schemas/TagResponse"
             },
             "title": "Items",
             "type": "array"
@@ -2925,6 +2925,24 @@
           "events"
         ],
         "title": "TagPopularityStat",
+        "type": "object"
+      },
+      "TagResponse": {
+        "properties": {
+          "id": {
+            "title": "Id",
+            "type": "integer"
+          },
+          "name": {
+            "title": "Name",
+            "type": "string"
+          }
+        },
+        "required": [
+          "id",
+          "name"
+        ],
+        "title": "TagResponse",
         "type": "object"
       },
       "ThemePreferenceUpdate": {
@@ -3150,24 +3168,6 @@
           "type"
         ],
         "title": "ValidationError",
-        "type": "object"
-      },
-      "app__schemas__TagResponse": {
-        "properties": {
-          "id": {
-            "title": "Id",
-            "type": "integer"
-          },
-          "name": {
-            "title": "Name",
-            "type": "string"
-          }
-        },
-        "required": [
-          "id",
-          "name"
-        ],
-        "title": "TagResponse",
         "type": "object"
       }
     },

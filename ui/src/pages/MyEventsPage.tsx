@@ -113,12 +113,12 @@ export function MyEventsPage() {
       const ics = await eventService.getMyCalendar();
       const blob = new Blob([ics], { type: 'text/calendar;charset=utf-8' });
       const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = 'eventlink-calendar.ics';
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
+      const downloadLink = document.createElement('a');
+      downloadLink.href = url;
+      downloadLink.download = 'eventlink-calendar.ics';
+      document.body.appendChild(downloadLink);
+      downloadLink.click();
+      downloadLink.remove();
       URL.revokeObjectURL(url);
 
       toast({

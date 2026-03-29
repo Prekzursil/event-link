@@ -14,7 +14,17 @@ from datetime import datetime, timedelta, timezone
 from passlib.context import CryptContext
 from sqlalchemy import func, select
 from app.database import SessionLocal
-from app.models import PasswordResetToken, User, UserRole, Event, Tag, Registration, FavoriteEvent, event_tags, user_interest_tags
+from app.models import (
+    PasswordResetToken,
+    User,
+    UserRole,
+    Event,
+    Tag,
+    Registration,
+    FavoriteEvent,
+    event_tags,
+    user_interest_tags,
+)
 
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 _rng = SystemRandom()
@@ -25,18 +35,57 @@ _RESET_RECORD_TABLE = _SECRET_FIELD + "_reset_tokens"
 _DEFAULT_SEED_CODE = os.environ.get("EVENTLINK_SEED_CODE", "seed-access-A1")
 MUSIC_TAG = "Muzică"
 TAGS = [
-    "Programare", "Design", "Business", "Marketing", "Startup",
-    "AI & ML", "Web Development", "Mobile", "Cloud", "DevOps",
-    "Data Science", "Cybersecurity", "Gaming", "Blockchain",
-    "Career", "Networking", "Workshop", "Hackathon", "Conference",
-    "Social", "Sport", MUSIC_TAG, "Rock", "Pop", "Hip-Hop", "EDM", "Jazz", "Clasică", "Folk", "Metal",
-    "Artă", "Voluntariat"
+    "Programare",
+    "Design",
+    "Business",
+    "Marketing",
+    "Startup",
+    "AI & ML",
+    "Web Development",
+    "Mobile",
+    "Cloud",
+    "DevOps",
+    "Data Science",
+    "Cybersecurity",
+    "Gaming",
+    "Blockchain",
+    "Career",
+    "Networking",
+    "Workshop",
+    "Hackathon",
+    "Conference",
+    "Social",
+    "Sport",
+    MUSIC_TAG,
+    "Rock",
+    "Pop",
+    "Hip-Hop",
+    "EDM",
+    "Jazz",
+    "Clasică",
+    "Folk",
+    "Metal",
+    "Artă",
+    "Voluntariat",
 ]
 
 CATEGORIES = [
-    "Workshop", "Seminar", "Conference", "Hackathon", "Networking",
-    "Career Fair", "Presentation", "Music", "Cultural", "Sports", "Social",
-    "Volunteering", "Party", "Festival", "Technical", "Academic"
+    "Workshop",
+    "Seminar",
+    "Conference",
+    "Hackathon",
+    "Networking",
+    "Career Fair",
+    "Presentation",
+    "Music",
+    "Cultural",
+    "Sports",
+    "Social",
+    "Volunteering",
+    "Party",
+    "Festival",
+    "Technical",
+    "Academic",
 ]
 
 LOCATIONS = [
@@ -49,7 +98,7 @@ LOCATIONS = [
     "Sala Multimedia, Corp C",
     "Terasa Universității",
     "Campusul Universitar, Spațiul Verde",
-    "Online - Zoom/Teams"
+    "Online - Zoom/Teams",
 ]
 
 COVER_IMAGES = [
@@ -62,7 +111,7 @@ COVER_IMAGES = [
     "https://images.unsplash.com/photo-1528901166007-3784c7dd3653?w=800&h=400&fit=crop",
     "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&h=400&fit=crop",
     "https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&h=400&fit=crop",
-    "https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=800&h=400&fit=crop"
+    "https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=800&h=400&fit=crop",
 ]
 
 SAMPLE_EVENTS = [
@@ -80,7 +129,7 @@ Nivel: Începători
 Cerințe: Laptop personal cu Python instalat""",
         "category": "Workshop",
         "tags": ["Programare", "Workshop"],
-        "max_seats": 30
+        "max_seats": 30,
     },
     {
         "title": "Tech Talk: Inteligența Artificială în 2024",
@@ -97,7 +146,7 @@ Topicuri:
 Nu rata această prezentare fascinantă!""",
         "category": "Presentation",
         "tags": ["AI & ML", "Conference", "Career"],
-        "max_seats": 100
+        "max_seats": 100,
     },
     {
         "title": "Hackathon: Build for Good",
@@ -114,7 +163,7 @@ Premii: 3000€ în premii + mentorat de la sponsori
 Include: mâncare, băuturi, și energie pentru toată noaptea! ☕""",
         "category": "Hackathon",
         "tags": ["Hackathon", "Programare", "Startup", "Voluntariat"],
-        "max_seats": 150
+        "max_seats": 150,
     },
     {
         "title": "Career Fair: IT & Business",
@@ -130,7 +179,7 @@ Pregătește-ți CV-ul și vino să discuți direct cu recruiterii!
 Sfat: Poartă ținută business casual și adu mai multe copii ale CV-ului.""",
         "category": "Career Fair",
         "tags": ["Career", "Networking", "Business"],
-        "max_seats": 500
+        "max_seats": 500,
     },
     {
         "title": "Workshop: Design Thinking",
@@ -146,7 +195,7 @@ Ce vei învăța:
 Workshop practic cu exerciții în echipă. Vino deschis la idei noi!""",
         "category": "Workshop",
         "tags": ["Design", "Workshop", "Startup"],
-        "max_seats": 25
+        "max_seats": 25,
     },
     {
         "title": "Gaming Night: FIFA & Mario Kart Tournament",
@@ -163,7 +212,7 @@ Include: pizza și băuturi răcoritoare
 Hai să ne distrăm! 🎮""",
         "category": "Social",
         "tags": ["Gaming", "Social"],
-        "max_seats": 40
+        "max_seats": 40,
     },
     {
         "title": "Seminar: Cum să-ți Începi Startup-ul",
@@ -181,7 +230,7 @@ Agenda:
 Q&A la final. Pregătește-ți întrebările!""",
         "category": "Seminar",
         "tags": ["Startup", "Business", "Career"],
-        "max_seats": 80
+        "max_seats": 80,
     },
     {
         "title": "Workshop: Introduction to Cloud Computing",
@@ -199,7 +248,7 @@ Prerequisites: Basic Linux knowledge
 Free AWS credits for all participants! ☁️""",
         "category": "Workshop",
         "tags": ["Cloud", "DevOps", "Workshop"],
-        "max_seats": 35
+        "max_seats": 35,
     },
     {
         "title": "Networking: Women in Tech Meetup",
@@ -214,7 +263,7 @@ Program:
 Bărbații allies sunt bineveniți! 💪""",
         "category": "Networking",
         "tags": ["Networking", "Career", "Social"],
-        "max_seats": 60
+        "max_seats": 60,
     },
     {
         "title": "Concert: Seară de Jazz Studențesc",
@@ -230,7 +279,7 @@ Bar cu băuturi și snacks disponibil.
 Dress code: smart casual 🎷""",
         "category": "Music",
         "tags": [MUSIC_TAG, "Jazz", "Social", "Artă"],
-        "max_seats": 120
+        "max_seats": 120,
     },
     {
         "title": "Concert: Rock Night în campus",
@@ -243,7 +292,7 @@ Line-up:
 Intrare liberă. Vino devreme pentru locuri bune! 🤘""",
         "category": "Music",
         "tags": [MUSIC_TAG, "Rock", "Social"],
-        "max_seats": 200
+        "max_seats": 200,
     },
     {
         "title": "Festival: Pop & EDM Student Fest",
@@ -254,7 +303,7 @@ Genuri: pop, EDM, dance
 Acces pe bază de bilet (reducere studenți). 🎧""",
         "category": "Festival",
         "tags": [MUSIC_TAG, "Pop", "EDM", "Social"],
-        "max_seats": 800
+        "max_seats": 800,
     },
     {
         "title": "Curs: Web Development Full Stack",
@@ -275,7 +324,7 @@ Proiect final: portfolio personal
 Nivel: Intermediar (cunoștințe de bază programare)""",
         "category": "Workshop",
         "tags": ["Web Development", "Programare", "Workshop"],
-        "max_seats": 20
+        "max_seats": 20,
     },
     {
         "title": "Cybersecurity CTF Competition",
@@ -295,17 +344,37 @@ Premii pentru top 5 echipe! 🏆
 Nivel: Toate nivelurile (hints disponibile)""",
         "category": "Hackathon",
         "tags": ["Cybersecurity", "Hackathon", "Programare"],
-        "max_seats": 100
-    }
+        "max_seats": 100,
+    },
 ]
 
 # Sample users
 STUDENTS = [
-    {"email": "student@test.com", "full_name": "Ion Popescu", _SECRET_FIELD: _DEFAULT_SEED_CODE},
-    {"email": "natalia@student.ro", "full_name": "Natalia", _SECRET_FIELD: _DEFAULT_SEED_CODE},
-    {"email": "andrei@student.ro", "full_name": "Andrei", _SECRET_FIELD: _DEFAULT_SEED_CODE},
-    {"email": "antonio@student.ro", "full_name": "Antonio", _SECRET_FIELD: _DEFAULT_SEED_CODE},
-    {"email": "victor@student.ro", "full_name": "Victor", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {
+        "email": "student@test.com",
+        "full_name": "Ion Popescu",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
+    },
+    {
+        "email": "natalia@student.ro",
+        "full_name": "Natalia",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
+    },
+    {
+        "email": "andrei@student.ro",
+        "full_name": "Andrei",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
+    },
+    {
+        "email": "antonio@student.ro",
+        "full_name": "Antonio",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
+    },
+    {
+        "email": "victor@student.ro",
+        "full_name": "Victor",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
+    },
 ]
 
 ORGANIZERS = [
@@ -316,7 +385,7 @@ ORGANIZERS = [
         "org_name": "Liga Studenților IT",
         "org_description": "Comunitatea studenților pasionați de tehnologie. Organizăm evenimente, workshop-uri și hackathoane pentru a conecta studenții cu industria IT.",
         "org_website": "https://ligait.ro",
-        "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=LSIT&backgroundColor=3b82f6"
+        "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=LSIT&backgroundColor=3b82f6",
     },
     {
         "email": "career@uni.ro",
@@ -325,7 +394,7 @@ ORGANIZERS = [
         "org_name": "Centrul de Cariere UNI",
         "org_description": "Conectăm studenții cu angajatorii. Organizăm târguri de cariere, workshop-uri de dezvoltare profesională și sesiuni de mentorat.",
         "org_website": "https://cariere.uni.ro",
-        "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=CC&backgroundColor=10b981"
+        "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=CC&backgroundColor=10b981",
     },
     {
         "email": "sport@uni.ro",
@@ -334,12 +403,16 @@ ORGANIZERS = [
         "org_name": "Clubul Sportiv Universitar",
         "org_description": "Promovăm sportul și viața sănătoasă în rândul studenților. Evenimente sportive, competiții și activități outdoor.",
         "org_website": "https://sport.uni.ro",
-        "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=CSU&backgroundColor=ef4444"
-    }
+        "org_logo_url": "https://api.dicebear.com/7.x/initials/svg?seed=CSU&backgroundColor=ef4444",
+    },
 ]
 
 ADMINS = [
-    {"email": "admin@test.com", "full_name": "EventLink Admin", _SECRET_FIELD: _DEFAULT_SEED_CODE},
+    {
+        "email": "admin@test.com",
+        "full_name": "EventLink Admin",
+        _SECRET_FIELD: _DEFAULT_SEED_CODE,
+    },
 ]
 
 
@@ -376,7 +449,14 @@ def _create_tags(session):  # noqa: ANN001
     return tag_objects
 
 
-def _create_users(session, user_rows, *, role: UserRole, label: str, extra_fields: tuple[str, ...] = ()):  # noqa: ANN001
+def _create_users(
+    session,
+    user_rows,
+    *,
+    role: UserRole,
+    label: str,
+    extra_fields: tuple[str, ...] = (),
+):  # noqa: ANN001
     print(label)
     created_users = []
     for row in user_rows:
@@ -395,19 +475,31 @@ def _create_users(session, user_rows, *, role: UserRole, label: str, extra_field
     return created_users
 
 
-def _assign_student_interest_tags(student_objects, tag_objects: dict[str, Tag]) -> None:
+def _assign_student_interest_tags(
+    student_objects, tag_objects: dict[str, Tag]
+) -> None:
     print("🏷️  Assigning interest tags to students...")
     available_tags = list(tag_objects.values())
     for student in student_objects:
         student.interest_tags = _rng.sample(available_tags, _rng.randint(3, 6))
 
 
-def _build_seed_event(event_data: dict[str, object], *, organizer_id: int, now: datetime, index: int) -> Event:
+def _build_seed_event(
+    event_data: dict[str, object],
+    *,
+    organizer_id: int,
+    now: datetime,
+    index: int,
+) -> Event:
     is_past_event = index < 3
     if is_past_event:
-        start_time = now - timedelta(days=_rng.randint(5, 30), hours=_rng.randint(10, 18))
+        start_time = now - timedelta(
+            days=_rng.randint(5, 30), hours=_rng.randint(10, 18)
+        )
     else:
-        start_time = now + timedelta(days=_rng.randint(3, 60), hours=_rng.randint(10, 18))
+        start_time = now + timedelta(
+            days=_rng.randint(3, 60), hours=_rng.randint(10, 18)
+        )
     start_time = start_time.replace(minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=_rng.randint(2, 4))
     return Event(
@@ -430,7 +522,9 @@ def _create_events(session, organizer_objects):  # noqa: ANN001
     now = datetime.now(timezone.utc)
     for index, event_data in enumerate(SAMPLE_EVENTS):
         organizer = _rng.choice(organizer_objects)
-        event = _build_seed_event(event_data, organizer_id=organizer.id, now=now, index=index)
+        event = _build_seed_event(
+            event_data, organizer_id=organizer.id, now=now, index=index
+        )
         session.add(event)
         event_objects.append((event, event_data["tags"]))
     session.flush()
@@ -444,11 +538,15 @@ def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
                 event.tags.append(tag_objects[tag_name])
 
 
-def _create_registrations(session, event_objects, student_objects, *, now: datetime) -> int:  # noqa: ANN001
+def _create_registrations(
+    session, event_objects, student_objects, *, now: datetime
+) -> int:  # noqa: ANN001
     print("📝 Creating registrations...")
     registration_count = 0
     for event, _ in event_objects:
-        num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
+        num_registrations = _rng.randint(
+            0, min(len(student_objects), event.max_seats // 2)
+        )
         for student in _rng.sample(student_objects, num_registrations):
             registration = Registration(
                 user_id=student.id,
@@ -461,13 +559,17 @@ def _create_registrations(session, event_objects, student_objects, *, now: datet
     return registration_count
 
 
-def _create_favorites(session, event_objects, student_objects) -> int:  # noqa: ANN001
+def _create_favorites(
+    session, event_objects, student_objects
+) -> int:  # noqa: ANN001
     print("❤️  Creating favorites...")
     favorite_count = 0
     created_events = [event for event, _ in event_objects]
     for student in student_objects:
         num_favorites = _rng.randint(2, 5)
-        favorite_events = _rng.sample(created_events, min(num_favorites, len(created_events)))
+        favorite_events = _rng.sample(
+            created_events, min(num_favorites, len(created_events))
+        )
         for event in favorite_events:
             session.add(FavoriteEvent(user_id=student.id, event_id=event.id))
             favorite_count += 1
@@ -493,17 +595,24 @@ def _print_seed_summary() -> None:
 def seed_database():
     """Seed the database with sample data."""
     print("🌱 Starting database seeding...")
-    
+
     session = SessionLocal()
     try:
         # Check if data already exists
-        user_count = session.scalar(select(func.count()).select_from(User)) or 0
-        
+        user_count = (
+            session.scalar(select(func.count()).select_from(User)) or 0
+        )
+
         if user_count > 0:
             _clear_existing_data(session)
 
         tag_objects = _create_tags(session)
-        student_objects = _create_users(session, STUDENTS, role=UserRole.student, label="👨‍🎓 Creating students...")
+        student_objects = _create_users(
+            session,
+            STUDENTS,
+            role=UserRole.student,
+            label="👨‍🎓 Creating students...",
+        )
         print(f"   Created {len(STUDENTS)} students")
         _assign_student_interest_tags(student_objects, tag_objects)
         session.flush()
@@ -513,11 +622,18 @@ def seed_database():
             ORGANIZERS,
             role=UserRole.organizator,
             label="🏢 Creating organizers...",
-            extra_fields=("org_name", "org_description", "org_website", "org_logo_url"),
+            extra_fields=(
+                "org_name",
+                "org_description",
+                "org_website",
+                "org_logo_url",
+            ),
         )
         print(f"   Created {len(ORGANIZERS)} organizers")
 
-        _create_users(session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins...")
+        _create_users(
+            session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins..."
+        )
         print(f"   Created {len(ADMINS)} admins")
 
         event_objects, now = _create_events(session, organizer_objects)
@@ -525,16 +641,20 @@ def seed_database():
         session.flush()
         print(f"   Created {len(SAMPLE_EVENTS)} events")
 
-        registration_count = _create_registrations(session, event_objects, student_objects, now=now)
+        registration_count = _create_registrations(
+            session, event_objects, student_objects, now=now
+        )
         print(f"   Created {registration_count} registrations")
 
-        favorite_count = _create_favorites(session, event_objects, student_objects)
+        favorite_count = _create_favorites(
+            session, event_objects, student_objects
+        )
         print(f"   Created {favorite_count} favorites")
-        
+
         session.commit()
 
         _print_seed_summary()
-        
+
     except Exception as e:
         session.rollback()
         print(f"\n❌ Error during seeding: {e}")
