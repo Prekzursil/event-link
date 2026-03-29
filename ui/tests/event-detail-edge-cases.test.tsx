@@ -97,6 +97,19 @@ describe('event detail edge cases', () => {
     expect(screen.queryByText(/Location/i)).not.toBeInTheDocument();
 
     cleanup();
+    eventServiceMock.getEvent.mockResolvedValueOnce(
+      makeEvent({
+        tags: [],
+        recommendation_reason: 'Still recommended',
+      }),
+    );
+    renderEventDetail('/events/1');
+    await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(1));
+    expect(screen.getByText(/Still recommended/i)).toBeInTheDocument();
+    expect(screen.queryByRole('combobox')).not.toBeInTheDocument();
+    expect(screen.queryByRole('button', { name: /Hide|Ascunde/i })).not.toBeInTheDocument();
+
+    cleanup();
     eventServiceMock.getEvent.mockResolvedValueOnce(makeEvent({ tags: [{ id: 7, name: 'AI' }] }));
     eventServiceMock.hideTag.mockRejectedValueOnce(new Error('plain-hide-fail'));
     eventServiceMock.blockOrganizer.mockRejectedValueOnce(new Error('plain-block-fail'));

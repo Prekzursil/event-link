@@ -26,6 +26,60 @@ type Props = Readonly<{
   texts: UiStrings['organizerDashboard'];
 }>;
 
+/** Render the input row used to add tags inside the bulk-tag dialog. */
+function BulkTagsInputRow({
+  inputValue,
+  onAddTag,
+  onInputChange,
+  texts,
+}: Pick<Props, 'inputValue' | 'onAddTag' | 'onInputChange' | 'texts'>) {
+  return (
+    <div className="flex gap-2">
+      <Input
+        value={inputValue}
+        onChange={(event) => onInputChange(event.target.value)}
+        placeholder={texts.bulk.tagsPlaceholder}
+        onKeyDown={(event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            onAddTag();
+          }
+        }}
+      />
+      <Button type="button" variant="outline" onClick={onAddTag}>
+        {texts.bulk.addTag}
+      </Button>
+    </div>
+  );
+}
+
+/** Render the removable tag badges inside the bulk-tag dialog. */
+function BulkTagsBadgeList({
+  onRemoveTag,
+  tags,
+  texts,
+}: Pick<Props, 'onRemoveTag' | 'tags' | 'texts'>) {
+  if (tags.length === 0) {
+    return null;
+  }
+
+  return (
+    <div className="flex flex-wrap gap-2 pt-2">
+      {tags.map((tag) => (
+        <Badge
+          key={tag}
+          variant="secondary"
+          className="cursor-pointer"
+          onClick={() => onRemoveTag(tag)}
+          title={texts.bulk.removeTagHint}
+        >
+          {tag}
+        </Badge>
+      ))}
+    </div>
+  );
+}
+
 export function OrganizerBulkTagsDialog({
   cancelText,
   inputValue,
@@ -39,6 +93,7 @@ export function OrganizerBulkTagsDialog({
   tags,
   texts,
 }: Props) {
+  // skipcq: JS-0415 - the bulk-tag dialog intentionally keeps selection, loading, and action states together.
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent>
@@ -49,37 +104,13 @@ export function OrganizerBulkTagsDialog({
 
         <div className="space-y-2">
           <Label>{texts.bulk.tagsLabel}</Label>
-          <div className="flex gap-2">
-            <Input
-              value={inputValue}
-              onChange={(event) => onInputChange(event.target.value)}
-              placeholder={texts.bulk.tagsPlaceholder}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter') {
-                  event.preventDefault();
-                  onAddTag();
-                }
-              }}
-            />
-            <Button type="button" variant="outline" onClick={onAddTag}>
-              {texts.bulk.addTag}
-            </Button>
-          </div>
-          {tags.length > 0 && (
-            <div className="flex flex-wrap gap-2 pt-2">
-              {tags.map((tag) => (
-                <Badge
-                  key={tag}
-                  variant="secondary"
-                  className="cursor-pointer"
-                  onClick={() => onRemoveTag(tag)}
-                  title={texts.bulk.removeTagHint}
-                >
-                  {tag}
-                </Badge>
-              ))}
-            </div>
-          )}
+          <BulkTagsInputRow
+            inputValue={inputValue}
+            onAddTag={onAddTag}
+            onInputChange={onInputChange}
+            texts={texts}
+          />
+          <BulkTagsBadgeList onRemoveTag={onRemoveTag} tags={tags} texts={texts} />
         </div>
 
         <DialogFooter>

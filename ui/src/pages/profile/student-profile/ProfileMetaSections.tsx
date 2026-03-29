@@ -28,6 +28,114 @@ type PersonalizationSectionProps = Readonly<{
   onNotificationPreferenceChange: (patch: Partial<NotificationPreferences>) => void;
 }>;
 
+/** Render the list of hidden tags that can be restored to the student profile. */
+function HiddenTagsPanel({
+  hiddenTags,
+  t,
+  onUnhideTag,
+}: Readonly<{
+  hiddenTags: PersonalizationSettings['hidden_tags'];
+  t: ProfileTexts;
+  onUnhideTag: (tagId: number) => void;
+}>) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <EyeOff className="h-4 w-4" />
+        {t.personalization.hiddenTagsTitle}
+      </div>
+      {hiddenTags.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t.personalization.hiddenTagsEmpty}</p>
+      ) : (
+        <div className="flex flex-wrap gap-2">
+          {hiddenTags.map((tag) => (
+            <Badge key={tag.id} variant="secondary" className="gap-2">
+              {tag.name}
+              <button
+                type="button"
+                className="text-muted-foreground hover:text-foreground"
+                onClick={() => onUnhideTag(tag.id)}
+                aria-label={t.personalization.unhideTagAriaLabel}
+              >
+                ✕
+              </button>
+            </Badge>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Render the list of blocked organizers that can be unblocked. */
+function BlockedOrganizersPanel({
+  blockedOrganizers,
+  t,
+  onUnblockOrganizer,
+}: Readonly<{
+  blockedOrganizers: PersonalizationSettings['blocked_organizers'];
+  t: ProfileTexts;
+  onUnblockOrganizer: (organizerId: number) => void;
+}>) {
+  return (
+    <div className="space-y-2">
+      <div className="flex items-center gap-2 text-sm font-medium">
+        <UserX className="h-4 w-4" />
+        {t.personalization.blockedOrganizersTitle}
+      </div>
+      {blockedOrganizers.length === 0 ? (
+        <p className="text-sm text-muted-foreground">{t.personalization.blockedOrganizersEmpty}</p>
+      ) : (
+        <div className="space-y-2">
+          {blockedOrganizers.map((organizer) => (
+            <div key={organizer.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+              <div className="min-w-0">
+                <div className="truncate text-sm font-medium">
+                  {organizer.org_name || organizer.full_name || organizer.email}
+                </div>
+                <div className="truncate text-xs text-muted-foreground">{organizer.email}</div>
+              </div>
+              <Button variant="outline" size="sm" onClick={() => onUnblockOrganizer(organizer.id)}>
+                {t.personalization.unblockOrganizerAction}
+              </Button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+/** Render one notification-preference toggle row. */
+function NotificationPreferenceRow({
+  checked,
+  description,
+  disabled,
+  label,
+  onCheckedChange,
+}: Readonly<{
+  checked: boolean;
+  description: string;
+  disabled: boolean;
+  label: string;
+  onCheckedChange?: (checked: boolean) => void;
+}>) {
+  return (
+    <div className="flex items-start justify-between gap-3">
+      <div>
+        <div className="text-sm font-medium">{label}</div>
+        <div className="text-xs text-muted-foreground">{description}</div>
+      </div>
+      <Checkbox
+        checked={checked}
+        disabled={disabled}
+        onCheckedChange={onCheckedChange}
+      />
+    </div>
+  );
+}
+
+/** Render the personalization and notification settings available to students. */
 export function PersonalizationSection({
   hiddenTags,
   blockedOrganizers,
@@ -49,57 +157,12 @@ export function PersonalizationSection({
           <CardDescription>{t.personalization.profileDescription}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <EyeOff className="h-4 w-4" />
-              {t.personalization.hiddenTagsTitle}
-            </div>
-            {hiddenTags.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.personalization.hiddenTagsEmpty}</p>
-            ) : (
-              <div className="flex flex-wrap gap-2">
-                {hiddenTags.map((tag) => (
-                  <Badge key={tag.id} variant="secondary" className="gap-2">
-                    {tag.name}
-                    <button
-                      type="button"
-                      className="text-muted-foreground hover:text-foreground"
-                      onClick={() => onUnhideTag(tag.id)}
-                      aria-label={t.personalization.unhideTagAriaLabel}
-                    >
-                      ✕
-                    </button>
-                  </Badge>
-                ))}
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-sm font-medium">
-              <UserX className="h-4 w-4" />
-              {t.personalization.blockedOrganizersTitle}
-            </div>
-            {blockedOrganizers.length === 0 ? (
-              <p className="text-sm text-muted-foreground">{t.personalization.blockedOrganizersEmpty}</p>
-            ) : (
-              <div className="space-y-2">
-                {blockedOrganizers.map((organizer) => (
-                  <div key={organizer.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
-                    <div className="min-w-0">
-                      <div className="truncate text-sm font-medium">
-                        {organizer.org_name || organizer.full_name || organizer.email}
-                      </div>
-                      <div className="truncate text-xs text-muted-foreground">{organizer.email}</div>
-                    </div>
-                    <Button variant="outline" size="sm" onClick={() => onUnblockOrganizer(organizer.id)}>
-                      {t.personalization.unblockOrganizerAction}
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            )}
-          </div>
+          <HiddenTagsPanel hiddenTags={hiddenTags} t={t} onUnhideTag={onUnhideTag} />
+          <BlockedOrganizersPanel
+            blockedOrganizers={blockedOrganizers}
+            t={t}
+            onUnblockOrganizer={onUnblockOrganizer}
+          />
         </CardContent>
       </Card>
 
@@ -112,37 +175,29 @@ export function PersonalizationSection({
           <CardDescription>{t.notifications.description}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-medium">{t.notifications.weeklyDigestLabel}</div>
-              <div className="text-xs text-muted-foreground">{t.notifications.weeklyDigestDescription}</div>
-            </div>
-            <Checkbox
-              checked={Boolean(notificationPrefs?.email_digest_enabled)}
-              disabled={isSavingNotifications || !notificationPrefs}
-              onCheckedChange={
-                notificationPrefs
-                  ? (checked) => onNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
-                  : undefined
-              }
-            />
-          </div>
-
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="text-sm font-medium">{t.notifications.fillingFastLabel}</div>
-              <div className="text-xs text-muted-foreground">{t.notifications.fillingFastDescription}</div>
-            </div>
-            <Checkbox
-              checked={Boolean(notificationPrefs?.email_filling_fast_enabled)}
-              disabled={isSavingNotifications || !notificationPrefs}
-              onCheckedChange={
-                notificationPrefs
-                  ? (checked) => onNotificationPreferenceChange({ email_filling_fast_enabled: Boolean(checked) })
-                  : undefined
-              }
-            />
-          </div>
+          <NotificationPreferenceRow
+            checked={Boolean(notificationPrefs?.email_digest_enabled)}
+            description={t.notifications.weeklyDigestDescription}
+            disabled={isSavingNotifications || !notificationPrefs}
+            label={t.notifications.weeklyDigestLabel}
+            onCheckedChange={
+              notificationPrefs
+                ? (checked) => onNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
+                : undefined
+            }
+          />
+          <NotificationPreferenceRow
+            checked={Boolean(notificationPrefs?.email_filling_fast_enabled)}
+            description={t.notifications.fillingFastDescription}
+            disabled={isSavingNotifications || !notificationPrefs}
+            label={t.notifications.fillingFastLabel}
+            onCheckedChange={
+              notificationPrefs
+                ? (checked) =>
+                    onNotificationPreferenceChange({ email_filling_fast_enabled: Boolean(checked) })
+                : undefined
+            }
+          />
 
           {isSavingNotifications && (
             <div className="flex items-center gap-2 text-sm text-muted-foreground">
@@ -161,6 +216,7 @@ type PrivacyCardProps = Readonly<{
   onOpenDeleteDialog: () => void;
 }>;
 
+/** Render the destructive privacy card that opens the account-deletion dialog. */
 export function PrivacyCard({ t, onOpenDeleteDialog }: PrivacyCardProps) {
   return (
     <Card className="mt-6 border-destructive/40">
@@ -191,6 +247,7 @@ type DeleteAccountDialogProps = Readonly<{
   onDelete: () => void;
 }>;
 
+/** Render the destructive confirmation dialog for permanent account deletion. */
 export function DeleteAccountDialog({
   open,
   deletePassword,

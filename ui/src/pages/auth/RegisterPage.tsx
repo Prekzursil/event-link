@@ -97,6 +97,7 @@ function RegisterAccessCodeFields({
   texts,
   toggleShowPassword,
 }: RegisterAccessCodeFieldsProps) {
+  // skipcq: JS-0415 - the access-code field groups matching validation hints in one block.
   return (
     <>
       <div className="space-y-2">
@@ -162,6 +163,127 @@ function RegisterAccessCodeFields({
   );
 }
 
+/** Render the icon and copy at the top of the registration card. */
+function RegisterCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
+  return (
+    <CardHeader className="space-y-1 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+        <Calendar className="h-6 w-6 text-primary" />
+      </div>
+      <CardTitle className="text-2xl">{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
+    </CardHeader>
+  );
+}
+
+/** Render the registration submit button and its loading state. */
+function RegisterSubmitButton({
+  isLoading,
+  submitLabel,
+  submittingLabel,
+}: Readonly<{
+  isLoading: boolean;
+  submitLabel: string;
+  submittingLabel: string;
+}>) {
+  return (
+    <Button type="submit" className="w-full" disabled={isLoading}>
+      {isLoading ? (
+        <>
+          <LoadingSpinner size="sm" className="mr-2" />
+          {submittingLabel}
+        </>
+      ) : (
+        submitLabel
+      )}
+    </Button>
+  );
+}
+
+/** Render the footer prompt that sends existing users back to login. */
+function RegisterFooterHint({
+  label,
+  linkLabel,
+}: Readonly<{
+  label: string;
+  linkLabel: string;
+}>) {
+  return (
+    <p className="text-center text-sm text-muted-foreground">
+      {label}{' '}
+      <Link to="/login" className="text-primary hover:underline">
+        {linkLabel}
+      </Link>
+    </p>
+  );
+}
+
+/** Render the profile identity fields at the top of the registration form. */
+function RegisterIdentityFields({
+  formData,
+  handleChange,
+  isLoading,
+  texts,
+}: Readonly<{
+  formData: RegisterFormCardProps['formData'];
+  handleChange: RegisterFormCardProps['handleChange'];
+  isLoading: boolean;
+  texts: RegisterTexts;
+}>) {
+  return (
+    <>
+      <div className="space-y-2">
+        <Label htmlFor="fullName">{texts.fullNameLabel}</Label>
+        <Input
+          id="fullName"
+          name="fullName"
+          type="text"
+          placeholder={texts.fullNamePlaceholder}
+          value={formData.fullName}
+          onChange={handleChange}
+          disabled={isLoading}
+        />
+      </div>
+      <div className="space-y-2">
+        <Label htmlFor="email">{texts.emailLabel}</Label>
+        <Input
+          id="email"
+          name="email"
+          type="email"
+          placeholder={texts.emailPlaceholder}
+          value={formData.email}
+          onChange={handleChange}
+          required
+          disabled={isLoading}
+        />
+      </div>
+    </>
+  );
+}
+
+/** Render the footer actions shown at the bottom of the registration form. */
+function RegisterFormFooter({
+  isLoading,
+  texts,
+}: Readonly<{
+  isLoading: boolean;
+  texts: RegisterTexts;
+}>) {
+  return (
+    <CardFooter className="flex flex-col gap-4">
+      <RegisterSubmitButton
+        isLoading={isLoading}
+        submitLabel={texts.submit}
+        submittingLabel={texts.submitting}
+      />
+      <RegisterFooterHint
+        label={texts.haveAccount}
+        linkLabel={texts.loginLink}
+      />
+    </CardFooter>
+  );
+}
+
 /** Render the full registration card while keeping the page shell shallow. */
 function RegisterFormCard({
   formData,
@@ -175,40 +297,15 @@ function RegisterFormCard({
 }: RegisterFormCardProps) {
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <Calendar className="h-6 w-6 text-primary" />
-        </div>
-        <CardTitle className="text-2xl">{texts.title}</CardTitle>
-        <CardDescription>{texts.description}</CardDescription>
-      </CardHeader>
+      <RegisterCardHeader title={texts.title} description={texts.description} />
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="fullName">{texts.fullNameLabel}</Label>
-            <Input
-              id="fullName"
-              name="fullName"
-              type="text"
-              placeholder={texts.fullNamePlaceholder}
-              value={formData.fullName}
-              onChange={handleChange}
-              disabled={isLoading}
-            />
-          </div>
-          <div className="space-y-2">
-            <Label htmlFor="email">{texts.emailLabel}</Label>
-            <Input
-              id="email"
-              name="email"
-              type="email"
-              placeholder={texts.emailPlaceholder}
-              value={formData.email}
-              onChange={handleChange}
-              required
-              disabled={isLoading}
-            />
-          </div>
+          <RegisterIdentityFields
+            formData={formData}
+            handleChange={handleChange}
+            isLoading={isLoading}
+            texts={texts}
+          />
           <RegisterAccessCodeFields
             formData={formData}
             handleChange={handleChange}
@@ -219,24 +316,7 @@ function RegisterFormCard({
             toggleShowPassword={toggleShowPassword}
           />
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                {texts.submitting}
-              </>
-            ) : (
-              texts.submit
-            )}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            {texts.haveAccount}{' '}
-            <Link to="/login" className="text-primary hover:underline">
-              {texts.loginLink}
-            </Link>
-          </p>
-        </CardFooter>
+        <RegisterFormFooter isLoading={isLoading} texts={texts} />
       </form>
     </Card>
   );
@@ -317,6 +397,7 @@ export function RegisterPage() {
     }
   };
 
+  // skipcq: JS-0415 - the registration route intentionally keeps loading and form states together.
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <RegisterFormCard

@@ -28,6 +28,7 @@ type TagOptionCardProps = Readonly<{
   onToggle: (tagId: number) => void;
 }>;
 
+/** Render a single selectable interest tag with keyboard and pointer support. */
 function TagOptionCard({ tag, isSelected, onToggle }: TagOptionCardProps) {
   return (
     <label
@@ -77,6 +78,120 @@ type AcademicProfileCardProps = Readonly<{
   onStudyYearChange: (value: string) => void;
 }>;
 
+/** Render one datalist-backed input field for academic profile text values. */
+function AcademicTextField(props: Readonly<{
+  datalistId?: string;
+  label: string;
+  listValues?: string[];
+  note?: string;
+  onChange: (value: string) => void;
+  placeholder: string;
+  testId: string;
+  value: string;
+}>) {
+  const {
+    datalistId,
+    label,
+    listValues,
+    note,
+    onChange,
+    placeholder,
+    testId,
+    value,
+  } = props;
+
+  return (
+    <div className="space-y-2">
+      <Label htmlFor={testId}>{label}</Label>
+      <Input
+        id={testId}
+        value={value}
+        onChange={(event) => onChange(event.target.value)}
+        placeholder={placeholder}
+        list={datalistId}
+      />
+      {Boolean(listValues?.length) && (
+        <datalist id={datalistId}>
+          {listValues?.map((option) => (
+            <option key={option} value={option} />
+          ))}
+        </datalist>
+      )}
+      {note && <p className="text-xs text-muted-foreground">{note}</p>}
+    </div>
+  );
+}
+
+/** Render the academic study-level selector. */
+function StudyLevelField({
+  studyLevel,
+  t,
+  onStudyLevelChange,
+}: Readonly<{
+  studyLevel: StudyLevel | '';
+  t: ProfileTexts;
+  onStudyLevelChange: (value: string) => void;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label>{t.profile.studyLevelLabel}</Label>
+      <Select value={studyLevel} onValueChange={onStudyLevelChange}>
+        <SelectTrigger className="max-w-xs" data-testid="study-level-trigger">
+          <SelectValue placeholder={t.profile.studyLevelPlaceholder} />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="bachelor">{t.profile.studyLevelBachelor}</SelectItem>
+          <SelectItem value="master">{t.profile.studyLevelMaster}</SelectItem>
+          <SelectItem value="phd">{t.profile.studyLevelPhd}</SelectItem>
+          <SelectItem value="medicine">{t.profile.studyLevelMedicine}</SelectItem>
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** Render the academic study-year selector with level-aware placeholder copy. */
+function StudyYearField({
+  studyLevel,
+  studyYear,
+  studyYearOptions,
+  t,
+  onStudyYearChange,
+}: Readonly<{
+  studyLevel: StudyLevel | '';
+  studyYear: number | undefined;
+  studyYearOptions: number[];
+  t: ProfileTexts;
+  onStudyYearChange: (value: string) => void;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label>{t.profile.studyYearLabel}</Label>
+      <Select
+        value={typeof studyYear === 'number' ? String(studyYear) : ''}
+        onValueChange={onStudyYearChange}
+        disabled={!studyLevel}
+      >
+        <SelectTrigger className="max-w-xs" data-testid="study-year-trigger">
+          <SelectValue
+            placeholder={
+              studyLevel ? t.profile.studyYearPlaceholder : t.profile.studyYearSelectLevelFirst
+            }
+          />
+        </SelectTrigger>
+        <SelectContent>
+          {studyYearOptions.map((year) => (
+            <SelectItem key={year} value={String(year)}>
+              {year}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+    </div>
+  );
+}
+
+/** Render the academic profile card with city, university, faculty, and study data. */
 export function AcademicProfileCard({
   city,
   university,
@@ -95,6 +210,13 @@ export function AcademicProfileCard({
   onStudyLevelChange,
   onStudyYearChange,
 }: AcademicProfileCardProps) {
+  const facultyPlaceholder =
+    facultyOptions.length > 0
+      ? t.profile.facultyPlaceholderWithOptions
+      : t.profile.facultyPlaceholderNoOptions;
+  const facultyNote =
+    selectedUniversity && facultyOptions.length === 0 ? t.profile.facultyFallbackNote : undefined;
+
   return (
     <Card className="mb-6">
       <CardHeader>
@@ -106,106 +228,47 @@ export function AcademicProfileCard({
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
-          <div className="space-y-2">
-            <Label htmlFor="city">{t.profile.cityLabel}</Label>
-            <Input
-              id="city"
-              value={city}
-              onChange={(event) => onCityChange(event.target.value)}
-              placeholder={t.profile.cityPlaceholder}
-              list="city-options"
-            />
-            {cityOptions.length > 0 && (
-              <datalist id="city-options">
-                {cityOptions.map((option) => (
-                  <option key={option} value={option} />
-                ))}
-              </datalist>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="university">{t.profile.universityLabel}</Label>
-            <Input
-              id="university"
-              value={university}
-              onChange={(event) => onUniversityChange(event.target.value)}
-              placeholder={t.profile.universityPlaceholder}
-              list="university-options"
-            />
-            {universityCatalog.length > 0 && (
-              <datalist id="university-options">
-                {universityCatalog.map((item) => (
-                  <option key={item.name} value={item.name} />
-                ))}
-              </datalist>
-            )}
-            {universityCatalog.length === 0 && (
-              <p className="text-xs text-muted-foreground">{t.profile.universityFallbackNote}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="faculty">{t.profile.facultyLabel}</Label>
-            <Input
-              id="faculty"
-              value={faculty}
-              onChange={(event) => onFacultyChange(event.target.value)}
-              placeholder={
-                facultyOptions.length > 0
-                  ? t.profile.facultyPlaceholderWithOptions
-                  : t.profile.facultyPlaceholderNoOptions
-              }
-              list={facultyOptions.length > 0 ? 'faculty-options' : undefined}
-            />
-            {facultyOptions.length > 0 && (
-              <datalist id="faculty-options">
-                {facultyOptions.map((option) => (
-                  <option key={option} value={option} />
-                ))}
-              </datalist>
-            )}
-            {selectedUniversity && facultyOptions.length === 0 && (
-              <p className="text-xs text-muted-foreground">{t.profile.facultyFallbackNote}</p>
-            )}
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t.profile.studyLevelLabel}</Label>
-            <Select value={studyLevel} onValueChange={onStudyLevelChange}>
-              <SelectTrigger className="max-w-xs" data-testid="study-level-trigger">
-                <SelectValue placeholder={t.profile.studyLevelPlaceholder} />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="bachelor">{t.profile.studyLevelBachelor}</SelectItem>
-                <SelectItem value="master">{t.profile.studyLevelMaster}</SelectItem>
-                <SelectItem value="phd">{t.profile.studyLevelPhd}</SelectItem>
-                <SelectItem value="medicine">{t.profile.studyLevelMedicine}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="space-y-2">
-            <Label>{t.profile.studyYearLabel}</Label>
-            <Select
-              value={typeof studyYear === 'number' ? String(studyYear) : ''}
-              onValueChange={onStudyYearChange}
-              disabled={!studyLevel}
-            >
-              <SelectTrigger className="max-w-xs" data-testid="study-year-trigger">
-                <SelectValue
-                  placeholder={studyLevel ? t.profile.studyYearPlaceholder : t.profile.studyYearSelectLevelFirst}
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {studyYearOptions.map((year) => (
-                  <SelectItem key={year} value={String(year)}>
-                    {year}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <AcademicTextField
+            datalistId={cityOptions.length > 0 ? 'city-options' : undefined}
+            label={t.profile.cityLabel}
+            listValues={cityOptions}
+            onChange={onCityChange}
+            placeholder={t.profile.cityPlaceholder}
+            testId="city"
+            value={city}
+          />
+          <AcademicTextField
+            datalistId={universityCatalog.length > 0 ? 'university-options' : undefined}
+            label={t.profile.universityLabel}
+            listValues={universityCatalog.map((item) => item.name)}
+            note={universityCatalog.length === 0 ? t.profile.universityFallbackNote : undefined}
+            onChange={onUniversityChange}
+            placeholder={t.profile.universityPlaceholder}
+            testId="university"
+            value={university}
+          />
+          <AcademicTextField
+            datalistId={facultyOptions.length > 0 ? 'faculty-options' : undefined}
+            label={t.profile.facultyLabel}
+            listValues={facultyOptions}
+            note={facultyNote}
+            onChange={onFacultyChange}
+            placeholder={facultyPlaceholder}
+            testId="faculty"
+            value={faculty}
+          />
+          <StudyLevelField
+            studyLevel={studyLevel}
+            t={t}
+            onStudyLevelChange={onStudyLevelChange}
+          />
+          <StudyYearField
+            studyLevel={studyLevel}
+            studyYear={studyYear}
+            studyYearOptions={studyYearOptions}
+            t={t}
+            onStudyYearChange={onStudyYearChange}
+          />
         </div>
       </CardContent>
     </Card>
@@ -222,6 +285,95 @@ type AppearanceCardProps = Readonly<{
   onLanguageChange: (preference: LanguagePreference) => void;
 }>;
 
+/** Render one saving indicator row for appearance preference updates. */
+function PreferenceSavingState({
+  isSaving,
+  label,
+}: Readonly<{
+  isSaving: boolean;
+  label: string;
+}>) {
+  if (!isSaving) {
+    return null;
+  }
+
+  return (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <LoadingSpinner size="sm" />
+      {label}
+    </div>
+  );
+}
+
+/** Render the theme-preference selector and loading state. */
+function ThemePreferenceField({
+  isSavingTheme,
+  themePreference,
+  t,
+  onThemeChange,
+}: Readonly<{
+  isSavingTheme: boolean;
+  themePreference: ThemePreference;
+  t: ProfileTexts;
+  onThemeChange: (preference: ThemePreference) => void;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label>{t.theme.label}</Label>
+      <Select
+        value={themePreference}
+        onValueChange={(value) => onThemeChange(value as ThemePreference)}
+        disabled={isSavingTheme}
+      >
+        <SelectTrigger className="max-w-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="system">{t.theme.system}</SelectItem>
+          <SelectItem value="light">{t.theme.light}</SelectItem>
+          <SelectItem value="dark">{t.theme.dark}</SelectItem>
+        </SelectContent>
+      </Select>
+      <PreferenceSavingState isSaving={isSavingTheme} label={t.profile.saving} />
+    </div>
+  );
+}
+
+/** Render the language-preference selector and loading state. */
+function LanguagePreferenceField({
+  isSavingLanguage,
+  languagePreference,
+  t,
+  onLanguageChange,
+}: Readonly<{
+  isSavingLanguage: boolean;
+  languagePreference: LanguagePreference;
+  t: ProfileTexts;
+  onLanguageChange: (preference: LanguagePreference) => void;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label>{t.language.label}</Label>
+      <Select
+        value={languagePreference}
+        onValueChange={(value) => onLanguageChange(value as LanguagePreference)}
+        disabled={isSavingLanguage}
+      >
+        <SelectTrigger className="max-w-xs">
+          <SelectValue />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="system">{t.language.system}</SelectItem>
+          <SelectItem value="ro">{t.language.ro}</SelectItem>
+          <SelectItem value="en">{t.language.en}</SelectItem>
+        </SelectContent>
+      </Select>
+      <PreferenceSavingState isSaving={isSavingLanguage} label={t.profile.saving} />
+    </div>
+  );
+}
+
+/** Render the appearance-preferences card for theme and language settings. */
 export function AppearanceCard({
   themePreference,
   languagePreference,
@@ -241,53 +393,18 @@ export function AppearanceCard({
         <CardDescription>{t.profile.preferencesDescription}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
-        <div className="space-y-2">
-          <Label>{t.theme.label}</Label>
-          <Select
-            value={themePreference}
-            onValueChange={(value) => onThemeChange(value as ThemePreference)}
-            disabled={isSavingTheme}
-          >
-            <SelectTrigger className="max-w-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="system">{t.theme.system}</SelectItem>
-              <SelectItem value="light">{t.theme.light}</SelectItem>
-              <SelectItem value="dark">{t.theme.dark}</SelectItem>
-            </SelectContent>
-          </Select>
-          {isSavingTheme && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <LoadingSpinner size="sm" />
-              {t.profile.saving}
-            </div>
-          )}
-        </div>
-
-        <div className="space-y-2">
-          <Label>{t.language.label}</Label>
-          <Select
-            value={languagePreference}
-            onValueChange={(value) => onLanguageChange(value as LanguagePreference)}
-            disabled={isSavingLanguage}
-          >
-            <SelectTrigger className="max-w-xs">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="system">{t.language.system}</SelectItem>
-              <SelectItem value="ro">{t.language.ro}</SelectItem>
-              <SelectItem value="en">{t.language.en}</SelectItem>
-            </SelectContent>
-          </Select>
-          {isSavingLanguage && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <LoadingSpinner size="sm" />
-              {t.profile.saving}
-            </div>
-          )}
-        </div>
+        <ThemePreferenceField
+          isSavingTheme={isSavingTheme}
+          themePreference={themePreference}
+          t={t}
+          onThemeChange={onThemeChange}
+        />
+        <LanguagePreferenceField
+          isSavingLanguage={isSavingLanguage}
+          languagePreference={languagePreference}
+          t={t}
+          onLanguageChange={onLanguageChange}
+        />
       </CardContent>
     </Card>
   );
@@ -302,6 +419,65 @@ type InterestTagsCardProps = Readonly<{
   onToggleTag: (tagId: number) => void;
 }>;
 
+/** Render one labeled section of tags inside the interests card. */
+function TagGroupSection({
+  label,
+  selectedTagIds,
+  tags,
+  onToggleTag,
+}: Readonly<{
+  label: string;
+  selectedTagIds: number[];
+  tags: Tag[];
+  onToggleTag: (tagId: number) => void;
+}>) {
+  return (
+    <div className="space-y-3">
+      <div className="text-sm font-medium">{label}</div>
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
+        {tags.map((tag) => (
+          <TagOptionCard
+            key={tag.id}
+            tag={tag}
+            isSelected={selectedTagIds.includes(tag.id)}
+            onToggle={onToggleTag}
+          />
+        ))}
+      </div>
+    </div>
+  );
+}
+
+/** Render the selected-interest badge list shown below the available tags. */
+function SelectedInterestBadges({
+  allTags,
+  selectedTagIds,
+  t,
+}: Readonly<{
+  allTags: Tag[];
+  selectedTagIds: number[];
+  t: ProfileTexts;
+}>) {
+  return (
+    <div className="mt-4 border-t pt-4">
+      <p className="mb-2 text-sm text-muted-foreground">
+        {t.profile.selectedInterests} ({selectedTagIds.length}):
+      </p>
+      <div className="flex flex-wrap gap-2">
+        {allTags
+          .filter((tag) => selectedTagIds.includes(tag.id))
+          .map((tag) => (
+            <Badge key={tag.id} variant="secondary">
+              <TagIcon className="mr-1 h-3 w-3" />
+              {tag.name}
+            </Badge>
+          ))}
+      </div>
+    </div>
+  );
+}
+
+/** Render the interest-tag selection card for the student profile form. */
 export function InterestTagsCard({
   allTags,
   musicTags,
@@ -325,54 +501,26 @@ export function InterestTagsCard({
         ) : (
           <div className="space-y-6">
             {musicTags.length > 0 && (
-              <div className="space-y-3">
-                <div className="text-sm font-medium">{t.profile.musicSection}</div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {musicTags.map((tag) => (
-                    <TagOptionCard
-                      key={tag.id}
-                      tag={tag}
-                      isSelected={selectedTagIds.includes(tag.id)}
-                      onToggle={onToggleTag}
-                    />
-                  ))}
-                </div>
-              </div>
+              <TagGroupSection
+                label={t.profile.musicSection}
+                selectedTagIds={selectedTagIds}
+                tags={musicTags}
+                onToggleTag={onToggleTag}
+              />
             )}
             {otherTags.length > 0 && (
-              <div className="space-y-3">
-                <div className="text-sm font-medium">{t.profile.otherInterestsSection}</div>
-                <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-                  {otherTags.map((tag) => (
-                    <TagOptionCard
-                      key={tag.id}
-                      tag={tag}
-                      isSelected={selectedTagIds.includes(tag.id)}
-                      onToggle={onToggleTag}
-                    />
-                  ))}
-                </div>
-              </div>
+              <TagGroupSection
+                label={t.profile.otherInterestsSection}
+                selectedTagIds={selectedTagIds}
+                tags={otherTags}
+                onToggleTag={onToggleTag}
+              />
             )}
           </div>
         )}
 
         {selectedTagIds.length > 0 && (
-          <div className="mt-4 border-t pt-4">
-            <p className="mb-2 text-sm text-muted-foreground">
-              {t.profile.selectedInterests} ({selectedTagIds.length}):
-            </p>
-            <div className="flex flex-wrap gap-2">
-              {allTags
-                .filter((tag) => selectedTagIds.includes(tag.id))
-                .map((tag) => (
-                  <Badge key={tag.id} variant="secondary">
-                    <TagIcon className="mr-1 h-3 w-3" />
-                    {tag.name}
-                  </Badge>
-                ))}
-            </div>
-          </div>
+          <SelectedInterestBadges allTags={allTags} selectedTagIds={selectedTagIds} t={t} />
         )}
       </CardContent>
     </Card>
@@ -388,6 +536,7 @@ type ProfileActionsProps = Readonly<{
 }>;
 
 export function ProfileActions({ isExporting, isSaving, t, onExport, onSave }: ProfileActionsProps) {
+  // skipcq: JS-0415 - the action row intentionally keeps all save and export button states in one block.
   return (
     <div className="flex flex-wrap justify-end gap-3">
       <Button onClick={onExport} disabled={isExporting} variant="outline" size="lg">

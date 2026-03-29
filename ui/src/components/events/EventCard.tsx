@@ -18,6 +18,7 @@ export type EventCardProps = Readonly<{
   onEventClick?: (eventId: number) => void;
 }>;
 
+/** Render one event summary card with optional favorite and organizer controls. */
 export function EventCard({
   event,
   onFavoriteToggle,
@@ -31,148 +32,155 @@ export function EventCard({
   const availableSeats = event.max_seats ? event.max_seats - event.seats_taken : null;
   const isFull = availableSeats !== null && availableSeats <= 0;
 
+  /** Toggle the event favorite state without triggering the card link. */
   const handleFavoriteClick = (e: React.MouseEvent) => {
     e.preventDefault();
     e.stopPropagation();
     onFavoriteToggle?.(event.id, !isFavorite);
   };
 
-  return (
-    <Card className={cn(
-      "group overflow-hidden transition-all hover:shadow-lg",
-      isPast && "opacity-75"
-    )}>
-      <Link to={`/events/${event.id}`} onClick={() => onEventClick?.(event.id)}>
-        {/* Cover Image */}
-        <div className="relative aspect-video overflow-hidden bg-muted">
-          {event.cover_url ? (
-            <img
-              src={event.cover_url}
-              alt={event.title}
-              className={cn(
-                "h-full w-full object-cover transition-transform group-hover:scale-105",
-                isPast && "grayscale-[30%]"
-              )}
-              onError={(e) => {
-                (e.target as HTMLImageElement).src =
-                  'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop';
-              }}
-            />
-          ) : (
-            <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
-              <Calendar className="h-12 w-12 text-primary/40" />
-            </div>
-          )}
+  const statusBadges = (
+    <div className="absolute left-2 top-2 flex flex-wrap gap-1">
+      {isPast && <Badge variant="secondary">{t.eventCard.ended}</Badge>}
+      {event.status === 'draft' && <Badge variant="secondary">{t.eventCard.draft}</Badge>}
+      {isFull && !isPast && <Badge variant="destructive">{t.eventCard.full}</Badge>}
+    </div>
+  );
 
-          {/* Status Badges */}
-          <div className="absolute left-2 top-2 flex flex-wrap gap-1">
-            {isPast && (
-              <Badge variant="secondary">{t.eventCard.ended}</Badge>
-            )}
-            {event.status === 'draft' && (
-              <Badge variant="secondary">{t.eventCard.draft}</Badge>
-            )}
-            {isFull && !isPast && (
-              <Badge variant="destructive">{t.eventCard.full}</Badge>
-            )}
-          </div>
+  const favoriteButton = onFavoriteToggle && (
+    <Button
+      variant="ghost"
+      size="icon"
+      className={cn(
+        'absolute right-2 top-2 bg-background/80 backdrop-blur-sm hover:bg-background',
+        isFavorite && 'text-red-500'
+      )}
+      onClick={handleFavoriteClick}
+    >
+      <Heart className={cn('h-5 w-5', isFavorite && 'fill-current')} />
+    </Button>
+  );
 
-          {/* Favorite Button */}
-          {onFavoriteToggle && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className={cn(
-                'absolute right-2 top-2 bg-background/80 backdrop-blur-sm hover:bg-background',
-                isFavorite && 'text-red-500'
-              )}
-              onClick={handleFavoriteClick}
-            >
-              <Heart className={cn('h-5 w-5', isFavorite && 'fill-current')} />
-            </Button>
-          )}
+  const editButton = showEditButton && (
+    <Button
+      variant="ghost"
+      size="icon"
+      className="absolute right-2 bottom-2 bg-background/80 backdrop-blur-sm hover:bg-background"
+      onClick={(e) => {
+        e.preventDefault();
+        e.stopPropagation();
+        globalThis.location.href = `/organizer/events/${event.id}/edit`;
+      }}
+    >
+      <Pencil className="h-4 w-4" />
+    </Button>
+  );
 
-          {/* Edit Button */}
-          {showEditButton && (
-            <Button
-              variant="ghost"
-              size="icon"
-              className="absolute right-2 bottom-2 bg-background/80 backdrop-blur-sm hover:bg-background"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                globalThis.location.href = `/organizer/events/${event.id}/edit`;
-              }}
-            >
-              <Pencil className="h-4 w-4" />
-            </Button>
+  const mediaSection = (
+    <div className="relative aspect-video overflow-hidden bg-muted">
+      {event.cover_url ? (
+        <img
+          src={event.cover_url}
+          alt={event.title}
+          className={cn(
+            'h-full w-full object-cover transition-transform group-hover:scale-105',
+            isPast && 'grayscale-[30%]'
           )}
+          onError={(e) => {
+            (e.target as HTMLImageElement).src =
+              'https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=600&h=400&fit=crop';
+          }}
+        />
+      ) : (
+        <div className="flex h-full items-center justify-center bg-gradient-to-br from-primary/20 to-primary/5">
+          <Calendar className="h-12 w-12 text-primary/40" />
         </div>
+      )}
+      {statusBadges}
+      {favoriteButton}
+      {editButton}
+    </div>
+  );
 
-        <CardHeader className="pb-2">
-          {/* Category */}
-          {event.category && (
-            <Badge variant="outline" className="w-fit">
-              {getEventCategoryLabel(event.category, language)}
-            </Badge>
-          )}
-          <h3 className="line-clamp-2 text-lg font-semibold leading-tight">
-            {event.title}
-          </h3>
-        </CardHeader>
+  const locationDetails = (event.city || event.location) && (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <MapPin className="h-4 w-4" />
+      <span className="line-clamp-1">
+        {[event.city, event.location].filter(Boolean).join(' • ')}
+      </span>
+    </div>
+  );
 
-        <CardContent className="space-y-2 pb-2">
-          {/* Date & Time */}
-          <div className="flex items-center gap-2 text-sm text-muted-foreground">
-            <Calendar className="h-4 w-4" />
-            <span>{formatDate(event.start_time, language)}</span>
-            <Clock className="ml-2 h-4 w-4" />
-            <span>{formatTime(event.start_time, language)}</span>
-          </div>
+  const seatDetails = event.max_seats && (
+    <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <Users className="h-4 w-4" />
+      <span>
+        {event.seats_taken} / {event.max_seats} {t.eventCard.seatsTakenSuffix}
+      </span>
+    </div>
+  );
 
-          {/* City / Location */}
-          {(event.city || event.location) && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <MapPin className="h-4 w-4" />
-              <span className="line-clamp-1">
-                {[event.city, event.location].filter(Boolean).join(' • ')}
-              </span>
-            </div>
-          )}
+  const recommendationCallout = showRecommendation && event.recommendation_reason && (
+    <div className="flex items-center gap-2 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary">
+      <Sparkles className="h-3 w-3" />
+      <span>{event.recommendation_reason}</span>
+    </div>
+  );
 
-          {/* Seats */}
-          {event.max_seats && (
-            <div className="flex items-center gap-2 text-sm text-muted-foreground">
-              <Users className="h-4 w-4" />
-              <span>
-                {event.seats_taken} / {event.max_seats} {t.eventCard.seatsTakenSuffix}
-              </span>
-            </div>
-          )}
+  const tagBadges = (
+    <>
+      {event.tags.slice(0, 3).map((tag) => (
+        <Badge key={tag.id} variant="secondary" className="text-xs">
+          {tag.name}
+        </Badge>
+      ))}
+      {event.tags.length > 3 && (
+        <Badge variant="secondary" className="text-xs">
+          +{event.tags.length - 3}
+        </Badge>
+      )}
+    </>
+  );
 
-          {/* Recommendation Reason */}
-          {showRecommendation && event.recommendation_reason && (
-            <div className="flex items-center gap-2 rounded-md bg-primary/10 px-2 py-1 text-xs text-primary">
-              <Sparkles className="h-3 w-3" />
-              <span>{event.recommendation_reason}</span>
-            </div>
-          )}
-        </CardContent>
+  const cardLink = (
+    <Link to={`/events/${event.id}`} onClick={() => onEventClick?.(event.id)}>
+      {mediaSection}
 
-        <CardFooter className="flex flex-wrap gap-1 pt-0">
-          {/* Tags */}
-          {event.tags.slice(0, 3).map((tag) => (
-            <Badge key={tag.id} variant="secondary" className="text-xs">
-              {tag.name}
-            </Badge>
-          ))}
-          {event.tags.length > 3 && (
-            <Badge variant="secondary" className="text-xs">
-              +{event.tags.length - 3}
-            </Badge>
-          )}
-        </CardFooter>
-      </Link>
+      <CardHeader className="pb-2">
+        {event.category && (
+          <Badge variant="outline" className="w-fit">
+            {getEventCategoryLabel(event.category, language)}
+          </Badge>
+        )}
+        <h3 className="line-clamp-2 text-lg font-semibold leading-tight">
+          {event.title}
+        </h3>
+      </CardHeader>
+
+      <CardContent className="space-y-2 pb-2">
+        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+          <Calendar className="h-4 w-4" />
+          <span>{formatDate(event.start_time, language)}</span>
+          <Clock className="ml-2 h-4 w-4" />
+          <span>{formatTime(event.start_time, language)}</span>
+        </div>
+        {locationDetails}
+        {seatDetails}
+        {recommendationCallout}
+      </CardContent>
+
+      <CardFooter className="flex flex-wrap gap-1 pt-0">{tagBadges}</CardFooter>
+    </Link>
+  );
+
+  return (
+    <Card
+      className={cn(
+        'group overflow-hidden transition-all hover:shadow-lg',
+        isPast && 'opacity-75'
+      )}
+    >
+      {cardLink}
     </Card>
   );
 }

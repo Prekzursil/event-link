@@ -16,8 +16,9 @@ interface AuthContextType {
   refreshUser: () => Promise<void>;
 }
 
-const AuthContext = createContext<AuthContextType | undefined>(undefined);
+const AuthContext = createContext<AuthContextType | null>(null);
 
+/** Provide authentication state and actions to the React tree. */
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -43,6 +44,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, [setLanguagePreference, setThemePreference]);
 
   useEffect(() => {
+    /** Hydrate the initial auth session and mark the provider ready. */
     const initAuth = async () => {
       await refreshUser();
       setIsLoading(false);
@@ -73,7 +75,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const value = useMemo(
     () => ({
       user,
-      isAuthenticated: !!user,
+      isAuthenticated: Boolean(user),
       isOrganizer: user?.role === 'organizator' || user?.role === 'admin',
       isAdmin: user?.role === 'admin',
       isLoading,
@@ -92,9 +94,10 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   );
 }
 
+/** Read the current authentication context. */
 export function useAuth() {
   const context = useContext(AuthContext);
-  if (context === undefined) {
+  if (context === null) {
     throw new Error('useAuth must be used within an AuthProvider');
   }
   return context;

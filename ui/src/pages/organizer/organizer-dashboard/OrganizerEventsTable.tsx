@@ -41,6 +41,23 @@ type Props = Readonly<{
   texts: UiStrings['organizerDashboard'];
 }>;
 
+type OrganizerEventRowProps = Readonly<{
+  event: Event;
+  language: ResolvedLanguage;
+  now: Date;
+  onDelete: (eventId: number) => void;
+  onToggleSelected: (eventId: number, checked: boolean) => void;
+  selectedEventIds: Set<number>;
+  texts: UiStrings['organizerDashboard'];
+}>;
+type OrganizerEventsSelectionTableProps = Readonly<{
+  onSelectAll: (checked: boolean) => void;
+  selectAllState: boolean | 'indeterminate';
+  tableRows: React.ReactNode;
+  texts: UiStrings['organizerDashboard'];
+}>;
+
+/** Render the localized status badge shown for one organizer-owned event row. */
 function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['status'], isPast: boolean) {
   if (status === 'draft') {
     return <Badge variant="secondary">{texts.statusDraft}</Badge>;
@@ -51,22 +68,293 @@ function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['stat
   return <Badge variant="default">{texts.statusActive}</Badge>;
 }
 
-export function OrganizerEventsTable({
-  events,
+/** Render the bulk action toolbar that appears after organizer event selection. */
+function OrganizerBulkActionsBar({
   isBulkUpdating,
-  language,
-  now,
   onBulkStatusUpdate,
   onClearSelection,
-  onDelete,
   onOpenBulkTags,
-  onSelectAll,
-  onToggleSelected,
-  selectAllState,
   selectedCount,
+  texts,
+}: Readonly<{
+  isBulkUpdating: boolean;
+  onBulkStatusUpdate: (status: 'draft' | 'published') => void;
+  onClearSelection: () => void;
+  onOpenBulkTags: () => void;
+  selectedCount: number;
+  texts: UiStrings['organizerDashboard'];
+}>) {
+  return (
+    <div className="flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
+      <div className="text-sm text-muted-foreground">
+        {texts.bulk.selected}: <span className="font-medium text-foreground">{selectedCount}</span>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={() => onBulkStatusUpdate('published')}
+        >
+          {texts.bulk.publish}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={() => onBulkStatusUpdate('draft')}
+        >
+          {texts.bulk.unpublish}
+        </Button>
+        <Button
+          variant="outline"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={onOpenBulkTags}
+        >
+          {texts.bulk.tags}
+        </Button>
+        <Button
+          variant="ghost"
+          size="sm"
+          disabled={isBulkUpdating}
+          onClick={onClearSelection}
+        >
+          {texts.bulk.clear}
+        </Button>
+      </div>
+    </div>
+  );
+}
+
+/** Render the empty organizer state shown before the first event is created. */
+function OrganizerEventsEmptyState({ texts }: Readonly<{ texts: UiStrings['organizerDashboard'] }>) {
+  return (
+    <div className="flex flex-col items-center justify-center py-16 text-center">
+      <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
+      <h3 className="text-lg font-semibold">{texts.emptyTitle}</h3>
+      <p className="mt-2 text-muted-foreground">{texts.emptyDescription}</p>
+      <Button asChild className="mt-4">
+        <Link to="/organizer/events/new">
+          <Plus className="mr-2 h-4 w-4" />
+          {texts.emptyCreateButton}
+        </Link>
+      </Button>
+    </div>
+  );
+}
+
+/** Render the per-row action menu for one organizer-owned event. */
+function OrganizerEventActions({
+  eventId,
+  onDelete,
+  texts,
+}: Readonly<{
+  eventId: number;
+  onDelete: (eventId: number) => void;
+  texts: UiStrings['organizerDashboard'];
+}>) {
+  return (
+    <DropdownMenu>
+      <DropdownMenuTrigger asChild>
+        <Button variant="ghost" size="icon">
+          <MoreHorizontal className="h-4 w-4" />
+        </Button>
+      </DropdownMenuTrigger>
+      <DropdownMenuContent align="end">
+        <DropdownMenuItem asChild>
+          <Link to={`/events/${eventId}`}>
+            <Eye className="mr-2 h-4 w-4" />
+            {texts.actionView}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to={`/organizer/events/${eventId}/edit`}>
+            <Edit className="mr-2 h-4 w-4" />
+            {texts.actionEdit}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem asChild>
+          <Link to={`/organizer/events/${eventId}/participants`}>
+            <Users className="mr-2 h-4 w-4" />
+            {texts.actionParticipants}
+          </Link>
+        </DropdownMenuItem>
+        <DropdownMenuItem className="text-destructive" onClick={() => onDelete(eventId)}>
+          <Trash2 className="mr-2 h-4 w-4" />
+          {texts.actionDelete}
+        </DropdownMenuItem>
+      </DropdownMenuContent>
+    </DropdownMenu>
+  );
+}
+
+/** Render one event row with selection, metrics, and actions for organizers. */
+function OrganizerEventRow({
+  event,
+  language,
+  now,
+  onDelete,
+  onToggleSelected,
   selectedEventIds,
   texts,
-}: Props) {
+}: OrganizerEventRowProps) {
+  const isPast = new Date(event.start_time) < now;
+  const categoryLabel = getEventCategoryLabel(event.category, language);
+
+  return (
+    <TableRow key={event.id}>
+      <TableCell>
+        <Checkbox
+          checked={selectedEventIds.has(event.id)}
+          onCheckedChange={(checked) => onToggleSelected(event.id, checked === true)}
+          aria-label={texts.bulk.selectOneAria}
+        />
+      </TableCell>
+      <TableCell>
+        <Link to={`/events/${event.id}`} className="font-medium hover:underline">
+          {event.title}
+        </Link>
+        {categoryLabel && (
+          <span className="ml-2 text-sm text-muted-foreground">({categoryLabel})</span>
+        )}
+      </TableCell>
+      <TableCell>{formatDate(event.start_time, language)}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-1">
+          <Users className="h-4 w-4 text-muted-foreground" />
+          {event.seats_taken}
+          {event.max_seats && ` / ${event.max_seats}`}
+        </div>
+      </TableCell>
+      <TableCell>{statusBadge(texts, event.status, isPast)}</TableCell>
+      <TableCell>
+        <OrganizerEventActions eventId={event.id} onDelete={onDelete} texts={texts} />
+      </TableCell>
+    </TableRow>
+  );
+}
+
+/** Render the selection header row for the organizer events table. */
+function OrganizerEventsTableHeaderRow({
+  onSelectAll,
+  selectAllState,
+  texts,
+}: Pick<OrganizerEventsSelectionTableProps, 'onSelectAll' | 'selectAllState' | 'texts'>) {
+  return (
+    <TableRow>
+      <TableHead className="w-[40px]">
+        <Checkbox
+          checked={selectAllState}
+          onCheckedChange={(checked) => onSelectAll(checked === true)}
+          aria-label={texts.bulk.selectAllAria}
+        />
+      </TableHead>
+      <TableHead>{texts.tableHeaderTitle}</TableHead>
+      <TableHead>{texts.tableHeaderDate}</TableHead>
+      <TableHead>{texts.tableHeaderParticipants}</TableHead>
+      <TableHead>{texts.tableHeaderStatus}</TableHead>
+      <TableHead className="w-[70px]" />
+    </TableRow>
+  );
+}
+
+/** Render the organizer events table once at least one event exists. */
+function OrganizerEventsSelectionTable({
+  onSelectAll,
+  selectAllState,
+  tableRows,
+  texts,
+}: OrganizerEventsSelectionTableProps) {
+  return (
+    <Table>
+      <TableHeader>
+        <OrganizerEventsTableHeaderRow
+          onSelectAll={onSelectAll}
+          selectAllState={selectAllState}
+          texts={texts}
+        />
+      </TableHeader>
+      <TableBody>{tableRows}</TableBody>
+    </Table>
+  );
+}
+
+/** Render the organizer events table once at least one event exists. */
+function OrganizerEventsTableContent(props: Props) {
+  const {
+    events,
+    isBulkUpdating,
+    language,
+    now,
+    onBulkStatusUpdate,
+    onClearSelection,
+    onDelete,
+    onOpenBulkTags,
+    onSelectAll,
+    onToggleSelected,
+    selectAllState,
+    selectedCount,
+    selectedEventIds,
+    texts,
+  } = props;
+
+  const bulkActions =
+    selectedCount > 0 ? (
+      <OrganizerBulkActionsBar
+        isBulkUpdating={isBulkUpdating}
+        onBulkStatusUpdate={onBulkStatusUpdate}
+        onClearSelection={onClearSelection}
+        onOpenBulkTags={onOpenBulkTags}
+        selectedCount={selectedCount}
+        texts={texts}
+      />
+    ) : null;
+  const tableRows = events.map((event) => (
+    <OrganizerEventRow
+      key={event.id}
+      event={event}
+      language={language}
+      now={now}
+      onDelete={onDelete}
+      onToggleSelected={onToggleSelected}
+      selectedEventIds={selectedEventIds}
+      texts={texts}
+    />
+  ));
+
+  return (
+    <div className="space-y-4">
+      {bulkActions}
+      <OrganizerEventsSelectionTable
+        onSelectAll={onSelectAll}
+        selectAllState={selectAllState}
+        tableRows={tableRows}
+        texts={texts}
+      />
+    </div>
+  );
+}
+
+/** Render the organizer-owned event list with selection and per-row actions. */
+export function OrganizerEventsTable(props: Props) {
+  const {
+    events,
+    isBulkUpdating,
+    language,
+    now,
+    onBulkStatusUpdate,
+    onClearSelection,
+    onDelete,
+    onOpenBulkTags,
+    onSelectAll,
+    onToggleSelected,
+    selectAllState,
+    selectedCount,
+    selectedEventIds,
+    texts,
+  } = props;
+
   return (
     <Card>
       <CardHeader>
@@ -74,153 +362,24 @@ export function OrganizerEventsTable({
       </CardHeader>
       <CardContent>
         {events.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-16 text-center">
-            <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
-            <h3 className="text-lg font-semibold">{texts.emptyTitle}</h3>
-            <p className="mt-2 text-muted-foreground">{texts.emptyDescription}</p>
-            <Button asChild className="mt-4">
-              <Link to="/organizer/events/new">
-                <Plus className="mr-2 h-4 w-4" />
-                {texts.emptyCreateButton}
-              </Link>
-            </Button>
-          </div>
+          <OrganizerEventsEmptyState texts={texts} />
         ) : (
-          <>
-            {selectedCount > 0 && (
-              <div className="mb-4 flex flex-col gap-3 rounded-md border p-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="text-sm text-muted-foreground">
-                  {texts.bulk.selected}:{' '}
-                  <span className="font-medium text-foreground">{selectedCount}</span>
-                </div>
-                <div className="flex flex-wrap gap-2">
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={() => onBulkStatusUpdate('published')}
-                  >
-                    {texts.bulk.publish}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={() => onBulkStatusUpdate('draft')}
-                  >
-                    {texts.bulk.unpublish}
-                  </Button>
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={onOpenBulkTags}
-                  >
-                    {texts.bulk.tags}
-                  </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    disabled={isBulkUpdating}
-                    onClick={onClearSelection}
-                  >
-                    {texts.bulk.clear}
-                  </Button>
-                </div>
-              </div>
-            )}
-
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-[40px]">
-                    <Checkbox
-                      checked={selectAllState}
-                      onCheckedChange={(checked) => onSelectAll(checked === true)}
-                      aria-label={texts.bulk.selectAllAria}
-                    />
-                  </TableHead>
-                  <TableHead>{texts.tableHeaderTitle}</TableHead>
-                  <TableHead>{texts.tableHeaderDate}</TableHead>
-                  <TableHead>{texts.tableHeaderParticipants}</TableHead>
-                  <TableHead>{texts.tableHeaderStatus}</TableHead>
-                  <TableHead className="w-[70px]"></TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {events.map((event) => {
-                  const isPast = new Date(event.start_time) < now;
-                  const categoryLabel = getEventCategoryLabel(event.category, language);
-                  return (
-                    <TableRow key={event.id}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedEventIds.has(event.id)}
-                          onCheckedChange={(checked) => onToggleSelected(event.id, checked === true)}
-                          aria-label={texts.bulk.selectOneAria}
-                        />
-                      </TableCell>
-                      <TableCell>
-                        <Link to={`/events/${event.id}`} className="font-medium hover:underline">
-                          {event.title}
-                        </Link>
-                        {categoryLabel && (
-                          <span className="ml-2 text-sm text-muted-foreground">
-                            ({categoryLabel})
-                          </span>
-                        )}
-                      </TableCell>
-                      <TableCell>{formatDate(event.start_time, language)}</TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-1">
-                          <Users className="h-4 w-4 text-muted-foreground" />
-                          {event.seats_taken}
-                          {event.max_seats && ` / ${event.max_seats}`}
-                        </div>
-                      </TableCell>
-                      <TableCell>{statusBadge(texts, event.status, isPast)}</TableCell>
-                      <TableCell>
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="icon">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuItem asChild>
-                              <Link to={`/events/${event.id}`}>
-                                <Eye className="mr-2 h-4 w-4" />
-                                {texts.actionView}
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link to={`/organizer/events/${event.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" />
-                                {texts.actionEdit}
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link to={`/organizer/events/${event.id}/participants`}>
-                                <Users className="mr-2 h-4 w-4" />
-                                {texts.actionParticipants}
-                              </Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem
-                              className="text-destructive"
-                              onClick={() => onDelete(event.id)}
-                            >
-                              <Trash2 className="mr-2 h-4 w-4" />
-                              {texts.actionDelete}
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </>
+          <OrganizerEventsTableContent
+            events={events}
+            isBulkUpdating={isBulkUpdating}
+            language={language}
+            now={now}
+            onBulkStatusUpdate={onBulkStatusUpdate}
+            onClearSelection={onClearSelection}
+            onDelete={onDelete}
+            onOpenBulkTags={onOpenBulkTags}
+            onSelectAll={onSelectAll}
+            onToggleSelected={onToggleSelected}
+            selectAllState={selectAllState}
+            selectedCount={selectedCount}
+            selectedEventIds={selectedEventIds}
+            texts={texts}
+          />
         )}
       </CardContent>
     </Card>

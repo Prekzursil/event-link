@@ -49,5 +49,6 @@ if [ "${RUN_INTEGRATION_TESTS:-0}" = "1" ]; then
   PYTHONPATH=backend "$VENV_PYTHON" -m coverage xml -o backend/coverage.xml
 fi
 
+rm -rf ui/node_modules
 run_node20 "npm --prefix ui ci"
 run_node20 "npm --prefix ui run test"

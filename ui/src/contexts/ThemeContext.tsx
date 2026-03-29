@@ -14,8 +14,9 @@ interface ThemeContextType {
   setPreference: (preference: ThemePreference) => void;
 }
 
-const ThemeContext = createContext<ThemeContextType | undefined>(undefined);
+const ThemeContext = createContext<ThemeContextType | null>(null);
 
+/** Provide the active theme preference and resolved theme to the app. */
 export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(getStoredThemePreference()));
@@ -27,7 +28,9 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   }, [preference]);
 
   useEffect(() => {
-    if (preference !== 'system') return;
+    if (preference !== 'system') {
+      return undefined;
+    }
     return subscribeToSystemThemeChanges((theme) => {
       setResolvedTheme(theme);
       applyThemePreference('system');
@@ -46,6 +49,7 @@ export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
 }
 
+/** Read the current theme context. */
 export function useTheme() {
   const ctx = useContext(ThemeContext);
   if (!ctx) {

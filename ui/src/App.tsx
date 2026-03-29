@@ -1,3 +1,4 @@
+import type { ReactNode } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from '@/contexts/AuthContext';
 import { ThemeProvider } from '@/contexts/ThemeContext';
@@ -31,7 +32,7 @@ import {
   OrganizerProfilePage,
 } from '@/pages/organizer';
 
-type RouteProps = Readonly<{ children: React.ReactNode }>;
+type RouteProps = Readonly<{ children: ReactNode }>;
 
 // Protected route wrapper
 function ProtectedRoute({ children }: RouteProps) {
@@ -45,7 +46,7 @@ function ProtectedRoute({ children }: RouteProps) {
     return <Navigate to="/login" replace />;
   }
 
-  return <>{children}</>;
+  return children;
 }
 
 // Organizer route wrapper
@@ -64,7 +65,7 @@ function OrganizerRoute({ children }: RouteProps) {
     return <Navigate to="/forbidden" replace />;
   }
 
-  return <>{children}</>;
+  return children;
 }
 
 // Admin route wrapper
@@ -83,7 +84,7 @@ function AdminRoute({ children }: RouteProps) {
     return <Navigate to="/forbidden" replace />;
   }
 
-  return <>{children}</>;
+  return children;
 }
 
 // Guest only route (login/register)
@@ -98,9 +99,10 @@ function GuestRoute({ children }: RouteProps) {
     return <Navigate to="/" replace />;
   }
 
-  return <>{children}</>;
+  return children;
 }
 
+/** Render the routed application screens. */
 function AppRoutes() {
   return (
     <Routes>
@@ -208,6 +210,7 @@ function AppRoutes() {
   );
 }
 
+/** Mount the app-wide providers and router shell. */
 function App() {
   return (
     <BrowserRouter>

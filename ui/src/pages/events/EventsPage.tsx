@@ -35,6 +35,7 @@ import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const PAGE_SIZES = [6, 12, 24, 48];
 const ALL_CATEGORIES_VALUE = '__all__';
+/** Ignore analytics-side interaction failures so the UI can continue normally. */
 const ignoreInteractionError = () => undefined;
 
 const RECOMMENDATIONS_ENABLED =
@@ -51,10 +52,28 @@ type EventsListPayload = Readonly<{
   total: number;
 }>;
 
+/** Format a local calendar date for query-string use without timezone conversion. */
+function formatEventDateForQuery(date: Date | undefined): string {
+  if (!date) {
+    return '';
+  }
+  const year = date.getFullYear();
+  const month = String(date.getMonth() + 1).padStart(2, '0');
+  const day = String(date.getDate()).padStart(2, '0');
+  return `${year}-${month}-${day}`;
+}
+
+/** Parse a query-string date into a local midnight Date object for the calendar widget. */
+function parseQueryDate(value: string | undefined): Date | undefined {
+  return value ? new Date(`${value}T00:00:00`) : undefined;
+}
+
+/** Read the responsive calendar layout preference from the current viewport. */
 function readShowTwoMonthsCalendar() {
   return globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY).matches ?? true;
 }
 
+/** Subscribe to viewport changes that affect the calendar month layout. */
 function bindCalendarMedia(listener: (matches: boolean) => void): (() => void) | undefined {
   const media = globalThis.window?.matchMedia?.(CALENDAR_MEDIA_QUERY);
   if (
@@ -64,11 +83,13 @@ function bindCalendarMedia(listener: (matches: boolean) => void): (() => void) |
   ) {
     return undefined;
   }
+  /** Forward media-query changes to the caller using a plain boolean payload. */
   const handler = (event: MediaQueryListEvent) => listener(event.matches);
   media.addEventListener('change', handler);
   return () => media.removeEventListener('change', handler);
 }
 
+/** Build the analytics impressions emitted for the current events list. */
 function buildEventsListInteractions(
   events: Event[],
   filters: EventsPageFilters,
@@ -116,6 +137,7 @@ function buildEventsListInteractions(
   return interactions;
 }
 
+/** Load the recommendation rail and the favorite set needed to decorate it. */
 async function loadRecommendationPanel(): Promise<{ recommendations: Event[]; favoriteIds: Set<number> }> {
   const [recommendationsResult, favoritesResult] = await Promise.allSettled([
     eventService.getEvents({ page: 1, page_size: 4, sort: 'recommended' }),
@@ -130,11 +152,12 @@ async function loadRecommendationPanel(): Promise<{ recommendations: Event[]; fa
   return { recommendations, favoriteIds };
 }
 
+/** Synchronize the recommendation rail while guarding against stale async updates. */
 function syncRecommendationPanel(
   onLoaded: (payload: { recommendations: Event[]; favoriteIds: Set<number> }) => void,
 ): () => void {
   let cancelled = false;
-  void loadRecommendationPanel().then((payload) => {
+  loadRecommendationPanel().then((payload) => {
     if (!cancelled) {
       onLoaded(payload);
     }
@@ -144,6 +167,7 @@ function syncRecommendationPanel(
   };
 }
 
+/** Determine whether the personalized recommendation rail should be shown for the current viewer. */
 function shouldLoadRecommendations(isAuthenticated: boolean, role: string | undefined): boolean {
   return isAuthenticated && role === 'student' && RECOMMENDATIONS_ENABLED;
 }
@@ -156,6 +180,7 @@ type EventsListSyncArgs = Readonly<{
   onSettled: () => void;
 }>;
 
+/** Synchronize the main events list while preventing stale async results from mutating state. */
 function syncEventsList({
   filters,
   onLoaded,
@@ -166,7 +191,7 @@ function syncEventsList({
   let cancelled = false;
   onStarted();
 
-  void eventService
+  eventService
     .getEvents(filters)
     .then((response) => {
       if (!cancelled) {
@@ -189,6 +214,8 @@ function syncEventsList({
   };
 }
 
+/** Render the events discovery page with filter, recommendation, and pagination controls. */
+// skipcq: JS-R1005 - this page intentionally co-locates filter, paging, recommendation, and analytics state.
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
@@ -273,11 +300,14 @@ export function EventsPage() {
       filters.location ||
       filters.tags.length > 0,
   );
-  const handleCategoryChange = (value: string) => {
-    updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
+  const selectedDateRange = {
+    from: parseQueryDate(filters.start_date),
+    to: parseQueryDate(filters.end_date),
   };
+  const defaultCalendarMonth = parseQueryDate(filters.start_date) ?? new Date();
 
-  const updateFilters = (newFilters: Partial<EventFilters>) => {
+  /** Persist partial filter changes into the URL and reset paging unless the caller overrides it. */
+  function updateFilters(newFilters: Partial<EventFilters>) {
     const params = new URLSearchParams(searchParams);
 
     Object.entries(newFilters).forEach(([key, value]) => {
@@ -293,7 +323,12 @@ export function EventsPage() {
     }
 
     setSearchParams(params);
-  };
+  }
+
+  /** Translate the synthetic all-categories option back into the query-string representation. */
+  function handleCategoryChange(value: string) {
+    updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
+  }
 
   useEffect(() => {
     return syncEventsList(
@@ -322,22 +357,42 @@ export function EventsPage() {
   }, [filters, toast, t]);
 
   useEffect(() => {
-    if (!events.length) return;
+    if (!events.length) {
+      return undefined;
+    }
     const timer = globalThis.setTimeout(() => {
-      void recordInteractions(buildEventsListInteractions(events, filters, hasActiveFilters));
+      Promise.resolve(
+        recordInteractions(buildEventsListInteractions(events, filters, hasActiveFilters)),
+      ).catch(ignoreInteractionError);
     }, 400);
     return () => globalThis.clearTimeout(timer);
   }, [events, filters, hasActiveFilters]);
 
   useEffect(() => {
-    if (!shouldLoadRecommendations(isAuthenticated, user?.role)) return;
+    if (!shouldLoadRecommendations(isAuthenticated, user?.role)) {
+      return undefined;
+    }
     return syncRecommendationPanel(({ recommendations: nextRecommendations, favoriteIds }) => {
       setRecommendations(nextRecommendations);
       setFavorites(favoriteIds);
     });
   }, [isAuthenticated, user?.role]);
 
-  const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
+  /** Clear every active filter and return the page to the default route state. */
+  function clearFilters() {
+    setSearchParams({});
+  }
+
+  /** Apply the selected calendar range to the query-string backed filter state. */
+  function handleDateRangeSelect(range: { from?: Date; to?: Date } | undefined) {
+    updateFilters({
+      start_date: formatEventDateForQuery(range?.from),
+      end_date: formatEventDateForQuery(range?.to),
+    });
+  }
+
+  /** Toggle the favorite state for an event card while keeping the local favorite set in sync. */
+  async function handleFavoriteToggle(eventId: number, shouldFavorite: boolean) {
     if (!isAuthenticated) {
       toast({
         title: t.events.loginRequiredTitle,
@@ -366,51 +421,74 @@ export function EventsPage() {
         variant: 'destructive',
       });
     }
-  };
+  }
 
-  const renderEventsGrid = () => (
-    <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-      {events.map((event) => (
-        <EventCard
-          key={event.id}
-          event={event}
-          onFavoriteToggle={handleFavoriteToggle}
-          isFavorite={favorites.has(event.id)}
-          showRecommendation={filters.sort === 'recommended'}
-          onEventClick={(eventId) => {
-            Promise.resolve(
-              recordInteractions([
-                {
-                  interaction_type: 'click',
-                  event_id: eventId,
-                  meta: { source: 'events_list', sort: filters.sort, page: filters.page },
-                },
-              ]),
-            ).catch(ignoreInteractionError);
-          }}
-        />
-      ))}
-    </div>
-  );
+  /** Emit analytics when a recommended event is opened from the recommendation rail. */
+  function handleRecommendationClick(eventId: number) {
+    Promise.resolve(
+      recordInteractions([
+        {
+          interaction_type: 'click',
+          event_id: eventId,
+          meta: { source: 'recommendations_grid' },
+        },
+      ]),
+    ).catch(ignoreInteractionError);
+  }
 
-  const renderEmptyState = () => (
-    <div className="flex flex-col items-center justify-center py-16 text-center">
-      <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
-      <h3 className="text-lg font-semibold">{t.events.noResultsTitle}</h3>
-      <p className="mt-2 text-muted-foreground">
-        {t.events.noResultsDescription}
-      </p>
-      {hasActiveFilters && (
-        <Button variant="outline" className="mt-4" onClick={clearFilters}>
-          {t.events.clearFilters}
-        </Button>
-      )}
-    </div>
-  );
+  /** Render the main events grid for the current result set. */
+  function renderEventsGrid() {
+    return (
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        {events.map((event) => (
+          <EventCard
+            key={event.id}
+            event={event}
+            onFavoriteToggle={handleFavoriteToggle}
+            isFavorite={favorites.has(event.id)}
+            showRecommendation={filters.sort === 'recommended'}
+            onEventClick={(eventId) => {
+              Promise.resolve(
+                recordInteractions([
+                  {
+                    interaction_type: 'click',
+                    event_id: eventId,
+                    meta: { source: 'events_list', sort: filters.sort, page: filters.page },
+                  },
+                ]),
+              ).catch(ignoreInteractionError);
+            }}
+          />
+        ))}
+      </div>
+    );
+  }
 
-  const clearFilters = () => {
-    setSearchParams({});
-  };
+  /** Render the empty-state messaging when no events match the current query. */
+  function renderEmptyState() {
+    return (
+      <div className="flex flex-col items-center justify-center py-16 text-center">
+        <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
+        <h3 className="text-lg font-semibold">{t.events.noResultsTitle}</h3>
+        <p className="mt-2 text-muted-foreground">
+          {t.events.noResultsDescription}
+        </p>
+        {hasActiveFilters && (
+          <Button variant="outline" className="mt-4" onClick={clearFilters}>
+            {t.events.clearFilters}
+          </Button>
+        )}
+      </div>
+    );
+  }
+
+  const shouldShowRecommendations =
+    RECOMMENDATIONS_ENABLED &&
+    isAuthenticated &&
+    user?.role === 'student' &&
+    recommendations.length > 0 &&
+    !hasActiveFilters &&
+    filters.sort !== 'recommended';
 
   let eventsContent: ReactNode;
   if (isLoading) {
@@ -419,7 +497,7 @@ export function EventsPage() {
     eventsContent = renderEmptyState();
   } else {
     eventsContent = (
-      <>
+      <div className="space-y-8">
         {renderEventsGrid()}
         {totalPages > 1 && (
           <div className="mt-8 flex items-center justify-center gap-2">
@@ -444,230 +522,223 @@ export function EventsPage() {
             </Button>
           </div>
         )}
-      </>
+      </div>
     );
   }
 
-  return (
-    <div className="container mx-auto px-4 py-8">
-      {/* Header */}
-      <div className="mb-8">
-        <h1 className="text-3xl font-bold">{t.events.title}</h1>
-        <p className="mt-2 text-muted-foreground">
-          {t.events.subtitle}
-        </p>
-      </div>
+  const pageHeaderSection = (
+    <div className="mb-8">
+      <h1 className="text-3xl font-bold">{t.events.title}</h1>
+      <p className="mt-2 text-muted-foreground">
+        {t.events.subtitle}
+      </p>
+    </div>
+  );
 
-      {/* Recommendations Section */}
-      {RECOMMENDATIONS_ENABLED &&
-        isAuthenticated &&
-        user?.role === 'student' &&
-        recommendations.length > 0 &&
-        !hasActiveFilters &&
-        filters.sort !== 'recommended' && (
-        <div className="mb-8">
-          <div className="mb-4 flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-primary" />
-            <h2 className="text-xl font-semibold">{t.events.recommendationsTitle}</h2>
-          </div>
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
-            {recommendations.map((event) => (
-              <EventCard
-                key={event.id}
-                event={event}
-                onFavoriteToggle={handleFavoriteToggle}
-                isFavorite={favorites.has(event.id)}
-                showRecommendation
-                onEventClick={(eventId) =>
-                  void recordInteractions([
-                    { interaction_type: 'click', event_id: eventId, meta: { source: 'recommendations_grid' } },
-                  ])
-                }
-              />
-            ))}
-          </div>
-        </div>
+  const recommendationsSection = shouldShowRecommendations ? (
+    <div className="mb-8">
+      <div className="mb-4 flex items-center gap-2">
+        <Sparkles className="h-5 w-5 text-primary" />
+        <h2 className="text-xl font-semibold">{t.events.recommendationsTitle}</h2>
+      </div>
+      <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
+        {recommendations.map((event) => (
+          <EventCard
+            key={event.id}
+            event={event}
+            onFavoriteToggle={handleFavoriteToggle}
+            isFavorite={favorites.has(event.id)}
+            showRecommendation
+            onEventClick={handleRecommendationClick}
+          />
+        ))}
+      </div>
+    </div>
+  ) : null;
+
+  const searchFilter = (
+    <div className="relative flex-1 min-w-[200px]">
+      <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <Input
+        placeholder={t.events.searchPlaceholder}
+        value={filters.search || ''}
+        onChange={(event) => updateFilters({ search: event.target.value })}
+        className="pl-10"
+      />
+    </div>
+  );
+
+  const categoryFilter = (
+    <Select
+      value={filters.category || ALL_CATEGORIES_VALUE}
+      onValueChange={handleCategoryChange}
+    >
+      <SelectTrigger className="w-full sm:w-[180px]">
+        <SelectValue placeholder={t.events.categoryPlaceholder} />
+      </SelectTrigger>
+      <SelectContent>
+        {categoryOptions.map((cat) => (
+          <SelectItem key={cat.value} value={cat.value}>
+            {cat.label}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
+  const dateRangeFilter = (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button variant="outline" className="w-full justify-start sm:w-[240px]">
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {dateRangeLabel}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0" align="start">
+        <Calendar
+          mode="range"
+          selected={selectedDateRange}
+          onSelect={handleDateRangeSelect}
+          numberOfMonths={showTwoMonthsCalendar ? 2 : 1}
+          defaultMonth={defaultCalendarMonth}
+          locale={dateFnsLocale}
+        />
+      </PopoverContent>
+    </Popover>
+  );
+
+  const cityFilter = (
+    <Input
+      placeholder={t.events.cityPlaceholder}
+      value={filters.city || ''}
+      onChange={(event) => updateFilters({ city: event.target.value })}
+      className="w-full sm:w-[180px]"
+    />
+  );
+
+  const locationFilter = (
+    <Input
+      placeholder={t.events.locationPlaceholder}
+      value={filters.location || ''}
+      onChange={(event) => updateFilters({ location: event.target.value })}
+      className="w-full sm:w-[180px]"
+    />
+  );
+
+  const activeFiltersSection = hasActiveFilters ? (
+    <div className="flex flex-wrap items-center gap-2">
+      <span className="text-sm text-muted-foreground">{t.events.activeFilters}</span>
+      {filters.search && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterSearch}: {filters.search}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ search: '' })}
+          />
+        </Badge>
       )}
-
-      {/* Filters */}
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-wrap gap-4">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-            <Input
-              placeholder={t.events.searchPlaceholder}
-              value={filters.search || ''}
-              onChange={(e) => updateFilters({ search: e.target.value })}
-              className="pl-10"
-            />
-          </div>
-
-          {/* Category */}
-          <Select
-            value={filters.category || ALL_CATEGORIES_VALUE}
-            onValueChange={handleCategoryChange}
-          >
-            <SelectTrigger className="w-full sm:w-[180px]">
-              <SelectValue placeholder={t.events.categoryPlaceholder} />
-            </SelectTrigger>
-            <SelectContent>
-              {categoryOptions.map((cat) => (
-                <SelectItem key={cat.value} value={cat.value}>
-                  {cat.label}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-
-          {/* Date Range */}
-          <Popover>
-            <PopoverTrigger asChild>
-              <Button variant="outline" className="w-full justify-start sm:w-[240px]">
-                <CalendarIcon className="mr-2 h-4 w-4" />
-                {dateRangeLabel}
-              </Button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
-              <Calendar
-                mode="range"
-                selected={{
-                  from: filters.start_date ? new Date(filters.start_date + 'T00:00:00') : undefined,
-                  to: filters.end_date ? new Date(filters.end_date + 'T00:00:00') : undefined,
-                }}
-                onSelect={(range: { from?: Date; to?: Date } | undefined) => {
-                  // Format date as YYYY-MM-DD without timezone conversion
-                  const formatLocalDate = (date: Date | undefined) => {
-                    if (!date) return '';
-                    const year = date.getFullYear();
-                    const month = String(date.getMonth() + 1).padStart(2, '0');
-                    const day = String(date.getDate()).padStart(2, '0');
-                    return `${year}-${month}-${day}`;
-                  };
-                  updateFilters({
-                    start_date: formatLocalDate(range?.from),
-                    end_date: formatLocalDate(range?.to),
-                  });
-                }}
-                numberOfMonths={showTwoMonthsCalendar ? 2 : 1}
-                defaultMonth={filters.start_date ? new Date(filters.start_date + 'T00:00:00') : new Date()}
-                locale={dateFnsLocale}
-              />
-            </PopoverContent>
-          </Popover>
-
-          {/* Location */}
-          <Input
-            placeholder={t.events.cityPlaceholder}
-            value={filters.city || ''}
-            onChange={(e) => updateFilters({ city: e.target.value })}
-            className="w-full sm:w-[180px]"
+      {filters.category && (
+        <Badge variant="secondary" className="gap-1">
+          {getEventCategoryLabel(filters.category, language)}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ category: '' })}
           />
-
-          <Input
-            placeholder={t.events.locationPlaceholder}
-            value={filters.location || ''}
-            onChange={(e) => updateFilters({ location: e.target.value })}
-            className="w-full sm:w-[180px]"
+        </Badge>
+      )}
+      {filters.start_date && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterFrom}: {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ start_date: '', end_date: '' })}
           />
-        </div>
+        </Badge>
+      )}
+      {filters.city && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterCity}: {filters.city}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ city: '' })}
+          />
+        </Badge>
+      )}
+      {filters.location && (
+        <Badge variant="secondary" className="gap-1">
+          {t.events.filterLocation}: {filters.location}
+          <X
+            className="h-3 w-3 cursor-pointer"
+            onClick={() => updateFilters({ location: '' })}
+          />
+        </Badge>
+      )}
+      <Button variant="ghost" size="sm" onClick={clearFilters}>
+        {t.events.clearAll}
+      </Button>
+    </div>
+  ) : null;
 
-        {/* Active Filters */}
-        {hasActiveFilters && (
-          <div className="flex flex-wrap items-center gap-2">
-            <span className="text-sm text-muted-foreground">{t.events.activeFilters}</span>
-            {filters.search && (
-              <Badge variant="secondary" className="gap-1">
-                {t.events.filterSearch}: {filters.search}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => updateFilters({ search: '' })}
-                />
-              </Badge>
-            )}
-            {filters.category && (
-              <Badge variant="secondary" className="gap-1">
-                {getEventCategoryLabel(filters.category, language)}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => updateFilters({ category: '' })}
-                />
-              </Badge>
-            )}
-            {filters.start_date && (
-              <Badge variant="secondary" className="gap-1">
-                {t.events.filterFrom}: {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => updateFilters({ start_date: '', end_date: '' })}
-                />
-              </Badge>
-            )}
-            {filters.city && (
-              <Badge variant="secondary" className="gap-1">
-                {t.events.filterCity}: {filters.city}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => updateFilters({ city: '' })}
-                />
-              </Badge>
-            )}
-            {filters.location && (
-              <Badge variant="secondary" className="gap-1">
-                {t.events.filterLocation}: {filters.location}
-                <X
-                  className="h-3 w-3 cursor-pointer"
-                  onClick={() => updateFilters({ location: '' })}
-                />
-              </Badge>
-            )}
-            <Button variant="ghost" size="sm" onClick={clearFilters}>
-              {t.events.clearAll}
-            </Button>
-          </div>
-        )}
+  const filtersSection = (
+    <div className="mb-6 space-y-4">
+      <div className="flex flex-wrap gap-4">
+        {searchFilter}
+        {categoryFilter}
+        {dateRangeFilter}
+        {cityFilter}
+        {locationFilter}
       </div>
+      {activeFiltersSection}
+    </div>
+  );
 
-      {/* Results Count */}
-      <div className="mb-4 flex items-center justify-between">
-        <p className="text-sm text-muted-foreground">
-          {totalEvents} {totalEvents === 1 ? t.events.foundOne : t.events.foundMany}
-        </p>
-        <div className="flex items-center gap-2">
-          {isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED && (
-            <Select
-              value={filters.sort}
-              onValueChange={(value) => updateFilters({ sort: value as EventFilters['sort'] })}
-            >
-              <SelectTrigger className="w-[160px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="recommended">{t.events.recommendationsTitle}</SelectItem>
-                <SelectItem value="time">{t.events.sortSoonest}</SelectItem>
-              </SelectContent>
-            </Select>
-          )}
+  const resultsCountSection = (
+    <div className="mb-4 flex items-center justify-between">
+      <p className="text-sm text-muted-foreground">
+        {totalEvents} {totalEvents === 1 ? t.events.foundOne : t.events.foundMany}
+      </p>
+      <div className="flex items-center gap-2">
+        {isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED && (
           <Select
-            value={String(filters.page_size)}
-            onValueChange={(value) => updateFilters({ page_size: Number.parseInt(value, 10) })}
+            value={filters.sort}
+            onValueChange={(value) => updateFilters({ sort: value as EventFilters['sort'] })}
           >
-            <SelectTrigger className="w-[100px]">
+            <SelectTrigger className="w-[160px]">
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              {PAGE_SIZES.map((size) => (
-                <SelectItem key={size} value={String(size)}>
-                  {size}
-                  {t.events.perPage}
-                </SelectItem>
-              ))}
+              <SelectItem value="recommended">{t.events.recommendationsTitle}</SelectItem>
+              <SelectItem value="time">{t.events.sortSoonest}</SelectItem>
             </SelectContent>
           </Select>
-        </div>
+        )}
+        <Select
+          value={String(filters.page_size)}
+          onValueChange={(value) => updateFilters({ page_size: Number.parseInt(value, 10) })}
+        >
+          <SelectTrigger className="w-[100px]">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {PAGE_SIZES.map((size) => (
+              <SelectItem key={size} value={String(size)}>
+                {size}
+                {t.events.perPage}
+              </SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
       </div>
+    </div>
+  );
 
-      {/* Events Grid */}
+  // skipcq: JS-0415 - the events page keeps filters, recommendations, and results in a single route layout.
+  return (
+    <div className="container mx-auto px-4 py-8">
+      {pageHeaderSection}
+      {recommendationsSection}
+      {filtersSection}
+      {resultsCountSection}
       {eventsContent}
     </div>
   );

@@ -18,6 +18,8 @@ it('covers recommendations, favorites, and click tracking', async () => {
 
   fireEvent.click(screen.getByText('favorite-1'));
   await waitFor(() => expect(eventServiceMock.addToFavorites).toHaveBeenCalledWith(1));
+  fireEvent.click(screen.getByText('favorite-1'));
+  await waitFor(() => expect(eventServiceMock.removeFromFavorites).toHaveBeenCalledWith(1));
   fireEvent.click(screen.getByText('open-1'));
   await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
 });
@@ -27,7 +29,7 @@ it('covers click tracking failure fallback', async () => {
   recordInteractionsSpy.mockReturnValueOnce({
     catch: (handler: (error: Error) => void) => {
       handler(new Error('click-fail'));
-      return Promise.resolve(undefined);
+      return Promise.resolve();
     },
   });
   eventServiceMock.getEvents.mockResolvedValueOnce({

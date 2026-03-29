@@ -106,6 +106,112 @@ function LoginAccessCodeField({
   );
 }
 
+/** Render the icon and copy at the top of the login card. */
+function LoginCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
+  return (
+    <CardHeader className="space-y-1 text-center">
+      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
+        <Calendar className="h-6 w-6 text-primary" />
+      </div>
+      <CardTitle className="text-2xl">{title}</CardTitle>
+      <CardDescription>{description}</CardDescription>
+    </CardHeader>
+  );
+}
+
+/** Render the login submit button and its loading state. */
+function LoginSubmitButton({
+  isLoading,
+  submitLabel,
+  submittingLabel,
+}: Readonly<{
+  isLoading: boolean;
+  submitLabel: string;
+  submittingLabel: string;
+}>) {
+  return (
+    <Button type="submit" className="w-full" disabled={isLoading}>
+      {isLoading ? (
+        <>
+          <LoadingSpinner size="sm" className="mr-2" />
+          {submittingLabel}
+        </>
+      ) : (
+        submitLabel
+      )}
+    </Button>
+  );
+}
+
+/** Render the footer prompt that links new users to registration. */
+function LoginFooterHint({
+  label,
+  linkLabel,
+}: Readonly<{
+  label: string;
+  linkLabel: string;
+}>) {
+  return (
+    <p className="text-center text-sm text-muted-foreground">
+      {label}{' '}
+      <Link to="/register" className="text-primary hover:underline">
+        {linkLabel}
+      </Link>
+    </p>
+  );
+}
+
+/** Render the email field shown at the top of the login form. */
+function LoginEmailField({
+  email,
+  isLoading,
+  onEmailChange,
+  texts,
+}: Readonly<{
+  email: string;
+  isLoading: boolean;
+  onEmailChange: (value: string) => void;
+  texts: LoginTexts;
+}>) {
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="email">{texts.emailLabel}</Label>
+      <Input
+        id="email"
+        type="email"
+        placeholder={texts.emailPlaceholder}
+        value={email}
+        onChange={(event) => onEmailChange(event.target.value)}
+        required
+        disabled={isLoading}
+      />
+    </div>
+  );
+}
+
+/** Render the footer section for the login form. */
+function LoginFormFooter({
+  isLoading,
+  texts,
+}: Readonly<{
+  isLoading: boolean;
+  texts: LoginTexts;
+}>) {
+  return (
+    <CardFooter className="flex flex-col gap-4">
+      <LoginSubmitButton
+        isLoading={isLoading}
+        submitLabel={texts.submit}
+        submittingLabel={texts.submitting}
+      />
+      <LoginFooterHint
+        label={texts.noAccount}
+        linkLabel={texts.registerLink}
+      />
+    </CardFooter>
+  );
+}
+
 /** Render the full login card while keeping the page shell shallow. */
 function LoginFormCard({
   email,
@@ -120,27 +226,15 @@ function LoginFormCard({
 }: LoginFormCardProps) {
   return (
     <Card className="w-full max-w-md">
-      <CardHeader className="space-y-1 text-center">
-        <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-          <Calendar className="h-6 w-6 text-primary" />
-        </div>
-        <CardTitle className="text-2xl">{texts.title}</CardTitle>
-        <CardDescription>{texts.description}</CardDescription>
-      </CardHeader>
+      <LoginCardHeader title={texts.title} description={texts.description} />
       <form onSubmit={onSubmit}>
         <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="email">{texts.emailLabel}</Label>
-            <Input
-              id="email"
-              type="email"
-              placeholder={texts.emailPlaceholder}
-              value={email}
-              onChange={(event) => onEmailChange(event.target.value)}
-              required
-              disabled={isLoading}
-            />
-          </div>
+          <LoginEmailField
+            email={email}
+            isLoading={isLoading}
+            onEmailChange={onEmailChange}
+            texts={texts}
+          />
           <LoginAccessCodeField
             isLoading={isLoading}
             password={password}
@@ -150,24 +244,7 @@ function LoginFormCard({
             toggleShowPassword={toggleShowPassword}
           />
         </CardContent>
-        <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isLoading}>
-            {isLoading ? (
-              <>
-                <LoadingSpinner size="sm" className="mr-2" />
-                {texts.submitting}
-              </>
-            ) : (
-              texts.submit
-            )}
-          </Button>
-          <p className="text-center text-sm text-muted-foreground">
-            {texts.noAccount}{' '}
-            <Link to="/register" className="text-primary hover:underline">
-              {texts.registerLink}
-            </Link>
-          </p>
-        </CardFooter>
+        <LoginFormFooter isLoading={isLoading} texts={texts} />
       </form>
     </Card>
   );
@@ -211,6 +288,7 @@ export function LoginPage() {
     }
   };
 
+  // skipcq: JS-0415 - the route intentionally keeps loading and form states together.
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
       <LoginFormCard
