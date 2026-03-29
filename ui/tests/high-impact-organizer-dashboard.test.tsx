@@ -1,6 +1,6 @@
 import React from 'react';
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { expect, it, vi } from 'vitest';
+import { expect, it } from 'vitest';
 
 import { renderLanguageRoute, requireElement } from './page-test-helpers';
 import {
@@ -65,6 +65,8 @@ it('covers OrganizerDashboardPage bulk tag branches and delete guard branches', 
   const draftButton = screen.queryByRole('button', { name: /Unpublish|Draft/i });
   if (draftButton) {
     fireEvent.click(draftButton);
+    expect(eventServiceMock.bulkUpdateEventStatus).not.toHaveBeenCalledWith([3], 'draft');
+    fireEvent.click(draftButton);
     await waitFor(() =>
       expect(eventServiceMock.bulkUpdateEventStatus).toHaveBeenCalledWith([3], 'draft'),
     );
@@ -78,15 +80,15 @@ it('covers OrganizerDashboardPage bulk tag branches and delete guard branches', 
   fireEvent.click(requireElement(menuTrigger, 'menu trigger'));
   const deleteOption = screen.queryByText(/Delete|Șterge/i);
   if (deleteOption) {
-    vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
     fireEvent.click(deleteOption);
+    expect(eventServiceMock.deleteEvent).not.toHaveBeenCalled();
 
     fireEvent.click(requireElement(menuTrigger, 'menu trigger'));
     const deleteOptionRetry = screen.queryByText(/Delete|Șterge/i);
     if (deleteOptionRetry) {
-      vi.mocked(globalThis.confirm).mockReturnValueOnce(true);
       eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
       fireEvent.click(deleteOptionRetry);
+      await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalled());
       await waitFor(() => expect(toastSpy).toHaveBeenCalled());
     }
   }

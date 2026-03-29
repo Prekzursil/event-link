@@ -51,4 +51,40 @@ describe('main entry bootstrap', () => {
     },
     30000,
   );
+
+  it(
+    'throws when the root element is missing',
+    async () => {
+      vi.resetModules();
+
+      document.body.innerHTML = '';
+
+      const createRootSpy = vi.fn();
+      const applyThemePreferenceSpy = vi.fn();
+      const getStoredThemePreferenceSpy = vi.fn(() => 'dark');
+
+      vi.doMock('react-dom/client', () => ({
+        createRoot: createRootSpy,
+      }));
+
+      vi.doMock('@/lib/theme', () => ({
+        applyThemePreference: applyThemePreferenceSpy,
+        getStoredThemePreference: getStoredThemePreferenceSpy,
+      }));
+
+      vi.doMock('../src/App.tsx', () => ({
+        default: () => null,
+      }));
+
+      vi.doMock('../src/index.css', () => ({}));
+
+      await expect(import('../src/main.tsx')).rejects.toThrow(
+        'Missing root element',
+      );
+      expect(getStoredThemePreferenceSpy).toHaveBeenCalledTimes(1);
+      expect(applyThemePreferenceSpy).toHaveBeenCalledWith('dark');
+      expect(createRootSpy).not.toHaveBeenCalled();
+    },
+    30000,
+  );
 });

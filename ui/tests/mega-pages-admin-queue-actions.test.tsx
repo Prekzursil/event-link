@@ -42,7 +42,10 @@ it('covers admin dashboard queue, user, and event action branches', async () => 
 
   fireEvent.click(screen.getByRole('button', { name: /Mark reviewed/i }));
   await waitFor(() => expect(adminServiceMock.reviewEventModeration).toHaveBeenCalledWith(21));
-  fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+  const deleteButton = screen.getByRole('button', { name: /Delete/i });
+  fireEvent.click(deleteButton);
+  expect(eventServiceMock.deleteEvent).not.toHaveBeenCalled();
+  fireEvent.click(deleteButton);
   await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledWith(21));
   fireEvent.click(screen.getByRole('button', { name: /Restore/i }));
   await waitFor(() => expect(eventServiceMock.restoreEvent).toHaveBeenCalledWith(22));

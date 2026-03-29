@@ -10,13 +10,16 @@ def _sanitize_log_text(value: str) -> str:
     return value.replace("\r", "").replace("\n", "")
 
 
-request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
+request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "request_id", default=None
+)
 
 
-class RequestIdFilter(logging.Filter):
-    def filter(self, record: logging.LogRecord) -> bool:
-        record.request_id = request_id_ctx.get() or "-"
-        return True
+def _inject_request_id(record: logging.LogRecord) -> bool:
+    """Attach the request id to every log record."""
+
+    record.request_id = request_id_ctx.get() or "-"
+    return True
 
 
 class JsonFormatter(logging.Formatter):
@@ -63,7 +66,7 @@ class JsonFormatter(logging.Formatter):
 def configure_logging(level: int = logging.INFO) -> None:
     handler = logging.StreamHandler()
     handler.setFormatter(JsonFormatter())
-    handler.addFilter(RequestIdFilter())
+    handler.addFilter(_inject_request_id)
     root = logging.getLogger()
     root.handlers.clear()
     root.setLevel(level)

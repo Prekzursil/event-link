@@ -8,7 +8,6 @@ Create Date: 2025-12-18
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
 revision = "0015_personalization_controls"
 down_revision = "0014_event_interactions"
@@ -18,20 +17,53 @@ USER_ID_FK = "users.id"
 
 
 def upgrade() -> None:
+    """Apply personalization-control tables and indexes."""
     op.create_table(
         "user_hidden_tags",
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey(USER_ID_FK), primary_key=True),
-        sa.Column("tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True),
+        sa.Column(
+            "user_id",
+            sa.Integer(),
+            sa.ForeignKey(USER_ID_FK),
+            primary_key=True,
+        ),
+        sa.Column(
+            "tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True
+        ),
     )
-    op.create_index("ix_user_hidden_tags_user_id", "user_hidden_tags", ["user_id"], unique=False)
-    op.create_index("ix_user_hidden_tags_tag_id", "user_hidden_tags", ["tag_id"], unique=False)
+    op.create_index(
+        "ix_user_hidden_tags_user_id",
+        "user_hidden_tags",
+        ["user_id"],
+        unique=False,
+    )
+    op.create_index(
+        "ix_user_hidden_tags_tag_id",
+        "user_hidden_tags",
+        ["tag_id"],
+        unique=False,
+    )
 
     op.create_table(
         "user_blocked_organizers",
-        sa.Column("user_id", sa.Integer(), sa.ForeignKey(USER_ID_FK), primary_key=True),
-        sa.Column("organizer_id", sa.Integer(), sa.ForeignKey(USER_ID_FK), primary_key=True),
+        sa.Column(
+            "user_id",
+            sa.Integer(),
+            sa.ForeignKey(USER_ID_FK),
+            primary_key=True,
+        ),
+        sa.Column(
+            "organizer_id",
+            sa.Integer(),
+            sa.ForeignKey(USER_ID_FK),
+            primary_key=True,
+        ),
     )
-    op.create_index("ix_user_blocked_organizers_user_id", "user_blocked_organizers", ["user_id"], unique=False)
+    op.create_index(
+        "ix_user_blocked_organizers_user_id",
+        "user_blocked_organizers",
+        ["user_id"],
+        unique=False,
+    )
     op.create_index(
         "ix_user_blocked_organizers_organizer_id",
         "user_blocked_organizers",
@@ -41,8 +73,15 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    op.drop_index("ix_user_blocked_organizers_organizer_id", table_name="user_blocked_organizers")
-    op.drop_index("ix_user_blocked_organizers_user_id", table_name="user_blocked_organizers")
+    """Revert personalization-control tables and indexes."""
+    op.drop_index(
+        "ix_user_blocked_organizers_organizer_id",
+        table_name="user_blocked_organizers",
+    )
+    op.drop_index(
+        "ix_user_blocked_organizers_user_id",
+        table_name="user_blocked_organizers",
+    )
     op.drop_table("user_blocked_organizers")
 
     op.drop_index("ix_user_hidden_tags_tag_id", table_name="user_hidden_tags")

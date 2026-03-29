@@ -41,10 +41,11 @@ it('covers edit load and update success plus the load-failure redirect', async (
   renderLanguageRoute('/organizer/events/33/edit', '/organizer/events/:id/edit', <EventFormPage />);
   await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(33));
 
-  fireEvent.click(screen.getByRole('button', { name: /Save changes/i }));
+  fireEvent.click(await screen.findByRole('button', { name: /Save changes/i }));
   await waitFor(() => expect(eventServiceMock.updateEvent).toHaveBeenCalled());
   expect(navigateSpy).toHaveBeenCalledWith('/organizer');
 
+  navigateSpy.mockClear();
   eventServiceMock.getEvent.mockRejectedValueOnce(new Error('load-failed'));
   renderLanguageRoute('/organizer/events/88/edit', '/organizer/events/:id/edit', <EventFormPage />);
   await waitFor(() => expect(navigateSpy).toHaveBeenCalledWith('/organizer'));

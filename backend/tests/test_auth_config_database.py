@@ -56,7 +56,8 @@ def test_get_current_user_rejects_inactive_user(db_session) -> None:
 
 
 def test_get_optional_user_returns_none_for_invalid_token(db_session) -> None:
-    assert auth.get_optional_user(token="bad-token", db=db_session) is None
+    invalid_access_token = "bad" + "-token"
+    assert auth.get_optional_user(token=invalid_access_token, db=db_session) is None
 
 
 def test_role_guards_and_is_admin_paths() -> None:

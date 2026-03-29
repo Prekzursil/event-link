@@ -179,7 +179,7 @@ describe('auth pages', () => {
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
     fireEvent.submit(requireForm(/Send reset link/i));
     await waitFor(() => expect(authServiceMock.requestPasswordReset).toHaveBeenCalledWith('x@test.ro'));
-    expect(screen.getByText(/Check your email/i)).toBeInTheDocument();
+    await waitFor(() => expect(screen.getByText(/Check your email/i)).toBeInTheDocument());
 
     authServiceMock.requestPasswordReset.mockRejectedValueOnce(new Error('ignored'));
     cleanup();

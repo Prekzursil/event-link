@@ -13,7 +13,8 @@ def _is_unspecified_host(host: str) -> bool:
     if candidate.startswith("[") and candidate.endswith("]"):
         candidate = candidate[1:-1]
     try:
-        return bool(getattr(ipaddress.ip_address(candidate), "is_unspecified"))
+        address = ipaddress.ip_address(candidate)
+        return address == type(address)(0)
     except ValueError:
         return False
 
@@ -21,7 +22,9 @@ def _is_unspecified_host(host: str) -> bool:
 def _resolve_host() -> str:
     host = os.environ.get("APP_HOST", _DEFAULT_HOST).strip() or _DEFAULT_HOST
     if _is_unspecified_host(host):
-        raise RuntimeError("APP_HOST must not bind to all network interfaces in this entrypoint.")
+        raise RuntimeError(
+            "APP_HOST must not bind to all network interfaces in this entrypoint."
+        )
     return host
 
 

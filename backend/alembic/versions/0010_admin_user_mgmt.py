@@ -8,7 +8,6 @@ Create Date: 2025-12-18
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
 revision = "0010_admin_user_mgmt"
 down_revision = "0009_user_academic_event_city"
@@ -17,15 +16,23 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Apply admin-role and user-management changes."""
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
         # PostgreSQL enum alterations must run outside of a transaction.
         with op.get_context().autocommit_block():
-            op.execute(sa.text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'admin'"))
+            op.execute(
+                sa.text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'admin'")
+            )
 
     op.add_column(
         "users",
-        sa.Column("created_at", sa.TIMESTAMP(timezone=True), server_default=sa.text("now()"), nullable=False),
+        sa.Column(
+            "created_at",
+            sa.TIMESTAMP(timezone=True),
+            server_default=sa.text("now()"),
+            nullable=False,
+        ),
     )
     op.add_column(
         "users",
@@ -33,11 +40,17 @@ def upgrade() -> None:
     )
     op.add_column(
         "users",
-        sa.Column("is_active", sa.Boolean(), server_default=sa.text("true"), nullable=False),
+        sa.Column(
+            "is_active",
+            sa.Boolean(),
+            server_default=sa.text("true"),
+            nullable=False,
+        ),
     )
 
 
 def downgrade() -> None:
+    """Revert admin-role and user-management changes."""
     op.drop_column("users", "is_active")
     op.drop_column("users", "last_seen_at")
     op.drop_column("users", "created_at")

@@ -3,14 +3,13 @@ import json
 from pydantic import field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-
 DEFAULT_ALLOWED_ORIGINS = [
     "http://localhost:4200",
     "http://127.0.0.1:4200",
     "http://localhost:3000",
     "http://127.0.0.1:3000",
     "http://localhost:5173",
-    "http://127.0.0.1:5173"
+    "http://127.0.0.1:5173",
 ]
 
 
@@ -26,7 +25,9 @@ def _json_list(value: str) -> list[object] | None:
     return parsed if isinstance(parsed, list) else None
 
 
-def _string_items(values: list[object] | tuple[object, ...], *, lower: bool = False) -> list[str]:
+def _string_items(
+    values: list[object] | tuple[object, ...], *, lower: bool = False
+) -> list[str]:
     items: list[str] = []
     for raw in values:
         text = str(raw).strip()
@@ -97,7 +98,7 @@ class Settings(BaseSettings):
     analytics_rate_window_seconds: int = 60
 
     experiments_personalization_ml_percent: int = 0
-    
+
     # `allowed_origins` supports comma-separated strings or JSON lists; disable pydantic-settings JSON decoding
     # so our validator can handle both formats.
     model_config = SettingsConfigDict(
@@ -116,7 +117,9 @@ class Settings(BaseSettings):
         try:
             return _parse_list_setting(value)
         except ValueError as exc:
-            raise ValueError("allowed_origins must be a list or comma-separated string") from exc
+            raise ValueError(
+                "allowed_origins must be a list or comma-separated string"
+            ) from exc
 
     @field_validator("admin_emails", mode="before")
     @classmethod
@@ -126,7 +129,9 @@ class Settings(BaseSettings):
         try:
             return _parse_list_setting(value, lower=True)
         except ValueError as exc:
-            raise ValueError("admin_emails must be a list or comma-separated string") from exc
+            raise ValueError(
+                "admin_emails must be a list or comma-separated string"
+            ) from exc
 
 
 settings = Settings()

@@ -8,7 +8,6 @@ Create Date: 2025-12-18
 from alembic import op
 import sqlalchemy as sa
 
-
 # revision identifiers, used by Alembic.
 revision = "0011_add_language_preference"
 down_revision = "0010_admin_user_mgmt"
@@ -17,11 +16,18 @@ depends_on = None
 
 
 def upgrade() -> None:
+    """Apply the language-preference migration."""
     op.add_column(
         "users",
-        sa.Column("language_preference", sa.String(length=10), nullable=False, server_default="system"),
+        sa.Column(
+            "language_preference",
+            sa.String(length=10),
+            nullable=False,
+            server_default="system",
+        ),
     )
 
 
 def downgrade() -> None:
+    """Revert the language-preference migration."""
     op.drop_column("users", "language_preference")

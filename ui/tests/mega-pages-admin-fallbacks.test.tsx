@@ -1,6 +1,6 @@
 import React from 'react';
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
-import { describe, expect, it, vi } from 'vitest';
+import { describe, expect, it } from 'vitest';
 
 import { renderLanguageRoute, requireElement } from './page-test-helpers';
 import {
@@ -152,9 +152,13 @@ describe('mega pages admin fallbacks', () => {
     fireEvent.click(screen.getByRole('button', { name: /Mark reviewed/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
+    const deleteButton = screen.getByRole('button', { name: /Delete/i });
     eventServiceMock.deleteEvent.mockRejectedValueOnce(new Error('delete-fail'));
-    fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
+    fireEvent.click(deleteButton);
+    expect(eventServiceMock.deleteEvent).not.toHaveBeenCalled();
+    fireEvent.click(deleteButton);
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
+    await waitFor(() => expect(eventServiceMock.deleteEvent).toHaveBeenCalledTimes(1));
 
     eventServiceMock.restoreEvent.mockRejectedValueOnce(new Error('restore-fail'));
     fireEvent.click(screen.getByRole('button', { name: /Restore/i }));
@@ -229,7 +233,6 @@ describe('mega pages admin fallbacks', () => {
     expect(document.body.textContent).toContain('spam, fraud, scam');
     expect(screen.getAllByText('-').length).toBeGreaterThan(0);
 
-    vi.mocked(globalThis.confirm).mockReturnValueOnce(false);
     fireEvent.click(screen.getByRole('button', { name: /Delete/i }));
     expect(eventServiceMock.deleteEvent).not.toHaveBeenCalled();
   }, 20000);

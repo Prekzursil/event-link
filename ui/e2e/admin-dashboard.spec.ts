@@ -4,6 +4,7 @@ import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, registerStuden
 const ADMIN = { email: 'admin@test.com', code: DEFAULT_E2E_CODE };
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 
+/** Wait until the admin dashboard row lookup settles and becomes visible. */
 async function waitForAdminEventRow(
   applyFilters: () => Promise<void>,
   resolveRowVisible: () => Promise<boolean>,

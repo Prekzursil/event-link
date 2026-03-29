@@ -52,9 +52,13 @@ _UNIVERSITY_CATALOG = _load_catalog()
 _UNIVERSITY_KEY_TO_CANONICAL: dict[str, str] = {}
 for item in _UNIVERSITY_CATALOG:
     canonical = item["name"]
-    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = canonical
+    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = (
+        canonical
+    )
     for alias in item.get("aliases", []):
-        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = canonical
+        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = (
+            canonical
+        )
 
 
 def normalize_university_name(name: str | None) -> str | None:
@@ -63,8 +67,10 @@ def normalize_university_name(name: str | None) -> str | None:
     trimmed = name.strip()
     if not trimmed:
         return None
-    canonical = _UNIVERSITY_KEY_TO_CANONICAL.get(_normalize_university_key(trimmed))
-    return canonical or trimmed
+    canonical_name = _UNIVERSITY_KEY_TO_CANONICAL.get(
+        _normalize_university_key(trimmed)
+    )
+    return canonical_name or trimmed
 
 
 def get_university_catalog() -> list[UniversityCatalogItem]:
