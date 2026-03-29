@@ -15,6 +15,7 @@ describe('mega pages organizer edge branches', () => {
   it('covers organizer and participants callback edge branches', async () => {
     renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());
+    await waitFor(() => expect(screen.getAllByRole('checkbox').length).toBeGreaterThan(0));
 
     const organizerCheckboxes = screen.getAllByRole('checkbox');
     fireEvent.click(organizerCheckboxes[organizerCheckboxes.length - 1]);
