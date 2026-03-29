@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState, type Dispatch, type SetStateAction } from 'react';
 import { useNavigate } from 'react-router-dom';
 import authService from '@/services/auth.service';
 import eventService from '@/services/event.service';
@@ -11,29 +11,250 @@ import type {
   NotificationPreferences,
   PersonalizationSettings,
   StudyLevel,
-  Tag,
   StudentProfile,
+  Tag,
   ThemePreference,
   UniversityCatalogItem,
 } from '@/types';
 import { MAX_YEARS_BY_LEVEL } from './shared';
 
-/** Coordinate student profile state, async mutations, and derived form options. */
-export function useStudentProfileController() {
-  const { toast } = useToast();
-  const { user, logout, refreshUser } = useAuth();
-  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
-  const { preference: languagePreference, setPreference: setLanguagePreference, language, t } = useI18n();
-  const navigate = useNavigate();
-  const isStudent = user?.role === 'student';
+type ToastFn = ReturnType<typeof useToast>['toast'];
+type TranslationStrings = ReturnType<typeof useI18n>['t'];
+type RefreshUser = ReturnType<typeof useAuth>['refreshUser'];
+type Logout = ReturnType<typeof useAuth>['logout'];
+type SetThemePreference = ReturnType<typeof useTheme>['setPreference'];
+type SetLanguagePreference = ReturnType<typeof useI18n>['setPreference'];
+type OptionalStudentState = {
+  personalization: PersonalizationSettings | null;
+  notificationPreferences: NotificationPreferences | null;
+};
+type ProfileSnapshotSetters = {
+  setCity: Dispatch<SetStateAction<string>>;
+  setFaculty: Dispatch<SetStateAction<string>>;
+  setFullName: Dispatch<SetStateAction<string>>;
+  setProfile: Dispatch<SetStateAction<StudentProfile | null>>;
+  setSelectedTagIds: Dispatch<SetStateAction<number[]>>;
+  setStudyLevel: Dispatch<SetStateAction<StudyLevel | ''>>;
+  setStudyYear: Dispatch<SetStateAction<number | undefined>>;
+  setUniversity: Dispatch<SetStateAction<string>>;
+};
+type ProfileDataLoaderArgs = ProfileSnapshotSetters & {
+  isStudent: boolean;
+  setAllTags: Dispatch<SetStateAction<Tag[]>>;
+  setIsLoading: Dispatch<SetStateAction<boolean>>;
+  setNotificationPrefs: Dispatch<SetStateAction<NotificationPreferences | null>>;
+  setPersonalization: Dispatch<SetStateAction<PersonalizationSettings | null>>;
+  setUniversityCatalog: Dispatch<SetStateAction<UniversityCatalogItem[]>>;
+  t: TranslationStrings;
+  toast: ToastFn;
+};
+type ProfileFormHandlerArgs = ProfileSnapshotSetters & {
+  city: string;
+  faculty: string;
+  fullName: string;
+  selectedTagIds: number[];
+  studyLevel: StudyLevel | '';
+  studyYear: number | undefined;
+  toast: ToastFn;
+  t: TranslationStrings;
+  university: string;
+  universityCatalog: UniversityCatalogItem[];
+};
+type PreferenceHandlerArgs = {
+  currentNotificationPreferences: NotificationPreferences | null;
+  currentPersonalization: PersonalizationSettings | null;
+  languagePreference: LanguagePreference;
+  refreshUser: RefreshUser;
+  setLanguagePreference: SetLanguagePreference;
+  setNotificationPrefs: Dispatch<SetStateAction<NotificationPreferences | null>>;
+  setPersonalization: Dispatch<SetStateAction<PersonalizationSettings | null>>;
+  setThemePreference: SetThemePreference;
+  t: TranslationStrings;
+  themePreference: ThemePreference;
+  toast: ToastFn;
+};
+type AccountHandlerArgs = {
+  closeDeleteDialog: () => void;
+  deletePassword: string;
+  logout: Logout;
+  navigate: ReturnType<typeof useNavigate>;
+  t: TranslationStrings;
+  toast: ToastFn;
+};
+type StudentProfileControllerState = {
+  allTags: Tag[];
+  city: string;
+  deleteDialogOpen: boolean;
+  deletePassword: string;
+  faculty: string;
+  fullName: string;
+  isLoading: boolean;
+  notificationPrefs: NotificationPreferences | null;
+  personalization: PersonalizationSettings | null;
+  profile: StudentProfile | null;
+  selectedTagIds: number[];
+  studyLevel: StudyLevel | '';
+  studyYear: number | undefined;
+  university: string;
+  universityCatalog: UniversityCatalogItem[];
+  setAllTags: Dispatch<SetStateAction<Tag[]>>;
+  setCity: Dispatch<SetStateAction<string>>;
+  setDeleteDialogOpen: Dispatch<SetStateAction<boolean>>;
+  setDeletePassword: Dispatch<SetStateAction<string>>;
+  setFaculty: Dispatch<SetStateAction<string>>;
+  setFullName: Dispatch<SetStateAction<string>>;
+  setIsLoading: Dispatch<SetStateAction<boolean>>;
+  setNotificationPrefs: Dispatch<SetStateAction<NotificationPreferences | null>>;
+  setPersonalization: Dispatch<SetStateAction<PersonalizationSettings | null>>;
+  setProfile: Dispatch<SetStateAction<StudentProfile | null>>;
+  setSelectedTagIds: Dispatch<SetStateAction<number[]>>;
+  setStudyLevel: Dispatch<SetStateAction<StudyLevel | ''>>;
+  setStudyYear: Dispatch<SetStateAction<number | undefined>>;
+  setUniversity: Dispatch<SetStateAction<string>>;
+  setUniversityCatalog: Dispatch<SetStateAction<UniversityCatalogItem[]>>;
+};
+type StudentProfileControllerDerivedData = {
+  blockedOrganizers: PersonalizationSettings['blocked_organizers'];
+  cityOptions: string[];
+  currentNotificationPreferences: NotificationPreferences | null;
+  currentPersonalization: PersonalizationSettings | null;
+  facultyOptions: string[];
+  hiddenTags: PersonalizationSettings['hidden_tags'];
+  musicTags: Tag[];
+  otherTags: Tag[];
+  selectedUniversity: UniversityCatalogItem | null;
+  studyYearOptions: number[];
+};
+
+const MUSIC_INTEREST_NAMES = new Set([
+  'Muzică',
+  'Rock',
+  'Pop',
+  'Hip-Hop',
+  'EDM',
+  'Jazz',
+  'Clasică',
+  'Folk',
+  'Metal',
+]);
+
+const EMPTY_PERSONALIZATION: PersonalizationSettings = {
+  hidden_tags: [],
+  blocked_organizers: [],
+};
+
+const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreferences = {
+  email_digest_enabled: false,
+  email_filling_fast_enabled: false,
+};
+
+function applyProfileSnapshot(profileData: StudentProfile, setters: ProfileSnapshotSetters) {
+  setters.setProfile(profileData);
+  setters.setFullName(profileData.full_name ?? '');
+  setters.setCity(profileData.city ?? '');
+  setters.setUniversity(profileData.university ?? '');
+  setters.setFaculty(profileData.faculty ?? '');
+  setters.setStudyLevel(profileData.study_level ?? '');
+  setters.setStudyYear(profileData.study_year ?? undefined);
+  setters.setSelectedTagIds(profileData.interest_tags.map((tag) => tag.id));
+}
+
+function findSelectedUniversity(
+  university: string,
+  universityCatalog: UniversityCatalogItem[],
+) {
+  const normalized = university.trim().toLowerCase();
+  if (!normalized) {
+    return null;
+  }
+  return universityCatalog.find((item) => item.name.toLowerCase() === normalized) ?? null;
+}
+
+function buildCityOptions(universityCatalog: UniversityCatalogItem[], language: string) {
+  const options = new Set<string>();
+  for (const item of universityCatalog) {
+    if (item.city) {
+      options.add(item.city);
+    }
+  }
+  return Array.from(options).sort((left, right) => left.localeCompare(right, language));
+}
+
+function buildStudyYearOptions(studyLevel: StudyLevel | '') {
+  if (!studyLevel) {
+    return [];
+  }
+  const max = MAX_YEARS_BY_LEVEL[studyLevel];
+  return Array.from({ length: max }, (_, idx) => idx + 1);
+}
+
+function buildProfileUpdatePayload({
+  city,
+  faculty,
+  fullName,
+  selectedTagIds,
+  studyLevel,
+  studyYear,
+  university,
+}: {
+  city: string;
+  faculty: string;
+  fullName: string;
+  selectedTagIds: number[];
+  studyLevel: StudyLevel | '';
+  studyYear: number | undefined;
+  university: string;
+}) {
+  return {
+    full_name: fullName.trim() ? fullName.trim() : undefined,
+    city: city.trim(),
+    university: university.trim(),
+    faculty: faculty.trim(),
+    study_level: studyLevel || undefined,
+    study_year: typeof studyYear === 'number' ? studyYear : undefined,
+    interest_tag_ids: selectedTagIds,
+  };
+}
+
+async function loadOptionalStudentState(isStudent: boolean): Promise<OptionalStudentState> {
+  if (!isStudent) {
+    return {
+      personalization: null,
+      notificationPreferences: null,
+    };
+  }
+
+  const [personalization, notificationPreferences] = await Promise.all([
+    eventService.getPersonalizationSettings().catch(() => EMPTY_PERSONALIZATION),
+    eventService.getNotificationPreferences().catch(() => EMPTY_NOTIFICATION_PREFERENCES),
+  ]);
+
+  return { personalization, notificationPreferences };
+}
+
+async function loadUniversityCatalog() {
+  try {
+    return await eventService.getUniversityCatalog();
+  } catch {
+    return [];
+  }
+}
+
+function triggerDataExport(blob: Blob) {
+  const url = globalThis.URL.createObjectURL(blob);
+  const anchor = document.createElement('a');
+  anchor.href = url;
+  anchor.download = `eventlink-export-${new Date().toISOString().slice(0, 10)}.json`;
+  document.body.appendChild(anchor);
+  anchor.click();
+  anchor.remove();
+  globalThis.URL.revokeObjectURL(url);
+}
+
+function useStudentProfileState(): StudentProfileControllerState {
   const [isLoading, setIsLoading] = useState(true);
-  const [isSaving, setIsSaving] = useState(false);
-  const [isExporting, setIsExporting] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [deletePassword, setDeletePassword] = useState('');
-  const [isDeleting, setIsDeleting] = useState(false);
-  const [isSavingTheme, setIsSavingTheme] = useState(false);
-  const [isSavingLanguage, setIsSavingLanguage] = useState(false);
   const [allTags, setAllTags] = useState<Tag[]>([]);
   const [universityCatalog, setUniversityCatalog] = useState<UniversityCatalogItem[]>([]);
   const [profile, setProfile] = useState<StudentProfile | null>(null);
@@ -46,62 +267,109 @@ export function useStudentProfileController() {
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [personalization, setPersonalization] = useState<PersonalizationSettings | null>(null);
   const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
-  const [isSavingNotifications, setIsSavingNotifications] = useState(false);
 
-  const musicInterestNames = useMemo(
-    () =>
-      new Set([
-        'Muzică',
-        'Rock',
-        'Pop',
-        'Hip-Hop',
-        'EDM',
-        'Jazz',
-        'Clasică',
-        'Folk',
-        'Metal',
-      ]),
-    [],
-  );
+  return {
+    allTags,
+    city,
+    deleteDialogOpen,
+    deletePassword,
+    faculty,
+    fullName,
+    isLoading,
+    notificationPrefs,
+    personalization,
+    profile,
+    selectedTagIds,
+    setAllTags,
+    setCity,
+    setDeleteDialogOpen,
+    setDeletePassword,
+    setFaculty,
+    setFullName,
+    setIsLoading,
+    setNotificationPrefs,
+    setPersonalization,
+    setProfile,
+    setSelectedTagIds,
+    setStudyLevel,
+    setStudyYear,
+    setUniversity,
+    setUniversityCatalog,
+    studyLevel,
+    studyYear,
+    university,
+    universityCatalog,
+  };
+}
 
+function useStudentProfileDerivedValues({
+  allTags,
+  language,
+  notificationPrefs,
+  personalization,
+  studyLevel,
+  university,
+  universityCatalog,
+}: {
+  allTags: Tag[];
+  language: string;
+  notificationPrefs: NotificationPreferences | null;
+  personalization: PersonalizationSettings | null;
+  studyLevel: StudyLevel | '';
+  university: string;
+  universityCatalog: UniversityCatalogItem[];
+}): StudentProfileControllerDerivedData {
   const musicTags = useMemo(
-    () => allTags.filter((tag) => musicInterestNames.has(tag.name)),
-    [allTags, musicInterestNames],
+    () => allTags.filter((tag) => MUSIC_INTEREST_NAMES.has(tag.name)),
+    [allTags],
   );
   const otherTags = useMemo(
-    () => allTags.filter((tag) => !musicInterestNames.has(tag.name)),
-    [allTags, musicInterestNames],
+    () => allTags.filter((tag) => !MUSIC_INTEREST_NAMES.has(tag.name)),
+    [allTags],
   );
-  const selectedUniversity = useMemo(() => {
-    const normalized = university.trim().toLowerCase();
-    if (!normalized) {
-      return null;
-    }
-    return universityCatalog.find((item) => item.name.toLowerCase() === normalized) ?? null;
-  }, [university, universityCatalog]);
+  const selectedUniversity = useMemo(
+    () => findSelectedUniversity(university, universityCatalog),
+    [university, universityCatalog],
+  );
   const facultyOptions = useMemo(() => selectedUniversity?.faculties ?? [], [selectedUniversity]);
-  const hiddenTags = personalization?.hidden_tags ?? [];
-  const blockedOrganizers = personalization?.blocked_organizers ?? [];
-  const cityOptions = useMemo(() => {
-    const options = new Set<string>();
-    for (const item of universityCatalog) {
-      if (item.city) {
-        options.add(item.city);
-      }
-    }
-    return Array.from(options).sort((left, right) => left.localeCompare(right, language));
-  }, [language, universityCatalog]);
-  const studyYearOptions = useMemo(() => {
-    if (!studyLevel) {
-      return [];
-    }
-    const max = MAX_YEARS_BY_LEVEL[studyLevel];
-    return Array.from({ length: max }, (_, idx) => idx + 1);
-  }, [studyLevel]);
+  const cityOptions = useMemo(
+    () => buildCityOptions(universityCatalog, language),
+    [language, universityCatalog],
+  );
+  const studyYearOptions = useMemo(() => buildStudyYearOptions(studyLevel), [studyLevel]);
 
-  const currentNotificationPreferences = notificationPrefs ?? null;
-  const currentPersonalization = personalization ?? null;
+  return {
+    blockedOrganizers: personalization?.blocked_organizers ?? [],
+    cityOptions,
+    currentNotificationPreferences: notificationPrefs ?? null,
+    currentPersonalization: personalization ?? null,
+    facultyOptions,
+    hiddenTags: personalization?.hidden_tags ?? [],
+    musicTags,
+    otherTags,
+    selectedUniversity,
+    studyYearOptions,
+  };
+}
 
+function useStudentProfileDataLoader({
+  isStudent,
+  setAllTags,
+  setCity,
+  setFaculty,
+  setFullName,
+  setIsLoading,
+  setNotificationPrefs,
+  setPersonalization,
+  setProfile,
+  setSelectedTagIds,
+  setStudyLevel,
+  setStudyYear,
+  setUniversity,
+  setUniversityCatalog,
+  t,
+  toast,
+}: ProfileDataLoaderArgs) {
   const loadData = useCallback(async () => {
     setIsLoading(true);
     try {
@@ -109,37 +377,22 @@ export function useStudentProfileController() {
         eventService.getStudentProfile(),
         eventService.getAllTags(),
       ]);
-      setProfile(profileData);
-      setFullName(profileData.full_name ?? '');
-      setCity(profileData.city ?? '');
-      setUniversity(profileData.university ?? '');
-      setFaculty(profileData.faculty ?? '');
-      setStudyLevel(profileData.study_level ?? '');
-      setStudyYear(profileData.study_year ?? undefined);
-      setSelectedTagIds(profileData.interest_tags.map((tag) => tag.id));
+      applyProfileSnapshot(profileData, {
+        setCity,
+        setFaculty,
+        setFullName,
+        setProfile,
+        setSelectedTagIds,
+        setStudyLevel,
+        setStudyYear,
+        setUniversity,
+      });
       setAllTags(tagsData);
 
-      if (isStudent) {
-        const [personalizationData, notificationData] = await Promise.all([
-          eventService.getPersonalizationSettings().catch(() => ({ hidden_tags: [], blocked_organizers: [] })),
-          eventService.getNotificationPreferences().catch(() => ({
-            email_digest_enabled: false,
-            email_filling_fast_enabled: false,
-          })),
-        ]);
-        setPersonalization(personalizationData);
-        setNotificationPrefs(notificationData);
-      } else {
-        setPersonalization(null);
-        setNotificationPrefs(null);
-      }
-
-      try {
-        const catalog = await eventService.getUniversityCatalog();
-        setUniversityCatalog(catalog);
-      } catch {
-        setUniversityCatalog([]);
-      }
+      const { personalization, notificationPreferences } = await loadOptionalStudentState(isStudent);
+      setPersonalization(personalization);
+      setNotificationPrefs(notificationPreferences);
+      setUniversityCatalog(await loadUniversityCatalog());
     } catch {
       toast({
         title: t.profile.loadErrorTitle,
@@ -149,17 +402,51 @@ export function useStudentProfileController() {
     } finally {
       setIsLoading(false);
     }
-  }, [isStudent, t, toast]);
+  }, [
+    isStudent,
+    setAllTags,
+    setCity,
+    setFaculty,
+    setFullName,
+    setIsLoading,
+    setNotificationPrefs,
+    setPersonalization,
+    setProfile,
+    setSelectedTagIds,
+    setStudyLevel,
+    setStudyYear,
+    setUniversity,
+    setUniversityCatalog,
+    t,
+    toast,
+  ]);
 
   useEffect(() => {
-    loadData();
+    void loadData();
   }, [loadData]);
+}
 
-  useEffect(() => {
-    if (!deleteDialogOpen) {
-      setDeletePassword('');
-    }
-  }, [deleteDialogOpen]);
+function useStudentProfileFormHandlers({
+  city,
+  faculty,
+  fullName,
+  selectedTagIds,
+  setCity,
+  setFaculty,
+  setFullName,
+  setProfile,
+  setSelectedTagIds,
+  setStudyLevel,
+  setStudyYear,
+  setUniversity,
+  studyLevel,
+  studyYear,
+  t,
+  toast,
+  university,
+  universityCatalog,
+}: ProfileFormHandlerArgs) {
+  const [isSaving, setIsSaving] = useState(false);
 
   const handleTagToggle = useCallback((tagId: number) => {
     setSelectedTagIds((previous) => (
@@ -167,11 +454,10 @@ export function useStudentProfileController() {
         ? previous.filter((id) => id !== tagId)
         : [...previous, tagId]
     ));
-  }, []);
+  }, [setSelectedTagIds]);
 
   const handleUniversityChange = useCallback((nextUniversity: string) => {
-    const normalized = nextUniversity.trim().toLowerCase();
-    const match = universityCatalog.find((item) => item.name.toLowerCase() === normalized);
+    const match = findSelectedUniversity(nextUniversity, universityCatalog);
     setUniversity(nextUniversity);
     if (nextUniversity !== university) {
       setFaculty('');
@@ -180,36 +466,39 @@ export function useStudentProfileController() {
     if (matchedCity) {
       setCity((previousCity) => (previousCity.trim() ? previousCity : matchedCity));
     }
-  }, [university, universityCatalog]);
+  }, [setCity, setFaculty, setUniversity, university, universityCatalog]);
 
   const handleStudyLevelChange = useCallback((value: string) => {
     const next = value as StudyLevel;
     setStudyLevel(next);
     const max = MAX_YEARS_BY_LEVEL[next];
     if (typeof studyYear === 'number' && (studyYear < 1 || studyYear > max)) {
-      setStudyYear(() => undefined);
+      setStudyYear(undefined);
     }
-  }, [studyYear]);
+  }, [setStudyLevel, setStudyYear, studyYear]);
 
   const handleSave = useCallback(async () => {
     setIsSaving(true);
     try {
-      const updatedProfile = await eventService.updateStudentProfile({
-        full_name: fullName.trim() ? fullName.trim() : undefined,
-        city: city.trim(),
-        university: university.trim(),
-        faculty: faculty.trim(),
-        study_level: studyLevel || undefined,
-        study_year: typeof studyYear === 'number' ? studyYear : undefined,
-        interest_tag_ids: selectedTagIds,
+      const updatedProfile = await eventService.updateStudentProfile(buildProfileUpdatePayload({
+        city,
+        faculty,
+        fullName,
+        selectedTagIds,
+        studyLevel,
+        studyYear,
+        university,
+      }));
+      applyProfileSnapshot(updatedProfile, {
+        setCity,
+        setFaculty,
+        setFullName,
+        setProfile,
+        setSelectedTagIds,
+        setStudyLevel,
+        setStudyYear,
+        setUniversity,
       });
-      setProfile(updatedProfile);
-      setFullName(updatedProfile.full_name ?? '');
-      setCity(updatedProfile.city ?? '');
-      setUniversity(updatedProfile.university ?? '');
-      setFaculty(updatedProfile.faculty ?? '');
-      setStudyLevel(updatedProfile.study_level ?? '');
-      setStudyYear(updatedProfile.study_year ?? undefined);
       toast({
         title: t.profile.saveSuccessTitle,
         description: t.profile.saveSuccessDescription,
@@ -223,12 +512,56 @@ export function useStudentProfileController() {
     } finally {
       setIsSaving(false);
     }
-  }, [city, faculty, fullName, selectedTagIds, studyLevel, studyYear, t, toast, university]);
+  }, [
+    city,
+    faculty,
+    fullName,
+    selectedTagIds,
+    setCity,
+    setFaculty,
+    setFullName,
+    setProfile,
+    setSelectedTagIds,
+    setStudyLevel,
+    setStudyYear,
+    setUniversity,
+    studyLevel,
+    studyYear,
+    t,
+    toast,
+    university,
+  ]);
+
+  return {
+    handleSave,
+    handleStudyLevelChange,
+    handleTagToggle,
+    handleUniversityChange,
+    isSaving,
+  };
+}
+
+function useStudentProfilePreferenceHandlers({
+  currentNotificationPreferences,
+  currentPersonalization,
+  languagePreference,
+  refreshUser,
+  setLanguagePreference,
+  setNotificationPrefs,
+  setPersonalization,
+  setThemePreference,
+  t,
+  themePreference,
+  toast,
+}: PreferenceHandlerArgs) {
+  const [isSavingTheme, setThemeSavingState] = useState(false);
+  const [isSavingLanguage, setLanguageSavingState] = useState(false);
+  const [isSavingNotifications, setNotificationSavingState] = useState(false);
 
   const handleThemeChange = useCallback(async (nextPreference: ThemePreference) => {
     const previous = themePreference;
     setThemePreference(nextPreference);
-    setIsSavingTheme(true);
+    setThemeSavingState(true);
     try {
       await authService.updateThemePreference(nextPreference);
       await refreshUser();
@@ -244,14 +577,14 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     } finally {
-      setIsSavingTheme(false);
+      setThemeSavingState(false);
     }
   }, [refreshUser, setThemePreference, t, themePreference, toast]);
 
   const handleLanguageChange = useCallback(async (nextPreference: LanguagePreference) => {
     const previous = languagePreference;
     setLanguagePreference(nextPreference);
-    setIsSavingLanguage(true);
+    setLanguageSavingState(true);
     try {
       await authService.updateLanguagePreference(nextPreference);
       await refreshUser();
@@ -267,7 +600,7 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     } finally {
-      setIsSavingLanguage(false);
+      setLanguageSavingState(false);
     }
   }, [languagePreference, refreshUser, setLanguagePreference, t, toast]);
 
@@ -281,7 +614,7 @@ export function useStudentProfileController() {
     const previous = currentNotificationPreferences;
     const next = { ...previous, ...patch };
     setNotificationPrefs(next);
-    setIsSavingNotifications(true);
+    setNotificationSavingState(true);
     try {
       const saved = await eventService.updateNotificationPreferences(patch);
       setNotificationPrefs(saved);
@@ -297,9 +630,9 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     } finally {
-      setIsSavingNotifications(false);
+      setNotificationSavingState(false);
     }
-  }, [currentNotificationPreferences, t, toast]);
+  }, [currentNotificationPreferences, setNotificationPrefs, t, toast]);
 
   const handleUnhideTag = useCallback(async (tagId: number) => {
     if (!currentPersonalization) {
@@ -323,7 +656,7 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     }
-  }, [currentPersonalization, t, toast]);
+  }, [currentPersonalization, setPersonalization, t, toast]);
 
   const handleUnblockOrganizer = useCallback(async (organizerId: number) => {
     if (!currentPersonalization) {
@@ -347,20 +680,36 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     }
-  }, [currentPersonalization, t, toast]);
+  }, [currentPersonalization, setPersonalization, t, toast]);
+
+  return {
+    handleLanguageChange,
+    handleNotificationPreferenceChange,
+    handleThemeChange,
+    handleUnblockOrganizer,
+    handleUnhideTag,
+    isSavingLanguage,
+    isSavingNotifications,
+    isSavingTheme,
+  };
+}
+
+function useStudentProfileAccountHandlers({
+  closeDeleteDialog,
+  deletePassword,
+  logout,
+  navigate,
+  t,
+  toast,
+}: AccountHandlerArgs) {
+  const [isDeleting, setDeletingState] = useState(false);
+  const [isExporting, setExportingState] = useState(false);
 
   const handleExport = useCallback(async () => {
-    setIsExporting(true);
+    setExportingState(true);
     try {
       const blob = await eventService.exportMyData();
-      const url = globalThis.URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = url;
-      anchor.download = `eventlink-export-${new Date().toISOString().slice(0, 10)}.json`;
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      globalThis.URL.revokeObjectURL(url);
+      triggerDataExport(blob);
       toast({
         title: t.profile.exportGeneratedTitle,
         description: t.profile.exportGeneratedDescription,
@@ -373,13 +722,9 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     } finally {
-      setIsExporting(false);
+      setExportingState(false);
     }
   }, [t, toast]);
-
-  const closeDeleteDialog = useCallback(() => {
-    setDeleteDialogOpen(false);
-  }, []);
 
   const handleDeleteAccount = useCallback(async () => {
     const password = deletePassword.trim();
@@ -392,7 +737,7 @@ export function useStudentProfileController() {
       return;
     }
 
-    setIsDeleting(true);
+    setDeletingState(true);
     try {
       await eventService.deleteMyAccount(password);
       toast({
@@ -411,60 +756,176 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     } finally {
-      setIsDeleting(false);
+      setDeletingState(false);
     }
   }, [closeDeleteDialog, deletePassword, logout, navigate, t, toast]);
 
   return {
+    handleDeleteAccount,
+    handleExport,
+    isDeleting,
+    isExporting,
+  };
+}
+
+function useStudentProfileState() {
+  const [isLoading, setIsLoading] = useState(true);
+  const [deleteDialogOpen, setDeleteDialogOpenState] = useState(false);
+  const [deletePassword, setDeletePassword] = useState('');
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [universityCatalog, setUniversityCatalog] = useState<UniversityCatalogItem[]>([]);
+  const [profile, setProfile] = useState<StudentProfile | null>(null);
+  const [fullName, setFullName] = useState('');
+  const [city, setCity] = useState('');
+  const [university, setUniversity] = useState('');
+  const [faculty, setFaculty] = useState('');
+  const [studyLevel, setStudyLevel] = useState<StudyLevel | ''>('');
+  const [studyYear, setStudyYear] = useState<number | undefined>();
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [personalization, setPersonalization] = useState<PersonalizationSettings | null>(null);
+  const [notificationPrefs, setNotificationPrefs] = useState<NotificationPreferences | null>(null);
+
+  const setDeleteDialogOpen = useCallback((nextValue: SetStateAction<boolean>) => {
+    setDeleteDialogOpenState((previous) => {
+      const resolvedValue = typeof nextValue === 'function' ? nextValue(previous) : nextValue;
+      if (!resolvedValue) {
+        setDeletePassword('');
+      }
+      return resolvedValue;
+    });
+  }, []);
+
+  return {
     allTags,
-    blockedOrganizers,
     city,
-    cityOptions,
-    closeDeleteDialog,
     deleteDialogOpen,
     deletePassword,
     faculty,
-    facultyOptions,
     fullName,
-    handleDeleteAccount,
-    handleExport,
-    handleLanguageChange,
-    handleNotificationPreferenceChange,
-    handleSave,
-    handleStudyLevelChange,
-    handleTagToggle,
-    handleThemeChange,
-    handleUnblockOrganizer,
-    handleUnhideTag,
-    handleUniversityChange,
-    hiddenTags,
-    isDeleting,
-    isExporting,
     isLoading,
-    isSaving,
-    isSavingLanguage,
-    isSavingNotifications,
-    isSavingTheme,
-    isStudent,
-    languagePreference,
-    musicTags,
     notificationPrefs,
-    otherTags,
+    personalization,
     profile,
     selectedTagIds,
-    selectedUniversity,
+    setAllTags,
     setCity,
     setDeleteDialogOpen,
     setDeletePassword,
     setFaculty,
     setFullName,
+    setIsLoading,
+    setNotificationPrefs,
+    setPersonalization,
+    setProfile,
+    setSelectedTagIds,
+    setStudyLevel,
     setStudyYear,
+    setUniversity,
+    setUniversityCatalog,
     studyLevel,
     studyYear,
-    studyYearOptions,
-    t,
-    themePreference,
     university,
     universityCatalog,
   };
+}
+
+/** Coordinate student profile state, async mutations, and derived form options. */
+export function useStudentProfileController() {
+  const { toast } = useToast();
+  const { user, logout, refreshUser } = useAuth();
+  const { preference: themePreference, setPreference: setThemePreference } = useTheme();
+  const { preference: languagePreference, setPreference: setLanguagePreference, language, t } = useI18n();
+  const navigate = useNavigate();
+  const isStudent = user?.role === 'student';
+  const state = useStudentProfileState();
+  const derived = useStudentProfileDerivedValues({
+    allTags: state.allTags,
+    language,
+    personalization: state.personalization,
+    studyLevel: state.studyLevel,
+    university: state.university,
+    universityCatalog: state.universityCatalog,
+  });
+  const currentNotificationPreferences = state.notificationPrefs ?? null;
+  const currentPersonalization = state.personalization ?? null;
+
+  useStudentProfileDataLoader({
+    isStudent,
+    setAllTags: state.setAllTags,
+    setCity: state.setCity,
+    setFaculty: state.setFaculty,
+    setFullName: state.setFullName,
+    setIsLoading: state.setIsLoading,
+    setNotificationPrefs: state.setNotificationPrefs,
+    setPersonalization: state.setPersonalization,
+    setProfile: state.setProfile,
+    setSelectedTagIds: state.setSelectedTagIds,
+    setStudyLevel: state.setStudyLevel,
+    setStudyYear: state.setStudyYear,
+    setUniversity: state.setUniversity,
+    setUniversityCatalog: state.setUniversityCatalog,
+    t,
+    toast,
+  });
+
+  const formHandlers = useStudentProfileFormHandlers({
+    city: state.city,
+    faculty: state.faculty,
+    fullName: state.fullName,
+    selectedTagIds: state.selectedTagIds,
+    setCity: state.setCity,
+    setFaculty: state.setFaculty,
+    setFullName: state.setFullName,
+    setProfile: state.setProfile,
+    setSelectedTagIds: state.setSelectedTagIds,
+    setStudyLevel: state.setStudyLevel,
+    setStudyYear: state.setStudyYear,
+    setUniversity: state.setUniversity,
+    studyLevel: state.studyLevel,
+    studyYear: state.studyYear,
+    t,
+    toast,
+    university: state.university,
+    universityCatalog: state.universityCatalog,
+  });
+
+  const preferenceHandlers = useStudentProfilePreferenceHandlers({
+    currentNotificationPreferences,
+    currentPersonalization,
+    languagePreference,
+    refreshUser,
+    setLanguagePreference,
+    setNotificationPrefs: state.setNotificationPrefs,
+    setPersonalization: state.setPersonalization,
+    setThemePreference,
+    t,
+    themePreference,
+    toast,
+  });
+
+  const closeDeleteDialog = useCallback(() => {
+    state.setDeleteDialogOpen(false);
+  }, [state]);
+
+  const accountHandlers = useStudentProfileAccountHandlers({
+    closeDeleteDialog,
+    deletePassword: state.deletePassword,
+    logout,
+    navigate,
+    t,
+    toast,
+  });
+
+  return buildStudentProfileControllerResult({
+    accountHandlers,
+    closeDeleteDialog,
+    derived,
+    formHandlers,
+    isStudent,
+    languagePreference,
+    preferenceHandlers,
+    state,
+    t,
+    themePreference,
+  });
 }
