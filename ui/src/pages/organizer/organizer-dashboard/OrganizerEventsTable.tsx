@@ -246,19 +246,33 @@ function OrganizerEventsTableContent({
   selectedEventIds,
   texts,
 }: Props) {
-  return (
-    <div className="space-y-4">
-      {selectedCount > 0 && (
-        <OrganizerBulkActionsBar
-          isBulkUpdating={isBulkUpdating}
-          onBulkStatusUpdate={onBulkStatusUpdate}
-          onClearSelection={onClearSelection}
-          onOpenBulkTags={onOpenBulkTags}
-          selectedCount={selectedCount}
-          texts={texts}
-        />
-      )}
+  const bulkActions =
+    selectedCount > 0 ? (
+      <OrganizerBulkActionsBar
+        isBulkUpdating={isBulkUpdating}
+        onBulkStatusUpdate={onBulkStatusUpdate}
+        onClearSelection={onClearSelection}
+        onOpenBulkTags={onOpenBulkTags}
+        selectedCount={selectedCount}
+        texts={texts}
+      />
+    ) : null;
+  const tableRows = events.map((event) => (
+    <OrganizerEventRow
+      key={event.id}
+      event={event}
+      language={language}
+      now={now}
+      onDelete={onDelete}
+      onToggleSelected={onToggleSelected}
+      selectedEventIds={selectedEventIds}
+      texts={texts}
+    />
+  ));
 
+  return (
+    <>
+      {bulkActions}
       <Table>
         <TableHeader>
           <TableRow>
@@ -276,22 +290,9 @@ function OrganizerEventsTableContent({
             <TableHead className="w-[70px]" />
           </TableRow>
         </TableHeader>
-        <TableBody>
-          {events.map((event) => (
-            <OrganizerEventRow
-              key={event.id}
-              event={event}
-              language={language}
-              now={now}
-              onDelete={onDelete}
-              onToggleSelected={onToggleSelected}
-              selectedEventIds={selectedEventIds}
-              texts={texts}
-            />
-          ))}
-        </TableBody>
+        <TableBody>{tableRows}</TableBody>
       </Table>
-    </div>
+    </>
   );
 }
 

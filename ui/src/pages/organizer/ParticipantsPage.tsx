@@ -375,6 +375,36 @@ function ParticipantsEmailDialog({
 }
 
 /** Render the loading skeleton for the organizer participants view. */
+function ParticipantsLoadingHeader() {
+  return (
+    <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+      <div className="space-y-2">
+        <Skeleton className="h-6 w-40" />
+        <Skeleton className="h-4 w-56" />
+      </div>
+      <div className="flex items-center gap-4">
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-6 w-24" />
+        <Skeleton className="h-10 w-32" />
+      </div>
+    </div>
+  );
+}
+
+/** Render the placeholder rows used while participant data is loading. */
+function ParticipantsLoadingRows() {
+  return (
+    <div className="space-y-3">
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+      <Skeleton className="h-10 w-full" />
+    </div>
+  );
+}
+
+/** Render the loading skeleton for the organizer participants view. */
 function ParticipantsLoadingState({ t }: Readonly<{ t: ParticipantsTexts }>) {
   return (
     <div className="container mx-auto px-4 py-8">
@@ -382,27 +412,9 @@ function ParticipantsLoadingState({ t }: Readonly<{ t: ParticipantsTexts }>) {
 
       <Card>
         <CardHeader>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
-            <div className="space-y-2">
-              <Skeleton className="h-6 w-40" />
-              <Skeleton className="h-4 w-56" />
-            </div>
-            <div className="flex items-center gap-4">
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-6 w-24" />
-              <Skeleton className="h-10 w-32" />
-            </div>
-          </div>
+          <ParticipantsLoadingHeader />
         </CardHeader>
-        <CardContent>
-          <div className="space-y-3">
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-            <Skeleton className="h-10 w-full" />
-          </div>
-        </CardContent>
+        <CardContent><ParticipantsLoadingRows /></CardContent>
       </Card>
       <span className="sr-only">{t.participants.title}</span>
     </div>
@@ -561,6 +573,74 @@ function ParticipantsEmptyState({ t }: Readonly<{ t: ParticipantsTexts }>) {
 }
 
 /** Render the participants pagination controls and page-size selector. */
+function ParticipantsPageSizeSelect({
+  pageSize,
+  setPage,
+  setPageSize,
+}: Readonly<{
+  pageSize: number;
+  setPage: Dispatch<SetStateAction<number>>;
+  setPageSize: Dispatch<SetStateAction<number>>;
+}>) {
+  return (
+    <Select
+      value={String(pageSize)}
+      onValueChange={(value) => {
+        setPageSize(Number.parseInt(value, 10));
+        setPage(1);
+      }}
+    >
+      <SelectTrigger className="w-[70px]">
+        <SelectValue />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="10">10</SelectItem>
+        <SelectItem value="20">20</SelectItem>
+        <SelectItem value="50">50</SelectItem>
+        <SelectItem value="100">100</SelectItem>
+      </SelectContent>
+    </Select>
+  );
+}
+
+/** Render the previous and next pagination buttons with the page counter. */
+function ParticipantsPageButtons({
+  page,
+  setPage,
+  t,
+  totalPages,
+}: Readonly<{
+  page: number;
+  setPage: Dispatch<SetStateAction<number>>;
+  t: ParticipantsTexts;
+  totalPages: number;
+}>) {
+  return (
+    <div className="flex items-center gap-2">
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={page === 1}
+        onClick={() => setPage((value) => value - 1)}
+      >
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <span className="text-sm">
+        {t.participants.paginationPage} {page} {t.participants.paginationOf} {totalPages}
+      </span>
+      <Button
+        variant="outline"
+        size="icon"
+        disabled={page === totalPages}
+        onClick={() => setPage((value) => value + 1)}
+      >
+        <ChevronRight className="h-4 w-4" />
+      </Button>
+    </div>
+  );
+}
+
+/** Render the participants pagination controls and page-size selector. */
 function ParticipantsPagination({
   page,
   pageSize,
@@ -573,46 +653,9 @@ function ParticipantsPagination({
     <div className="mt-4 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{t.participants.perPage}</span>
-        <Select
-          value={String(pageSize)}
-          onValueChange={(value) => {
-            setPageSize(Number.parseInt(value, 10));
-            setPage(1);
-          }}
-        >
-          <SelectTrigger className="w-[70px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="10">10</SelectItem>
-            <SelectItem value="20">20</SelectItem>
-            <SelectItem value="50">50</SelectItem>
-            <SelectItem value="100">100</SelectItem>
-          </SelectContent>
-        </Select>
+        <ParticipantsPageSizeSelect pageSize={pageSize} setPage={setPage} setPageSize={setPageSize} />
       </div>
-
-      <div className="flex items-center gap-2">
-        <Button
-          variant="outline"
-          size="icon"
-          disabled={page === 1}
-          onClick={() => setPage((value) => value - 1)}
-        >
-          <ChevronLeft className="h-4 w-4" />
-        </Button>
-        <span className="text-sm">
-          {t.participants.paginationPage} {page} {t.participants.paginationOf} {totalPages}
-        </span>
-        <Button
-          variant="outline"
-          size="icon"
-          disabled={page === totalPages}
-          onClick={() => setPage((value) => value + 1)}
-        >
-          <ChevronRight className="h-4 w-4" />
-        </Button>
-      </div>
+      <ParticipantsPageButtons page={page} setPage={setPage} t={t} totalPages={totalPages} />
     </div>
   );
 }

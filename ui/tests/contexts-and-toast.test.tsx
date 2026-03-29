@@ -21,7 +21,7 @@ import { LanguageProvider, useI18n } from '@/contexts/LanguageContext';
 import { ThemeProvider, useTheme } from '@/contexts/ThemeContext';
 import { reducer, toast, useToast } from '@/hooks/use-toast';
 
-const ACCESS_CODE_FIELD = 'pass' + 'word';
+const ACCESS_CODE_FIELD = 'password';
 const CONFIRM_ACCESS_CODE_FIELD = `confirm_${ACCESS_CODE_FIELD}`;
 const PRIMARY_SESSION_KEY = ['access', 'token'].join('_');
 const DEMO_ENTRY_CODE = ['Entry', 'Code', '123A'].join('');
@@ -84,9 +84,9 @@ describe('contexts and toast hook', () => {
     localStorage.clear();
     authServiceMock.isAuthenticated.mockReturnValue(false);
     authServiceMock.getMe.mockResolvedValue(null);
-    authServiceMock.login.mockResolvedValue(undefined);
-    authServiceMock.register.mockResolvedValue(undefined);
-    authServiceMock.logout.mockReturnValue(undefined);
+    authServiceMock.login.mockResolvedValue();
+    authServiceMock.register.mockResolvedValue();
+    authServiceMock.logout.mockImplementation(() => {});
   });
 
   it('throws when hooks are used outside providers', () => {
@@ -150,12 +150,12 @@ describe('contexts and toast hook', () => {
     expect(screen.getByTestId('role-state')).toHaveTextContent('true|true');
     expect(screen.getByTestId('language')).toHaveTextContent('en');
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByText('login'));
     });
     expect(authServiceMock.login).toHaveBeenCalledWith({ email: 'x@test.ro', [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByText('register'));
     });
     expect(authServiceMock.register).toHaveBeenCalledWith({
@@ -165,7 +165,7 @@ describe('contexts and toast hook', () => {
       full_name: 'X',
     });
 
-    await act(async () => {
+    act(() => {
       fireEvent.click(screen.getByText('refresh'));
     });
     expect(authServiceMock.getMe).toHaveBeenCalled();

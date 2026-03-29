@@ -18,6 +18,7 @@ import type {
 } from '@/types';
 import { MAX_YEARS_BY_LEVEL } from './shared';
 
+/** Coordinate student profile state, async mutations, and derived form options. */
 export function useStudentProfileController() {
   const { toast } = useToast();
   const { user, logout, refreshUser } = useAuth();
@@ -97,6 +98,9 @@ export function useStudentProfileController() {
     const max = MAX_YEARS_BY_LEVEL[studyLevel];
     return Array.from({ length: max }, (_, idx) => idx + 1);
   }, [studyLevel]);
+
+  const currentNotificationPreferences = notificationPrefs ?? null;
+  const currentPersonalization = personalization ?? null;
 
   const loadData = useCallback(async () => {
     setIsLoading(true);
@@ -183,7 +187,7 @@ export function useStudentProfileController() {
     setStudyLevel(next);
     const max = MAX_YEARS_BY_LEVEL[next];
     if (typeof studyYear === 'number' && (studyYear < 1 || studyYear > max)) {
-      setStudyYear(undefined);
+      setStudyYear(() => undefined);
     }
   }, [studyYear]);
 
@@ -270,7 +274,11 @@ export function useStudentProfileController() {
   const handleNotificationPreferenceChange = useCallback(async (
     patch: Partial<NotificationPreferences>,
   ) => {
-    const previous = notificationPrefs!;
+    if (!currentNotificationPreferences) {
+      return;
+    }
+
+    const previous = currentNotificationPreferences;
     const next = { ...previous, ...patch };
     setNotificationPrefs(next);
     setIsSavingNotifications(true);
@@ -291,10 +299,13 @@ export function useStudentProfileController() {
     } finally {
       setIsSavingNotifications(false);
     }
-  }, [notificationPrefs, t, toast]);
+  }, [currentNotificationPreferences, t, toast]);
 
   const handleUnhideTag = useCallback(async (tagId: number) => {
-    const currentPersonalization = personalization!;
+    if (!currentPersonalization) {
+      return;
+    }
+
     try {
       await eventService.unhideTag(tagId);
       setPersonalization({
@@ -312,10 +323,13 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     }
-  }, [personalization, t, toast]);
+  }, [currentPersonalization, t, toast]);
 
   const handleUnblockOrganizer = useCallback(async (organizerId: number) => {
-    const currentPersonalization = personalization!;
+    if (!currentPersonalization) {
+      return;
+    }
+
     try {
       await eventService.unblockOrganizer(organizerId);
       setPersonalization({
@@ -333,7 +347,7 @@ export function useStudentProfileController() {
         variant: 'destructive',
       });
     }
-  }, [personalization, t, toast]);
+  }, [currentPersonalization, t, toast]);
 
   const handleExport = useCallback(async () => {
     setIsExporting(true);
