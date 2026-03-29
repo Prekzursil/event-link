@@ -333,6 +333,7 @@ function PersonalizationPanel({
   );
 }
 
+/** Render the event-detail sidebar sections for registration, organizer metadata, and personalization. */
 export function EventDetailSidebar({
   event,
   isPast,
