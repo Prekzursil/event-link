@@ -1,9 +1,17 @@
+import re
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 WORKFLOWS_DIR = REPO_ROOT / '.github' / 'workflows'
-WRAPPER_TEMPLATE_REF = '@f61bf44a064d3e528de89a7c5c265aa2a7de2fc0'
-MUTATION_TEMPLATE_REF = '@f61bf44a064d3e528de89a7c5c265aa2a7de2fc0'
+
+
+def _assert_uses_pinned_platform_workflow(content: str, workflow_name: str) -> None:
+    """Assert one wrapper points at a pinned quality-zero-platform reusable workflow."""
+    pattern = (
+        rf"uses: Prekzursil/quality-zero-platform/.github/workflows/"
+        rf"{re.escape(workflow_name)}@[0-9a-f]{{40}}"
+    )
+    assert re.search(pattern, content), workflow_name
 
 
 def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
@@ -19,7 +27,9 @@ def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
     )
 
     assert 'name: Quality Zero Platform' in quality_platform
-    assert WRAPPER_TEMPLATE_REF in quality_platform
+    _assert_uses_pinned_platform_workflow(
+        quality_platform, 'reusable-scanner-matrix.yml'
+    )
     assert 'platform_repository: Prekzursil/quality-zero-platform' in quality_platform
     assert 'platform_ref: main' in quality_platform
     assert 'SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}' in quality_platform
@@ -29,13 +39,17 @@ def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
     assert 'CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}' in quality_platform
 
     assert 'name: Quality Zero Gate' in quality_gate
-    assert WRAPPER_TEMPLATE_REF in quality_gate
+    _assert_uses_pinned_platform_workflow(
+        quality_gate, 'reusable-quality-zero-gate.yml'
+    )
     assert 'platform_repository: Prekzursil/quality-zero-platform' in quality_gate
     assert 'platform_ref: main' in quality_gate
     assert 'secrets: inherit' not in quality_gate
 
     assert 'name: Codecov Analytics' in analytics
-    assert WRAPPER_TEMPLATE_REF in analytics
+    _assert_uses_pinned_platform_workflow(
+        analytics, 'reusable-codecov-analytics.yml'
+    )
     assert 'platform_repository: Prekzursil/quality-zero-platform' in analytics
     assert 'platform_ref: main' in analytics
     assert 'CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}' in analytics
@@ -48,12 +62,14 @@ def test_quality_zero_mutation_wrappers_are_present_and_scoped() -> None:
         encoding='utf-8'
     )
 
-    assert MUTATION_TEMPLATE_REF in backlog
+    _assert_uses_pinned_platform_workflow(backlog, 'reusable-backlog-sweep.yml')
     assert 'lane: quality' in backlog
     assert 'CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}' in backlog
     assert 'secrets: inherit' not in backlog
 
-    assert MUTATION_TEMPLATE_REF in remediation
+    _assert_uses_pinned_platform_workflow(
+        remediation, 'reusable-remediation-loop.yml'
+    )
     assert 'failure_context: Quality Zero Gate' in remediation
     assert 'CODEX_AUTH_JSON: ${{ secrets.CODEX_AUTH_JSON }}' in remediation
     assert 'workflow_run: # zizmor: ignore[dangerous-triggers]' in remediation
