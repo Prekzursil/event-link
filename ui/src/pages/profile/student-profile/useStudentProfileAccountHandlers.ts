@@ -54,23 +54,23 @@ export function useStudentProfileAccountHandlers({
   t,
   toast,
 }: AccountHandlerArgs) {
-  const [isDeleting, setDeletingState] = useState(false);
-  const [isExporting, setExportingState] = useState(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
+  const [isExporting, setIsExporting] = useState<boolean>(false);
 
   const handleExport = useCallback(async () => {
-    setExportingState(true);
+    setIsExporting(true);
     try {
       await exportStudentProfileData(t, toast);
     } catch (error) {
       console.error('Failed to export data:', error);
       toast({ title: t.profile.exportErrorTitle, description: t.profile.exportErrorDescription, variant: 'destructive' });
     } finally {
-      setExportingState(false);
+      setIsExporting(false);
     }
   }, [t, toast]);
 
   const handleDeleteAccount = useCallback(async () => {
-    setDeletingState(true);
+    setIsDeleting(true);
     try {
       await deleteStudentProfileAccount({ closeDeleteDialog, deletePassword, logout, navigate, t, toast });
     } catch (error: unknown) {
@@ -78,7 +78,7 @@ export function useStudentProfileAccountHandlers({
       const axiosError = error as { response?: { data?: { detail?: string } } };
       toast({ title: t.profile.deleteErrorTitle, description: axiosError.response?.data?.detail || t.profile.deleteErrorFallback, variant: 'destructive' });
     } finally {
-      setDeletingState(false);
+      setIsDeleting(false);
     }
   }, [closeDeleteDialog, deletePassword, logout, navigate, t, toast]);
 

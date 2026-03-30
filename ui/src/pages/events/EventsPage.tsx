@@ -214,6 +214,19 @@ function syncEventsList({
   };
 }
 
+/** Emit analytics when a recommended event is opened from the recommendation rail. */
+function handleRecommendationClick(eventId: number) {
+  Promise.resolve(
+    recordInteractions([
+      {
+        interaction_type: 'click',
+        event_id: eventId,
+        meta: { source: 'recommendations_grid' },
+      },
+    ]),
+  ).catch(ignoreInteractionError);
+}
+
 /** Render the events discovery page with filter, recommendation, and pagination controls. */
 // skipcq: JS-R1005 - this page intentionally co-locates filter, paging, recommendation, and analytics state.
 export function EventsPage() {
@@ -421,19 +434,6 @@ export function EventsPage() {
         variant: 'destructive',
       });
     }
-  }
-
-  /** Emit analytics when a recommended event is opened from the recommendation rail. */
-  function handleRecommendationClick(eventId: number) {
-    Promise.resolve(
-      recordInteractions([
-        {
-          interaction_type: 'click',
-          event_id: eventId,
-          meta: { source: 'recommendations_grid' },
-        },
-      ]),
-    ).catch(ignoreInteractionError);
   }
 
   /** Render the main events grid for the current result set. */

@@ -29,13 +29,13 @@ export function useStudentProfileAppearanceHandlers({
   themePreference,
   toast,
 }: AppearanceHandlerArgs) {
-  const [isSavingTheme, setThemeSavingState] = useState(false);
-  const [isSavingLanguage, setLanguageSavingState] = useState(false);
+  const [isSavingTheme, setIsSavingTheme] = useState<boolean>(false);
+  const [isSavingLanguage, setIsSavingLanguage] = useState<boolean>(false);
 
   const handleThemeChange = useCallback(async (nextPreference: ThemePreference) => {
     const previous = themePreference;
     setThemePreference(nextPreference);
-    setThemeSavingState(true);
+    setIsSavingTheme(true);
     try {
       await authService.updateThemePreference(nextPreference);
       await refreshUser();
@@ -44,14 +44,14 @@ export function useStudentProfileAppearanceHandlers({
       setThemePreference(previous);
       toast({ title: t.theme.saveErrorTitle, description: t.theme.saveErrorDescription, variant: 'destructive' });
     } finally {
-      setThemeSavingState(false);
+      setIsSavingTheme(false);
     }
   }, [refreshUser, setThemePreference, t, themePreference, toast]);
 
   const handleLanguageChange = useCallback(async (nextPreference: LanguagePreference) => {
     const previous = languagePreference;
     setLanguagePreference(nextPreference);
-    setLanguageSavingState(true);
+    setIsSavingLanguage(true);
     try {
       await authService.updateLanguagePreference(nextPreference);
       await refreshUser();
@@ -60,7 +60,7 @@ export function useStudentProfileAppearanceHandlers({
       setLanguagePreference(previous);
       toast({ title: t.language.saveErrorTitle, description: t.language.saveErrorDescription, variant: 'destructive' });
     } finally {
-      setLanguageSavingState(false);
+      setIsSavingLanguage(false);
     }
   }, [languagePreference, refreshUser, setLanguagePreference, t, toast]);
 

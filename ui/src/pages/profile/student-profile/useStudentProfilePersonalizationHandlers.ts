@@ -21,7 +21,7 @@ export function useStudentProfilePersonalizationHandlers({
   t,
   toast,
 }: PersonalizationHandlerArgs) {
-  const [isSavingNotifications, setNotificationSavingState] = useState(false);
+  const [isSavingNotifications, setIsSavingNotifications] = useState<boolean>(false);
 
   const handleNotificationPreferenceChange = useCallback(async (
     patch: Partial<NotificationPreferences>,
@@ -33,7 +33,7 @@ export function useStudentProfilePersonalizationHandlers({
     const previous = currentNotificationPreferences;
     const next = { ...previous, ...patch };
     setNotificationPrefs(next);
-    setNotificationSavingState(true);
+    setIsSavingNotifications(true);
     try {
       const saved = await eventService.updateNotificationPreferences(patch);
       setNotificationPrefs(saved);
@@ -42,7 +42,7 @@ export function useStudentProfilePersonalizationHandlers({
       setNotificationPrefs(previous);
       toast({ title: t.common.error, description: t.notifications.saveErrorDescription, variant: 'destructive' });
     } finally {
-      setNotificationSavingState(false);
+      setIsSavingNotifications(false);
     }
   }, [currentNotificationPreferences, setNotificationPrefs, t, toast]);
 

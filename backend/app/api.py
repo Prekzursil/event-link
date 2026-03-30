@@ -1675,7 +1675,7 @@ def _ensure_registrations_enabled() -> None:
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=(
-                "Înscrierile sunt temporar dezactivate. " "Încearcă din nou mai târziu."
+                "Înscrierile sunt temporar dezactivate. Încearcă din nou mai târziu."
             ),
         )
 

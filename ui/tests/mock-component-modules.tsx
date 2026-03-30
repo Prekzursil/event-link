@@ -55,7 +55,7 @@ export function createSelectMockModule() {
   const SelectContext = React.createContext<SelectContextValue>({})
 
   /** Provide select context state to descendant mock controls. */
-  function Select({ children, onValueChange, disabled }: SelectProps) {
+  function Select({ children, onValueChange, disabled }: Readonly<SelectProps>) {
     const selectContextValue = React.useMemo(
       () => ({ onValueChange, disabled }),
       [disabled, onValueChange],
@@ -74,17 +74,17 @@ export function createSelectMockModule() {
   }
 
   /** Render the current value or placeholder for the select mock. */
-  function SelectValue({ placeholder }: SelectValueProps) {
+  function SelectValue({ placeholder }: Readonly<SelectValueProps>) {
     return <span>{placeholder ?? 'value'}</span>
   }
 
   /** Render the option list container for the select mock. */
-  function SelectContent({ children }: SelectContentProps) {
+  function SelectContent({ children }: Readonly<SelectContentProps>) {
     return <div>{children}</div>
   }
 
   /** Render one selectable option in the select mock. */
-  function SelectItem({ value, children }: SelectItemProps) {
+  function SelectItem({ value, children }: Readonly<SelectItemProps>) {
     const context = React.useContext(SelectContext)
     return (
       <button type="button" disabled={context.disabled} onClick={() => context.onValueChange?.(value)}>
@@ -97,17 +97,17 @@ export function createSelectMockModule() {
 }
 
 /** Render the dropdown-menu container used across page-level tests. */
-function DropdownMenuMock({ children }: SelectContentProps) {
+function DropdownMenuMock({ children }: Readonly<SelectContentProps>) {
   return <div>{children}</div>
 }
 
 /** Render the dropdown trigger used across page-level tests. */
-function DropdownMenuTriggerMock({ children }: SelectContentProps) {
+function DropdownMenuTriggerMock({ children }: Readonly<SelectContentProps>) {
   return React.isValidElement(children) ? children : <span>{children}</span>
 }
 
 /** Render the dropdown content wrapper used across page-level tests. */
-function DropdownMenuContentMock({ children }: SelectContentProps) {
+function DropdownMenuContentMock({ children }: Readonly<SelectContentProps>) {
   return <div>{children}</div>
 }
 
@@ -117,7 +117,7 @@ function DropdownMenuItemMock({
   onClick,
   onSelect,
   disabled,
-}: DropdownMenuItemProps) {
+}: Readonly<DropdownMenuItemProps>) {
   return (
     <button
       type="button"
@@ -133,7 +133,7 @@ function DropdownMenuItemMock({
 }
 
 /** Render a dropdown label container for page-level tests. */
-function DropdownMenuLabelMock({ children }: SelectContentProps) {
+function DropdownMenuLabelMock({ children }: Readonly<SelectContentProps>) {
   return <div>{children}</div>
 }
 
@@ -188,7 +188,7 @@ export function createCheckboxMockModule() {
 }
 
 /** Render a calendar primitive that emits a fixed date range in tests. */
-function CalendarMock({ onSelect }: CalendarProps) {
+function CalendarMock({ onSelect }: Readonly<CalendarProps>) {
   return (
     <div>
       <button
