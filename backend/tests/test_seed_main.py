@@ -86,7 +86,7 @@ def _load_seed_data_module(monkeypatch):
 
         def __init__(self, *args, **kwargs):
             # Intentional empty fake context for seed-data import tests.
-            return None
+            pass
 
         @staticmethod
         def hash(value):
@@ -254,7 +254,7 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
 
         def __init__(self, *args, **kwargs):
             # Intentional empty fake context for module __main__ path coverage.
-            return None
+            pass
 
         @staticmethod
         def hash(value):

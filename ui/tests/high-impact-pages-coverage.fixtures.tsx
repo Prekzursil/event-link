@@ -157,8 +157,8 @@ function seedAuthDefaults() {
   authState.isAuthenticated = true;
   authState.isOrganizer = true;
   authState.user = { id: 11, role: 'student', email: 'student@test.local' };
-  authState.refreshUser.mockResolvedValue(undefined);
-  authState.logout.mockResolvedValue(undefined);
+  authState.refreshUser.mockResolvedValue();
+  authState.logout.mockResolvedValue();
 }
 
 function seedEventListDefaults() {
@@ -170,8 +170,8 @@ function seedEventListDefaults() {
     total_pages: 1,
   });
   eventServiceMock.getFavorites.mockResolvedValue({ items: [makeEvent(1)] });
-  eventServiceMock.addToFavorites.mockResolvedValue(undefined);
-  eventServiceMock.removeFromFavorites.mockResolvedValue(undefined);
+  eventServiceMock.addToFavorites.mockResolvedValue();
+  eventServiceMock.removeFromFavorites.mockResolvedValue();
 }
 
 function seedProfileDefaults() {
@@ -203,24 +203,24 @@ function seedProfileDefaults() {
       email_filling_fast_enabled: true,
     }),
   );
-  eventServiceMock.unhideTag.mockResolvedValue(undefined);
-  eventServiceMock.unblockOrganizer.mockResolvedValue(undefined);
+  eventServiceMock.unhideTag.mockResolvedValue();
+  eventServiceMock.unblockOrganizer.mockResolvedValue();
   eventServiceMock.exportMyData.mockResolvedValue(
     new Blob(['{"ok":true}'], { type: 'application/json' }),
   );
-  eventServiceMock.deleteMyAccount.mockResolvedValue(undefined);
+  eventServiceMock.deleteMyAccount.mockResolvedValue();
 }
 
 function seedOrganizerDefaults() {
   eventServiceMock.getOrganizerEvents.mockResolvedValue([makeEvent(3)]);
   eventServiceMock.bulkUpdateEventStatus.mockResolvedValue({ updated: 1 });
   eventServiceMock.bulkUpdateEventTags.mockResolvedValue({ updated: 1 });
-  eventServiceMock.deleteEvent.mockResolvedValue(undefined);
+  eventServiceMock.deleteEvent.mockResolvedValue();
 }
 
 function seedAuthServiceDefaults() {
-  authServiceMock.updateThemePreference.mockResolvedValue(undefined);
-  authServiceMock.updateLanguagePreference.mockResolvedValue(undefined);
+  authServiceMock.updateThemePreference.mockResolvedValue();
+  authServiceMock.updateLanguagePreference.mockResolvedValue();
 }
 
 beforeEach(() => {

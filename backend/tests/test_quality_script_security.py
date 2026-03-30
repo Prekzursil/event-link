@@ -108,7 +108,7 @@ def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch
         "request_https_json",
         lambda *_args, **_kwargs: responses.pop(0),
     )
-    monkeypatch.setattr(check_required_checks.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(check_required_checks.time, "sleep", sleeps.append)
 
     payload = check_required_checks._api_get("https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs", "token")
 
@@ -123,14 +123,17 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
     class _FakeResponse:
         status = 206
 
-        def read(self) -> bytes:
+        @staticmethod
+        def read() -> bytes:
             return b'{"status": "ok"}'
 
-        def getheaders(self):
+        @staticmethod
+        def getheaders():
             return [("X-Hits", "5"), ("Content-Type", "application/json")]
 
     class _FakeOpener:
-        def open(self, request, timeout=None):
+        @staticmethod
+        def open(request, timeout=None):
             calls["request"] = {
                 "method": request.get_method(),
                 "url": request.full_url,

@@ -15,7 +15,7 @@ it('covers desktop language preference save success and failure paths', async ()
   authState.isAdmin = false;
   authState.user = { full_name: 'Alex User', email: 'alex@test.local', role: 'student' };
 
-  authServiceMock.updateLanguagePreference.mockResolvedValueOnce(undefined);
+  authServiceMock.updateLanguagePreference.mockResolvedValueOnce();
   authServiceMock.updateLanguagePreference.mockRejectedValueOnce(new Error('lang-fail'));
   renderNavbar();
 

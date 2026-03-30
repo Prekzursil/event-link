@@ -76,7 +76,7 @@ def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatc
     sleeps: list[int] = []
 
     monkeypatch.setattr(module, "_current_summary", lambda **_kwargs: summaries.pop(0))
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     status, open_issues, quality_gate, open_hotspots, findings = module._evaluate_sonar(
         runtime={

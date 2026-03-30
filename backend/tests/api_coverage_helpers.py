@@ -84,10 +84,12 @@ def cached_recommendation_context(helpers):
     db = helpers["db"]
     helpers["make_organizer"]("events-owner@test.ro", "owner-fixture-A1")
     owner = db.query(models.User).filter(models.User.email == "events-owner@test.ro").first()
-    assert owner is not None
+    if owner is None:
+        raise ValueError("owner fixture not found")
     student_token = helpers["register_student"]("events-student@test.ro")
     student = db.query(models.User).filter(models.User.email == "events-student@test.ro").first()
-    assert student is not None
+    if student is None:
+        raise ValueError("student fixture not found")
     student.city = "Cluj"
     tag = models.Tag(name="alpha")
     event = make_event(title="Recommended", owner_id=int(owner.id), start_time=future_dt(days=3), location="Main Hall", max_seats=30)
@@ -110,7 +112,8 @@ def mutation_context(helpers):
     other_token = helpers["login"]("mut-other@test.ro", "other-fixture-A1")
     student_token = helpers["register_student"]("mut-student@test.ro")
     owner_user = db.query(models.User).filter(models.User.email == MUTATION_OWNER_EMAIL).first()
-    assert owner_user is not None
+    if owner_user is None:
+        raise ValueError("mutation owner fixture not found")
     db.add(make_event(title="Totally unrelated title", owner_id=int(owner_user.id), start_time=future_dt(days=11), location="Side Hall", max_seats=40))
     db.commit()
     created = client.post(
@@ -129,7 +132,8 @@ def mutation_context(helpers):
         },
         headers=auth_header(owner_token),
     )
-    assert created.status_code == 201
+    if created.status_code != 201:
+        raise ValueError(f"event creation failed: {created.status_code}")
     return SimpleNamespace(
         client=client,
         db=db,
@@ -154,7 +158,8 @@ def admin_registration_context(helpers):
     student2_token = helpers["register_student"]("student2@test.ro")
     owner = db.query(models.User).filter(models.User.email == ADMIN_OWNER_EMAIL).first()
     student = db.query(models.User).filter(models.User.email == "student@test.ro").first()
-    assert owner is not None and student is not None
+    if owner is None or student is None:
+        raise ValueError("owner or student fixture not found")
     student.city = "Cluj"
     events = {
         "future": make_event(title="Future", owner_id=int(owner.id), start_time=future_dt(days=5), max_seats=2),
@@ -194,7 +199,8 @@ def interaction_context(helpers):
     db = helpers["db"]
     student_token = helpers["register_student"]("interactions-extra@test.ro")
     student = db.query(models.User).filter(models.User.email == "interactions-extra@test.ro").first()
-    assert student is not None
+    if student is None:
+        raise ValueError("interaction student fixture not found")
     organizer = models.User(email="ix-owner@test.ro", password_hash=auth.get_password_hash("fixture-access-A1"), role=models.UserRole.organizator)
     hidden_tag = models.Tag(name="hidden-delta")
     event = make_event(title="Interaction", owner=organizer, start_time=future_dt(days=2), category="Tech", max_seats=20)

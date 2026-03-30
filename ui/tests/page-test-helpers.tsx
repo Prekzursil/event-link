@@ -30,7 +30,7 @@ export function requireInput(value: Element | null, label: string): HTMLInputEle
   return value;
 }
 
-export function defineMutableValue<T extends object, V>(target: T, key: PropertyKey, value: V): V {
+export function defineMutableValue<T extends object, V = undefined>(target: T, key: PropertyKey, value?: V): V | undefined {
   Object.defineProperty(target, key, {
     writable: true,
     configurable: true,

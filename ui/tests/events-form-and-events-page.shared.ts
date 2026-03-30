@@ -149,8 +149,8 @@ beforeEach(() => {
     return { items: [makeEvent(1)], total: 1, page: 1, page_size: 12, total_pages: 1 };
   });
   eventServiceMock.getFavorites.mockResolvedValue({ items: [makeEvent(90, 'Recommended 90')] });
-  eventServiceMock.addToFavorites.mockResolvedValue(undefined);
-  eventServiceMock.removeFromFavorites.mockResolvedValue(undefined);
+  eventServiceMock.addToFavorites.mockResolvedValue();
+  eventServiceMock.removeFromFavorites.mockResolvedValue();
 
   eventServiceMock.suggestEvent.mockResolvedValue({
     suggested_category: 'Technical',

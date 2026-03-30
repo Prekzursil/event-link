@@ -38,7 +38,7 @@ class _FakeSmtpSuccess:
 class _FakeSmtpFail:
     def __init__(self, *_args, **_kwargs):
         # Intentional no-op fake used to exercise SMTP failure branches.
-        return None
+        pass
 
     def __enter__(self):
         return self
@@ -46,7 +46,8 @@ class _FakeSmtpFail:
     def __exit__(self, exc_type, exc, tb):
         return False
 
-    def send_message(self, _message):
+    @staticmethod
+    def send_message(_message):
         raise RuntimeError("smtp failed")
 
 

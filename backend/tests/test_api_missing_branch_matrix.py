@@ -268,13 +268,10 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
     db = helpers["db"]
 
     # health_check DB failure branch.
-    from app import api as api_module
-    from fastapi import HTTPException
-
     with monkeypatch.context() as m:
         m.setattr(db, "execute", _raise_db_down)
         with pytest.raises(HTTPException) as exc_info:
-            api_module.health_check(db=db)
+            api.health_check(db=db)
         assert exc_info.value.status_code == 503
 
     missing_ics = client.get("/api/events/999999/ics")
@@ -335,7 +332,8 @@ def test_admin_update_user_row_missing_branch(monkeypatch, db_session):
         def filter(self, *_args, **_kwargs):
             return self
 
-        def first(self):
+        @staticmethod
+        def first():
             return None
 
     def _query(*args, **kwargs):

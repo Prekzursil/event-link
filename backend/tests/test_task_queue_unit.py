@@ -232,7 +232,7 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
 def test_idle_sleep_uses_minimum_poll_interval(monkeypatch):
     seen = []
     monkeypatch.setattr(task_queue.settings, "task_queue_poll_interval_seconds", 0.0)
-    monkeypatch.setattr(task_queue.time, "sleep", lambda secs: seen.append(secs))
+    monkeypatch.setattr(task_queue.time, "sleep", seen.append)
     task_queue.idle_sleep()
     assert seen and seen[0] == pytest.approx(0.1)
 
@@ -255,7 +255,8 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
         def order_by(self, *_args, **_kwargs):
             return self
 
-        def first(self):
+        @staticmethod
+        def first():
             return None
 
     monkeypatch.setattr(db_session, "query", lambda *_args, **_kwargs: _NoMatchQuery())

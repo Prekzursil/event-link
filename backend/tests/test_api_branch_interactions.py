@@ -44,7 +44,8 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
         def add_all(self, rows):
             self.interactions.extend(rows)
 
-        def commit(self):
+        @staticmethod
+        def commit():
             return None
 
     import app.task_queue as task_queue_module
@@ -242,7 +243,8 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
     class _NoQueryDb:
-        def query(self, *_args, **_kwargs):
+        @staticmethod
+        def query(*_args, **_kwargs):
             raise AssertionError("query should not run")
 
     assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
@@ -253,10 +255,12 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
 
 def test_online_learning_and_realtime_refresh_guard_returns(monkeypatch):
     class _GuardDb:
-        def query(self, *_args, **_kwargs):
+        @staticmethod
+        def query(*_args, **_kwargs):
             raise AssertionError("query should not run")
 
-        def commit(self):
+        @staticmethod
+        def commit():
             raise AssertionError("commit should not run")
 
     payload = schemas.InteractionBatchIn.model_validate(

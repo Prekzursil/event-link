@@ -48,10 +48,12 @@ setattr(_FakeModels, "UserRole", _FakeUserRole)
 
 
 class _FakeDb:
-    def add(self, _obj) -> None:
+    @staticmethod
+    def add(_obj) -> None:
         return None
 
-    def commit(self) -> None:
+    @staticmethod
+    def commit() -> None:
         return None
 
 
@@ -98,8 +100,9 @@ def test_build_test_helpers_make_accounts_and_decode_binary_error_detail() -> No
     added = []
 
     class _TrackingDb(_FakeDb):
-        def add(self, obj) -> None:
-            super().add(obj)
+        @staticmethod
+        def add(obj) -> None:
+            _FakeDb.add(obj)
             added.append(obj)
 
     helpers = build_test_helpers(

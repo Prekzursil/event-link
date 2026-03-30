@@ -74,9 +74,9 @@ beforeEach(() => {
 
   defineMutableValue(globalThis, 'open', vi.fn());
   defineMutableValue(navigator, 'clipboard', {
-    writeText: vi.fn().mockResolvedValue(undefined),
+    writeText: vi.fn().mockResolvedValue(),
   });
-  defineMutableValue(navigator, 'share', undefined);
+  defineMutableValue(navigator, 'share');
   defineMutableValue(HTMLElement.prototype, 'scrollIntoView', vi.fn());
 
   authState.isAuthenticated = true;
@@ -104,12 +104,12 @@ beforeEach(() => {
     status: 'published',
     cover_url: '',
   });
-  eventServiceMock.registerForEvent.mockResolvedValue(undefined);
-  eventServiceMock.unregisterFromEvent.mockResolvedValue(undefined);
-  eventServiceMock.resendRegistrationEmail.mockResolvedValue(undefined);
-  eventServiceMock.addToFavorites.mockResolvedValue(undefined);
-  eventServiceMock.removeFromFavorites.mockResolvedValue(undefined);
+  eventServiceMock.registerForEvent.mockResolvedValue();
+  eventServiceMock.unregisterFromEvent.mockResolvedValue();
+  eventServiceMock.resendRegistrationEmail.mockResolvedValue();
+  eventServiceMock.addToFavorites.mockResolvedValue();
+  eventServiceMock.removeFromFavorites.mockResolvedValue();
   eventServiceMock.cloneEvent.mockResolvedValue({ id: 77 });
-  eventServiceMock.hideTag.mockResolvedValue(undefined);
-  eventServiceMock.blockOrganizer.mockResolvedValue(undefined);
+  eventServiceMock.hideTag.mockResolvedValue();
+  eventServiceMock.blockOrganizer.mockResolvedValue();
 });

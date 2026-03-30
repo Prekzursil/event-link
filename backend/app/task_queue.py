@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import contextlib
+import functools
 import io
 import multiprocessing
 import os
@@ -325,7 +326,7 @@ def _trainer_env_overrides(payload: dict[str, Any]) -> dict[str, str]:
     return {"RECOMMENDER_MODEL_VERSION": str(payload["model_version"])}
 
 
-def _send_weekly_digest(*, db: Session, payload: dict[str, Any]) -> dict[str, int]:
+def _send_weekly_digest(payload: dict[str, Any], *, db: Session) -> dict[str, int]:
     return _send_weekly_digest_impl(
         db=db,
         payload=payload,
@@ -335,7 +336,7 @@ def _send_weekly_digest(*, db: Session, payload: dict[str, Any]) -> dict[str, in
     )
 
 
-def _send_filling_fast_alerts(*, db: Session, payload: dict[str, Any]) -> dict[str, int]:
+def _send_filling_fast_alerts(payload: dict[str, Any], *, db: Session) -> dict[str, int]:
     return _send_filling_fast_alerts_impl(
         db=db,
         payload=payload,
@@ -345,7 +346,7 @@ def _send_filling_fast_alerts(*, db: Session, payload: dict[str, Any]) -> dict[s
     )
 
 
-def _evaluate_personalization_guardrails(*, db: Session, payload: dict[str, Any]) -> dict[str, Any]:
+def _evaluate_personalization_guardrails(payload: dict[str, Any], *, db: Session) -> dict[str, Any]:
     return _evaluate_personalization_guardrails_impl(
         db=db,
         payload=payload,
@@ -372,15 +373,15 @@ def _job_handlers(db: Session) -> dict[str, tuple[Any, str | None]]:
         JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML: (_run_recompute_recommendations_ml, None),
         JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML: (_run_recompute_recommendations_ml, None),
         JOB_TYPE_SEND_WEEKLY_DIGEST: (
-            lambda payload: _send_weekly_digest(db=db, payload=payload),
+            functools.partial(_send_weekly_digest, db=db),
             "weekly_digest_enqueued",
         ),
         JOB_TYPE_SEND_FILLING_FAST_ALERTS: (
-            lambda payload: _send_filling_fast_alerts(db=db, payload=payload),
+            functools.partial(_send_filling_fast_alerts, db=db),
             "filling_fast_alerts_enqueued",
         ),
         JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS: (
-            lambda payload: _evaluate_personalization_guardrails(db=db, payload=payload),
+            functools.partial(_evaluate_personalization_guardrails, db=db),
             "personalization_guardrails_evaluated",
         ),
     }

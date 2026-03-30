@@ -12,7 +12,7 @@ const { eventServiceMock, recordInteractionsSpy } = getEventPagesFixtures();
 
 describe('events page filter branches', () => {
   it('covers media fallbacks, delayed cleanup, metadata fallbacks, and date filtering', async () => {
-    defineMutableValue(globalThis, 'matchMedia', undefined);
+    defineMutableValue(globalThis, 'matchMedia');
 
     let rejectLateRequest: ((error: Error) => void) | undefined;
     eventServiceMock.getEvents.mockReturnValueOnce(
