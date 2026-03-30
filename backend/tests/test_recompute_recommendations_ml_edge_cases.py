@@ -154,8 +154,8 @@ def _patch_rng_for_choices(monkeypatch, module, choices: list[int]) -> None:
             return value
 
         @staticmethod
-        def shuffle(items) -> None:
-            pass
+        def shuffle(items) -> None:  # noqa: S1186
+            """No-op shuffle for deterministic tests."""
 
     monkeypatch.setattr(module, "_DeterministicRng", _FakeRng)
 
