@@ -41,13 +41,16 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
     monkeypatch.setattr(api, "_serialize_event", lambda event, seats_taken=0, recommendation_reason=None: SimpleNamespace(id=event.id, start_time=event.start_time))
 
     class _CreateDb:
-        def add(self, _obj):
+        @staticmethod
+        def add(_obj):
             return None
 
-        def commit(self):
+        @staticmethod
+        def commit():
             return None
 
-        def refresh(self, obj):
+        @staticmethod
+        def refresh(obj):
             obj.id = 77
 
     created = api.create_event(
@@ -456,7 +459,8 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
     assert result.suggested_city == "Cluj"
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
     class _NoQueryDb:
-        def query(self, *_args, **_kwargs):
+        @staticmethod
+        def query(*_args, **_kwargs):
             raise AssertionError("query should not run")
 
     assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}

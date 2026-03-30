@@ -15,7 +15,7 @@ it('covers desktop theme preference save success and failure paths', async () =>
   authState.isAdmin = false;
   authState.user = { full_name: 'Alex User', email: 'alex@test.local', role: 'student' };
 
-  authServiceMock.updateThemePreference.mockResolvedValueOnce(undefined);
+  authServiceMock.updateThemePreference.mockResolvedValueOnce();
   authServiceMock.updateThemePreference.mockRejectedValueOnce(new Error('theme-fail'));
   renderNavbar();
 

@@ -153,8 +153,9 @@ def _patch_rng_for_choices(monkeypatch, module, choices: list[int]) -> None:
             self._cursor += 1
             return value
 
-        def shuffle(self, items) -> None:
-            return None
+        @staticmethod
+        def shuffle(items) -> None:
+            pass
 
     monkeypatch.setattr(module, "_DeterministicRng", _FakeRng)
 

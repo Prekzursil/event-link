@@ -79,7 +79,7 @@ def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest
     sleeps: list[int] = []
 
     monkeypatch.setattr(module, "_request_json", lambda **_kwargs: payloads.pop(0))
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     status, open_issues, findings = module._wait_for_pr_analysis(
         _request(
@@ -152,7 +152,7 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
     sleeps: list[int] = []
 
     monkeypatch.setattr(module, "_repository_analysis_request", lambda **_kwargs: payloads.pop(0))
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     status, open_issues, findings = module._wait_for_branch_analysis(
         _request(

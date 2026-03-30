@@ -100,9 +100,9 @@ beforeEach(() => {
   authState.isAdmin = false;
   authState.user = null;
   toastState.toasts = [];
-  authServiceMock.updateLanguagePreference.mockResolvedValue(undefined);
-  authServiceMock.updateThemePreference.mockResolvedValue(undefined);
-  authState.refreshUser.mockResolvedValue(undefined);
+  authServiceMock.updateLanguagePreference.mockResolvedValue();
+  authServiceMock.updateThemePreference.mockResolvedValue();
+  authState.refreshUser.mockResolvedValue();
 
   Object.defineProperty(globalThis, 'matchMedia', {
     writable: true,

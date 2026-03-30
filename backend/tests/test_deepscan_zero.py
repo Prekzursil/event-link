@@ -273,7 +273,7 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
         "_github_status_payload",
         next_status_payload,
     )
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     resolved = module._resolve_open_issues(
         token="",
@@ -315,7 +315,7 @@ def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: 
         return payloads.pop(0)
 
     monkeypatch.setattr(module, "_github_status_payload", next_available_status)
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     resolved = module._resolve_open_issues(
         token="",
@@ -379,7 +379,7 @@ def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeyp
         return payloads.pop(0)
 
     monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
-    monkeypatch.setattr(module.time, "sleep", lambda seconds: sleeps.append(seconds))
+    monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     resolved = module._wait_for_deepscan_dashboard_url(
         owner="Prekzursil",

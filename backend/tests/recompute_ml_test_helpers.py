@@ -23,7 +23,8 @@ def _load_script_module():
     script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
     module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, script_path)
-    assert spec is not None and spec.loader is not None
+    if spec is None or spec.loader is None:
+        raise ValueError("failed to load script module spec")
     module = importlib.util.module_from_spec(spec)
     sys.modules[module_name] = module
     spec.loader.exec_module(module)

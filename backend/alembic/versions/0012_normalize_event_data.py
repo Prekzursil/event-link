@@ -130,4 +130,4 @@ def downgrade() -> None:
     """Revert the event-data normalization migration where possible."""
     # Normalization merged duplicate tags and trimmed stored values
     # in place; downgrade cannot reconstruct the original data.
-    return None
+    pass

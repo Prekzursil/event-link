@@ -140,27 +140,27 @@ function seedCoreAuthAndGlobals() {
   authState.isOrganizer = true;
   authState.isAdmin = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
-  authState.refreshUser.mockResolvedValue(undefined);
-  authState.logout.mockResolvedValue(undefined);
+  authState.refreshUser.mockResolvedValue();
+  authState.logout.mockResolvedValue();
 }
 
 function seedEventServiceDefaults() {
   eventServiceMock.getEvent.mockResolvedValue(makeEventDetail(1));
-  eventServiceMock.registerForEvent.mockResolvedValue(undefined);
-  eventServiceMock.unregisterFromEvent.mockResolvedValue(undefined);
-  eventServiceMock.resendRegistrationEmail.mockResolvedValue(undefined);
+  eventServiceMock.registerForEvent.mockResolvedValue();
+  eventServiceMock.unregisterFromEvent.mockResolvedValue();
+  eventServiceMock.resendRegistrationEmail.mockResolvedValue();
   eventServiceMock.cloneEvent.mockResolvedValue({ id: 88 });
-  eventServiceMock.addToFavorites.mockResolvedValue(undefined);
-  eventServiceMock.removeFromFavorites.mockResolvedValue(undefined);
-  eventServiceMock.hideTag.mockResolvedValue(undefined);
-  eventServiceMock.blockOrganizer.mockResolvedValue(undefined);
+  eventServiceMock.addToFavorites.mockResolvedValue();
+  eventServiceMock.removeFromFavorites.mockResolvedValue();
+  eventServiceMock.hideTag.mockResolvedValue();
+  eventServiceMock.blockOrganizer.mockResolvedValue();
   eventServiceMock.getOrganizerEvents.mockResolvedValue([makeOrganizerEvent(3)]);
   eventServiceMock.bulkUpdateEventStatus.mockResolvedValue({ updated: 1 });
   eventServiceMock.bulkUpdateEventTags.mockResolvedValue({ updated: 1 });
-  eventServiceMock.deleteEvent.mockResolvedValue(undefined);
+  eventServiceMock.deleteEvent.mockResolvedValue();
   eventServiceMock.restoreEvent.mockResolvedValue({ ok: true });
   eventServiceMock.getEventParticipants.mockResolvedValue(makeParticipantsPage(3));
-  eventServiceMock.updateParticipantAttendance.mockResolvedValue(undefined);
+  eventServiceMock.updateParticipantAttendance.mockResolvedValue();
   eventServiceMock.emailEventParticipants.mockResolvedValue({ recipients: 1 });
 }
 
@@ -180,12 +180,12 @@ function seedStudentProfileDefaults() {
       email_filling_fast_enabled: true,
     }),
   );
-  eventServiceMock.unhideTag.mockResolvedValue(undefined);
-  eventServiceMock.unblockOrganizer.mockResolvedValue(undefined);
+  eventServiceMock.unhideTag.mockResolvedValue();
+  eventServiceMock.unblockOrganizer.mockResolvedValue();
   eventServiceMock.exportMyData.mockResolvedValue(
     new Blob(['{"ok":true}'], { type: 'application/json' }),
   );
-  eventServiceMock.deleteMyAccount.mockResolvedValue(undefined);
+  eventServiceMock.deleteMyAccount.mockResolvedValue();
 }
 
 function seedAdminStatsAndUsersDefaults() {
@@ -219,8 +219,8 @@ function seedAdminJobDefaults() {
 }
 
 function seedAuthServiceDefaults() {
-  authServiceMock.updateThemePreference.mockResolvedValue(undefined);
-  authServiceMock.updateLanguagePreference.mockResolvedValue(undefined);
+  authServiceMock.updateThemePreference.mockResolvedValue();
+  authServiceMock.updateLanguagePreference.mockResolvedValue();
 }
 
 beforeEach(() => {

@@ -52,7 +52,7 @@ it('covers StudentProfilePage success handlers and guarded branches', async () =
   fireEvent.click(requireElement(firstHiddenButton, 'first hidden tag button'));
   await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-  eventServiceMock.unhideTag.mockResolvedValueOnce(undefined);
+  eventServiceMock.unhideTag.mockResolvedValueOnce();
   const secondHiddenButton = screen
     .getAllByRole('button')
     .find((button) => (button.textContent || '').trim() === '✕');

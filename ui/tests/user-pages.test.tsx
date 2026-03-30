@@ -87,8 +87,8 @@ describe('favorites and my-events pages', () => {
     localStorage.setItem('language_preference', 'en');
     authState.isOrganizer = false;
     eventServiceMock.getFavorites.mockResolvedValue({ items: [] });
-    eventServiceMock.addToFavorites.mockResolvedValue(undefined);
-    eventServiceMock.removeFromFavorites.mockResolvedValue(undefined);
+    eventServiceMock.addToFavorites.mockResolvedValue();
+    eventServiceMock.removeFromFavorites.mockResolvedValue();
     eventServiceMock.getMyEvents.mockResolvedValue([]);
     eventServiceMock.getOrganizerEvents.mockResolvedValue([]);
     eventServiceMock.getMyCalendar.mockResolvedValue('BEGIN:VCALENDAR');
@@ -132,7 +132,7 @@ describe('favorites and my-events pages', () => {
     eventServiceMock.getFavorites.mockResolvedValueOnce({ items: [upcoming] });
 
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob://x');
-    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => undefined);
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => { /* no-op */ });
     const appendSpy = vi.spyOn(document.body, 'appendChild');
 
     renderWithProviders(<MyEventsPage />, '/my-events');
