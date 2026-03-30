@@ -31,6 +31,8 @@ type UsersTableProps = Readonly<{
   users: UserRecord[];
 }>;
 
+type UserStatusFilter = 'all' | 'active' | 'inactive';
+
 type UsersPaginationProps = Readonly<{
   copy: PaginationCopy;
   currentPage: number;
@@ -168,14 +170,14 @@ function UsersStatusFilter({
   usersCopy,
   value,
 }: Readonly<{
-  onChange: (value: 'all' | 'active' | 'inactive') => void;
+  onChange: (value: UserStatusFilter) => void;
   usersCopy: UsersCopy;
-  value: 'all' | 'active' | 'inactive';
+  value: UserStatusFilter;
 }>) {
   return (
     <div className="w-full md:w-56">
       <label className="mb-1 block text-sm font-medium">{usersCopy.statusLabel}</label>
-      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as 'all' | 'active' | 'inactive')}>
+      <Select value={value} onValueChange={(nextValue) => onChange(nextValue as UserStatusFilter)}>
         <SelectTrigger>
           <SelectValue placeholder={usersCopy.all} />
         </SelectTrigger>
