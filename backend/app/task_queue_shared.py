@@ -29,7 +29,7 @@ def enqueue_job(
     run_at: datetime | None = None,
     max_attempts: int | None = None,
 ) -> models.BackgroundJob:
-    """Persists a new ``BackgroundJob`` row or reuses a matching queued/running entry."""
+    """Persists a new ``BackgroundJob`` row or reuses a matching queued entry."""
     job = models.BackgroundJob(
         job_type=job_type,
         dedupe_key=dedupe_key,
