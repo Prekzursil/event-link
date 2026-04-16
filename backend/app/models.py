@@ -31,6 +31,9 @@ CASCADE_DELETE_ORPHAN = "all, delete-orphan"
 class UserRole(str, enum.Enum):
     """Supported application roles."""
 
+    # Enum members use lowercase to match the values serialized on the wire /
+    # stored in the database; changing them would force a schema migration.
+    # pylint: disable=invalid-name
     student = "student"
     organizator = "organizator"
     admin = "admin"

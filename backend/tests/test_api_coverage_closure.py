@@ -1,5 +1,8 @@
 """Coverage-closure tests for API helper and endpoint edge paths."""
 
+# Tests access private helpers of modules-under-test intentionally.
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import asyncio

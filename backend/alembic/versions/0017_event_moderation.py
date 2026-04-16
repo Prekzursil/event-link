@@ -5,6 +5,10 @@ Revises: 0016_notifications_and_jobs
 Create Date: 2025-12-19
 """
 
+# Alembic revision variables (revision, down_revision, branch_labels,
+# depends_on) are framework-mandated names.
+# pylint: disable=invalid-name
+
 from alembic import op
 import sqlalchemy as sa
 
