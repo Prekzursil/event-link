@@ -1,4 +1,8 @@
 ---
+# Codacy project configuration.
+# The ``exclude_paths`` below are scoped to engines where the defaults produce
+# noise that doesn't reflect real code-quality problems: tests (bandit),
+# generated lock files (lizard), and framework-templated Alembic migrations.
 engines:
   bandit:
     exclude_paths:
@@ -6,3 +10,18 @@ engines:
       - backend/integration_tests/**
   pylint:
     python_version: 3
+  lizard:
+    exclude_paths:
+      # Alembic migrations use long upgrade()/downgrade() methods by design —
+      # breaking them up would split a single DDL transaction.
+      - backend/alembic/versions/**
+      # Generated files where line counts reflect dependency data, not code.
+      - ui/package-lock.json
+      - ui/package.json
+      - "**/*.lock"
+      # Test fixtures intentionally seed many rows; splitting them hurts
+      # readability without reducing risk.
+      - backend/tests/**
+      - backend/integration_tests/**
+      - ui/tests/**
+
