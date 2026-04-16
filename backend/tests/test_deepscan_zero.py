@@ -145,7 +145,10 @@ def test_resolve_open_issues_uses_public_pr_analysis(
 
     monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
     monkeypatch.setattr(module, "_request_json", fake_request_json)
-    expected_source_url = "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    expected_source_url = (
+        "https://deepscan.io/api/teams/29074/projects/31139/"
+        "branches/1009136/analyses/3694745"
+    )
 
     open_issues, source_url = module._resolve_open_issues(
         token="",
@@ -264,9 +267,9 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
 
     assert status == "fail"
     assert open_issues == 1
-    assert (
-        source_url
-        == "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
+    assert source_url == (
+        "https://app.deepsource.com/gh/Prekzursil/event-link/run/"
+        "49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
     )
     assert findings == [
         "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"

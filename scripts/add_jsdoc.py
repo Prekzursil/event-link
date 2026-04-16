@@ -7,6 +7,7 @@ immediately above them, then inserting one derived from the symbol name.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import re
 import sys
@@ -131,30 +132,20 @@ def _safe_resolve_in_repo(path: pathlib.Path) -> str:
     """Normalises ``path`` and returns a string; raises for anything
     outside repo root.
     """
-    import os as _os
-
-    absolute = _os.path.normpath(_os.path.abspath(str(path)))
-    prefix = _ALLOWED_ROOT + _os.sep
+    absolute = os.path.normpath(os.path.abspath(str(path)))
+    prefix = _ALLOWED_ROOT + os.sep
     if not absolute.startswith(prefix) and absolute != _ALLOWED_ROOT:
         raise PermissionError(f"refusing to touch file outside repo root: {absolute}")
     return absolute
 
 
-def _inject(path: pathlib.Path) -> int:
-    """Adds JSDoc above each declaration in ``path`` that lacks one; returns count
-    added.
-    """
-    safe_str = _safe_resolve_in_repo(path)
-    with open(safe_str, "r", encoding="utf-8") as handle:
-        text = handle.read()
-    # Walk declarations in order by position so we do not disturb later
-    # offsets until we rebuild the full file.
+def _collect_hits(text: str) -> list[tuple[int, int, str, str]]:
+    """Returns ``(start, end, kind, name)`` for every declaration match."""
     hits: list[tuple[int, int, str, str]] = []
     for pattern, kind in DECL_PATTERNS:
         for match in pattern.finditer(text):
             hits.append((match.start(), match.end(), kind, match.group("name")))
     hits.sort()
-    # Deduplicate overlapping matches (arrow + function share some prefixes)
     seen: set[int] = set()
     filtered: list[tuple[int, int, str, str]] = []
     for start, end, kind, name in hits:
@@ -162,28 +153,48 @@ def _inject(path: pathlib.Path) -> int:
             continue
         seen.add(start)
         filtered.append((start, end, kind, name))
-    # Filter out those that already have a JSDoc comment above them.
+    return filtered
+
+
+def _select_needing(
+    text: str, hits: list[tuple[int, int, str, str]]
+) -> list[tuple[int, str, str, str]]:
+    """Filters out declarations that already have a JSDoc comment above them."""
     needing: list[tuple[int, str, str, str]] = []
-    for start, _end, kind, name in filtered:
+    for start, _end, kind, name in hits:
         line_start = text.rfind("\n", 0, start) + 1
-        indent = text[line_start:start]
         if _has_preceding_jsdoc(text, line_start):
             continue
+        indent = text[line_start:start]
         needing.append((line_start, indent, kind, name))
-    if not needing:
-        return 0
-    # Build new text by injecting JSDoc blocks from bottom to top.
+    return needing
+
+
+def _render_with_blocks(
+    text: str, needing: list[tuple[int, str, str, str]]
+) -> str:
+    """Rebuilds ``text`` with JSDoc blocks injected at each needing site."""
     pieces: list[str] = []
     cursor = 0
     for line_start, indent, kind, name in needing:
         pieces.append(text[cursor:line_start])
         summary = _describe(kind, name)
-        block = f"{indent}/**\n{indent} * {summary}\n{indent} */\n"
-        pieces.append(block)
+        pieces.append(f"{indent}/**\n{indent} * {summary}\n{indent} */\n")
         cursor = line_start
     pieces.append(text[cursor:])
+    return "".join(pieces)
+
+
+def _inject(path: pathlib.Path) -> int:
+    """Adds JSDoc above each declaration that lacks one; returns count added."""
+    safe_str = _safe_resolve_in_repo(path)
+    with open(safe_str, "r", encoding="utf-8") as handle:
+        text = handle.read()
+    needing = _select_needing(text, _collect_hits(text))
+    if not needing:
+        return 0
     with open(safe_str, "w", encoding="utf-8") as handle:
-        handle.write("".join(pieces))
+        handle.write(_render_with_blocks(text, needing))
     return len(needing)
 
 

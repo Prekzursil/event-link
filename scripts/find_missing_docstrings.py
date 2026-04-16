@@ -25,41 +25,67 @@ SKIP_TOKENS = (
 )
 
 
-def _missing(node) -> bool:
-    """Returns True when the AST node has no literal string as its first statement."""
+def _has_str_docstring(node) -> bool:
+    """Returns True if the first statement of ``node`` is a string literal."""
     body = getattr(node, "body", None)
     if not body:
-        return True
+        return False
     first = body[0]
-    return not (
-        isinstance(first, ast.Expr) and isinstance(first.value, (ast.Constant, ast.Str))
-    )
+    if not isinstance(first, ast.Expr):
+        return False
+    return isinstance(first.value, ast.Constant) and isinstance(first.value.value, str)
+
+
+def _missing(node) -> bool:
+    """Returns True when ``node`` has no docstring as its first statement."""
+    return not _has_str_docstring(node)
+
+
+def _is_skipped(path: pathlib.Path) -> bool:
+    """Returns True for any path under a skip-listed directory."""
+    stem = str(path).replace("\\", "/")
+    return any(tok in stem for tok in SKIP_TOKENS)
+
+
+def _parse_tree(path: pathlib.Path) -> ast.AST | None:
+    """Parses ``path`` and returns its AST, or ``None`` on SyntaxError."""
+    try:
+        return ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
+    except SyntaxError:
+        return None
+
+
+def _tally_node_types(
+    tree: ast.AST,
+    stem: str,
+    classes: dict[str, int],
+    functions: dict[str, int],
+) -> None:
+    """Walks ``tree`` and increments the class/function counters for missing doc."""
+    for node in ast.walk(tree):
+        if isinstance(node, ast.ClassDef) and _missing(node):
+            classes[stem] += 1
+        elif isinstance(
+            node, (ast.FunctionDef, ast.AsyncFunctionDef)
+        ) and _missing(node):
+            functions[stem] += 1
 
 
 def scan(root: pathlib.Path) -> tuple[dict, dict, dict]:
-    """Walks root and returns missing-class, missing-func and missing-module counts per
-    file.
-    """
+    """Walks root and returns missing-class, missing-func, missing-module counts."""
     classes: dict[str, int] = defaultdict(int)
     functions: dict[str, int] = defaultdict(int)
     modules: dict[str, int] = defaultdict(int)
     for path in root.rglob("*.py"):
+        if _is_skipped(path):
+            continue
+        tree = _parse_tree(path)
+        if tree is None:
+            continue
         stem = str(path).replace("\\", "/")
-        if any(tok in stem for tok in SKIP_TOKENS):
-            continue
-        try:
-            tree = ast.parse(path.read_text(encoding="utf-8", errors="ignore"))
-        except SyntaxError:
-            continue
         if _missing(tree):
             modules[stem] += 1
-        for node in ast.walk(tree):
-            if isinstance(node, ast.ClassDef) and _missing(node):
-                classes[stem] += 1
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _missing(
-                node
-            ):
-                functions[stem] += 1
+        _tally_node_types(tree, stem, classes, functions)
     return classes, functions, modules
 
 

@@ -290,8 +290,10 @@ def _retry_standard_managed_tool_with_config_only(
         ], []
 
     notes = [
-        f"{tool_name}: managed by Codacy standard; retrying config-file mode "
-        "without disable request"
+        (
+            f"{tool_name}: managed by Codacy standard; retrying config-file mode "
+            "without disable request"
+        )
     ]
     try:
         _configure_tool(
@@ -447,8 +449,10 @@ def _trigger_reanalysis(
         message = str(exc)
         if _is_reanalysis_forbidden(message):
             return [
-                "Codacy reanalysis not authorized for this token; "
-                "waiting for normal Codacy analysis"
+                (
+                    "Codacy reanalysis not authorized for this token; "
+                    "waiting for normal Codacy analysis"
+                )
             ], []
         return [], [message]
     return [f"Triggered Codacy reanalysis for {commit_sha}"], []

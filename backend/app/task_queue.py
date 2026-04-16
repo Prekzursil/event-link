@@ -164,9 +164,9 @@ def requeue_stale_jobs(db: Session, *, stale_after_seconds: int | None = None) -
         db.query(models.BackgroundJob)
         .filter(
             models.BackgroundJob.status == "running",
-            models.BackgroundJob.locked_at != None,
+            models.BackgroundJob.locked_at.isnot(None),
             models.BackgroundJob.locked_at < cutoff,
-        )  # noqa: E711
+        )
         .update(
             {
                 "status": "queued",

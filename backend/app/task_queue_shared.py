@@ -20,6 +20,23 @@ JOB_TYPE_SEND_WEEKLY_DIGEST = "send_weekly_digest"
 JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
 
 
+def _find_existing_duplicate(
+    db: Session, job_type: str, dedupe_key: str
+) -> models.BackgroundJob | None:
+    """Returns the most recent queued/running job with the same dedupe key, if any."""
+    return (
+        db.query(models.BackgroundJob)
+        .filter(
+            models.BackgroundJob.job_type == job_type,
+            models.BackgroundJob.dedupe_key == dedupe_key,
+            models.BackgroundJob.status.in_(["queued", "running"]),
+        )
+        .order_by(models.BackgroundJob.id.desc())
+        .first()
+    )
+
+
+# pylint: disable-next=too-many-arguments,too-many-positional-arguments
 def enqueue_job(
     db: Session,
     job_type: str,
@@ -29,7 +46,11 @@ def enqueue_job(
     run_at: datetime | None = None,
     max_attempts: int | None = None,
 ) -> models.BackgroundJob:
-    """Persists a new ``BackgroundJob`` row or reuses a matching queued entry."""
+    """Persists a new ``BackgroundJob`` row or reuses a matching queued entry.
+
+    Signature intentionally spans scheduling + dedupe + retry controls so
+    callers can issue a fully-described enqueue in one statement.
+    """
     job = models.BackgroundJob(
         job_type=job_type,
         dedupe_key=dedupe_key,
@@ -46,16 +67,7 @@ def enqueue_job(
         db.rollback()
         if dedupe_key is None:
             raise
-        existing = (
-            db.query(models.BackgroundJob)
-            .filter(
-                models.BackgroundJob.job_type == job_type,
-                models.BackgroundJob.dedupe_key == dedupe_key,
-                models.BackgroundJob.status.in_(["queued", "running"]),
-            )
-            .order_by(models.BackgroundJob.id.desc())
-            .first()
-        )
+        existing = _find_existing_duplicate(db, job_type, dedupe_key)
         if existing is None:
             raise
         setattr(existing, "_deduped", True)

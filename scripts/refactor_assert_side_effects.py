@@ -24,8 +24,49 @@ def _looks_like_http_call(node: cst.BaseExpression) -> bool:
     """Returns True for ``x.client.method(...).status_code`` style expressions."""
     if not isinstance(node, cst.Attribute) or node.attr.value != "status_code":
         return False
-    current = node.value
-    return isinstance(current, cst.Call)
+    return isinstance(node.value, cst.Call)
+
+
+def _is_convertible_assert(
+    line: cst.SimpleStatementLine,
+) -> cst.Assert | None:
+    """Returns the inner ``Assert`` node when this line is a rewritable candidate."""
+    if len(line.body) != 1 or not isinstance(line.body[0], cst.Assert):
+        return None
+    assert_node: cst.Assert = line.body[0]
+    test = assert_node.test
+    if not isinstance(test, cst.Comparison):
+        return None
+    if not _looks_like_http_call(test.left) or len(test.comparisons) != 1:
+        return None
+    target = test.comparisons[0]
+    if not isinstance(target.operator, cst.Equal):
+        return None
+    if not isinstance(target.comparator, (cst.Integer, cst.Float, cst.Name)):
+        return None
+    return assert_node
+
+
+def _rewrite_side_effect_assert(
+    line: cst.SimpleStatementLine,
+    assert_node: cst.Assert,
+) -> cst.FlattenSentinel[cst.BaseStatement]:
+    """Splits ``assert call.status_code == N`` into ``_response = call`` + assert."""
+    test = assert_node.test  # type: ignore[assignment]
+    assert isinstance(test, cst.Comparison)
+    left = test.left
+    assert isinstance(left, cst.Attribute)
+    assign = cst.Assign(
+        targets=[cst.AssignTarget(target=cst.Name("_response"))],
+        value=left.value,
+    )
+    new_left = cst.Attribute(value=cst.Name("_response"), attr=left.attr)
+    new_assert = assert_node.with_changes(test=test.with_changes(left=new_left))
+    assign_line = cst.SimpleStatementLine(
+        body=[assign], leading_lines=line.leading_lines
+    )
+    assert_line = cst.SimpleStatementLine(body=[new_assert])
+    return cst.FlattenSentinel([assign_line, assert_line])
 
 
 class _AssertRewriter(cst.CSTTransformer):
@@ -36,50 +77,23 @@ class _AssertRewriter(cst.CSTTransformer):
         super().__init__()
         self.changes = 0
 
-    def leave_SimpleStatementLine(
+    def stats(self) -> int:
+        """Returns the number of successful rewrites so far."""
+        return self.changes
+
+    def leave_SimpleStatementLine(  # pylint: disable=invalid-name
         self,
-        original_node: cst.SimpleStatementLine,
+        _original_node: cst.SimpleStatementLine,
         updated_node: cst.SimpleStatementLine,
     ) -> (
         cst.BaseStatement | cst.FlattenSentinel[cst.BaseStatement] | cst.RemovalSentinel
     ):
         """Replaces a single-statement ``assert call.status_code == N`` node."""
-        if len(updated_node.body) != 1 or not isinstance(
-            updated_node.body[0], cst.Assert
-        ):
+        assert_node = _is_convertible_assert(updated_node)
+        if assert_node is None:
             return updated_node
-        assert_node: cst.Assert = updated_node.body[0]
-        test = assert_node.test
-        if not isinstance(test, cst.Comparison):
-            return updated_node
-        left = test.left
-        if not _looks_like_http_call(left):
-            return updated_node
-        if len(test.comparisons) != 1:
-            return updated_node
-        target = test.comparisons[0]
-        comparator = target.comparator
-        if not isinstance(target.operator, cst.Equal):
-            return updated_node
-        # Reject if the comparator has any side effects; comparing to a call
-        # (e.g., status_code == response.status_code) would itself be a bug.
-        if not isinstance(comparator, (cst.Integer, cst.Float, cst.Name)):
-            return updated_node
-        # Build `_response = <left.value>` where <left.value> is the call.
-        assign_target = cst.Name("_response")
-        assign = cst.Assign(
-            targets=[cst.AssignTarget(target=assign_target)],
-            value=left.value,
-        )
-        new_left = cst.Attribute(value=cst.Name("_response"), attr=left.attr)
-        new_comparison = test.with_changes(left=new_left)
-        new_assert = assert_node.with_changes(test=new_comparison)
         self.changes += 1
-        assign_line = cst.SimpleStatementLine(
-            body=[assign], leading_lines=updated_node.leading_lines
-        )
-        assert_line = cst.SimpleStatementLine(body=[new_assert])
-        return cst.FlattenSentinel([assign_line, assert_line])
+        return _rewrite_side_effect_assert(updated_node, assert_node)
 
 
 def _process(path: pathlib.Path) -> int:

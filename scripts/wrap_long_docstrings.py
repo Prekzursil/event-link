@@ -8,6 +8,7 @@ multi-line strings indented to match the function body.
 
 from __future__ import annotations
 
+import os
 import pathlib
 import re
 import sys
@@ -73,10 +74,8 @@ def _safe_resolve_in_repo(path: pathlib.Path) -> str:
     """Normalizes ``path`` and returns a string path; raises for anything outside repo
     root.
     """
-    import os as _os
-
-    absolute = _os.path.normpath(_os.path.abspath(str(path)))
-    prefix = _ALLOWED_ROOT + _os.sep
+    absolute = os.path.normpath(os.path.abspath(str(path)))
+    prefix = _ALLOWED_ROOT + os.sep
     if not absolute.startswith(prefix) and absolute != _ALLOWED_ROOT:
         raise PermissionError(f"refusing to touch file outside repo root: {absolute}")
     return absolute

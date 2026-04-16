@@ -74,43 +74,64 @@ _FUNCTION_PREFIX_RULES: tuple[tuple[str, int, str], ...] = (
 )
 
 
+def _match_prefix_rule(lower: str, human: str, name: str) -> str | None:
+    """Returns the templated docstring if ``name`` matches a known prefix rule."""
+    for prefix, length, template in _FUNCTION_PREFIX_RULES:
+        if not (lower.startswith(prefix) or lower.startswith("_" + prefix)):
+            continue
+        tail = human[length:].strip() or name
+        if prefix == "make_":
+            tail = tail or "test"
+        return template.format(tail=tail)
+    return None
+
+
 def _function_doc(name: str) -> str:
     """Returns a concise docstring for the named function/method."""
     lower = name.lower()
     human = _humanize(name)
-    if lower in _FUNCTION_DUNDERS:
-        return _FUNCTION_DUNDERS[lower]
-    if lower in _FIXTURE_ALIASES:
-        return _FIXTURE_ALIASES[lower]
+    mapped = _FUNCTION_DUNDERS.get(lower) or _FIXTURE_ALIASES.get(lower)
+    if mapped:
+        return mapped
     if lower.startswith("test_"):
         return f"Verifies {human[5:].strip() or name} behavior."
-    for prefix, length, template in _FUNCTION_PREFIX_RULES:
-        if lower.startswith(prefix) or lower.startswith("_" + prefix):
-            tail = human[length:].strip() or name
-            if prefix == "make_":
-                # preserve the original special case: when the humanised tail
-                # is empty we fall back to "test" rather than the raw name.
-                tail = tail or "test"
-            return template.format(tail=tail)
+    matched = _match_prefix_rule(lower, human, name)
+    if matched is not None:
+        return matched
     return f"Implements the {human or name} helper."
+
+
+# (prefix-family, template). The template receives ``tail`` = human name after
+# the family word. ``None`` means the rule doesn't apply.
+_CLASS_FAMILY_RULES: tuple[tuple[str, str], ...] = (
+    ("fake", "Test double standing in for a real {tail}."),
+    ("mock", "Mock implementation of {tail} for tests."),
+    ("stub", "Stub implementation of {tail} for tests."),
+)
+
+_CLASS_FAMILY_DEFAULTS = {
+    "fake": "collaborator",
+    "mock": "a collaborator",
+    "stub": "a collaborator",
+}
+
+
+def _match_class_family(lower: str, human: str) -> str | None:
+    """Returns the templated docstring when ``name`` begins with a family prefix."""
+    for family, template in _CLASS_FAMILY_RULES:
+        if lower.startswith(family) or lower.startswith("_" + family):
+            tail = human[len(family):].strip() or _CLASS_FAMILY_DEFAULTS[family]
+            return template.format(tail=tail)
+    return None
 
 
 def _class_doc(name: str) -> str:
     """Returns a concise docstring for the named class."""
     lower = name.lower()
     human = _humanize(name)
-    if lower.startswith("_fake") or lower.startswith("fake"):
-        return (
-            f"Test double standing in for a real {human[4:].strip() or 'collaborator'}."
-        )
-    if lower.startswith("_mock") or lower.startswith("mock"):
-        return (
-            f"Mock implementation of {human[4:].strip() or 'a collaborator'} for tests."
-        )
-    if lower.startswith("_stub") or lower.startswith("stub"):
-        return (
-            f"Stub implementation of {human[4:].strip() or 'a collaborator'} for tests."
-        )
+    family_doc = _match_class_family(lower, human)
+    if family_doc is not None:
+        return family_doc
     if lower.startswith("_query") or lower == "_query":
         return "Query stub that counts how many filter() calls it received."
     if "error" in lower or "exception" in lower:
@@ -177,8 +198,8 @@ class _Injector(cst.CSTTransformer):
         self.added_functions = 0
         self.added_module = False
 
-    def leave_Module(
-        self, original_node: cst.Module, updated_node: cst.Module
+    def leave_Module(  # pylint: disable=invalid-name  # libcst dispatch name
+        self, _original_node: cst.Module, updated_node: cst.Module
     ) -> cst.Module:
         """Inserts a module docstring as the very first top-level statement when
         missing.
@@ -210,8 +231,8 @@ class _Injector(cst.CSTTransformer):
         doc = _docstring_stmt(new_doc)
         return node.with_changes(body=body.with_changes(body=[doc, *body.body]))
 
-    def leave_ClassDef(
-        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    def leave_ClassDef(  # pylint: disable=invalid-name  # libcst dispatch name
+        self, _original_node: cst.ClassDef, updated_node: cst.ClassDef
     ) -> cst.ClassDef:
         """Adds a class docstring when the class lacks one."""
         new_node = self._inject(updated_node, _class_doc(updated_node.name.value))
@@ -219,14 +240,30 @@ class _Injector(cst.CSTTransformer):
             self.added_classes += 1
         return new_node
 
-    def leave_FunctionDef(
-        self, original_node: cst.FunctionDef, updated_node: cst.FunctionDef
+    def leave_FunctionDef(  # pylint: disable=invalid-name  # libcst dispatch name
+        self, _original_node: cst.FunctionDef, updated_node: cst.FunctionDef
     ) -> cst.FunctionDef:
         """Adds a function docstring when the function lacks one."""
         new_node = self._inject(updated_node, _function_doc(updated_node.name.value))
         if new_node is not updated_node:
             self.added_functions += 1
         return new_node
+
+
+def _is_string_expr(head: cst.CSTNode) -> bool:
+    """Returns True when ``head`` is a top-level string expression."""
+    return isinstance(head, cst.Expr) and isinstance(
+        head.value, (cst.SimpleString, cst.ConcatenatedString)
+    )
+
+
+def _is_future_import(head: cst.CSTNode) -> bool:
+    """Returns True when ``head`` is a ``from __future__`` import."""
+    return (
+        isinstance(head, cst.ImportFrom)
+        and head.module is not None
+        and head.module.value == "__future__"
+    )
 
 
 def _module_has_top_docstring(tree: cst.Module) -> bool:
@@ -239,15 +276,9 @@ def _module_has_top_docstring(tree: cst.Module) -> bool:
         if not isinstance(stmt, cst.SimpleStatementLine) or not stmt.body:
             return False
         head = stmt.body[0]
-        if isinstance(head, cst.Expr) and isinstance(
-            head.value, (cst.SimpleString, cst.ConcatenatedString)
-        ):
+        if _is_string_expr(head):
             return True
-        if (
-            isinstance(head, cst.ImportFrom)
-            and head.module
-            and head.module.value == "__future__"
-        ):
+        if _is_future_import(head):
             continue
         return False
     return False
@@ -268,29 +299,24 @@ def _process(path: pathlib.Path) -> tuple[int, int, bool]:
     return injector.added_classes, injector.added_functions, injector.added_module
 
 
-def main() -> int:
-    """CLI entry point: applies docstring insertion to each matching path."""
-    parser = argparse.ArgumentParser(description="Insert missing docstrings.")
-    parser.add_argument(
-        "paths",
-        nargs="*",
-        default=["backend", "scripts"],
-        help="Files or directories to scan (defaults to backend and scripts).",
-    )
-    args = parser.parse_args()
+def _collect_targets(path_arg: str) -> list[pathlib.Path]:
+    """Expands a path argument into a list of Python targets respecting skip tokens."""
+    base = pathlib.Path(path_arg)
+    if base.is_file() and base.suffix == ".py":
+        return [base]
+    return [
+        p
+        for p in base.rglob("*.py")
+        if not any(tok in str(p).replace("\\", "/") for tok in SKIP_TOKENS)
+    ]
+
+
+def _run_paths(paths: list[str]) -> tuple[int, int, int, int]:
+    """Applies ``_process`` to each target; returns (files, classes, funcs, modules)."""
     total_c = total_f = total_m = 0
     files_touched = 0
-    for path_arg in args.paths:
-        base = pathlib.Path(path_arg)
-        if base.is_file() and base.suffix == ".py":
-            targets = [base]
-        else:
-            targets = [
-                p
-                for p in base.rglob("*.py")
-                if not any(tok in str(p).replace("\\", "/") for tok in SKIP_TOKENS)
-            ]
-        for target in targets:
+    for path_arg in paths:
+        for target in _collect_targets(path_arg):
             added_c, added_f, added_m = _process(target)
             total_c += added_c
             total_f += added_f
@@ -301,6 +327,20 @@ def main() -> int:
                     f"{target}: classes+={added_c} funcs+={added_f}"
                     f" module+={int(added_m)}"
                 )
+    return files_touched, total_c, total_f, total_m
+
+
+def main() -> int:
+    """CLI entry point: applies docstring insertion to each matching path."""
+    parser = argparse.ArgumentParser(description="Insert missing docstrings.")
+    parser.add_argument(
+        "paths",
+        nargs="*",
+        default=["backend", "scripts"],
+        help="Files or directories to scan (defaults to backend and scripts).",
+    )
+    args = parser.parse_args()
+    files_touched, total_c, total_f, total_m = _run_paths(args.paths)
     print(
         f"\nTotal: files={files_touched} classes={total_c}"
         f" functions={total_f} modules={total_m}"
