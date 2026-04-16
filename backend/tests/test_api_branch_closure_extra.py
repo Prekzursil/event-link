@@ -284,7 +284,9 @@ def _assert_registration_email_uses_profile_language(
 def test_explicit_language_paths_for_lists_detail_recommendations_and_registration(
     helpers, monkeypatch
 ):
-    """Verifies explicit language paths for lists detail recommendations and registration behavior."""
+    """Verifies explicit language paths for lists detail recommendations and registration
+    behavior.
+    """
     client, student_token, _first_id, second_id, register_id = _explicit_language_context(helpers)
     langs: list[str] = []
     monkeypatch.setattr(
@@ -508,7 +510,9 @@ def test_update_event_allows_blank_cover_url_without_content_recompute(helpers):
 def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none(
     helpers, monkeypatch
 ):
-    """Verifies organizer suggest event skips date filter when normalized start is none behavior."""
+    """Verifies organizer suggest event skips date filter when normalized start is none
+    behavior.
+    """
     db = helpers["db"]
     helpers["make_organizer"]("suggest-direct@test.ro", "organizer-fixture-A1")
     organizer = db.query(models.User).filter(models.User.email == "suggest-direct@test.ro").first()
@@ -531,7 +535,9 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
 
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
-    """Verifies recommendation reason map empty and invalid dwell seconds do not query db behavior."""
+    """Verifies recommendation reason map empty and invalid dwell seconds do not query db
+    behavior.
+    """
 
     class _NoQueryDb:
         """No Query Db value object used in the surrounding module."""

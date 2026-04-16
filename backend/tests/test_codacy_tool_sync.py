@@ -56,7 +56,9 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
 
 
 def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present() -> None:
-    """Verifies planned tool payload enables legacy config when legacy tool is present behavior."""
+    """Verifies planned tool payload enables legacy config when legacy tool is present
+    behavior.
+    """
     module = _load_module()
 
     payload, notes = module._planned_tool_payload(
@@ -84,7 +86,9 @@ def test_planned_tool_payload_skips_missing_configuration_files():
 
 
 def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> None:
-    """Verifies planned tool payload enables prospector configuration file when available behavior."""
+    """Verifies planned tool payload enables prospector configuration file when available
+    behavior.
+    """
     module = _load_module()
 
     payload, notes = module._planned_tool_payload(

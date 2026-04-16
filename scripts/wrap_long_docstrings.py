@@ -13,7 +13,7 @@ import sys
 import textwrap
 
 
-LINE_LIMIT = 99
+LINE_LIMIT = 95
 
 SKIP_TOKENS = (
     "/.venv",

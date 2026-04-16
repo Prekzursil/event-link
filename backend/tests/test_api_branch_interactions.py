@@ -138,7 +138,9 @@ def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_lea
 def test_record_interactions_updates_aware_implicit_rows_without_realtime_refresh(
     helpers, monkeypatch
 ):
-    """Verifies record interactions updates aware implicit rows without realtime refresh behavior."""
+    """Verifies record interactions updates aware implicit rows without realtime refresh
+    behavior.
+    """
     client = helpers["client"]
     db = helpers["db"]
     token = helpers["register_student"]("aware-implicit@test.ro")
@@ -209,7 +211,9 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
 def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refresh(
     helpers, monkeypatch
 ):
-    """Verifies record interactions low signal payload does not trigger realtime refresh behavior."""
+    """Verifies record interactions low signal payload does not trigger realtime refresh
+    behavior.
+    """
     db = helpers["db"]
     helpers["make_organizer"]("no-refresh-org@test.ro", "organizer-fixture-A1")
     organizer_token = helpers["login"]("no-refresh-org@test.ro", "organizer-fixture-A1")
@@ -354,7 +358,9 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
 
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
-    """Verifies recommendation reason map empty and invalid dwell seconds do not query db behavior."""
+    """Verifies recommendation reason map empty and invalid dwell seconds do not query db
+    behavior.
+    """
 
     class _NoQueryDb:
         """No Query Db value object used in the surrounding module."""
