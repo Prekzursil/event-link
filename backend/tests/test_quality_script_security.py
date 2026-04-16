@@ -119,6 +119,8 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
     calls: dict[str, object] = {}
 
     class _FakeResponse:
+        """Fixed HTTP response object returned by the fake urllib opener."""
+
         status = 206
 
         @staticmethod
@@ -130,6 +132,8 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
             return [("X-Hits", "5"), ("Content-Type", "application/json")]
 
     class _FakeOpener:
+        """Stand-in urllib opener that records each request and returns _FakeResponse."""
+
         @staticmethod
         def open(request, timeout=None):
             calls["request"] = {

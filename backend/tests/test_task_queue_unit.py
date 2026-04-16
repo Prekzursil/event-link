@@ -259,6 +259,8 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
         task_queue.enqueue_job(db_session, "x", {}, dedupe_key=None)
 
     class _NoMatchQuery:
+        """Query stub that chains filter()/order_by() and never finds a row."""
+
         def filter(self, *_args, **_kwargs):
             return self
 
@@ -276,6 +278,8 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
 
 def test_apply_personalization_exclusions_applies_both_filters():
     class _Query:
+        """Minimal query stub that counts how many times filter() was called."""
+
         def __init__(self) -> None:
             self.filters = 0
 
@@ -295,6 +299,8 @@ def test_apply_personalization_exclusions_applies_both_filters():
 
 def test_apply_personalization_exclusions_returns_query_when_sets_empty():
     class _Query:
+        """Minimal query stub that counts how many times filter() was called."""
+
         def __init__(self) -> None:
             self.filters = 0
 
