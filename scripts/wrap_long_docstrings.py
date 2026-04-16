@@ -66,18 +66,25 @@ def _is_inside_repo(path: pathlib.Path) -> bool:
     return True
 
 
-def _safe_resolve_in_repo(path: pathlib.Path) -> pathlib.Path:
-    """Resolves ``path`` and raises unless it sits inside the repository root."""
-    resolved = path.resolve(strict=True)
-    if resolved != _REPO_ROOT and _REPO_ROOT not in resolved.parents:
-        raise PermissionError(f"refusing to touch file outside repo root: {resolved}")
-    return resolved
+_ALLOWED_ROOT = str(_REPO_ROOT)
+
+
+def _safe_resolve_in_repo(path: pathlib.Path) -> str:
+    """Normalizes ``path`` and returns a string path; raises for anything outside repo root."""
+    import os as _os
+
+    absolute = _os.path.normpath(_os.path.abspath(str(path)))
+    prefix = _ALLOWED_ROOT + _os.sep
+    if not absolute.startswith(prefix) and absolute != _ALLOWED_ROOT:
+        raise PermissionError(f"refusing to touch file outside repo root: {absolute}")
+    return absolute
 
 
 def _process(path: pathlib.Path) -> int:
     """Rewrites overlong docstrings in ``path``; returns lines changed."""
-    safe_path = _safe_resolve_in_repo(path)
-    src = safe_path.read_text(encoding="utf-8")
+    safe_str = _safe_resolve_in_repo(path)
+    with open(safe_str, "r", encoding="utf-8") as handle:
+        src = handle.read()
     changes = 0
     out_lines: list[str] = []
     for line in src.splitlines(keepends=True):
@@ -95,7 +102,8 @@ def _process(path: pathlib.Path) -> int:
         out_lines.append(wrapped)
         changes += 1
     if changes:
-        safe_path.write_text("".join(out_lines), encoding="utf-8")
+        with open(safe_str, "w", encoding="utf-8") as handle:
+            handle.write("".join(out_lines))
     return changes
 
 
