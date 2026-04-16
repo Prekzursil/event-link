@@ -2,11 +2,67 @@
 
 from __future__ import annotations
 
+from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from . import models
+from .config import settings
+from .logging_utils import log_event
+
+JOB_TYPE_SEND_EMAIL = "send_email"
+JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML = "recompute_recommendations_ml"
+JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML = "refresh_user_recommendations_ml"
+JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS = "evaluate_personalization_guardrails"
+JOB_TYPE_SEND_WEEKLY_DIGEST = "send_weekly_digest"
+JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
+
+
+def enqueue_job(
+    db: Session,
+    job_type: str,
+    payload: dict[str, Any],
+    *,
+    dedupe_key: str | None = None,
+    run_at: datetime | None = None,
+    max_attempts: int | None = None,
+) -> models.BackgroundJob:
+    """Persists a new ``BackgroundJob`` row or reuses a matching queued/running entry."""
+    job = models.BackgroundJob(
+        job_type=job_type,
+        dedupe_key=dedupe_key,
+        payload=payload,
+        status="queued",
+        attempts=0,
+        max_attempts=max_attempts or settings.task_queue_max_attempts,
+        run_at=run_at or datetime.now(timezone.utc),
+    )
+    db.add(job)
+    try:
+        db.commit()
+    except IntegrityError:
+        db.rollback()
+        if dedupe_key is None:
+            raise
+        existing = (
+            db.query(models.BackgroundJob)
+            .filter(
+                models.BackgroundJob.job_type == job_type,
+                models.BackgroundJob.dedupe_key == dedupe_key,
+                models.BackgroundJob.status.in_(["queued", "running"]),
+            )
+            .order_by(models.BackgroundJob.id.desc())
+            .first()
+        )
+        if existing is None:
+            raise
+        setattr(existing, "_deduped", True)
+        return existing
+    db.refresh(job)
+    log_event("job_enqueued", job_id=job.id, job_type=job.job_type)
+    return job
 
 
 def _coerce_bool(value: object) -> bool:

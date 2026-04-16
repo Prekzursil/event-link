@@ -28,7 +28,17 @@ from .task_queue_delivery import (
     send_filling_fast_alerts as _send_filling_fast_alerts_impl,
     send_weekly_digest as _send_weekly_digest_impl,
 )
-from .task_queue_shared import _coerce_bool, _load_personalization_exclusions
+from .task_queue_shared import (
+    JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS,
+    JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
+    JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
+    JOB_TYPE_SEND_EMAIL,
+    JOB_TYPE_SEND_FILLING_FAST_ALERTS,
+    JOB_TYPE_SEND_WEEKLY_DIGEST,
+    _coerce_bool,
+    _load_personalization_exclusions,
+    enqueue_job,
+)
 
 __all__ = [
     "JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS",
@@ -38,15 +48,8 @@ __all__ = [
     "JOB_TYPE_SEND_FILLING_FAST_ALERTS",
     "JOB_TYPE_SEND_WEEKLY_DIGEST",
     "_coerce_bool",
+    "enqueue_job",
 ]
-
-
-JOB_TYPE_SEND_EMAIL = "send_email"
-JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML = "recompute_recommendations_ml"
-JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML = "refresh_user_recommendations_ml"
-JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS = "evaluate_personalization_guardrails"
-JOB_TYPE_SEND_WEEKLY_DIGEST = "send_weekly_digest"
-JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
 
 
 @dataclass
@@ -147,51 +150,6 @@ def _execute_python_script(
             "stderr": "trainer process exited without emitting a result",
         }
     return _PythonRunResult(**payload)
-
-
-def enqueue_job(
-    db: Session,
-    job_type: str,
-    payload: dict[str, Any],
-    *,
-    dedupe_key: str | None = None,
-    run_at: datetime | None = None,
-    max_attempts: int | None = None,
-) -> models.BackgroundJob:
-    """Implements the enqueue job helper."""
-    job = models.BackgroundJob(
-        job_type=job_type,
-        dedupe_key=dedupe_key,
-        payload=payload,
-        status="queued",
-        attempts=0,
-        max_attempts=max_attempts or settings.task_queue_max_attempts,
-        run_at=run_at or datetime.now(timezone.utc),
-    )
-    db.add(job)
-    try:
-        db.commit()
-    except IntegrityError:
-        db.rollback()
-        if dedupe_key is None:
-            raise
-        existing = (
-            db.query(models.BackgroundJob)
-            .filter(
-                models.BackgroundJob.job_type == job_type,
-                models.BackgroundJob.dedupe_key == dedupe_key,
-                models.BackgroundJob.status.in_(["queued", "running"]),
-            )
-            .order_by(models.BackgroundJob.id.desc())
-            .first()
-        )
-        if existing is None:
-            raise
-        setattr(existing, "_deduped", True)
-        return existing
-    db.refresh(job)
-    log_event("job_enqueued", job_id=job.id, job_type=job.job_type)
-    return job
 
 
 def _now_utc() -> datetime:

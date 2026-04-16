@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .logging_utils import log_error, log_event, log_warning
-from .task_queue import JOB_TYPE_SEND_EMAIL, enqueue_job
+from .task_queue_shared import JOB_TYPE_SEND_EMAIL, enqueue_job
 
 emails_sent_ok = 0
 emails_send_failed = 0
