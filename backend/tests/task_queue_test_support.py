@@ -133,16 +133,26 @@ def seed_weekly_digest_fixture(db_session):
             (
                 "inactive",
                 "digest-inactive@test.ro",
-                {"is_active": False, "email_digest_enabled": True, "language_preference": "system"},
+                {
+                    "is_active": False,
+                    "email_digest_enabled": True,
+                    "language_preference": "system",
+                },
             ),
             (
                 "disabled",
                 "digest-disabled@test.ro",
-                {"is_active": True, "email_digest_enabled": False, "language_preference": "system"},
+                {
+                    "is_active": True,
+                    "email_digest_enabled": False,
+                    "language_preference": "system",
+                },
             ),
         ]
     }
-    organizer = make_user("digest-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator)
+    organizer = make_user(
+        "digest-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator
+    )
     event = make_event("Digest Event", organizer, when=now + timedelta(days=2), max_seats=20)
     db_session.add_all([*users.values(), organizer, event])
     db_session.commit()
@@ -164,7 +174,9 @@ def seed_weekly_digest_fixture(db_session):
 def seed_filling_fast_branch_matrix(db_session):
     """Implements the seed filling fast branch matrix helper."""
     now = datetime.now(timezone.utc)
-    organizer = make_user("branch-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator)
+    organizer = make_user(
+        "branch-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator
+    )
     hidden_tag = models.Tag(name="hidden-branch")
     events = {
         name: make_event(title, organizer, when=now + timedelta(days=days), max_seats=seats)
@@ -302,7 +314,8 @@ def patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
         tpl,
         "render_filling_fast_email",
         lambda user, event, *, available_seats, lang: (
-            langs.append((user.email, lang, available_seats, event.title)) or ("sub", "txt", "html")
+            langs.append((user.email, lang, available_seats, event.title))
+            or ("sub", "txt", "html")
         ),
     )
 
@@ -366,7 +379,11 @@ def seed_guardrail_rollback_state(db_session, *, user_id: int, event_id: int, no
         model_version="model-prev", feature_names=["bias"], weights=[0.0], meta={}, is_active=False
     )
     active = models.RecommenderModel(
-        model_version="model-active", feature_names=["bias"], weights=[0.1], meta={}, is_active=True
+        model_version="model-active",
+        feature_names=["bias"],
+        weights=[0.1],
+        meta={},
+        is_active=True,
     )
     db_session.add_all([previous, active])
     db_session.commit()

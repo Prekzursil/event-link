@@ -103,7 +103,9 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
 def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_learning_updates(
     helpers, monkeypatch
 ):
-    """Verifies record interactions search only invalid meta skips event lookup and learning updates behavior."""
+    """Verifies record interactions search only invalid meta skips event lookup and learning updates
+    behavior.
+    """
     client = helpers["client"]
     db = helpers["db"]
     student_token = helpers["register_student"]("invalid-search-only@test.ro")

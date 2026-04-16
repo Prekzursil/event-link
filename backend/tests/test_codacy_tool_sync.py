@@ -243,7 +243,9 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
 
 
 def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_config_retry():
-    """Verifies sync tool settings skips standard managed disable conflicts without config retry behavior."""
+    """Verifies sync tool settings skips standard managed disable conflicts without config retry
+    behavior.
+    """
     module = _load_module()
 
     tools_by_name = {
