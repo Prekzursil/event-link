@@ -64,7 +64,7 @@ import { useEventDetailController } from '@/pages/events/event-detail/useEventDe
 import { useEventFormController } from '@/pages/organizer/event-form/useEventFormController';
 import type { EventDetail } from '@/types';
 
-const swallowPromise = (result: void | Promise<unknown>) => {
+const swallowPromise = (result: undefined | Promise<unknown>) => {
   Promise.resolve(result).catch(() => undefined);
 };
 
