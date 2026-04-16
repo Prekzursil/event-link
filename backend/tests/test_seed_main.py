@@ -1,4 +1,5 @@
 """Tests for the seed main behavior."""
+
 from __future__ import annotations
 
 import importlib.util

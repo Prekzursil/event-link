@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Command-line helper: recompute ml loading."""
+
 from __future__ import annotations
 
 import math
@@ -56,12 +57,16 @@ def _load_event_features(*, db, models, func):
     all_events = db.query(models.Event).filter(models.Event.deleted_at.is_(None)).all()
 
     seats_rows = (
-        db.query(models.Registration.event_id, func.count(models.Registration.id).label("seats_taken"))
+        db.query(
+            models.Registration.event_id, func.count(models.Registration.id).label("seats_taken")
+        )
         .filter(models.Registration.deleted_at.is_(None))
         .group_by(models.Registration.event_id)
         .all()
     )
-    seats_taken_by_event = {int(event_id): int(seats_taken or 0) for event_id, seats_taken in seats_rows}
+    seats_taken_by_event = {
+        int(event_id): int(seats_taken or 0) for event_id, seats_taken in seats_rows
+    }
 
     event_tag_rows = (
         db.query(models.event_tags.c.event_id, models.Tag.name)
@@ -140,7 +145,9 @@ def _load_optional_implicit_weights(**kwargs) -> dict[int, dict[str, float]]:
     weights_by_user: dict[int, dict[str, float]] = {}
     try:
         query = kwargs["query_builder"]()
-        query = _maybe_filter_user(query, user_id=kwargs.get("user_id"), column=kwargs["user_column"])
+        query = _maybe_filter_user(
+            query, user_id=kwargs.get("user_id"), column=kwargs["user_column"]
+        )
         for raw_user_id, raw_key, score, last_seen_at in query.all():
             normalized = kwargs["normalizer"](str(raw_key))
             if not normalized:

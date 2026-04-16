@@ -4,6 +4,7 @@ Targets DeepSource JS-D1001 occurrences by scanning .ts/.tsx/.js/.jsx
 files for function and class declarations that lack a JSDoc comment
 immediately above them, then inserting one derived from the symbol name.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -88,7 +89,10 @@ def _has_preceding_jsdoc(source: str, start_idx: int) -> bool:
             continue
         # Either a JSDoc end, a line comment we accept, or decorator - treat any comment block starting
         # with `/**` as JSDoc presence. If the line ends with `*/` and a matching `/**` can be found, accept.
-        if stripped.endswith("*/") and "/**" in source[: cursor].rsplit("/**", 1)[0] + source[: cursor].split("/**")[-1]:
+        if (
+            stripped.endswith("*/")
+            and "/**" in source[:cursor].rsplit("/**", 1)[0] + source[:cursor].split("/**")[-1]
+        ):
             # Simpler check: just see if a `/**` exists after the last blank and before our start_idx.
             block = source[:start_idx]
             last_blank = block.rfind("\n\n")

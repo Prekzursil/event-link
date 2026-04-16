@@ -184,20 +184,27 @@ def test_main_skip_training_paths(monkeypatch, db_session, capsys) -> None:
     bad_model.weights = [0.1] * len(module.FEATURE_NAMES)
     db_session.add(bad_model)
     db_session.commit()
-    assert _run_main(module, monkeypatch, "--skip-training", "--dry-run", "--user-id", str(student.id)) == 0
+    assert (
+        _run_main(module, monkeypatch, "--skip-training", "--dry-run", "--user-id", str(student.id))
+        == 0
+    )
     assert "using persisted model_version=bad-features" in capsys.readouterr().out
 
     monkeypatch.delenv("RECOMMENDER_MODEL_VERSION", raising=False)
     assert _run_main(module, monkeypatch, "--skip-training", "--user-id", str(student.id)) == 0
     capsys.readouterr()
     recommendations = (
-        db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+        db_session.query(models.UserRecommendation)
+        .filter(models.UserRecommendation.user_id == int(student.id))
+        .all()
     )
     assert recommendations
     assert any(rec.event_id == int(event_candidate.id) for rec in recommendations)
 
 
-def test_main_skip_training_returns_zero_when_loader_yields_empty_state(monkeypatch, db_session) -> None:
+def test_main_skip_training_returns_zero_when_loader_yields_empty_state(
+    monkeypatch, db_session
+) -> None:
     """Exercises main skip training returns zero when loader yields empty state."""
     module = _load_script_module()
     student, _event_candidate = _seed_training_rows(db_session)
@@ -212,12 +219,16 @@ def test_main_skip_training_returns_zero_when_loader_yields_empty_state(monkeypa
     assert _run_main(module, monkeypatch, "--skip-training", "--user-id", str(student.id)) == 0
 
     recommendations = (
-        db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+        db_session.query(models.UserRecommendation)
+        .filter(models.UserRecommendation.user_id == int(student.id))
+        .all()
     )
     assert recommendations == []
 
 
-def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db_session, capsys) -> None:
+def test_main_training_paths_cover_no_examples_dry_run_and_write(
+    monkeypatch, db_session, capsys
+) -> None:
     """Exercises main training paths cover no examples dry run and write."""
     module = _load_script_module()
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
@@ -256,7 +267,10 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db
 
     student, event_candidate = _seed_training_rows(db_session)
 
-    assert _run_main(module, monkeypatch, "--dry-run", "--user-id", str(student.id), "--top-n", "2") == 0
+    assert (
+        _run_main(module, monkeypatch, "--dry-run", "--user-id", str(student.id), "--top-n", "2")
+        == 0
+    )
     dry_run_output = capsys.readouterr().out
     assert "[eval] hitrate@10=" in dry_run_output
     assert "dry-run enabled" in dry_run_output
@@ -272,13 +286,17 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db
     )
     assert model is not None and model.is_active is True
     recommendations = (
-        db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+        db_session.query(models.UserRecommendation)
+        .filter(models.UserRecommendation.user_id == int(student.id))
+        .all()
     )
     assert recommendations
     assert any(rec.event_id == int(event_candidate.id) for rec in recommendations)
 
 
-def _empty_user_features(module, *, city: str | None = None, city_weights: dict[str, float] | None = None):
+def _empty_user_features(
+    module, *, city: str | None = None, city_weights: dict[str, float] | None = None
+):
     """Builds the empty user features fixture."""
     return module._UserFeatures(
         city=city,
@@ -291,7 +309,9 @@ def _empty_user_features(module, *, city: str | None = None, city_weights: dict[
     )
 
 
-def _basic_event_features(module, now: datetime, *, city: str, owner_id: int, days: int, category: str | None = None):
+def _basic_event_features(
+    module, now: datetime, *, city: str, owner_id: int, days: int, category: str | None = None
+):
     """Builds the basic event features fixture."""
     return module._EventFeatures(
         tags=set(),
@@ -317,8 +337,14 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
     weighted_city_event = _basic_event_features(module, now, city="iasi", owner_id=2, days=3)
     generic_event = _basic_event_features(module, now, city="timisoara", owner_id=3, days=4)
     assert module._reason_for(user=same_city_user, event=same_city_event, lang="en") == "Near you"
-    assert module._reason_for(user=weighted_city_user, event=weighted_city_event, lang="en") == "Near you"
-    assert module._reason_for(user=generic_user, event=generic_event, lang="ro") == "Recomandat pentru tine"
+    assert (
+        module._reason_for(user=weighted_city_user, event=weighted_city_event, lang="en")
+        == "Near you"
+    )
+    assert (
+        module._reason_for(user=generic_user, event=generic_event, lang="ro")
+        == "Recomandat pentru tine"
+    )
 
 
 def test_evaluate_hitrate_sparse_positive_edge() -> None:
@@ -341,7 +367,9 @@ def test_evaluate_hitrate_sparse_positive_edge() -> None:
     assert hitrate == pytest.approx(1.0)
 
 
-def test_main_training_warning_paths_continue_on_query_failures(monkeypatch, db_session, capsys) -> None:
+def test_main_training_warning_paths_continue_on_query_failures(
+    monkeypatch, db_session, capsys
+) -> None:
     """Exercises main training warning paths continue on query failures."""
     module = _load_script_module()
     _seed_training_rows(db_session)
@@ -408,7 +436,9 @@ def test_main_training_detects_feature_length_mismatch(monkeypatch, db_session, 
 
 def test_recompute_recommendations_ml_main_guard_raises_system_exit(monkeypatch) -> None:
     """Exercises recompute recommendations ml main guard raises system exit."""
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
+    script_path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
+    )
     monkeypatch.delenv("DATABASE_URL", raising=False)
     monkeypatch.setattr(sys, "argv", [str(script_path)])
     with pytest.raises(SystemExit) as exc_info:

@@ -1,4 +1,5 @@
 """Alembic runtime configuration."""
+
 from logging import basicConfig
 import os
 import sys
@@ -40,7 +41,8 @@ target_metadata = models.Base.metadata
 
 ALEMBIC_VERSION_NUM_LENGTH = 255
 ALTER_VERSION_NUM_SQL = (
-    "ALTER TABLE alembic_version " f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
+    "ALTER TABLE alembic_version "
+    f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
 )
 
 

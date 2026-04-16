@@ -28,7 +28,9 @@ DEFAULT_REQUIRED_VARS = [
 
 def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for the quality-secrets preflight."""
-    parser = argparse.ArgumentParser(description=("Validate required quality-gate secrets/variables are configured."))
+    parser = argparse.ArgumentParser(
+        description=("Validate required quality-gate secrets/variables are configured.")
+    )
     parser.add_argument(
         "--required-secret",
         action="append",

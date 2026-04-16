@@ -1,4 +1,5 @@
 """Tests for the ro universities behavior."""
+
 from app import ro_universities
 
 
@@ -15,8 +16,14 @@ def test_normalize_university_name_aliases_legacy_typos():
         ro_universities.normalize_university_name(' University "Transilvany" of Brasov ')
         == 'University "Transilvania" of Brasov'
     )
-    assert ro_universities.normalize_university_name("University Oil- Gas Ploiesti") == "University Oil-Gas Ploiesti"
-    assert ro_universities.normalize_university_name("University Oil - Gas Ploiesti") == "University Oil-Gas Ploiesti"
+    assert (
+        ro_universities.normalize_university_name("University Oil- Gas Ploiesti")
+        == "University Oil-Gas Ploiesti"
+    )
+    assert (
+        ro_universities.normalize_university_name("University Oil - Gas Ploiesti")
+        == "University Oil-Gas Ploiesti"
+    )
 
 
 def test_university_catalog_includes_aliases():

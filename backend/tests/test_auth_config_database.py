@@ -1,4 +1,5 @@
 """Tests for the auth config database behavior."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -29,14 +30,20 @@ def test_verify_password_handles_invalid_hash() -> None:
 def test_create_access_and_refresh_token_include_expected_type() -> None:
     """Access and refresh tokens should encode their token type."""
     access = auth.create_access_token(
-        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=5)
+        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value},
+        timedelta(minutes=5),
     )
     refresh = auth.create_refresh_token(
-        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=10)
+        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value},
+        timedelta(minutes=10),
     )
 
-    access_payload = auth.jwt.decode(access, config.settings.secret_key, algorithms=[config.settings.algorithm])
-    refresh_payload = auth.jwt.decode(refresh, config.settings.secret_key, algorithms=[config.settings.algorithm])
+    access_payload = auth.jwt.decode(
+        access, config.settings.secret_key, algorithms=[config.settings.algorithm]
+    )
+    refresh_payload = auth.jwt.decode(
+        refresh, config.settings.secret_key, algorithms=[config.settings.algorithm]
+    )
 
     assert access_payload["type"] == "access"
     assert refresh_payload["type"] == "refresh"
@@ -62,7 +69,9 @@ def test_get_current_user_rejects_inactive_user(db_session) -> None:
     db_session.commit()
     db_session.refresh(user)
 
-    token = auth.create_access_token({"sub": str(user.id), "email": user.email, "role": user.role.value})
+    token = auth.create_access_token(
+        {"sub": str(user.id), "email": user.email, "role": user.role.value}
+    )
     with pytest.raises(HTTPException) as exc_info:
         auth.get_current_user(token=token, db=db_session)
     assert exc_info.value.status_code == 403
@@ -87,7 +96,9 @@ def test_role_guards_and_is_admin_paths() -> None:
         role=models.UserRole.organizator,
     )
     admin = models.User(
-        email="admin-role@test.ro", password_hash=auth.get_password_hash("admin-marker-A1"), role=models.UserRole.admin
+        email="admin-role@test.ro",
+        password_hash=auth.get_password_hash("admin-marker-A1"),
+        role=models.UserRole.admin,
     )
 
     assert auth.require_student(student) is student

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Support module: check sonar zero."""
+
 from __future__ import annotations
 
 import argparse
@@ -27,14 +28,22 @@ SONAR_API_BASE = f"https://{SONAR_HOST}"
 
 def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
-    parser = argparse.ArgumentParser(description="Assert SonarCloud has zero open issues and a passing quality gate.")
+    parser = argparse.ArgumentParser(
+        description="Assert SonarCloud has zero open issues and a passing quality gate."
+    )
     parser.add_argument("--project-key", required=True, help="Sonar project key")
     parser.add_argument("--token", default="", help="Sonar token (falls back to SONAR_TOKEN env)")
     parser.add_argument("--branch", default="", help="Optional branch scope")
     parser.add_argument("--pull-request", default="", help="Optional PR scope")
-    parser.add_argument("--expected-commit", default="", help="Optional commit SHA that Sonar must have analyzed")
-    parser.add_argument("--timeout-seconds", type=int, default=180, help="Max seconds to wait for Sonar analysis")
-    parser.add_argument("--poll-seconds", type=int, default=5, help="Polling interval while waiting for analysis")
+    parser.add_argument(
+        "--expected-commit", default="", help="Optional commit SHA that Sonar must have analyzed"
+    )
+    parser.add_argument(
+        "--timeout-seconds", type=int, default=180, help="Max seconds to wait for Sonar analysis"
+    )
+    parser.add_argument(
+        "--poll-seconds", type=int, default=5, help="Polling interval while waiting for analysis"
+    )
     parser.add_argument("--out-json", default="sonar-zero/sonar.json", help="Output JSON path")
     parser.add_argument("--out-md", default="sonar-zero/sonar.md", help="Output markdown path")
     return parser.parse_args()
@@ -124,8 +133,12 @@ def _validated_scope(args: argparse.Namespace) -> tuple[dict[str, str], list[str
     runtime = {
         "token": (args.token or os.environ.get("SONAR_TOKEN", "")).strip(),
         "api_base": normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip("/"),
-        "project_key": _validated_required_slug(args.project_key, field_name="sonar project key", findings=findings),
-        "branch": _validated_optional_slug(args.branch, field_name="sonar branch", findings=findings),
+        "project_key": _validated_required_slug(
+            args.project_key, field_name="sonar project key", findings=findings
+        ),
+        "branch": _validated_optional_slug(
+            args.branch, field_name="sonar branch", findings=findings
+        ),
         "pull_request": _validated_optional_slug(
             args.pull_request,
             field_name="sonar pull request",
@@ -184,10 +197,16 @@ def _summary_from_entry(entry: dict[str, Any]) -> tuple[int, str, str]:
     """Implements the summary from entry helper."""
     status = entry.get("status") if isinstance(entry.get("status"), dict) else {}
     commit = entry.get("commit") if isinstance(entry.get("commit"), dict) else {}
-    return _status_issue_count(status), str(status.get("qualityGateStatus") or "UNKNOWN"), str(commit.get("sha") or "")
+    return (
+        _status_issue_count(status),
+        str(status.get("qualityGateStatus") or "UNKNOWN"),
+        str(commit.get("sha") or ""),
+    )
 
 
-def _hotspot_total(*, api_base: str, auth: str, project_key: str, branch: str, pull_request: str) -> int:
+def _hotspot_total(
+    *, api_base: str, auth: str, project_key: str, branch: str, pull_request: str
+) -> int:
     """Implements the hotspot total helper."""
     payload = _request_json(
         f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}", auth
@@ -288,7 +307,9 @@ def _legacy_summary(
     project_status = gate_payload.get("projectStatus") or {}
     quality_gate = str(project_status.get("status") or "UNKNOWN")
 
-    hotspots_url = f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}"
+    hotspots_url = (
+        f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}"
+    )
     hotspots_payload = _request_json(hotspots_url, auth)
     hotspots_paging = hotspots_payload.get("paging") or {}
     open_hotspots = int(hotspots_paging.get("total") or 0)
@@ -402,7 +423,9 @@ def main() -> int:
     }
 
     try:
-        write_workspace_json(raw_path=args.out_json, fallback="sonar-zero/sonar.json", payload=payload)
+        write_workspace_json(
+            raw_path=args.out_json, fallback="sonar-zero/sonar.json", payload=payload
+        )
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="sonar-zero/sonar.md",

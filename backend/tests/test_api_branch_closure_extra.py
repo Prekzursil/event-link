@@ -1,4 +1,5 @@
 """Tests for the api branch closure extra behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -52,6 +53,7 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
 
     class _CreateDb:
         """Create Db value object used in the surrounding module."""
+
         @staticmethod
         def add(_obj):
             """Implements the add helper."""
@@ -96,7 +98,12 @@ def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatc
 
     now = datetime.now(timezone.utc)
     assert api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now) is True
-    assert api._recommendations_cache_is_fresh(db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now) is True
+    assert (
+        api._recommendations_cache_is_fresh(
+            db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now
+        )
+        is True
+    )
     _assert_create_event_accepts_missing_start_time(monkeypatch)
 
 
@@ -105,7 +112,9 @@ def test_events_and_public_events_include_past_and_optional_detail_user(helpers)
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("include-past-org@test.ro", "organizer-fixture-A1")
-    organizer = db.query(models.User).filter(models.User.email == "include-past-org@test.ro").first()
+    organizer = (
+        db.query(models.User).filter(models.User.email == "include-past-org@test.ro").first()
+    )
     assert organizer is not None
 
     future_event = models.Event(
@@ -228,7 +237,9 @@ def _explicit_language_context(helpers):
     return client, student_token, event_ids[0], event_ids[1], register_id
 
 
-def _assert_explicit_language_reads_cached_reason(client, student_token: str, event_id: int) -> None:
+def _assert_explicit_language_reads_cached_reason(
+    client, student_token: str, event_id: int
+) -> None:
     """Asserts that explicit language reads cached reason holds."""
     sorted_resp = client.get(
         "/api/events",
@@ -270,7 +281,9 @@ def _assert_registration_email_uses_profile_language(
     assert langs == ["en", "en"]
 
 
-def test_explicit_language_paths_for_lists_detail_recommendations_and_registration(helpers, monkeypatch):
+def test_explicit_language_paths_for_lists_detail_recommendations_and_registration(
+    helpers, monkeypatch
+):
     """Verifies explicit language paths for lists detail recommendations and registration behavior."""
     client, student_token, _first_id, second_id, register_id = _explicit_language_context(helpers)
     langs: list[str] = []
@@ -330,7 +343,11 @@ def test_delete_account_reuses_single_placeholder_owner(helpers):
         )
         assert deleted.status_code == 200
 
-    placeholders = db.query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").all()
+    placeholders = (
+        db.query(models.User)
+        .filter(models.User.email == "deleted-organizer@eventlink.invalid")
+        .all()
+    )
     assert len(placeholders) == 1
 
 
@@ -342,7 +359,9 @@ def _seed_restore_and_clone_context(helpers):
     helpers["make_organizer"]("restore-plain-owner@test.ro", "restore-fixture-A1")
     admin_token = helpers["login"]("restore-admin@test.ro", "admin-fixture-A1")
     owner_token = helpers["login"]("restore-plain-owner@test.ro", "restore-fixture-A1")
-    restore_owner = db.query(models.User).filter(models.User.email == "restore-plain-owner@test.ro").first()
+    restore_owner = (
+        db.query(models.User).filter(models.User.email == "restore-plain-owner@test.ro").first()
+    )
     assert restore_owner is not None
 
     restore_event = models.Event(
@@ -386,7 +405,9 @@ def _assert_restore_and_clone_paths(
     assert restore_resp.status_code == 200
     assert restore_resp.json()["restored_registrations"] == 0
 
-    clone_resp = client.post(f"/api/events/{int(future_clone.id)}/clone", headers=helpers["auth_header"](owner_token))
+    clone_resp = client.post(
+        f"/api/events/{int(future_clone.id)}/clone", headers=helpers["auth_header"](owner_token)
+    )
     assert clone_resp.status_code == 200
     assert clone_resp.json()["title"].startswith("Copie -")
 
@@ -395,7 +416,12 @@ def _assert_suggest_paths(client, helpers, owner_token: str) -> None:
     """Asserts that suggest paths holds."""
     suggest_with_city = client.post(
         "/api/organizer/events/suggest",
-        json={"title": "Covered Duplicate Title", "description": "desc", "city": "Iasi", "location": "Hall"},
+        json={
+            "title": "Covered Duplicate Title",
+            "description": "desc",
+            "city": "Iasi",
+            "location": "Hall",
+        },
         headers=helpers["auth_header"](owner_token),
     )
     assert suggest_with_city.status_code == 200
@@ -412,8 +438,12 @@ def _assert_suggest_paths(client, helpers, owner_token: str) -> None:
 
 def test_restore_clone_and_suggest_cover_plain_organizer_paths(helpers):
     """Verifies restore clone and suggest cover plain organizer paths behavior."""
-    client, admin_token, owner_token, restore_event, future_clone = _seed_restore_and_clone_context(helpers)
-    _assert_restore_and_clone_paths(client, helpers, admin_token, owner_token, restore_event, future_clone)
+    client, admin_token, owner_token, restore_event, future_clone = _seed_restore_and_clone_context(
+        helpers
+    )
+    _assert_restore_and_clone_paths(
+        client, helpers, admin_token, owner_token, restore_event, future_clone
+    )
     _assert_suggest_paths(client, helpers, owner_token)
 
 
@@ -422,7 +452,9 @@ def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
     client = helpers["client"]
     db = helpers["db"]
     helpers["register_student"]("partial-notifications@test.ro")
-    existing_user = db.query(models.User).filter(models.User.email == "partial-notifications@test.ro").first()
+    existing_user = (
+        db.query(models.User).filter(models.User.email == "partial-notifications@test.ro").first()
+    )
     assert existing_user is not None
     existing_user.language_preference = "en"
     db.add(existing_user)
@@ -473,7 +505,9 @@ def test_update_event_allows_blank_cover_url_without_content_recompute(helpers):
     assert updated.json()["max_seats"] == 11
 
 
-def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none(helpers, monkeypatch):
+def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none(
+    helpers, monkeypatch
+):
     """Verifies organizer suggest event skips date filter when normalized start is none behavior."""
     db = helpers["db"]
     helpers["make_organizer"]("suggest-direct@test.ro", "organizer-fixture-A1")
@@ -498,14 +532,18 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
     """Verifies recommendation reason map empty and invalid dwell seconds do not query db behavior."""
+
     class _NoQueryDb:
         """No Query Db value object used in the surrounding module."""
+
         @staticmethod
         def query(*_args, **_kwargs):
             """Implements the query helper."""
             raise AssertionError("query should not run")
 
     assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
-    assert api._event_learning_delta(interaction_type="dwell", meta={"seconds": "slow"}) == pytest.approx(0.0)
+    assert api._event_learning_delta(
+        interaction_type="dwell", meta={"seconds": "slow"}
+    ) == pytest.approx(0.0)
     with pytest.raises(AssertionError, match="query should not run"):
         _NoQueryDb().query()

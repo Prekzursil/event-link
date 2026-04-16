@@ -1,4 +1,5 @@
 """Tests for the api recommendations behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -38,7 +39,14 @@ def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = No
 
 
 def _store_ml_cache(
-    *, db, student, earlier, later, first_reason: str, second_reason: str, generated_at: datetime | None = None
+    *,
+    db,
+    student,
+    earlier,
+    later,
+    first_reason: str,
+    second_reason: str,
+    generated_at: datetime | None = None,
 ) -> None:
     """Implements the store ml cache helper."""
     rows = [
@@ -90,7 +98,9 @@ def test_recommendations_skip_full_and_past(helpers):
     )
 
     student_token = helpers["register_student"]("stud@test.ro")
-    client.post(f"/api/events/{full_event['id']}/register", headers=helpers["auth_header"](student_token))
+    client.post(
+        f"/api/events/{full_event['id']}/register", headers=helpers["auth_header"](student_token)
+    )
 
     rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
     titles = [e["title"] for e in rec]
@@ -113,12 +123,22 @@ def test_recommendations_boosts_user_city(helpers):
     }
     local = client.post(
         "/api/events",
-        json={**base_payload, "title": "Local", "city": "Cluj-Napoca", "start_time": helpers["future_time"](days=2)},
+        json={
+            **base_payload,
+            "title": "Local",
+            "city": "Cluj-Napoca",
+            "start_time": helpers["future_time"](days=2),
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     remote = client.post(
         "/api/events",
-        json={**base_payload, "title": "Remote", "city": "București", "start_time": helpers["future_time"](days=2)},
+        json={
+            **base_payload,
+            "title": "Remote",
+            "city": "București",
+            "start_time": helpers["future_time"](days=2),
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
 
@@ -183,7 +203,9 @@ def test_my_events_and_registration_state(helpers):
     my_events = client.get("/api/me/events", headers=helpers["auth_header"](student_token)).json()
     assert [e1["id"], e2["id"]] == [e["id"] for e in my_events]
 
-    detail = client.get(f"/api/events/{e1['id']}", headers=helpers["auth_header"](student_token)).json()
+    detail = client.get(
+        f"/api/events/{e1['id']}", headers=helpers["auth_header"](student_token)
+    ).json()
     assert detail["is_registered"]
     assert detail["seats_taken"] == 1
 
@@ -202,17 +224,29 @@ def test_recommended_uses_tags_and_excludes_registered(helpers):
     }
     python_event = client.post(
         "/api/events",
-        json={**tag_payload, "title": "Python 1", "start_time": helpers["future_time"](days=2), "tags": ["python"]},
+        json={
+            **tag_payload,
+            "title": "Python 1",
+            "start_time": helpers["future_time"](days=2),
+            "tags": ["python"],
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     another_python = client.post(
         "/api/events",
-        json={**tag_payload, "title": "Python 2", "start_time": helpers["future_time"](days=3), "tags": ["python"]},
+        json={
+            **tag_payload,
+            "title": "Python 2",
+            "start_time": helpers["future_time"](days=3),
+            "tags": ["python"],
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
 
     student_token = helpers["register_student"]("stud@test.ro")
-    client.post(f"/api/events/{python_event['id']}/register", headers=helpers["auth_header"](student_token))
+    client.post(
+        f"/api/events/{python_event['id']}/register", headers=helpers["auth_header"](student_token)
+    )
 
     rec_resp = client.get("/api/recommendations", headers=helpers["auth_header"](student_token))
     assert rec_resp.status_code == 200
@@ -237,12 +271,22 @@ def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
     }
     rock_event = client.post(
         "/api/events",
-        json={**payload, "title": "Rock show", "start_time": helpers["future_time"](days=2), "tags": ["Rock"]},
+        json={
+            **payload,
+            "title": "Rock show",
+            "start_time": helpers["future_time"](days=2),
+            "tags": ["Rock"],
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     client.post(
         "/api/events",
-        json={**payload, "title": "Other", "start_time": helpers["future_time"](days=3), "tags": ["python"]},
+        json={
+            **payload,
+            "title": "Other",
+            "start_time": helpers["future_time"](days=3),
+            "tags": ["python"],
+        },
         headers=helpers["auth_header"](organizer_token),
     )
 
@@ -341,8 +385,16 @@ def test_analytics_interactions_recorded(helpers):
         "/api/analytics/interactions",
         json={
             "events": [
-                {"interaction_type": "impression", "event_id": event["id"], "meta": {"source": "events_list"}},
-                {"interaction_type": "click", "event_id": event["id"], "meta": {"source": "events_list"}},
+                {
+                    "interaction_type": "impression",
+                    "event_id": event["id"],
+                    "meta": {"source": "events_list"},
+                },
+                {
+                    "interaction_type": "click",
+                    "event_id": event["id"],
+                    "meta": {"source": "events_list"},
+                },
                 {"interaction_type": "search", "meta": {"query": "Track", "city": "București"}},
             ]
         },
@@ -375,7 +427,9 @@ def test_events_list_sort_recommended_uses_ml_cache(helpers):
         generated_at=datetime.now(timezone.utc),
     )
 
-    resp = client.get("/api/events?sort=recommended&page_size=10", headers=helpers["auth_header"](student_token))
+    resp = client.get(
+        "/api/events?sort=recommended&page_size=10", headers=helpers["auth_header"](student_token)
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["items"][0]["id"] == later["id"]

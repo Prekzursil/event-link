@@ -1,4 +1,5 @@
 """Support module: task queue."""
+
 from __future__ import annotations
 
 import contextlib
@@ -51,6 +52,7 @@ JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
 @dataclass
 class _PythonRunResult:
     """Python Run Result value object used in the surrounding module."""
+
     returncode: int
     stdout: str
     stderr: str

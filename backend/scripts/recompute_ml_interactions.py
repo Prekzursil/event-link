@@ -1,11 +1,14 @@
 #!/usr/bin/env python3
 """Command-line helper: recompute ml interactions."""
+
 from __future__ import annotations
 
 from recompute_ml_shared import _normalize_category, _normalize_city, _normalize_tag
 
 
-def _merge_search_filter_tags(*, user_id: int, meta: dict[object, object], implicit_interest_tags_by_user) -> None:
+def _merge_search_filter_tags(
+    *, user_id: int, meta: dict[object, object], implicit_interest_tags_by_user
+) -> None:
     """Implements the merge search filter tags helper."""
     tags_value = meta.get("tags")
     if not isinstance(tags_value, list):
@@ -16,14 +19,20 @@ def _merge_search_filter_tags(*, user_id: int, meta: dict[object, object], impli
             implicit_interest_tags_by_user.setdefault(user_id, set()).add(normalized)
 
 
-def _merge_search_filter_category(*, user_id: int, meta: dict[object, object], implicit_categories_by_user) -> None:
+def _merge_search_filter_category(
+    *, user_id: int, meta: dict[object, object], implicit_categories_by_user
+) -> None:
     """Implements the merge search filter category helper."""
     category_value = meta.get("category")
     if isinstance(category_value, str) and category_value.strip():
-        implicit_categories_by_user.setdefault(user_id, set()).add(_normalize_category(category_value))
+        implicit_categories_by_user.setdefault(user_id, set()).add(
+            _normalize_category(category_value)
+        )
 
 
-def _merge_search_filter_city(*, user_id: int, meta: dict[object, object], implicit_city_by_user) -> None:
+def _merge_search_filter_city(
+    *, user_id: int, meta: dict[object, object], implicit_city_by_user
+) -> None:
     """Implements the merge search filter city helper."""
     city_value = meta.get("city")
     if isinstance(city_value, str):
@@ -33,7 +42,11 @@ def _merge_search_filter_city(*, user_id: int, meta: dict[object, object], impli
 
 
 def _apply_search_filter_preferences(
-    *, search_filter_rows, implicit_interest_tags_by_user, implicit_categories_by_user, implicit_city_by_user
+    *,
+    search_filter_rows,
+    implicit_interest_tags_by_user,
+    implicit_categories_by_user,
+    implicit_city_by_user,
 ):
     """Applies search filter preferences to the target."""
     for raw_user_id, _interaction_type, meta in search_filter_rows:
@@ -142,7 +155,9 @@ def _apply_event_interaction_feedback(
             )
             continue
         if normalized_type == "unregister":
-            _record_negative_feedback(user_id=user_id, event_id=event_id, negative_weights=negative_weights)
+            _record_negative_feedback(
+                user_id=user_id, event_id=event_id, negative_weights=negative_weights
+            )
             continue
         _record_positive_feedback(
             user_id=user_id,
@@ -174,7 +189,9 @@ def _load_search_filter_preferences(
         .filter(models.EventInteraction.interaction_type.in_(["search", "filter"]))
     )
     if user_id is not None:
-        search_filter_query = search_filter_query.filter(models.EventInteraction.user_id == int(user_id))
+        search_filter_query = search_filter_query.filter(
+            models.EventInteraction.user_id == int(user_id)
+        )
     _apply_search_filter_preferences(
         search_filter_rows=search_filter_query.all(),
         implicit_interest_tags_by_user=implicit_interest_tags_by_user,
@@ -205,12 +222,23 @@ def _load_event_feedback_signals(
         .filter(models.EventInteraction.event_id.isnot(None))
         .filter(
             models.EventInteraction.interaction_type.in_(
-                ["impression", "click", "view", "dwell", "share", "favorite", "register", "unregister"]
+                [
+                    "impression",
+                    "click",
+                    "view",
+                    "dwell",
+                    "share",
+                    "favorite",
+                    "register",
+                    "unregister",
+                ]
             )
         )
     )
     if user_id is not None:
-        interaction_query = interaction_query.filter(models.EventInteraction.user_id == int(user_id))
+        interaction_query = interaction_query.filter(
+            models.EventInteraction.user_id == int(user_id)
+        )
     _apply_event_interaction_feedback(
         interaction_rows=interaction_query.all(),
         seen_by_user=seen_by_user,
@@ -261,7 +289,9 @@ def _load_interaction_signals(
             negative_weights=negative_weights,
         )
     except Exception as exc:  # noqa: BLE001
-        print(f"[warn] could not load event_interactions ({exc}); continuing without interaction signals")
+        print(
+            f"[warn] could not load event_interactions ({exc}); continuing without interaction signals"
+        )
 
     return (
         negative_weights,

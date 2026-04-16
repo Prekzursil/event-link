@@ -1,4 +1,5 @@
 """Support module: email templates."""
+
 from datetime import datetime
 from typing import Optional
 
@@ -69,7 +70,9 @@ def render_registration_email(event: Event, user: User, lang: str = "ro") -> tup
     return subject, body, html
 
 
-def render_password_reset_email(user: User, reset_link: str, lang: str = "ro") -> tuple[str, str, str]:
+def render_password_reset_email(
+    user: User, reset_link: str, lang: str = "ro"
+) -> tuple[str, str, str]:
     """Implements the render password reset email helper."""
     lang = _normalized_lang(lang)
     if lang == "en":
@@ -147,7 +150,9 @@ def _digest_fallback(lang: str) -> tuple[str, str]:
     return "- Încă nu avem recomandări.\n", "<p><em>Încă nu avem recomandări.</em></p>"
 
 
-def _digest_copy(lang: str, name: str, lines_text: list[str], lines_html: list[str]) -> tuple[str, str, str]:
+def _digest_copy(
+    lang: str, name: str, lines_text: list[str], lines_html: list[str]
+) -> tuple[str, str, str]:
     """Implements the digest copy helper."""
     if lang == "en":
         subject = "Your weekly EventLink digest"
@@ -211,7 +216,10 @@ def _filling_fast_copy(
         labels = {"start": "Începe", "location": "Locație", "link": "Vezi evenimentul"}
         outro = "Poți schimba preferințele de notificări în profil."
 
-    body = intro + f"{labels['start']}: {start_text}\n{labels['location']}: {location}\n{seats_line}\n\n"
+    body = (
+        intro
+        + f"{labels['start']}: {start_text}\n{labels['location']}: {location}\n{seats_line}\n\n"
+    )
     html_intro = (
         f"<p>{'Hi' if lang == 'en' else 'Salut'} {name},</p>"
         f"<p>{headline}</p>"
@@ -220,7 +228,7 @@ def _filling_fast_copy(
         f"<strong>{seats_line}</strong></p>"
     )
     link_body = f"{labels['link']}: {link}\n\n" if link else ""
-    link_html = f"<p><a href=\"{link}\">{labels['link']}</a></p>" if link else ""
+    link_html = f'<p><a href="{link}">{labels["link"]}</a></p>' if link else ""
     body += link_body + outro
     html = html_intro + link_html + f"<p>{outro}</p>"
     return subject, body, html

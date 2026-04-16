@@ -13,7 +13,9 @@ def _sanitize_log_text(value: str) -> str:
     return value.replace("\r", "").replace("\n", "")
 
 
-request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar("request_id", default=None)
+request_id_ctx: contextvars.ContextVar[str | None] = contextvars.ContextVar(
+    "request_id", default=None
+)
 
 
 def _inject_request_id(record: logging.LogRecord) -> bool:

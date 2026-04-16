@@ -1,4 +1,5 @@
 """Tests for the api helper coverage behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -60,7 +61,9 @@ def _seed_favorite_context(helpers):
     db.commit()
     db.refresh(tag)
     db.refresh(event)
-    return SimpleNamespace(client=client, organizer=organizer, student_token=student_token, tag=tag, event=event)
+    return SimpleNamespace(
+        client=client, organizer=organizer, student_token=student_token, tag=tag, event=event
+    )
 
 
 def _seed_admin_context(helpers, monkeypatch):
@@ -72,10 +75,18 @@ def _seed_admin_context(helpers, monkeypatch):
     db.add_all(
         [
             models.RecommenderModel(
-                model_version="old-model", feature_names=["bias"], weights=[0.0], meta={}, is_active=True
+                model_version="old-model",
+                feature_names=["bias"],
+                weights=[0.0],
+                meta={},
+                is_active=True,
             ),
             models.RecommenderModel(
-                model_version="new-model", feature_names=["bias"], weights=[1.0], meta={}, is_active=False
+                model_version="new-model",
+                feature_names=["bias"],
+                weights=[1.0],
+                meta={},
+                is_active=False,
             ),
         ]
     )
@@ -116,7 +127,11 @@ def _record_interactions_payload(event_id: int) -> dict:
             {"interaction_type": "dwell", "event_id": event_id, "meta": {"seconds": 20}},
             {
                 "interaction_type": "search",
-                "meta": {"tags": ["analytics-visible", "", None], "category": "Tech", "city": "Bucuresti"},
+                "meta": {
+                    "tags": ["analytics-visible", "", None],
+                    "category": "Tech",
+                    "city": "Bucuresti",
+                },
             },
             {
                 "interaction_type": "filter",
@@ -154,7 +169,9 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     fake_config = SimpleNamespace(Config=_FakeConfig)
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
-    monkeypatch.setitem(sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config))
+    monkeypatch.setitem(
+        sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config)
+    )
 
 
 def _seed_record_interactions_context(helpers, monkeypatch):
@@ -185,7 +202,9 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     event.tags.extend([visible_tag, hidden_tag])
     db.add_all([organizer, visible_tag, hidden_tag, event])
     db.commit()
-    db.execute(models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id)))
+    db.execute(
+        models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id))
+    )
     for model in (
         models.UserImplicitInterestTag(
             user_id=int(student.id),
@@ -408,7 +427,11 @@ def test_organizer_profile_not_found_and_update_validation(helpers):
 
     ok = client.put(
         "/api/organizers/me/profile",
-        json={"org_name": "Updated Org", "org_description": "desc", "org_logo_url": "https://example.com/logo.png"},
+        json={
+            "org_name": "Updated Org",
+            "org_description": "desc",
+            "org_logo_url": "https://example.com/logo.png",
+        },
         headers=helpers["auth_header"](token),
     )
     assert ok.status_code == 200
@@ -420,19 +443,27 @@ def test_hidden_tag_personalization_endpoints(helpers):
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert (
-        context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        context.client.delete(
+            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+        ).status_code
         == 404
     )
     assert (
-        context.client.post(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        context.client.post(
+            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+        ).status_code
         == 201
     )
     assert (
-        context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        context.client.delete(
+            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+        ).status_code
         == 204
     )
     assert (
-        context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        context.client.delete(
+            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+        ).status_code
         == 404
     )
 
@@ -443,25 +474,29 @@ def test_blocked_organizer_personalization_endpoints(helpers):
     headers = helpers["auth_header"](context.student_token)
     assert (
         context.client.delete(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+            headers=headers,
         ).status_code
         == 404
     )
     assert (
         context.client.post(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+            headers=headers,
         ).status_code
         == 201
     )
     assert (
         context.client.delete(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+            headers=headers,
         ).status_code
         == 204
     )
     assert (
         context.client.delete(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+            headers=headers,
         ).status_code
         == 404
     )
@@ -472,15 +507,32 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     assert context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
-    assert context.client.post(f"/api/events/{int(context.event.id)}/favorite", headers=headers).status_code == 201
-    favorite_exists = context.client.post(f"/api/events/{int(context.event.id)}/favorite", headers=headers)
+    assert (
+        context.client.post(
+            f"/api/events/{int(context.event.id)}/favorite", headers=headers
+        ).status_code
+        == 201
+    )
+    favorite_exists = context.client.post(
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
+    )
     assert favorite_exists.status_code == 201
     assert favorite_exists.json()["status"] == "exists"
     listed = context.client.get("/api/me/favorites", headers=headers)
     assert listed.status_code == 200
     assert listed.json()["items"]
-    assert context.client.delete(f"/api/events/{int(context.event.id)}/favorite", headers=headers).status_code == 204
-    assert context.client.delete(f"/api/events/{int(context.event.id)}/favorite", headers=headers).status_code == 404
+    assert (
+        context.client.delete(
+            f"/api/events/{int(context.event.id)}/favorite", headers=headers
+        ).status_code
+        == 204
+    )
+    assert (
+        context.client.delete(
+            f"/api/events/{int(context.event.id)}/favorite", headers=headers
+        ).status_code
+        == 404
+    )
 
 
 def test_admin_activate_missing_personalization_model_returns_404(helpers):
@@ -514,7 +566,10 @@ def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypat
         headers=headers,
     )
     assert activate_with_recompute.status_code == 200
-    assert activate_with_recompute.json()["recompute_job"]["job_type"] == "recompute_recommendations_ml"
+    assert (
+        activate_with_recompute.json()["recompute_job"]["job_type"]
+        == "recompute_recommendations_ml"
+    )
 
 
 def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpers):
@@ -598,7 +653,10 @@ def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
         headers=helpers["auth_header"](context.student_token),
     )
     assert response.status_code == 204
-    assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload, _dedupe in context.captured_jobs)
+    assert any(
+        job_type == "refresh_user_recommendations_ml"
+        for job_type, _payload, _dedupe in context.captured_jobs
+    )
 
 
 def test_register_route_rejects_mismatched_confirmation(monkeypatch):

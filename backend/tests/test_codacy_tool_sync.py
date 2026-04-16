@@ -1,4 +1,5 @@
 """Tests for the codacy tool sync behavior."""
+
 import importlib.util
 import sys
 from pathlib import Path
@@ -26,7 +27,9 @@ def test_planned_tool_payload_disables_legacy_tools():
     payload, notes = module._planned_tool_payload("ESLint", {"isEnabled": True})
 
     assert payload == {"enabled": False}
-    assert notes == ["ESLint: configuration file not detected by Codacy; skipping config-file mode request"]
+    assert notes == [
+        "ESLint: configuration file not detected by Codacy; skipping config-file mode request"
+    ]
 
 
 def test_planned_tool_payload_disables_lizard_for_test_noise_control():
@@ -75,7 +78,9 @@ def test_planned_tool_payload_skips_missing_configuration_files():
     )
 
     assert payload is None
-    assert notes == ["Stylelint: configuration file not detected by Codacy; skipping config-file mode request"]
+    assert notes == [
+        "Stylelint: configuration file not detected by Codacy; skipping config-file mode request"
+    ]
 
 
 def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> None:
@@ -97,7 +102,14 @@ def test_request_codacy_preserves_query_string():
     request_args = {}
 
     def fake_request_https_json(
-        raw_url, *, method="GET", headers=None, body=None, timeout=30, allowed_hosts=None, allowed_host_suffixes=None
+        raw_url,
+        *,
+        method="GET",
+        headers=None,
+        body=None,
+        timeout=30,
+        allowed_hosts=None,
+        allowed_host_suffixes=None,
     ):
         """Implements the fake request https json helper."""
         request_args["raw_url"] = raw_url
@@ -157,8 +169,8 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
         ]
 
     module._list_tools = fake_list_tools
-    module._configure_tool = lambda **_kwargs: (_kwargs)
-    module._disable_pattern = lambda **_kwargs: (_kwargs)
+    module._configure_tool = lambda **_kwargs: _kwargs
+    module._disable_pattern = lambda **_kwargs: _kwargs
     module._reanalyze_commit = lambda **_kwargs: reanalyze_calls.append(_kwargs["commit_sha"])
 
     payload = module._run_sync(
@@ -187,7 +199,11 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
         "ESLint": {
             "name": "ESLint",
             "uuid": "eslint-uuid",
-            "settings": {"isEnabled": True, "hasConfigurationFile": True, "usesConfigurationFile": False},
+            "settings": {
+                "isEnabled": True,
+                "hasConfigurationFile": True,
+                "usesConfigurationFile": False,
+            },
         }
     }
     calls = []
@@ -213,10 +229,17 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
         dry_run=False,
     )
 
-    assert tool_changes == [{"tool": "ESLint", "payload": {"enabled": False, "useConfigurationFile": True}}]
+    assert tool_changes == [
+        {"tool": "ESLint", "payload": {"enabled": False, "useConfigurationFile": True}}
+    ]
     assert failures == []
-    assert calls == [{"enabled": False, "useConfigurationFile": True}, {"useConfigurationFile": True}]
-    assert notes == ["ESLint: managed by Codacy standard; retrying config-file mode without disable request"]
+    assert calls == [
+        {"enabled": False, "useConfigurationFile": True},
+        {"useConfigurationFile": True},
+    ]
+    assert notes == [
+        "ESLint: managed by Codacy standard; retrying config-file mode without disable request"
+    ]
 
 
 def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_config_retry():
@@ -282,4 +305,6 @@ def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None
     )
 
     assert failures == []
-    assert notes == ["Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis"]
+    assert notes == [
+        "Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis"
+    ]

@@ -1,4 +1,5 @@
 """Tests for the quality script security behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -77,7 +78,9 @@ def test_build_github_commit_urls_use_fixed_host() -> None:
         sha="abcdef1",
     )
 
-    assert checks_url == ("https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/check-runs?per_page=50")
+    assert checks_url == (
+        "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/check-runs?per_page=50"
+    )
     assert status_url == "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/status"
 
 

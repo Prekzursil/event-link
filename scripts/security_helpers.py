@@ -59,7 +59,9 @@ def _validate_host_allowlists(
         raise ValueError(f"URL host is not in allowlist: {hostname}")
 
     suffixes = _normalized_set(allowed_host_suffixes)
-    if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
+    if suffixes and not any(
+        hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes
+    ):
         raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
 
 

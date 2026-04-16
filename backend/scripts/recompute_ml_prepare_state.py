@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Command-line helper: recompute ml prepare state."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -24,7 +25,9 @@ from recompute_ml_state_helpers import (
 )
 
 
-def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
+def _build_users_and_holdout(
+    **kwargs,
+) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
     """Build user feature rows together with language and holdout state."""
     users: dict[int, _UserFeatures] = {}
     user_lang: dict[int, str] = {}

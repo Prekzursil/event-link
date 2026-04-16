@@ -1,4 +1,5 @@
 """Tests for the openapi contract behavior."""
+
 import json
 from pathlib import Path
 

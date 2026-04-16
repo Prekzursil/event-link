@@ -1,4 +1,5 @@
 """Tests for the sonar zero behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -46,7 +47,12 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
                 "pullRequests": [
                     {
                         "key": "97",
-                        "status": {"qualityGateStatus": "OK", "bugs": 0, "vulnerabilities": 0, "codeSmells": 0},
+                        "status": {
+                            "qualityGateStatus": "OK",
+                            "bugs": 0,
+                            "vulnerabilities": 0,
+                            "codeSmells": 0,
+                        },
                         "commit": {"sha": "abc123abc123abc123abc123abc123abc123abcd"},
                     }
                 ]
@@ -104,7 +110,9 @@ def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatc
     assert sleeps == [7]
 
 
-def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_sonar_fails_when_expected_commit_never_arrives(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies evaluate sonar fails when expected commit never arrives behavior."""
     module = _load_module()
     summaries = [(0, "OK", 1, "feedfeedfeedfeedfeedfeedfeedfeedfeedfeed")] * 2

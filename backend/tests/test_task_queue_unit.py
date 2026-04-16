@@ -1,4 +1,5 @@
 """Tests for the task queue unit behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -141,19 +142,35 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
     succeeded = []
     failed = []
 
-    monkeypatch.setattr(task_queue, "mark_job_succeeded", lambda _db, job: succeeded.append(job.job_type))
-    monkeypatch.setattr(task_queue, "mark_job_failed", lambda _db, job, error: failed.append((job.job_type, error)))
+    monkeypatch.setattr(
+        task_queue, "mark_job_succeeded", lambda _db, job: succeeded.append(job.job_type)
+    )
+    monkeypatch.setattr(
+        task_queue, "mark_job_failed", lambda _db, job, error: failed.append((job.job_type, error))
+    )
     monkeypatch.setattr(task_queue, "log_event", lambda *_args, **_kwargs: None)
 
     import app.email_service as email_service_module
 
     monkeypatch.setattr(email_service_module, "send_email_now", lambda **_kwargs: None)
     monkeypatch.setattr(task_queue, "_run_recompute_recommendations_ml", lambda payload: None)
-    monkeypatch.setattr(task_queue, "_send_weekly_digest", lambda **_kwargs: {"users": 1, "emails": 1})
-    monkeypatch.setattr(task_queue, "_send_filling_fast_alerts", lambda **_kwargs: {"pairs": 2, "emails": 1})
-    monkeypatch.setattr(task_queue, "_evaluate_personalization_guardrails", lambda **_kwargs: {"action": "ok"})
+    monkeypatch.setattr(
+        task_queue, "_send_weekly_digest", lambda **_kwargs: {"users": 1, "emails": 1}
+    )
+    monkeypatch.setattr(
+        task_queue, "_send_filling_fast_alerts", lambda **_kwargs: {"pairs": 2, "emails": 1}
+    )
+    monkeypatch.setattr(
+        task_queue, "_evaluate_personalization_guardrails", lambda **_kwargs: {"action": "ok"}
+    )
 
-    payload = {"to_email": "a@test.ro", "subject": "s", "body_text": "b", "body_html": None, "context": {}}
+    payload = {
+        "to_email": "a@test.ro",
+        "subject": "s",
+        "body_text": "b",
+        "body_html": None,
+        "context": {},
+    }
 
     for jt, pl in [
         (task_queue.JOB_TYPE_SEND_EMAIL, payload),
@@ -164,12 +181,22 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
         (task_queue.JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS, {}),
     ]:
         job = models.BackgroundJob(
-            job_type=jt, payload=pl, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc)
+            job_type=jt,
+            payload=pl,
+            status="queued",
+            attempts=0,
+            max_attempts=3,
+            run_at=datetime.now(timezone.utc),
         )
         task_queue.process_job(db_session, job)
 
     unknown = models.BackgroundJob(
-        job_type="unknown", payload={}, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc)
+        job_type="unknown",
+        payload={},
+        status="queued",
+        attempts=0,
+        max_attempts=3,
+        run_at=datetime.now(timezone.utc),
     )
     task_queue.process_job(db_session, unknown)
 
@@ -229,11 +256,15 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
     db_session.commit()
 
     monkeypatch.setattr(task_queue, "enqueue_job", lambda db, job_type, payload: db.commit())
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
 
     import app.email_templates as tpl
 
-    monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: ("sub", "txt", "html"))
+    monkeypatch.setattr(
+        tpl, "render_filling_fast_email", lambda *_args, **_kwargs: ("sub", "txt", "html")
+    )
 
     result_first = task_queue._send_filling_fast_alerts(
         db=db_session,
@@ -295,6 +326,7 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
 
 def test_apply_personalization_exclusions_applies_both_filters():
     """Verifies apply personalization exclusions applies both filters behavior."""
+
     class _Query:
         """Minimal query stub that counts how many times filter() was called."""
 
@@ -319,6 +351,7 @@ def test_apply_personalization_exclusions_applies_both_filters():
 
 def test_apply_personalization_exclusions_returns_query_when_sets_empty():
     """Verifies apply personalization exclusions returns query when sets empty behavior."""
+
     class _Query:
         """Minimal query stub that counts how many times filter() was called."""
 

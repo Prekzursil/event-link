@@ -1,4 +1,5 @@
 """Tests for the ml v3 weighted signals behavior."""
+
 import math
 from datetime import datetime, timedelta, timezone
 
@@ -93,7 +94,10 @@ def test_online_learning_updates_weighted_tag_category_city_with_decay(helpers):
 
     updated = (
         db.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == student.id, models.UserImplicitInterestTag.tag_id == tag.id)
+        .filter(
+            models.UserImplicitInterestTag.user_id == student.id,
+            models.UserImplicitInterestTag.tag_id == tag.id,
+        )
         .one()
     )
     expected = 8.0 * math.exp(-math.log(2.0) * 2.0) + 1.0
@@ -111,7 +115,10 @@ def test_online_learning_updates_weighted_tag_category_city_with_decay(helpers):
 
     city_row = (
         db.query(models.UserImplicitInterestCity)
-        .filter(models.UserImplicitInterestCity.user_id == student.id, models.UserImplicitInterestCity.city == "cluj")
+        .filter(
+            models.UserImplicitInterestCity.user_id == student.id,
+            models.UserImplicitInterestCity.city == "cluj",
+        )
         .one()
     )
     assert city_row.score == pytest.approx(1.0, abs=0.01)

@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Command-line helper: enqueue scheduled jobs."""
+
 from __future__ import annotations
 
 import argparse
@@ -20,20 +21,28 @@ def _bootstrap_imports() -> None:
 def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
     parser = argparse.ArgumentParser(description="Enqueue scheduled background jobs.")
-    parser.add_argument("--retrain-ml", action="store_true", help="Enqueue ML recommendations retraining job.")
+    parser.add_argument(
+        "--retrain-ml", action="store_true", help="Enqueue ML recommendations retraining job."
+    )
     parser.add_argument(
         "--guardrails",
         action="store_true",
         help="Enqueue personalization guardrails evaluation job (CTR/conversion checks + auto-rollback).",
     )
-    parser.add_argument("--weekly-digest", action="store_true", help="Enqueue weekly digest notification job.")
-    parser.add_argument("--filling-fast", action="store_true", help="Enqueue filling-fast notification job.")
+    parser.add_argument(
+        "--weekly-digest", action="store_true", help="Enqueue weekly digest notification job."
+    )
+    parser.add_argument(
+        "--filling-fast", action="store_true", help="Enqueue filling-fast notification job."
+    )
     parser.add_argument(
         "--all",
         action="store_true",
         help="Enqueue the default set (retrain-ml + guardrails + filling-fast).",
     )
-    parser.add_argument("--top-n", type=int, default=50, help="Top-N recommendations to store per user.")
+    parser.add_argument(
+        "--top-n", type=int, default=50, help="Top-N recommendations to store per user."
+    )
     return parser.parse_args()
 
 

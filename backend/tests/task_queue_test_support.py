@@ -8,7 +8,9 @@ from types import SimpleNamespace
 from app import auth, models, task_queue
 
 
-def mk_job(db_session, *, job_type: str, payload: dict | None = None, status: str = "queued", run_at=None):
+def mk_job(
+    db_session, *, job_type: str, payload: dict | None = None, status: str = "queued", run_at=None
+):
     """Implements the mk job helper."""
     job = models.BackgroundJob(
         job_type=job_type,
@@ -106,7 +108,10 @@ def add_balanced_guardrail_rows(db_session, *, user_id: int, event_id: int, now:
                     meta={"source": "events_list", "sort": sort},
                 ),
                 interaction(
-                    user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(minutes=5)
+                    user_id=user_id,
+                    event_id=event_id,
+                    kind="register",
+                    occurred_at=now + timedelta(minutes=5),
                 ),
             ]
         )
@@ -180,42 +185,74 @@ def seed_filling_fast_branch_matrix(db_session):
             (
                 "inactive",
                 "inactive@test.ro",
-                {"is_active": False, "email_filling_fast_enabled": True, "language_preference": "en"},
+                {
+                    "is_active": False,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "en",
+                },
             ),
             (
                 "disabled",
                 "disabled@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": False, "language_preference": "en"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": False,
+                    "language_preference": "en",
+                },
             ),
             (
                 "limited",
                 "limited@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "en",
+                },
             ),
             (
                 "blocked",
                 "blocked@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "en",
+                },
             ),
             (
                 "hidden",
                 "hidden@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "en",
+                },
             ),
             (
                 "full",
                 "full@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "en",
+                },
             ),
             (
                 "abundant",
                 "abundant@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "en",
+                },
             ),
             (
                 "system",
                 "system@test.ro",
-                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "system"},
+                {
+                    "is_active": True,
+                    "email_filling_fast_enabled": True,
+                    "language_preference": "system",
+                },
             ),
         ]
     }
@@ -236,13 +273,16 @@ def seed_filling_fast_branch_matrix(db_session):
         models.FavoriteEvent(user_id=int(users[user_name].id), event_id=int(events[event_name].id))
         for user_name, event_name in favorites
     )
-    db_session.add(models.Registration(user_id=int(users["full"].id), event_id=int(events["full"].id)))
+    db_session.add(
+        models.Registration(user_id=int(users["full"].id), event_id=int(events["full"].id))
+    )
     db_session.commit()
     return SimpleNamespace(organizer=organizer, hidden_tag=hidden_tag, users=users, events=events)
 
 
 def patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
     """Implements the patch filling fast alerts helper."""
+
     def _exclusions(*, user_id: int, **_kwargs):
         """Implements the exclusions helper."""
         if int(user_id) == int(setup.users["blocked"].id):
@@ -252,15 +292,18 @@ def patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
         return set(), set()
 
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", _exclusions)
-    monkeypatch.setattr(task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload))
+    monkeypatch.setattr(
+        task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload)
+    )
 
     import app.email_templates as tpl
 
     monkeypatch.setattr(
         tpl,
         "render_filling_fast_email",
-        lambda user, event, *, available_seats, lang: langs.append((user.email, lang, available_seats, event.title))
-        or ("sub", "txt", "html"),
+        lambda user, event, *, available_seats, lang: (
+            langs.append((user.email, lang, available_seats, event.title)) or ("sub", "txt", "html")
+        ),
     )
 
 
@@ -296,7 +339,12 @@ def seed_guardrail_window_rows(db_session, *, user_id: int, event_id: int, now: 
                 occurred_at=now + timedelta(minutes=2),
                 meta={"source": "events_list", "sort": "recommended"},
             ),
-            interaction(user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(hours=5)),
+            interaction(
+                user_id=user_id,
+                event_id=event_id,
+                kind="register",
+                occurred_at=now + timedelta(hours=5),
+            ),
         ]
     )
     db_session.commit()
@@ -327,6 +375,7 @@ def seed_guardrail_rollback_state(db_session, *, user_id: int, event_id: int, no
 
 class ChainQuery:
     """Chain Query value object used in the surrounding module."""
+
     def __init__(self, *, rows=None, first_result=None, subquery_result=None):
         """Initializes the instance state."""
         self._rows = rows if rows is not None else []
@@ -372,6 +421,7 @@ class ChainQuery:
 
 class FakeFillingFastDb:
     """Test double standing in for a real filling fast db."""
+
     def __init__(self, *queries):
         """Initializes the instance state."""
         self._queries = list(queries)

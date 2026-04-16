@@ -1,4 +1,5 @@
 """Support module: task queue guardrails."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -15,6 +16,7 @@ from .logging_utils import log_event, log_warning
 @dataclass(frozen=True)
 class _GuardrailConfig:
     """Guardrail Config value object used in the surrounding module."""
+
     days: int
     min_impressions: int
     ctr_drop_ratio: float
@@ -33,10 +35,15 @@ def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
     )
     return _GuardrailConfig(
         days=days,
-        min_impressions=int(payload.get("min_impressions") or settings.personalization_guardrails_min_impressions),
-        ctr_drop_ratio=float(payload.get("ctr_drop_ratio") or settings.personalization_guardrails_ctr_drop_ratio),
+        min_impressions=int(
+            payload.get("min_impressions") or settings.personalization_guardrails_min_impressions
+        ),
+        ctr_drop_ratio=float(
+            payload.get("ctr_drop_ratio") or settings.personalization_guardrails_ctr_drop_ratio
+        ),
         conversion_drop_ratio=float(
-            payload.get("conversion_drop_ratio") or settings.personalization_guardrails_conversion_drop_ratio
+            payload.get("conversion_drop_ratio")
+            or settings.personalization_guardrails_conversion_drop_ratio
         ),
         click_to_register_window=timedelta(hours=max(1, click_to_register_hours)),
     )
@@ -172,7 +179,10 @@ def _guardrail_result(
 
 def _is_low_volume(result: dict[str, Any], *, min_impressions: int) -> bool:
     """Implements the is low volume helper."""
-    return result["impressions"]["recommended"] < min_impressions or result["impressions"]["time"] < min_impressions
+    return (
+        result["impressions"]["recommended"] < min_impressions
+        or result["impressions"]["time"] < min_impressions
+    )
 
 
 def _guardrail_threshold_status(
@@ -190,7 +200,9 @@ def _guardrail_threshold_status(
     return ctr_ok, conv_ok
 
 
-def _active_and_previous_models(db: Session) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
+def _active_and_previous_models(
+    db: Session,
+) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
     """Implements the active and previous models helper."""
     is_active_attr = "is_active"
     active = (
@@ -263,7 +275,9 @@ def evaluate_personalization_guardrails(
         click_by_user_event=click_by_user_event,
         window=config.click_to_register_window,
     )
-    result = _guardrail_result(config=config, impressions=impressions, clicks=clicks, conversions=conversions)
+    result = _guardrail_result(
+        config=config, impressions=impressions, clicks=clicks, conversions=conversions
+    )
 
     if _is_low_volume(result, min_impressions=config.min_impressions):
         log_event("personalization_guardrails_skip_low_volume", **result)
@@ -284,7 +298,11 @@ def evaluate_personalization_guardrails(
         result["action"] = "no_active_model"
         return result
     if not previous:
-        log_warning("personalization_guardrails_no_previous_model", active_model_version=active.model_version, **result)
+        log_warning(
+            "personalization_guardrails_no_previous_model",
+            active_model_version=active.model_version,
+            **result,
+        )
         result["action"] = "no_previous_model"
         return result
     return _rollback_guardrail_model(

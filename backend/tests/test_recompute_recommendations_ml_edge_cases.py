@@ -25,8 +25,12 @@ def _build_edge_training_entities(now: datetime):
     tag_good = models.Tag(name="Python")
     tag_blank = models.Tag(name="   ")
     events = {
-        "holdout": _make_event(owner=organizer, title="Holdout Event", now=now, days=4, location="Hall A"),
-        "train": _make_event(owner=organizer, title="Train Event", now=now, days=5, location="Hall B"),
+        "holdout": _make_event(
+            owner=organizer, title="Holdout Event", now=now, days=4, location="Hall A"
+        ),
+        "train": _make_event(
+            owner=organizer, title="Train Event", now=now, days=5, location="Hall B"
+        ),
         "category": _make_event(
             owner=organizer,
             title="Category Match",
@@ -37,10 +41,22 @@ def _build_edge_training_entities(now: datetime):
             location="Hall C",
         ),
         "tag": _make_event(
-            owner=organizer, title="Tag Match", now=now, days=7, category="Other", city="Oradea", location="Hall D"
+            owner=organizer,
+            title="Tag Match",
+            now=now,
+            days=7,
+            category="Other",
+            city="Oradea",
+            location="Hall D",
         ),
         "no_match": _make_event(
-            owner=organizer, title="No Match", now=now, days=8, category="Hackathon", city="Arad", location="Hall E"
+            owner=organizer,
+            title="No Match",
+            now=now,
+            days=8,
+            category="Hackathon",
+            city="Arad",
+            location="Hall E",
         ),
         "weak_category": _make_event(
             owner=organizer,
@@ -63,10 +79,20 @@ def _build_edge_training_entities(now: datetime):
             location="Hall E3",
         ),
         "deleted_positive": _make_event(
-            owner=organizer, title="Deleted Positive", now=now, days=9, location="Hall F", deleted_at=now
+            owner=organizer,
+            title="Deleted Positive",
+            now=now,
+            days=9,
+            location="Hall F",
+            deleted_at=now,
         ),
         "deleted_seen": _make_event(
-            owner=organizer, title="Deleted Seen", now=now, days=10, location="Hall G", deleted_at=now
+            owner=organizer,
+            title="Deleted Seen",
+            now=now,
+            days=10,
+            location="Hall G",
+            deleted_at=now,
         ),
     }
     return {
@@ -140,16 +166,30 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
         is_active=False,
     )
     rows = [
-        models.Registration(user_id=int(fixture["student"].id), event_id=int(fixture["holdout"].id), attended=True),
+        models.Registration(
+            user_id=int(fixture["student"].id), event_id=int(fixture["holdout"].id), attended=True
+        ),
         models.FavoriteEvent(user_id=int(fixture["student"].id), event_id=int(fixture["train"].id)),
-        models.FavoriteEvent(user_id=int(fixture["student"].id), event_id=int(fixture["deleted_positive"].id)),
-        models.FavoriteEvent(user_id=int(fixture["shadow_org"].id), event_id=int(fixture["train"].id)),
-        models.FavoriteEvent(user_id=int(fixture["shadow_org"].id), event_id=int(fixture["weak_category"].id)),
-        models.UserImplicitInterestTag(
-            user_id=int(fixture["student"].id), tag_id=int(fixture["tag_blank"].id), score=0.4, last_seen_at=now
+        models.FavoriteEvent(
+            user_id=int(fixture["student"].id), event_id=int(fixture["deleted_positive"].id)
+        ),
+        models.FavoriteEvent(
+            user_id=int(fixture["shadow_org"].id), event_id=int(fixture["train"].id)
+        ),
+        models.FavoriteEvent(
+            user_id=int(fixture["shadow_org"].id), event_id=int(fixture["weak_category"].id)
         ),
         models.UserImplicitInterestTag(
-            user_id=int(fixture["student"].id), tag_id=int(fixture["tag_good"].id), score=0.0, last_seen_at=now
+            user_id=int(fixture["student"].id),
+            tag_id=int(fixture["tag_blank"].id),
+            score=0.4,
+            last_seen_at=now,
+        ),
+        models.UserImplicitInterestTag(
+            user_id=int(fixture["student"].id),
+            tag_id=int(fixture["tag_good"].id),
+            score=0.0,
+            last_seen_at=now,
         ),
         models.UserImplicitInterestCategory(
             user_id=int(fixture["student"].id), category="   ", score=0.4, last_seen_at=now
@@ -157,13 +197,23 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
         models.UserImplicitInterestCategory(
             user_id=int(fixture["student"].id), category="Seminar", score=0.0, last_seen_at=now
         ),
-        models.UserImplicitInterestCity(user_id=int(fixture["student"].id), city="   ", score=0.4, last_seen_at=now),
-        models.UserImplicitInterestCity(user_id=int(fixture["student"].id), city="Iasi", score=0.8, last_seen_at=now),
-        models.EventInteraction(
-            user_id=int(fixture["student"].id), event_id=None, interaction_type="search", meta="bad-meta"
+        models.UserImplicitInterestCity(
+            user_id=int(fixture["student"].id), city="   ", score=0.4, last_seen_at=now
+        ),
+        models.UserImplicitInterestCity(
+            user_id=int(fixture["student"].id), city="Iasi", score=0.8, last_seen_at=now
         ),
         models.EventInteraction(
-            user_id=int(fixture["student"].id), event_id=None, interaction_type="filter", meta={"tags": ["   "]}
+            user_id=int(fixture["student"].id),
+            event_id=None,
+            interaction_type="search",
+            meta="bad-meta",
+        ),
+        models.EventInteraction(
+            user_id=int(fixture["student"].id),
+            event_id=None,
+            interaction_type="filter",
+            meta={"tags": ["   "]},
         ),
         models.EventInteraction(
             user_id=int(fixture["student"].id),
@@ -190,13 +240,22 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
             meta={"position": 3},
         ),
         models.EventInteraction(
-            user_id=int(fixture["student"].id), event_id=int(fixture["category"].id), interaction_type="view", meta={}
+            user_id=int(fixture["student"].id),
+            event_id=int(fixture["category"].id),
+            interaction_type="view",
+            meta={},
         ),
         models.EventInteraction(
-            user_id=int(fixture["student"].id), event_id=int(fixture["tag"].id), interaction_type="favorite", meta={}
+            user_id=int(fixture["student"].id),
+            event_id=int(fixture["tag"].id),
+            interaction_type="favorite",
+            meta={},
         ),
         models.EventInteraction(
-            user_id=int(fixture["student"].id), event_id=int(fixture["holdout"].id), interaction_type="mystery", meta={}
+            user_id=int(fixture["student"].id),
+            event_id=int(fixture["holdout"].id),
+            interaction_type="mystery",
+            meta={},
         ),
         models.EventInteraction(
             user_id=int(fixture["student"].id),
@@ -245,7 +304,9 @@ def _patch_rng_for_choices(monkeypatch, module, choices: list[int]) -> None:
     monkeypatch.setattr(module, "_DeterministicRng", _FakeRng)
 
 
-def _assert_edge_training_results(db_session, module, fixture, existing_model, previous_model) -> None:
+def _assert_edge_training_results(
+    db_session, module, fixture, existing_model, previous_model
+) -> None:
     """Asserts the edge training results expectations."""
     db_session.refresh(existing_model)
     db_session.refresh(previous_model)
@@ -262,7 +323,9 @@ def _assert_edge_training_results(db_session, module, fixture, existing_model, p
     assert count >= 1
 
 
-def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(monkeypatch, db_session, capsys) -> None:
+def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(
+    monkeypatch, db_session, capsys
+) -> None:
     """Exercises main training edge rows cover sparse paths and existing model update."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
@@ -293,7 +356,9 @@ def _seed_weak_city_fixture(db_session, now: datetime):
     """Seeds the weak city fixture fixture rows."""
     organizer = _make_user(email="org-city@test.ro", role=models.UserRole.organizator)
     student = _make_user(email="student-city@test.ro", role=models.UserRole.student, city=None)
-    event_positive = _make_event(owner=organizer, title="Positive City", now=now, days=2, location="Hall H")
+    event_positive = _make_event(
+        owner=organizer, title="Positive City", now=now, days=2, location="Hall H"
+    )
     event_city = _make_event(
         owner=organizer,
         title="Weak City Match",
@@ -308,11 +373,20 @@ def _seed_weak_city_fixture(db_session, now: datetime):
     _refresh_all(db_session, student, event_positive, event_city)
     db_session.add_all(
         [
-            models.Registration(user_id=int(student.id), event_id=int(event_positive.id), attended=True),
-            models.UserImplicitInterestCity(user_id=int(student.id), city="   ", score=0.4, last_seen_at=now),
-            models.UserImplicitInterestCity(user_id=int(student.id), city="Iasi", score=0.0, last_seen_at=now),
+            models.Registration(
+                user_id=int(student.id), event_id=int(event_positive.id), attended=True
+            ),
+            models.UserImplicitInterestCity(
+                user_id=int(student.id), city="   ", score=0.4, last_seen_at=now
+            ),
+            models.UserImplicitInterestCity(
+                user_id=int(student.id), city="Iasi", score=0.0, last_seen_at=now
+            ),
             models.EventInteraction(
-                user_id=int(student.id), event_id=None, interaction_type="search", meta={"city": "Iasi"}
+                user_id=int(student.id),
+                event_id=None,
+                interaction_type="search",
+                meta={"city": "Iasi"},
             ),
         ]
     )

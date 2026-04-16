@@ -1,4 +1,5 @@
 """Support module: auth."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
@@ -93,14 +94,18 @@ def get_optional_user(token: str = Depends(oauth2_scheme), db: Session = Depends
 def require_student(user: models.User = Depends(get_current_user)):
     """Implements the require student helper."""
     if user.role != models.UserRole.student:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru studenți.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru studenți."
+        )
     return user
 
 
 def require_organizer(user: models.User = Depends(get_current_user)):
     """Implements the require organizer helper."""
     if user.role not in {models.UserRole.organizator, models.UserRole.admin}:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru organizatori.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru organizatori."
+        )
     return user
 
 
@@ -116,5 +121,7 @@ def is_admin(user: models.User) -> bool:
 def require_admin(user: models.User = Depends(get_current_user)):
     """Implements the require admin helper."""
     if not is_admin(user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru administratori.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru administratori."
+        )
     return user

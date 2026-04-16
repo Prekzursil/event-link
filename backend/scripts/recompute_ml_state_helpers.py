@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Command-line helper: recompute ml state helpers."""
+
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -26,7 +27,9 @@ from recompute_ml_shared import (
 )
 
 
-def _resolved_user_city(*, student, user_id: int, implicit_city_by_user, city_weights_by_user) -> str | None:
+def _resolved_user_city(
+    *, student, user_id: int, implicit_city_by_user, city_weights_by_user
+) -> str | None:
     """Implements the resolved user city helper."""
     city = _normalize_city(student.city) or implicit_city_by_user.get(user_id)
     if city:
@@ -76,7 +79,9 @@ def _selected_model_row(*, db, models, requested_model_version: str | None):
     """Implements the selected model row helper."""
     model_query = db.query(models.RecommenderModel)
     if requested_model_version:
-        model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
+        model_row = model_query.filter(
+            models.RecommenderModel.model_version == requested_model_version
+        ).first()
         if model_row is not None:
             return model_row
     is_active_attr = "is_active"
@@ -98,10 +103,14 @@ def _validated_persisted_model(model_row) -> tuple[str | None, list[float] | Non
     feature_names = list(model_row.feature_names or [])
     weights = [float(weight) for weight in (model_row.weights or [])]
     if feature_names != FEATURE_NAMES:
-        print(f"[error] persisted model feature_names mismatch: expected={FEATURE_NAMES} got={feature_names}")
+        print(
+            f"[error] persisted model feature_names mismatch: expected={FEATURE_NAMES} got={feature_names}"
+        )
         return None, None, 2
     if len(weights) != len(FEATURE_NAMES):
-        print(f"[error] persisted model weights length mismatch: expected={len(FEATURE_NAMES)} got={len(weights)}")
+        print(
+            f"[error] persisted model weights length mismatch: expected={len(FEATURE_NAMES)} got={len(weights)}"
+        )
         return None, None, 2
     return str(model_row.model_version), weights, None
 
@@ -110,7 +119,9 @@ def _load_persisted_model_state(
     *, db, models, requested_model_version: str | None
 ) -> tuple[str | None, list[float] | None, int | None]:
     """Loads the persisted model state resource."""
-    model_row = _selected_model_row(db=db, models=models, requested_model_version=requested_model_version)
+    model_row = _selected_model_row(
+        db=db, models=models, requested_model_version=requested_model_version
+    )
     model_version, weights, exit_code = _validated_persisted_model(model_row)
     if exit_code is not None:
         return model_version, weights, exit_code
@@ -126,7 +137,9 @@ def _positive_weights_by_user(positive_weights) -> dict[int, dict[int, float]]:
     return positives_by_user
 
 
-def _load_decay_weight_buckets(*, db, models, args, now: datetime, decay_lambda: float, max_score: float):
+def _load_decay_weight_buckets(
+    *, db, models, args, now: datetime, decay_lambda: float, max_score: float
+):
     """Loads the decay weight buckets resource."""
     interest_tag_weights_by_user = _load_interest_tag_weights(
         db=db,
@@ -173,7 +186,9 @@ def _load_decay_weight_buckets(*, db, models, args, now: datetime, decay_lambda:
 
 def _interaction_training_state(*, db, models, args):
     """Implements the interaction training state helper."""
-    reg_rows, fav_rows = _load_registration_and_favorite_rows(db=db, models=models, user_id=args.user_id)
+    reg_rows, fav_rows = _load_registration_and_favorite_rows(
+        db=db, models=models, user_id=args.user_id
+    )
     registered_event_ids_by_user = _build_registered_event_ids_by_user(reg_rows)
     positive_weights = _build_positive_weights(reg_rows, fav_rows)
     (
@@ -253,7 +268,9 @@ def _training_meta(
     }
 
 
-def _feature_length_is_valid(examples: list[tuple[list[float], int, float]]) -> tuple[int, int | None]:
+def _feature_length_is_valid(
+    examples: list[tuple[list[float], int, float]],
+) -> tuple[int, int | None]:
     """Implements the feature length is valid helper."""
     n_features = len(examples[0][0])
     if n_features == len(FEATURE_NAMES):
@@ -262,10 +279,14 @@ def _feature_length_is_valid(examples: list[tuple[list[float], int, float]]) -> 
     return n_features, 2
 
 
-def _persist_model_state(*, db, models, model_version: str, weights: list[float], meta: dict) -> None:
+def _persist_model_state(
+    *, db, models, model_version: str, weights: list[float], meta: dict
+) -> None:
     """Implements the persist model state helper."""
     existing_model = (
-        db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version == model_version).first()
+        db.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.model_version == model_version)
+        .first()
     )
     if existing_model is None:
         existing_model = models.RecommenderModel(
@@ -282,7 +303,9 @@ def _persist_model_state(*, db, models, model_version: str, weights: list[float]
         existing_model.meta = meta
         setattr(existing_model, "is_active", True)
 
-    db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version != model_version).update(
+    db.query(models.RecommenderModel).filter(
+        models.RecommenderModel.model_version != model_version
+    ).update(
         {"is_active": False},
         synchronize_session=False,
     )
@@ -303,12 +326,15 @@ def _event_is_eligible(*, event: _EventFeatures, now: datetime) -> bool:
 
 def _eligible_event_ids(events: dict[int, _EventFeatures], now: datetime) -> list[int]:
     """Implements the eligible event ids helper."""
-    return [event_id for event_id, event in events.items() if _event_is_eligible(event=event, now=now)]
+    return [
+        event_id for event_id, event in events.items() if _event_is_eligible(event=event, now=now)
+    ]
 
 
 @dataclass(frozen=True)
 class _RecommendationBuildState:
     """Recommendation Build State value object used in the surrounding module."""
+
     user_ids: list[int]
     users: dict[int, _UserFeatures]
     user_lang: dict[int, str]
@@ -325,13 +351,16 @@ class _RecommendationBuildState:
 @dataclass(frozen=True)
 class _RecommendationDependencies:
     """Recommendation Dependencies value object used in the surrounding module."""
+
     build_feature_vector: Callable[..., list[float]]
     reason_for: Callable[..., str]
     sigmoid: Callable[[float], float]
     dot: Callable[[list[float], list[float]], float]
 
 
-def build_recommendation_rows_impl(*, state: _RecommendationBuildState, deps: _RecommendationDependencies):
+def build_recommendation_rows_impl(
+    *, state: _RecommendationBuildState, deps: _RecommendationDependencies
+):
     """Constructs a recommendation rows impl structure."""
     inserts = []
     for user_id in state.user_ids:
@@ -342,7 +371,9 @@ def build_recommendation_rows_impl(*, state: _RecommendationBuildState, deps: _R
                 deps.sigmoid(
                     deps.dot(
                         state.weights,
-                        deps.build_feature_vector(user=user, event=state.events[event_id], now=state.now),
+                        deps.build_feature_vector(
+                            user=user, event=state.events[event_id], now=state.now
+                        ),
                     )
                 ),
                 event_id,

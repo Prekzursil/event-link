@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Command-line helper: recompute ml shared."""
+
 from __future__ import annotations
 
 import math
@@ -10,6 +11,7 @@ from datetime import datetime, timezone
 
 class _DeterministicRng:
     """Deterministic Rng value object used in the surrounding module."""
+
     def __init__(self, seed: int) -> None:
         """Initializes the instance state."""
         seed_value = int(seed) & ((1 << 64) - 1)
@@ -56,6 +58,7 @@ def _dot(weights: list[float], features: list[float]) -> float:
 @dataclass(frozen=True)
 class _EventFeatures:
     """Event Features value object used in the surrounding module."""
+
     tags: set[str]
     category: str | None
     city: str | None
@@ -70,6 +73,7 @@ class _EventFeatures:
 @dataclass(frozen=True)
 class _UserFeatures:
     """User Features value object used in the surrounding module."""
+
     city: str | None
     interest_tag_weights: dict[str, float]
     history_tags: set[str]
@@ -82,6 +86,7 @@ class _UserFeatures:
 @dataclass(frozen=True)
 class _PreparedState:
     """Prepared State value object used in the surrounding module."""
+
     user_ids: list[int]
     events: dict[int, _EventFeatures]
     all_event_ids: list[int]
@@ -101,6 +106,7 @@ class _PreparedState:
 @dataclass(frozen=True)
 class _EvaluationState:
     """Evaluation State value object used in the surrounding module."""
+
     weights: list[float]
     users: dict[int, _UserFeatures]
     events: dict[int, _EventFeatures]
@@ -115,6 +121,7 @@ class _EvaluationState:
 @dataclass(frozen=True)
 class _EvaluationDependencies:
     """Evaluation Dependencies value object used in the surrounding module."""
+
     rng_factory: Callable[[int], _DeterministicRng]
     build_feature_vector: Callable[..., list[float]]
     sigmoid: Callable[[float], float]
@@ -198,7 +205,9 @@ def _days_until_score(*, event: _EventFeatures, now: datetime) -> float:
     return max(0.0, min(delta_days / 180.0, 1.0))
 
 
-def _build_feature_vector(*, user: _UserFeatures, event: _EventFeatures, now: datetime) -> list[float]:
+def _build_feature_vector(
+    *, user: _UserFeatures, event: _EventFeatures, now: datetime
+) -> list[float]:
     """Constructs a feature vector structure."""
     overlap_interest_ratio, overlap_history_ratio = _tag_overlap_ratios(user=user, event=event)
     same_city = _same_city_score(user=user, event=event)
@@ -218,7 +227,9 @@ def _build_feature_vector(*, user: _UserFeatures, event: _EventFeatures, now: da
     ]
 
 
-def _weighted_overlap_tags(*, user: _UserFeatures, event: _EventFeatures) -> list[tuple[str, float]]:
+def _weighted_overlap_tags(
+    *, user: _UserFeatures, event: _EventFeatures
+) -> list[tuple[str, float]]:
     """Implements the weighted overlap tags helper."""
     overlap: list[tuple[str, float]] = []
     for tag in event.tags:

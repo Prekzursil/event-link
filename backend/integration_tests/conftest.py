@@ -1,4 +1,5 @@
 """Shared pytest fixtures for this test scope."""
+
 import os
 from pathlib import Path
 
@@ -58,6 +59,7 @@ def db_session():
 @pytest.fixture()
 def client(db_session):
     """Implements the client helper."""
+
     def _override_get_db():
         """Implements the override get db helper."""
         yield db_session

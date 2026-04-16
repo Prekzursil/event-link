@@ -21,7 +21,9 @@ def _make_user(**kwargs):
 
 def _load_script_module():
     """Loads the script module helper resource."""
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
+    script_path = (
+        Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
+    )
     module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, script_path)
     if spec is None or spec.loader is None:
@@ -81,10 +83,22 @@ def _build_seed_training_entities(now: datetime):
             owner=organizer, title="Positive Event", now=now, days=5, location="Hall A", end_hours=2
         ),
         "candidate": _make_event(
-            owner=organizer, title="Candidate Event", now=now, days=8, location="Hall B", max_seats=15, end_hours=2
+            owner=organizer,
+            title="Candidate Event",
+            now=now,
+            days=8,
+            location="Hall B",
+            max_seats=15,
+            end_hours=2,
         ),
         "filtered_status": _make_event(
-            owner=organizer, title="Draft Event", now=now, days=9, location="Hall C", max_seats=12, status="draft"
+            owner=organizer,
+            title="Draft Event",
+            now=now,
+            days=9,
+            location="Hall C",
+            max_seats=12,
+            status="draft",
         ),
         "filtered_publish": _make_event(
             owner=organizer,
@@ -112,18 +126,30 @@ def _persist_seed_training_entities(db_session, organizer, student, tag, events)
     student.interest_tags.append(tag)
     db_session.add_all([organizer, student, tag, *events.values()])
     db_session.commit()
-    _refresh_all(db_session, student, events["positive"], events["candidate"], events["filtered_full"])
+    _refresh_all(
+        db_session, student, events["positive"], events["candidate"], events["filtered_full"]
+    )
 
 
 def _build_seed_training_interactions(now: datetime, student, tag, events):
     """Builds the seed training interactions fixture data."""
     return [
-        models.Registration(user_id=int(student.id), event_id=int(events["positive"].id), attended=True),
-        models.Registration(user_id=int(student.id), event_id=int(events["filtered_full"].id), attended=False),
+        models.Registration(
+            user_id=int(student.id), event_id=int(events["positive"].id), attended=True
+        ),
+        models.Registration(
+            user_id=int(student.id), event_id=int(events["filtered_full"].id), attended=False
+        ),
         models.FavoriteEvent(user_id=int(student.id), event_id=int(events["positive"].id)),
-        models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now),
-        models.UserImplicitInterestCategory(user_id=int(student.id), category="Workshop", score=0.8, last_seen_at=now),
-        models.UserImplicitInterestCity(user_id=int(student.id), city="Cluj", score=0.7, last_seen_at=now),
+        models.UserImplicitInterestTag(
+            user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now
+        ),
+        models.UserImplicitInterestCategory(
+            user_id=int(student.id), category="Workshop", score=0.8, last_seen_at=now
+        ),
+        models.UserImplicitInterestCity(
+            user_id=int(student.id), city="Cluj", score=0.7, last_seen_at=now
+        ),
         models.EventInteraction(
             user_id=int(student.id),
             event_id=int(events["candidate"].id),
@@ -131,7 +157,10 @@ def _build_seed_training_interactions(now: datetime, student, tag, events):
             meta={"position": 1},
         ),
         models.EventInteraction(
-            user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="click", meta={}
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="click",
+            meta={},
         ),
         models.EventInteraction(
             user_id=int(student.id),
@@ -140,13 +169,22 @@ def _build_seed_training_interactions(now: datetime, student, tag, events):
             meta={"seconds": 30},
         ),
         models.EventInteraction(
-            user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="share", meta={}
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="share",
+            meta={},
         ),
         models.EventInteraction(
-            user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="register", meta={}
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="register",
+            meta={},
         ),
         models.EventInteraction(
-            user_id=int(student.id), event_id=int(events["positive"].id), interaction_type="unregister", meta={}
+            user_id=int(student.id),
+            event_id=int(events["positive"].id),
+            interaction_type="unregister",
+            meta={},
         ),
         models.EventInteraction(
             user_id=int(student.id),

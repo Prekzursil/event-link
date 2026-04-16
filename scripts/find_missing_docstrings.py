@@ -4,6 +4,7 @@ Matches DeepSource PY-D0002 (classes) and PY-D0003 (functions/modules).
 Prints a JSON-like summary and per-file counts so remediation can be
 planned without relying on the external dashboard.
 """
+
 from __future__ import annotations
 
 import ast

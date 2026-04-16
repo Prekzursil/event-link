@@ -1,4 +1,6 @@
 """Tests for the organizer assist and moderation behavior."""
+
+
 def test_organizer_suggest_endpoint_returns_duplicates_and_category(client, helpers):
     """Verifies organizer suggest endpoint returns duplicates and category behavior."""
     helpers["make_organizer"]("org@test.ro")

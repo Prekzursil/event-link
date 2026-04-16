@@ -1,4 +1,6 @@
 """Tests for the bulk ops behavior."""
+
+
 def test_organizer_bulk_update_status(helpers):
     """Verifies organizer bulk update status behavior."""
     client = helpers["client"]
@@ -33,7 +35,9 @@ def test_organizer_bulk_update_status(helpers):
     assert resp.status_code == 200
     assert resp.json()["updated"] == 2
 
-    updated = client.get("/api/organizer/events", headers=helpers["auth_header"](organizer_token)).json()
+    updated = client.get(
+        "/api/organizer/events", headers=helpers["auth_header"](organizer_token)
+    ).json()
     by_id = {e["id"]: e for e in updated}
     assert by_id[e1["id"]]["status"] == "draft"
     assert by_id[e2["id"]]["status"] == "draft"
@@ -68,7 +72,9 @@ def test_organizer_bulk_update_tags(helpers):
     assert resp.status_code == 200
     assert resp.json()["updated"] == 1
 
-    updated = client.get(f"/api/events/{e1['id']}", headers=helpers["auth_header"](organizer_token)).json()
+    updated = client.get(
+        f"/api/events/{e1['id']}", headers=helpers["auth_header"](organizer_token)
+    ).json()
     tag_names = sorted(t["name"] for t in updated["tags"])
     assert tag_names == ["AI", "Tech"]
 
@@ -133,7 +139,9 @@ def test_organizer_email_participants(helpers):
     ).json()
 
     student_token = helpers["register_student"]("s1@test.ro")
-    register = client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
+    register = client.post(
+        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+    )
     assert register.status_code == 201
 
     resp = client.post(

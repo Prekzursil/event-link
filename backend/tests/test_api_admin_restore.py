@@ -1,8 +1,14 @@
 """Tests for the api admin restore behavior."""
+
 from __future__ import annotations
 
 from app import models
-from api_test_support import DEFAULT_ADMIN_CODE, DEFAULT_ORG_CODE, DEFAULT_STUDENT_CODE, SECRET_FIELD
+from api_test_support import (
+    DEFAULT_ADMIN_CODE,
+    DEFAULT_ORG_CODE,
+    DEFAULT_STUDENT_CODE,
+    SECRET_FIELD,
+)
 
 
 def test_delete_soft_deletes_event_and_registrations(helpers):
@@ -29,7 +35,9 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
     student_token = helpers["register_student"]("softdel-stud@test.ro")
     client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
 
-    delete_resp = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token))
+    delete_resp = client.delete(
+        f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token)
+    )
     assert delete_resp.status_code == 204
 
     db = helpers["db"]
@@ -39,7 +47,9 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
     assert event.deleted_by_user_id is not None
 
     remaining_regs = db.query(models.Registration).count()
-    active_regs = db.query(models.Registration).filter(models.Registration.deleted_at.is_(None)).count()
+    active_regs = (
+        db.query(models.Registration).filter(models.Registration.deleted_at.is_(None)).count()
+    )
     assert remaining_regs == 1
     assert active_regs == 0
 
@@ -77,10 +87,14 @@ def test_restore_event_restores_event_and_registrations(helpers):
     student_token = helpers["register_student"]("restore-stud@test.ro")
     client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
 
-    delete_resp = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token))
+    delete_resp = client.delete(
+        f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token)
+    )
     assert delete_resp.status_code == 204
 
-    visible = client.get("/api/organizer/events", headers=helpers["auth_header"](organizer_token)).json()
+    visible = client.get(
+        "/api/organizer/events", headers=helpers["auth_header"](organizer_token)
+    ).json()
     assert all(e["id"] != event_id for e in visible)
     include_deleted = client.get(
         "/api/organizer/events",
@@ -89,7 +103,9 @@ def test_restore_event_restores_event_and_registrations(helpers):
     ).json()
     assert any(e["id"] == event_id for e in include_deleted)
 
-    restore_resp = client.post(f"/api/events/{event_id}/restore", headers=helpers["auth_header"](organizer_token))
+    restore_resp = client.post(
+        f"/api/events/{event_id}/restore", headers=helpers["auth_header"](organizer_token)
+    )
     assert restore_resp.status_code == 200
     assert restore_resp.json()["status"] == "restored"
     assert restore_resp.json()["restored_registrations"] == 1
@@ -126,7 +142,9 @@ def test_restore_event_forbidden_for_other_organizer(helpers):
     ).json()["id"]
 
     client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](owner_token))
-    resp = client.post(f"/api/events/{event_id}/restore", headers=helpers["auth_header"](other_token))
+    resp = client.post(
+        f"/api/events/{event_id}/restore", headers=helpers["auth_header"](other_token)
+    )
     assert resp.status_code == 403
 
 
@@ -155,7 +173,9 @@ def test_admin_can_restore_registration(helpers):
     client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
     client.delete(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
 
-    student = db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
+    )
     assert student is not None
 
     helpers["make_admin"]("admin@test.ro", DEFAULT_ADMIN_CODE)
@@ -207,7 +227,9 @@ def test_admin_can_list_and_update_users(helpers):
     assert deactivate.status_code == 200
     assert deactivate.json()["is_active"] is False
 
-    relog = client.post("/login", json={"email": "user-to-update@test.ro", SECRET_FIELD: DEFAULT_STUDENT_CODE})
+    relog = client.post(
+        "/login", json={"email": "user-to-update@test.ro", SECRET_FIELD: DEFAULT_STUDENT_CODE}
+    )
     assert relog.status_code == 403
 
 

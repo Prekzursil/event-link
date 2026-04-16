@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Support module: check required checks."""
+
 from __future__ import annotations
 
 import argparse
@@ -28,7 +29,9 @@ def _parse_args() -> argparse.Namespace:
     )
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--sha", required=True, help="commit SHA")
-    parser.add_argument("--required-context", action="append", default=[], help="Required context name")
+    parser.add_argument(
+        "--required-context", action="append", default=[], help="Required context name"
+    )
     parser.add_argument("--timeout-seconds", type=int, default=900)
     parser.add_argument("--poll-seconds", type=int, default=20)
     parser.add_argument("--out-json", default="quality-zero-gate/required-checks.json")
@@ -95,7 +98,9 @@ def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None
     }
 
 
-def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
+def _collect_contexts(
+    check_runs_payload: dict[str, Any], status_payload: dict[str, Any]
+) -> dict[str, dict[str, str]]:
     """Implements the collect contexts helper."""
     contexts: dict[str, dict[str, str]] = {}
     for run in check_runs_payload.get("check_runs", []) or []:
@@ -130,7 +135,9 @@ def _status_failure(context: str, observed: dict[str, str]) -> str | None:
     return None
 
 
-def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple[str, list[str], list[str]]:
+def _evaluate(
+    required: list[str], contexts: dict[str, dict[str, str]]
+) -> tuple[str, list[str], list[str]]:
     """Implements the evaluate helper."""
     missing: list[str] = []
     failed: list[str] = []
@@ -232,7 +239,11 @@ def _fetch_contexts(*, owner: str, repo: str, sha: str, token: str) -> dict[str,
 
 def _has_in_progress_check_runs(contexts: dict[str, dict[str, str]]) -> bool:
     """Implements the has in progress check runs helper."""
-    return any(value.get("state") != "completed" for value in contexts.values() if value.get("source") == "check_run")
+    return any(
+        value.get("state") != "completed"
+        for value in contexts.values()
+        if value.get("source") == "check_run"
+    )
 
 
 def _poll_required_contexts(

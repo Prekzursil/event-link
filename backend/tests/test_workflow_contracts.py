@@ -1,4 +1,5 @@
 """Tests for the workflow contracts behavior."""
+
 import re
 from pathlib import Path
 
@@ -9,7 +10,8 @@ WORKFLOWS_DIR = REPO_ROOT / ".github" / "workflows"
 def _assert_uses_pinned_platform_workflow(content: str, workflow_name: str) -> None:
     """Assert one wrapper points at a pinned quality-zero-platform reusable workflow."""
     pattern = (
-        rf"uses: Prekzursil/quality-zero-platform/.github/workflows/" rf"{re.escape(workflow_name)}@[0-9a-f]{{40}}"
+        rf"uses: Prekzursil/quality-zero-platform/.github/workflows/"
+        rf"{re.escape(workflow_name)}@[0-9a-f]{{40}}"
     )
     assert re.search(pattern, content), workflow_name
 

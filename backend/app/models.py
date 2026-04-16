@@ -51,14 +51,18 @@ class User(Base):
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
     theme_preference = Column(String(10), nullable=False, server_default="system", default="system")
-    language_preference = Column(String(10), nullable=False, server_default="system", default="system")
+    language_preference = Column(
+        String(10), nullable=False, server_default="system", default="system"
+    )
     city = Column(String(100))
     university = Column(String(255))
     faculty = Column(String(255))
     study_level = Column(String(20))
     study_year = Column(Integer)
     email_digest_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
-    email_filling_fast_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
+    email_filling_fast_enabled = Column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
 
     events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
     registrations = relationship(
@@ -110,7 +114,9 @@ class Event(Base):
     deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
     owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
-    registrations = relationship("Registration", back_populates="event", cascade=CASCADE_DELETE_ORPHAN)
+    registrations = relationship(
+        "Registration", back_populates="event", cascade=CASCADE_DELETE_ORPHAN
+    )
     tags = relationship("Tag", secondary="event_tags", back_populates="events")
     favorites = relationship("FavoriteEvent", back_populates="event", cascade=CASCADE_DELETE_ORPHAN)
     deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
@@ -170,7 +176,9 @@ class BackgroundJob(Base):
     """Persisted background task queue item."""
 
     __tablename__ = "background_jobs"
-    __table_args__ = (UniqueConstraint("job_type", "dedupe_key", name="uq_background_job_dedupe_key"),)
+    __table_args__ = (
+        UniqueConstraint("job_type", "dedupe_key", name="uq_background_job_dedupe_key"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     job_type = Column(String(50), nullable=False, index=True)
@@ -249,7 +257,9 @@ class RecommenderModel(Base):
     """Metadata and weights for a trained recommender model."""
 
     __tablename__ = "recommender_models"
-    __table_args__ = (UniqueConstraint("model_version", name="uq_recommender_models_model_version"),)
+    __table_args__ = (
+        UniqueConstraint("model_version", name="uq_recommender_models_model_version"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     model_version = Column(String(100), nullable=False, index=True)
@@ -306,7 +316,9 @@ class UserImplicitInterestCategory(Base):
     """Derived category affinity for a user."""
 
     __tablename__ = "user_implicit_interest_categories"
-    __table_args__ = (UniqueConstraint("user_id", "category", name="uq_user_implicit_interest_category"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "category", name="uq_user_implicit_interest_category"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)

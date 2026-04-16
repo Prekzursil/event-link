@@ -1,4 +1,5 @@
 """Tests for the api misc flows behavior."""
+
 from app import models
 from api_test_support import (
     CONFIRM_SECRET_FIELD,
@@ -75,7 +76,11 @@ def test_access_code_reset_flow(helpers):
 
     reset = client.post(
         f"{PASSCODE_ROUTE}/reset",
-        json={RESET_KEY_FIELD: reset_key, NEW_SECRET_FIELD: RESET_CODE, CONFIRM_SECRET_FIELD: RESET_CODE},
+        json={
+            RESET_KEY_FIELD: reset_key,
+            NEW_SECRET_FIELD: RESET_CODE,
+            CONFIRM_SECRET_FIELD: RESET_CODE,
+        },
     )
     assert reset.status_code == 200
 
@@ -209,7 +214,10 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     assert delete_resp.status_code == 200
 
     placeholder = (
-        helpers["db"].query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
+        helpers["db"]
+        .query(models.User)
+        .filter(models.User.email == "deleted-organizer@eventlink.invalid")
+        .first()
     )
     assert placeholder is not None
     event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()

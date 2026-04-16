@@ -1,4 +1,5 @@
 """Tests for the ml v2 online learning and guardrails behavior."""
+
 from datetime import datetime, timedelta, timezone
 
 from app import api as api_module, auth, models
@@ -142,7 +143,10 @@ def test_background_job_dedupe_key_returns_existing_job(helpers):
     job1 = enqueue_job(db, "test_job", {"value": 1}, dedupe_key="k1")
     job2 = enqueue_job(db, "test_job", {"value": 2}, dedupe_key="k1")
     assert int(job1.id) == int(job2.id)
-    assert db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "test_job").count() == 1
+    assert (
+        db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "test_job").count()
+        == 1
+    )
 
 
 def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
@@ -184,7 +188,9 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
         assert resp.status_code == 204
 
         implicit = (
-            db.query(models.UserImplicitInterestTag).filter(models.UserImplicitInterestTag.user_id == student.id).all()
+            db.query(models.UserImplicitInterestTag)
+            .filter(models.UserImplicitInterestTag.user_id == student.id)
+            .all()
         )
         assert len(implicit) == 1
         assert implicit[0].tag_id == tag.id
@@ -199,12 +205,16 @@ def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
     result = _run_guardrails_rollback(db)
     assert result["action"] == "rollback"
 
-    active_models = db.query(models.RecommenderModel).filter(models.RecommenderModel.is_active.is_(True)).all()
+    active_models = (
+        db.query(models.RecommenderModel).filter(models.RecommenderModel.is_active.is_(True)).all()
+    )
     assert len(active_models) == 1
     assert active_models[0].model_version == "old"
 
     recompute_jobs = (
-        db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "recompute_recommendations_ml").all()
+        db.query(models.BackgroundJob)
+        .filter(models.BackgroundJob.job_type == "recompute_recommendations_ml")
+        .all()
     )
     assert len(recompute_jobs) == 1
     assert recompute_jobs[0].payload.get("skip_training") is True
@@ -229,7 +239,9 @@ def test_admin_personalization_status_includes_active_model_version(helpers):
     )
     db.commit()
 
-    resp = client.get("/api/admin/personalization/status", headers=helpers["auth_header"](admin_token))
+    resp = client.get(
+        "/api/admin/personalization/status", headers=helpers["auth_header"](admin_token)
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert data["active_model_version"] == "status-model"

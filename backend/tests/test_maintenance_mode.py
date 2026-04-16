@@ -1,4 +1,6 @@
 """Tests for the maintenance mode behavior."""
+
+
 def test_registration_endpoints_disabled_in_maintenance_mode(helpers):
     """Verifies registration endpoints disabled in maintenance mode behavior."""
     client = helpers["client"]
@@ -28,7 +30,9 @@ def test_registration_endpoints_disabled_in_maintenance_mode(helpers):
     old = getattr(settings, "maintenance_mode_registrations_disabled", False)
     settings.maintenance_mode_registrations_disabled = True
     try:
-        register = client.post(f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token))
+        register = client.post(
+            f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        )
         assert register.status_code == 503
 
         resend = client.post(

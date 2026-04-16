@@ -103,16 +103,16 @@ LOCATIONS = [
 ]
 
 COVER_IMAGES = [
-    ("https://images.unsplash.com/photo-1540575467063-178a50c2df87" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1515187029135-18ee286d815b" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1475721027785-f74eccf877e2" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1559223607-a43c990c692c" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1505373877841-8d25f7d46678" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1591115765373-5207764f72e7" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1528901166007-3784c7dd3653" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1517048676732-d65bc937f952" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1523580494863-6f3031224c94" "?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1522158637959-30385a09e0da" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1559223607-a43c990c692c?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1528901166007-3784c7dd3653?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=800&h=400&fit=crop"),
 ]
 
 SAMPLE_EVENTS = [
@@ -395,7 +395,9 @@ ORGANIZERS = [
             "conecta studenții cu industria IT."
         ),
         "org_website": "https://ligait.ro",
-        "org_logo_url": ("https://api.dicebear.com/7.x/initials/svg" "?seed=LSIT&backgroundColor=3b82f6"),
+        "org_logo_url": (
+            "https://api.dicebear.com/7.x/initials/svg?seed=LSIT&backgroundColor=3b82f6"
+        ),
     },
     {
         "email": "career@uni.ro",
@@ -408,7 +410,9 @@ ORGANIZERS = [
             "de mentorat."
         ),
         "org_website": "https://cariere.uni.ro",
-        "org_logo_url": ("https://api.dicebear.com/7.x/initials/svg" "?seed=CC&backgroundColor=10b981"),
+        "org_logo_url": (
+            "https://api.dicebear.com/7.x/initials/svg?seed=CC&backgroundColor=10b981"
+        ),
     },
     {
         "email": "sport@uni.ro",
@@ -420,7 +424,9 @@ ORGANIZERS = [
             "Evenimente sportive, competiții și activități outdoor."
         ),
         "org_website": "https://sport.uni.ro",
-        "org_logo_url": ("https://api.dicebear.com/7.x/initials/svg" "?seed=CSU&backgroundColor=ef4444"),
+        "org_logo_url": (
+            "https://api.dicebear.com/7.x/initials/svg?seed=CSU&backgroundColor=ef4444"
+        ),
     },
 ]
 

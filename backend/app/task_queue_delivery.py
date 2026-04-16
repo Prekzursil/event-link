@@ -1,4 +1,5 @@
 """Support module: task queue delivery."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -27,6 +28,7 @@ __all__ = [
 @dataclass(frozen=True)
 class FillingFastSettings:
     """Filling Fast Settings value object used in the surrounding module."""
+
     threshold_abs: int
     threshold_ratio: float
     max_per_user: int
@@ -37,7 +39,9 @@ def _weekly_digest_window(now: datetime) -> tuple[datetime, datetime, str]:
     iso = now.isocalendar()
     week_key = f"{iso.year}-W{iso.week:02d}"
     weekday = now.isoweekday()
-    week_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) - timedelta(days=weekday - 1)
+    week_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) - timedelta(
+        days=weekday - 1
+    )
     week_end = week_start + timedelta(days=7)
     return week_start, week_end, week_key
 
@@ -73,9 +77,15 @@ def _weekly_digest_events(
             models.Event.status == "published",
             (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
         )
-        .order_by(models.UserRecommendation.rank.asc(), models.Event.start_time.asc(), models.Event.id.asc())
+        .order_by(
+            models.UserRecommendation.rank.asc(),
+            models.Event.start_time.asc(),
+            models.Event.id.asc(),
+        )
     )
-    hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(db=db, user_id=user_id)
+    hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(
+        db=db, user_id=user_id
+    )
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
@@ -170,7 +180,9 @@ def send_weekly_digest(
 def _filling_fast_rows(db: Session, now: datetime) -> list[tuple[models.User, models.Event, int]]:
     """Implements the filling fast rows helper."""
     seats_subquery = (
-        db.query(models.Registration.event_id, func.count(models.Registration.id).label("seats_taken"))
+        db.query(
+            models.Registration.event_id, func.count(models.Registration.id).label("seats_taken")
+        )
         .filter(models.Registration.deleted_at.is_(None))
         .group_by(models.Registration.event_id)
         .subquery()
@@ -313,7 +325,9 @@ def _process_filling_fast_row(
     """Implements the process filling fast row helper."""
     user_id = int(user.id)
     event_id = int(event.id)
-    hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(db=db, user_id=user_id)
+    hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(
+        db=db, user_id=user_id
+    )
     if not _passes_filling_fast_personalization(
         event=event,
         hidden_tag_ids=hidden_tag_ids,

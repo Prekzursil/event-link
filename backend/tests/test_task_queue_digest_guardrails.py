@@ -1,4 +1,5 @@
 """Tests for the task queue digest guardrails behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -27,9 +28,13 @@ from task_queue_test_support import (
 def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_session):
     """Verifies send weekly digest skips and handles system language behavior."""
     seed_weekly_digest_fixture(db_session)
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
     enqueued = []
-    monkeypatch.setattr(task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload))
+    monkeypatch.setattr(
+        task_queue, "enqueue_job", lambda _db, _jt, payload: enqueued.append(payload)
+    )
     result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 3})
     assert result["users"] == 1
     assert result["emails"] == 1
@@ -45,8 +50,10 @@ def test_evaluate_personalization_guardrails_disabled(monkeypatch, db_session):
 
 def test_coerce_bool_fallback_uses_truthiness_of_custom_object() -> None:
     """Verifies coerce bool fallback uses truthiness of custom object behavior."""
+
     class _Truthy:
         """Truthy value object used in the surrounding module."""
+
         def __bool__(self) -> bool:
             """Implements the bool helper."""
             return True
@@ -104,7 +111,9 @@ def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db
     db_session.add(user)
     db_session.commit()
 
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
 
     result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 3})
     assert result == {"users": 1, "emails": 0}
@@ -123,7 +132,11 @@ def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(db_sessio
     db_session.commit()
     db_session.refresh(hidden_tag)
 
-    db_session.execute(models.user_hidden_tags.insert().values(user_id=int(active_user.id), tag_id=int(hidden_tag.id)))
+    db_session.execute(
+        models.user_hidden_tags.insert().values(
+            user_id=int(active_user.id), tag_id=int(hidden_tag.id)
+        )
+    )
     db_session.execute(
         models.user_blocked_organizers.insert().values(
             user_id=int(active_user.id),
@@ -145,7 +158,11 @@ def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, 
     db_session.add_all(
         [
             interaction(
-                user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta="not-a-dict"
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="impression",
+                occurred_at=now,
+                meta="not-a-dict",
             ),
             interaction(
                 user_id=int(user.id),
@@ -169,7 +186,10 @@ def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, 
                 meta={"source": "events_list", "sort": "unknown"},
             ),
             interaction(
-                user_id=int(user.id), event_id=int(event.id), kind="register", occurred_at=now + timedelta(hours=5)
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="register",
+                occurred_at=now + timedelta(hours=5),
             ),
         ]
     )
@@ -194,12 +214,19 @@ def test_guardrails_returns_ok_for_balanced_metrics(monkeypatch, db_session):
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
-        payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.5, "conversion_drop_ratio": 0.5},
+        payload={
+            "days": 1,
+            "min_impressions": 1,
+            "ctr_drop_ratio": 0.5,
+            "conversion_drop_ratio": 0.5,
+        },
     )
     assert result["action"] == "ok"
 
 
-def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(monkeypatch, db_session):
+def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(
+    monkeypatch, db_session
+):
     """Verifies guardrails reports no active model when recommended quality collapses behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
@@ -218,7 +245,12 @@ def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(m
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
-        payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
+        payload={
+            "days": 1,
+            "min_impressions": 1,
+            "ctr_drop_ratio": 0.0001,
+            "conversion_drop_ratio": 0.0001,
+        },
     )
     assert result["action"] == "no_active_model"
 
@@ -246,7 +278,12 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
-        payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
+        payload={
+            "days": 1,
+            "min_impressions": 1,
+            "ctr_drop_ratio": 0.0001,
+            "conversion_drop_ratio": 0.0001,
+        },
     )
     assert result["action"] == "no_previous_model"
 
@@ -276,13 +313,19 @@ def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(monkeyp
         db=db_session,
         payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
     )
-    assert any(email == "system@test.ro" and lang == "ro" for email, lang, _available, _title in langs)
+    assert any(
+        email == "system@test.ro" and lang == "ro" for email, lang, _available, _title in langs
+    )
 
 
 def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
     """Verifies send filling fast alerts skips rows without max seats behavior."""
     user = SimpleNamespace(
-        id=11, is_active=True, email_filling_fast_enabled=True, language_preference="en", email="user@test.ro"
+        id=11,
+        is_active=True,
+        email_filling_fast_enabled=True,
+        language_preference="en",
+        email="user@test.ro",
     )
     event = SimpleNamespace(id=21, owner_id=31, tags=[], max_seats=None, title="No seats")
     fake_db = FakeFillingFastDb(
@@ -292,11 +335,15 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
         ChainQuery(first_result=None),
     )
     render_calls = []
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
     monkeypatch.setattr(task_queue, "enqueue_job", unexpected_enqueue)
     import app.email_templates as tpl
 
-    monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: render_calls.append("rendered"))
+    monkeypatch.setattr(
+        tpl, "render_filling_fast_email", lambda *_args, **_kwargs: render_calls.append("rendered")
+    )
     result = task_queue._send_filling_fast_alerts(
         db=fake_db,
         payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
@@ -379,10 +426,17 @@ def test_guardrails_rollback_reactivates_previous_model(monkeypatch, db_session)
     )
     enqueued = []
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
-    monkeypatch.setattr(task_queue, "enqueue_job", lambda *args, **kwargs: enqueued.append((args, kwargs)))
+    monkeypatch.setattr(
+        task_queue, "enqueue_job", lambda *args, **kwargs: enqueued.append((args, kwargs))
+    )
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
-        payload={"days": 1, "min_impressions": 1, "ctr_drop_ratio": 0.0001, "conversion_drop_ratio": 0.0001},
+        payload={
+            "days": 1,
+            "min_impressions": 1,
+            "ctr_drop_ratio": 0.0001,
+            "conversion_drop_ratio": 0.0001,
+        },
     )
     db_session.refresh(previous)
     db_session.refresh(active)

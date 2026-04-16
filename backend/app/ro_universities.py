@@ -21,7 +21,13 @@ class UniversityCatalogItem(TypedDict, total=False):
 def _normalize_university_key(value: str) -> str:
     """Normalize a university name into a stable lookup key."""
     value = value.strip().casefold()
-    value = value.replace("“", '"').replace("”", '"').replace("’", "'").replace("–", "-").replace("—", "-")
+    value = (
+        value.replace("“", '"')
+        .replace("”", '"')
+        .replace("’", "'")
+        .replace("–", "-")
+        .replace("—", "-")
+    )
     value = unicodedata.normalize("NFKD", value)
     value = "".join(ch for ch in value if not unicodedata.combining(ch))
     value = re.sub(r"[^a-z0-9]+", " ", value)

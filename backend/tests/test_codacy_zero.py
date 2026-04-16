@@ -1,4 +1,5 @@
 """Tests for the codacy zero behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -24,7 +25,9 @@ def _load_module():
     return module
 
 
-def _request(module, *, branch: str = "", pr_number: str = "", commit_sha: str = "", poll_seconds: int = 5):
+def _request(
+    module, *, branch: str = "", pr_number: str = "", commit_sha: str = "", poll_seconds: int = 5
+):
     """Implements the request helper."""
     return module.CodacyRequest(
         provider="gh",
@@ -64,7 +67,9 @@ def test_quality_new_issues_prefers_quality_section() -> None:
     )
 
 
-def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies wait for pr analysis uses pr scope and current head behavior."""
     module = _load_module()
     payloads = [

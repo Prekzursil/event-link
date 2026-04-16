@@ -84,7 +84,9 @@ def install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     fake_config = SimpleNamespace(Config=_FakeConfig)
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
-    monkeypatch.setitem(sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config))
+    monkeypatch.setitem(
+        sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config)
+    )
 
 
 def cached_recommendation_context(helpers):
@@ -102,7 +104,11 @@ def cached_recommendation_context(helpers):
     student.city = "Cluj"
     tag = models.Tag(name="alpha")
     event = make_event(
-        title="Recommended", owner_id=int(owner.id), start_time=future_dt(days=3), location="Main Hall", max_seats=30
+        title="Recommended",
+        owner_id=int(owner.id),
+        start_time=future_dt(days=3),
+        location="Main Hall",
+        max_seats=30,
     )
     event.tags.append(tag)
     db.add_all([student, tag, event])
@@ -120,7 +126,9 @@ def cached_recommendation_context(helpers):
         )
     )
     db.commit()
-    return SimpleNamespace(client=client, db=db, event=event, student=student, student_token=student_token)
+    return SimpleNamespace(
+        client=client, db=db, event=event, student=student, student_token=student_token
+    )
 
 
 def mutation_context(helpers):
@@ -191,10 +199,16 @@ def admin_registration_context(helpers):
         raise ValueError("owner or student fixture not found")
     student.city = "Cluj"
     events = {
-        "future": make_event(title="Future", owner_id=int(owner.id), start_time=future_dt(days=5), max_seats=2),
-        "draft": make_event(title="Draft", owner_id=int(owner.id), start_time=future_dt(days=6), status="draft"),
+        "future": make_event(
+            title="Future", owner_id=int(owner.id), start_time=future_dt(days=5), max_seats=2
+        ),
+        "draft": make_event(
+            title="Draft", owner_id=int(owner.id), start_time=future_dt(days=6), status="draft"
+        ),
         "past": make_event(title="Past", owner_id=int(owner.id), start_time=future_dt(days=-1)),
-        "full": make_event(title="Full", owner_id=int(owner.id), start_time=future_dt(days=2), max_seats=1),
+        "full": make_event(
+            title="Full", owner_id=int(owner.id), start_time=future_dt(days=2), max_seats=1
+        ),
         "open": make_event(title="Open", owner_id=int(owner.id), start_time=future_dt(days=3)),
     }
     db.add(student)
@@ -227,7 +241,9 @@ def interaction_context(helpers):
     """Builds the interaction context helper used by the test."""
     db = helpers["db"]
     student_token = helpers["register_student"]("interactions-extra@test.ro")
-    student = db.query(models.User).filter(models.User.email == "interactions-extra@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "interactions-extra@test.ro").first()
+    )
     if student is None:
         raise ValueError("interaction student fixture not found")
     organizer = models.User(
@@ -237,16 +253,25 @@ def interaction_context(helpers):
     )
     hidden_tag = models.Tag(name="hidden-delta")
     event = make_event(
-        title="Interaction", owner=organizer, start_time=future_dt(days=2), category="Tech", max_seats=20
+        title="Interaction",
+        owner=organizer,
+        start_time=future_dt(days=2),
+        category="Tech",
+        max_seats=20,
     )
     event.tags.append(hidden_tag)
     db.add_all([organizer, hidden_tag, event])
     db.commit()
-    db.execute(models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id)))
+    db.execute(
+        models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id))
+    )
     db.add_all(
         [
             models.UserImplicitInterestTag(
-                user_id=int(student.id), tag_id=int(hidden_tag.id), score=2.0, last_seen_at=future_dt(hours=1)
+                user_id=int(student.id),
+                tag_id=int(hidden_tag.id),
+                score=2.0,
+                last_seen_at=future_dt(hours=1),
             ),
             models.UserImplicitInterestCategory(
                 user_id=int(student.id), category="tech", score=1.5, last_seen_at=future_dt(hours=1)

@@ -1,4 +1,5 @@
 """Tests for the task queue python workers behavior."""
+
 from __future__ import annotations
 
 import os
@@ -51,8 +52,10 @@ def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
 
 def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path):
     """Verifies run python entrypoint worker restores env and reports failures behavior."""
+
     class _Queue:
         """Queue value object used in the surrounding module."""
+
         def __init__(self) -> None:
             """Initializes the instance state."""
             self.payload = None
@@ -65,7 +68,8 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
     original_flag = os.environ.get("EVENT_LINK_QUEUE_FLAG")
     script_ok = tmp_path / "ok_worker.py"
     script_ok.write_text(
-        "import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n", encoding="utf-8"
+        "import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n",
+        encoding="utf-8",
     )
     queue_ok = _Queue()
     with pytest.raises(SystemExit) as excinfo:
@@ -117,7 +121,11 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
             "Queue": lambda self: type(
                 "_Queue",
                 (),
-                {"get": lambda self, timeout: raise_assertion("queue get should not run on timeout path")},
+                {
+                    "get": lambda self, timeout: raise_assertion(
+                        "queue get should not run on timeout path"
+                    )
+                },
             )(),
             "Process": lambda self, *args, **kwargs: process,
         },
@@ -155,7 +163,9 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
         "_Context",
         (),
         {
-            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: raise_queue_empty()})(),
+            "Queue": lambda self: type(
+                "_EmptyQueue", (), {"get": lambda self, timeout: raise_queue_empty()}
+            )(),
             "Process": lambda self, *args, **kwargs: process,
         },
     )()
@@ -223,7 +233,9 @@ def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
     db_session.refresh(organizer)
     db_session.refresh(tag)
 
-    db_session.execute(models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id)))
+    db_session.execute(
+        models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id))
+    )
     db_session.execute(
         models.user_blocked_organizers.insert().values(
             user_id=int(user.id),
@@ -274,7 +286,9 @@ def test_send_weekly_digest_skips_already_sent_delivery(monkeypatch, db_session)
     )
     db_session.commit()
 
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
     monkeypatch.setattr(task_queue, "enqueue_job", unexpected_enqueue)
 
     result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 1})

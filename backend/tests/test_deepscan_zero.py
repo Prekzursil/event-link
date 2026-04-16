@@ -1,4 +1,5 @@
 """Tests for the deepscan zero behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -122,7 +123,9 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
     monkeypatch.setattr(module, "_request_json", fake_request_json)
-    expected_source_url = "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    expected_source_url = (
+        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    )
 
     open_issues, source_url = module._resolve_open_issues(
         token="",
@@ -163,15 +166,21 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
 
     assert status == "fail"
     assert open_issues == 2
-    assert source_url == "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    assert (
+        source_url
+        == "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+    )
     assert findings == ["DeepScan reports 2 open issues (expected 0)."]
 
 
-def test_resolve_open_issues_falls_back_to_deepsource_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_open_issues_falls_back_to_deepsource_statuses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Use provider commit statuses when the public DeepScan API is unavailable."""
     module = _load_module()
     target_url = (
-        "https://app.deepsource.com/gh/Prekzursil/event-link/" "run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
+        "https://app.deepsource.com/gh/Prekzursil/event-link/"
+        "run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
     )
 
     def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
@@ -233,10 +242,14 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
         source_url
         == "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
     )
-    assert findings == ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"]
+    assert findings == [
+        "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"
+    ]
 
 
-def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_open_issues_waits_for_deepsource_pending_statuses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Poll until pending provider statuses settle into a terminal state."""
     module = _load_module()
     success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/ready/javascript/"
@@ -288,7 +301,9 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(monkeypatch: 
     assert sleeps == [module.PROVIDER_STATUS_RETRY_DELAY_SECONDS]
 
 
-def test_resolve_open_issues_retries_until_provider_statuses_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_open_issues_retries_until_provider_statuses_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Retry provider-status discovery until matching statuses are published."""
     module = _load_module()
     success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/available/javascript/"
@@ -354,11 +369,15 @@ def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> No
 
     assert status == "fail"
     assert open_issues == 0
-    assert source_url == "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/"
+    assert (
+        source_url == "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/"
+    )
     assert findings == ["DeepSource analysis is still in progress."]
 
 
-def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Keep polling GitHub commit statuses until a DeepScan dashboard URL appears."""
     module = _load_module()
     dashboard_url = (

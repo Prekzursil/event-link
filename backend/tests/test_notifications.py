@@ -1,4 +1,5 @@
 """Tests for the notifications behavior."""
+
 from datetime import datetime, timezone
 
 from app import models
@@ -76,15 +77,27 @@ def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers
     job = enqueue_job(db, JOB_TYPE_SEND_WEEKLY_DIGEST, {"top_n": 5})
     process_job(db, job)
 
-    queued_emails = db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == JOB_TYPE_SEND_EMAIL).all()
+    queued_emails = (
+        db.query(models.BackgroundJob)
+        .filter(models.BackgroundJob.job_type == JOB_TYPE_SEND_EMAIL)
+        .all()
+    )
     assert len(queued_emails) == 1
 
-    deliveries = db.query(models.NotificationDelivery).filter(models.NotificationDelivery.user_id == int(user.id)).all()
+    deliveries = (
+        db.query(models.NotificationDelivery)
+        .filter(models.NotificationDelivery.user_id == int(user.id))
+        .all()
+    )
     assert len(deliveries) == 1
 
     # Run again: should not enqueue another email due to dedupe key
     job2 = enqueue_job(db, JOB_TYPE_SEND_WEEKLY_DIGEST, {"top_n": 5})
     process_job(db, job2)
 
-    queued_emails2 = db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == JOB_TYPE_SEND_EMAIL).all()
+    queued_emails2 = (
+        db.query(models.BackgroundJob)
+        .filter(models.BackgroundJob.job_type == JOB_TYPE_SEND_EMAIL)
+        .all()
+    )
     assert len(queued_emails2) == 1

@@ -1,4 +1,5 @@
 """Tests for the worker runtime behavior."""
+
 from __future__ import annotations
 
 
@@ -7,6 +8,7 @@ from app import worker
 
 class _FakeDb:
     """Test double standing in for a real db."""
+
     def __init__(self) -> None:
         """Initializes the instance state."""
         self.closed = False

@@ -60,7 +60,9 @@ def _install_session_local(monkeypatch, db_session) -> None:
     monkeypatch.setattr(database_module, "SessionLocal", _session_local)
 
 
-def _install_sparse_query_interceptor(monkeypatch, db_session, student_id: int, future_seen: datetime) -> None:
+def _install_sparse_query_interceptor(
+    monkeypatch, db_session, student_id: int, future_seen: datetime
+) -> None:
     """Intercepts the implicit-tag query to inject the sparse-path fixture row."""
     real_query = db_session.query
 
@@ -121,7 +123,10 @@ def _refresh_sparse_interest_rows(db_session, *, student_id: int, now: datetime)
         )
         .first(),
         db_session.query(models.UserImplicitInterestCity)
-        .filter(models.UserImplicitInterestCity.user_id == student_id, models.UserImplicitInterestCity.city == "Cluj")
+        .filter(
+            models.UserImplicitInterestCity.user_id == student_id,
+            models.UserImplicitInterestCity.city == "Cluj",
+        )
         .first(),
     )
     assert all(row is not None for row in rows)
@@ -130,7 +135,9 @@ def _refresh_sparse_interest_rows(db_session, *, student_id: int, now: datetime)
     return future_seen
 
 
-def _add_sparse_interactions(db_session, *, student_id: int, candidate_id: int, positive_id: int) -> None:
+def _add_sparse_interactions(
+    db_session, *, student_id: int, candidate_id: int, positive_id: int
+) -> None:
     """Adds sparse search and dwell rows that exercise the guarded training paths."""
     db_session.add_all(
         [
@@ -142,22 +149,37 @@ def _add_sparse_interactions(db_session, *, student_id: int, candidate_id: int, 
                 meta={"tags": ["Python"], "category": "   ", "city": "   "},
             ),
             models.EventInteraction(
-                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta="bad-meta"
+                user_id=student_id,
+                event_id=candidate_id,
+                interaction_type="impression",
+                meta="bad-meta",
             ),
             models.EventInteraction(
-                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": "x"}
+                user_id=student_id,
+                event_id=candidate_id,
+                interaction_type="impression",
+                meta={"position": "x"},
             ),
             models.EventInteraction(
-                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 1}
+                user_id=student_id,
+                event_id=candidate_id,
+                interaction_type="impression",
+                meta={"position": 1},
             ),
             models.EventInteraction(
-                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 2}
+                user_id=student_id,
+                event_id=candidate_id,
+                interaction_type="impression",
+                meta={"position": 2},
             ),
             models.EventInteraction(
                 user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta="bad-meta"
             ),
             models.EventInteraction(
-                user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta={"seconds": 0}
+                user_id=student_id,
+                event_id=candidate_id,
+                interaction_type="dwell",
+                meta={"seconds": 0},
             ),
         ]
     )

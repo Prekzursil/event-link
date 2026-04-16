@@ -1,4 +1,5 @@
 """Tests for the sentry zero behavior."""
+
 import importlib.util
 import sys
 from pathlib import Path

@@ -1,4 +1,5 @@
 """Tests for the api auth profile behavior."""
+
 from __future__ import annotations
 
 from api_test_support import CONFIRM_SECRET_FIELD, DEFAULT_STUDENT_CODE, SECRET_FIELD

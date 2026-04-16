@@ -1,4 +1,5 @@
 """Tests for the personalization controls behavior."""
+
 from datetime import datetime, timezone
 
 from app import models
@@ -115,7 +116,10 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
     assert resp.status_code == 201
 
     ids = [
-        item["id"] for item in client.get("/api/events", headers=helpers["auth_header"](student_token)).json()["items"]
+        item["id"]
+        for item in client.get("/api/events", headers=helpers["auth_header"](student_token)).json()[
+            "items"
+        ]
     ]
     assert org2_event_id not in ids
     assert org1_event_id in ids
@@ -230,9 +234,15 @@ def test_admin_personalization_metrics_uses_interactions(client, helpers):
     now = datetime.now(timezone.utc)
     db.add_all(
         [
-            models.EventInteraction(interaction_type="impression", occurred_at=now, meta={"source": "events_list"}),
-            models.EventInteraction(interaction_type="click", occurred_at=now, meta={"source": "events_list"}),
-            models.EventInteraction(interaction_type="register", occurred_at=now, meta={"source": "event_detail"}),
+            models.EventInteraction(
+                interaction_type="impression", occurred_at=now, meta={"source": "events_list"}
+            ),
+            models.EventInteraction(
+                interaction_type="click", occurred_at=now, meta={"source": "events_list"}
+            ),
+            models.EventInteraction(
+                interaction_type="register", occurred_at=now, meta={"source": "event_detail"}
+            ),
         ]
     )
     db.commit()

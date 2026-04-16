@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Support module: check sentry zero."""
+
 from __future__ import annotations
 
 import argparse
@@ -24,7 +25,9 @@ SENTRY_API_BASE = f"https://{SENTRY_HOST}/api/0"
 
 def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
-    parser = argparse.ArgumentParser(description="Assert Sentry has zero unresolved issues for configured projects.")
+    parser = argparse.ArgumentParser(
+        description="Assert Sentry has zero unresolved issues for configured projects."
+    )
     parser.add_argument("--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)")
     parser.add_argument(
         "--project",
@@ -32,7 +35,9 @@ def _parse_args() -> argparse.Namespace:
         default=[],
         help="Project slug (repeatable, falls back to SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)",
     )
-    parser.add_argument("--token", default="", help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)")
+    parser.add_argument(
+        "--token", default="", help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)"
+    )
     parser.add_argument("--out-json", default="sentry-zero/sentry.json", help="Output JSON path")
     parser.add_argument("--out-md", default="sentry-zero/sentry.md", help="Output markdown path")
     return parser.parse_args()
@@ -127,7 +132,9 @@ def _validated_org(org_input: str, findings: list[str]) -> str:
 def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
     """Implements the validated projects helper."""
     if not projects:
-        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT).")
+        findings.append(
+            "No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT)."
+        )
         return []
 
     safe_projects: list[str] = []
@@ -154,7 +161,9 @@ def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], st
     return token, org, safe_projects, api_base, findings
 
 
-def _project_result(*, api_base: str, token: str, org: str, project: str) -> tuple[dict[str, Any], list[str]]:
+def _project_result(
+    *, api_base: str, token: str, org: str, project: str
+) -> tuple[dict[str, Any], list[str]]:
     """Implements the project result helper."""
     query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
     org_slug = urllib.parse.quote(org, safe="")
@@ -170,7 +179,9 @@ def _project_result(*, api_base: str, token: str, org: str, project: str) -> tup
                 f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
             )
     if unresolved != 0:
-        findings.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
+        findings.append(
+            f"Sentry project {project} has {unresolved} unresolved issues (expected 0)."
+        )
     return {"project": project, "unresolved": unresolved}, findings
 
 
@@ -233,7 +244,9 @@ def main() -> int:
     }
 
     try:
-        write_workspace_json(raw_path=args.out_json, fallback="sentry-zero/sentry.json", payload=payload)
+        write_workspace_json(
+            raw_path=args.out_json, fallback="sentry-zero/sentry.json", payload=payload
+        )
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="sentry-zero/sentry.md",

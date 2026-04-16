@@ -1,4 +1,5 @@
 """Tests for the api missing branch matrix behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -141,12 +142,18 @@ def test_event_create_validation_branches(helpers):
     """Verifies event create validation branches behavior."""
     client, owner_token, _other_token = _event_crud_context(helpers)
     invalid_payloads = [
-        _event_payload(start_time=helpers["future_time"](days=3), end_time=helpers["future_time"](days=2)),
+        _event_payload(
+            start_time=helpers["future_time"](days=3), end_time=helpers["future_time"](days=2)
+        ),
         _event_payload(start_time=helpers["future_time"](), max_seats=0),
-        _event_payload(start_time=helpers["future_time"](), cover_url="https://example.com/" + ("a" * 520)),
+        _event_payload(
+            start_time=helpers["future_time"](), cover_url="https://example.com/" + ("a" * 520)
+        ),
     ]
     for payload in invalid_payloads:
-        response = client.post("/api/events", json=payload, headers=helpers["auth_header"](owner_token))
+        response = client.post(
+            "/api/events", json=payload, headers=helpers["auth_header"](owner_token)
+        )
         assert response.status_code == 400
 
 
@@ -157,9 +164,21 @@ def test_event_update_validation_and_permission_branches(helpers):
     requests = [
         ("PUT", "/api/events/999999", {"title": "x"}, owner_token, 404),
         ("PUT", f"/api/events/{event_id}", {"title": "forbidden"}, other_token, 403),
-        ("PUT", f"/api/events/{event_id}", {"end_time": datetime.now(timezone.utc).isoformat()}, owner_token, 400),
+        (
+            "PUT",
+            f"/api/events/{event_id}",
+            {"end_time": datetime.now(timezone.utc).isoformat()},
+            owner_token,
+            400,
+        ),
         ("PUT", f"/api/events/{event_id}", {"max_seats": -1}, owner_token, 400),
-        ("PUT", f"/api/events/{event_id}", {"cover_url": "https://example.com/" + ("a" * 520)}, owner_token, 400),
+        (
+            "PUT",
+            f"/api/events/{event_id}",
+            {"cover_url": "https://example.com/" + ("a" * 520)},
+            owner_token,
+            400,
+        ),
     ]
     for method, path, payload, token, status in requests:
         response = client.request(method, path, json=payload, headers=helpers["auth_header"](token))
@@ -199,10 +218,14 @@ def test_bulk_validation_and_suggest_branches(helpers):
 def test_personalization_hidden_and_blocked_branches(helpers):
     """Verifies personalization hidden and blocked branches behavior."""
     client, db, _admin_token, student_token, _student = _admin_student_context(helpers)
-    assert client.get("/api/me/profile", headers=helpers["auth_header"](student_token)).status_code == 200
+    assert (
+        client.get("/api/me/profile", headers=helpers["auth_header"](student_token)).status_code
+        == 200
+    )
     assert (
         client.post(
-            "/api/me/personalization/hidden-tags/999999", headers=helpers["auth_header"](student_token)
+            "/api/me/personalization/hidden-tags/999999",
+            headers=helpers["auth_header"](student_token),
         ).status_code
         == 404
     )
@@ -211,26 +234,31 @@ def test_personalization_hidden_and_blocked_branches(helpers):
     db.commit()
     db.refresh(tag)
     first_hidden = client.post(
-        f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token)
+        f"/api/me/personalization/hidden-tags/{int(tag.id)}",
+        headers=helpers["auth_header"](student_token),
     )
     second_hidden = client.post(
-        f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token)
+        f"/api/me/personalization/hidden-tags/{int(tag.id)}",
+        headers=helpers["auth_header"](student_token),
     )
     assert first_hidden.status_code == 201
     assert second_hidden.status_code == 201
     assert second_hidden.json()["status"] == "exists"
     assert (
         client.post(
-            "/api/me/personalization/blocked-organizers/999999", headers=helpers["auth_header"](student_token)
+            "/api/me/personalization/blocked-organizers/999999",
+            headers=helpers["auth_header"](student_token),
         ).status_code
         == 404
     )
     org, _org_token = _blocked_organizer_context(helpers, db)
     first_block = client.post(
-        f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token)
+        f"/api/me/personalization/blocked-organizers/{int(org.id)}",
+        headers=helpers["auth_header"](student_token),
     )
     second_block = client.post(
-        f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token)
+        f"/api/me/personalization/blocked-organizers/{int(org.id)}",
+        headers=helpers["auth_header"](student_token),
     )
     assert first_block.status_code == 201
     assert second_block.status_code == 201
@@ -275,7 +303,11 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
         ("/api/admin/users", {"page_size": 0}, 400),
         ("/api/admin/events", {"page": 0}, 400),
         ("/api/admin/events", {"page_size": 0}, 400),
-        ("/api/admin/events", {"status": "invalid", "category": "edu", "city": "clu", "search": "edge"}, 400),
+        (
+            "/api/admin/events",
+            {"status": "invalid", "category": "edu", "city": "clu", "search": "edge"},
+            400,
+        ),
     ]
     for path, params, status in listing_requests:
         response = client.get(path, params=params, headers=helpers["auth_header"](admin_token))
@@ -288,13 +320,16 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
     assert users_filtered.status_code == 200
     assert (
         client.patch(
-            "/api/admin/users/999999", json={"is_active": False}, headers=helpers["auth_header"](admin_token)
+            "/api/admin/users/999999",
+            json={"is_active": False},
+            headers=helpers["auth_header"](admin_token),
         ).status_code
         == 404
     )
     assert (
         client.post(
-            "/api/admin/events/999999/moderation/review", headers=helpers["auth_header"](admin_token)
+            "/api/admin/events/999999/moderation/review",
+            headers=helpers["auth_header"](admin_token),
         ).status_code
         == 404
     )
@@ -367,8 +402,12 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
 
 def test_admin_update_user_row_missing_branch(monkeypatch, db_session):
     """Verifies admin update user row missing branch behavior."""
-    current_user = models.User(email="admin-detail@test.ro", role=models.UserRole.admin, **{_HASH_FIELD: "hash"})
-    target_user = models.User(email="user-detail@test.ro", role=models.UserRole.student, **{_HASH_FIELD: "hash"})
+    current_user = models.User(
+        email="admin-detail@test.ro", role=models.UserRole.admin, **{_HASH_FIELD: "hash"}
+    )
+    target_user = models.User(
+        email="user-detail@test.ro", role=models.UserRole.student, **{_HASH_FIELD: "hash"}
+    )
     db_session.add_all([current_user, target_user])
     db_session.commit()
     db_session.refresh(current_user)
@@ -378,6 +417,7 @@ def test_admin_update_user_row_missing_branch(monkeypatch, db_session):
 
     class _RowlessQuery:
         """Rowless Query value object used in the surrounding module."""
+
         def outerjoin(self, *_args, **_kwargs):
             """Implements the outerjoin helper."""
             return self

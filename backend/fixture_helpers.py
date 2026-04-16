@@ -1,4 +1,5 @@
 """Support module: fixture helpers."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -36,6 +37,7 @@ def build_test_helpers(
     include_future_time: bool = True,
 ) -> dict[str, Any]:
     """Constructs a test helpers structure."""
+
     def register_student(email: str) -> str:
         """Implements the register student helper."""
         access_code = DEFAULT_STUDENT_CODE

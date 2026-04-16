@@ -5,6 +5,7 @@ descriptive docstrings derived from the symbol name and file role. The
 heuristics are tuned for test helpers, pytest fixtures, ML script
 modules and quality tooling that make up the bulk of the remediation.
 """
+
 from __future__ import annotations
 
 import argparse
@@ -142,10 +143,8 @@ def _already_has_docstring(body: cst.IndentedBlock | cst.SimpleStatementSuite) -
 
 def _docstring_stmt(text: str) -> cst.SimpleStatementLine:
     """Builds a docstring statement line from ``text``."""
-    safe = text.replace('"""', '\"\"\"')
-    return cst.SimpleStatementLine(
-        body=[cst.Expr(value=cst.SimpleString(value=f'"""{safe}"""'))]
-    )
+    safe = text.replace('"""', '"""')
+    return cst.SimpleStatementLine(body=[cst.Expr(value=cst.SimpleString(value=f'"""{safe}"""'))])
 
 
 class _Injector(cst.CSTTransformer):
@@ -187,7 +186,9 @@ class _Injector(cst.CSTTransformer):
         doc = _docstring_stmt(new_doc)
         return node.with_changes(body=body.with_changes(body=[doc, *body.body]))
 
-    def leave_ClassDef(self, original_node: cst.ClassDef, updated_node: cst.ClassDef) -> cst.ClassDef:
+    def leave_ClassDef(
+        self, original_node: cst.ClassDef, updated_node: cst.ClassDef
+    ) -> cst.ClassDef:
         """Adds a class docstring when the class lacks one."""
         new_node = self._inject(updated_node, _class_doc(updated_node.name.value))
         if new_node is not updated_node:
@@ -224,7 +225,11 @@ def _process(path: pathlib.Path) -> tuple[int, int, bool]:
             ):
                 has_doc = True
                 break
-            if isinstance(head, cst.ImportFrom) and head.module and head.module.value == "__future__":
+            if (
+                isinstance(head, cst.ImportFrom)
+                and head.module
+                and head.module.value == "__future__"
+            ):
                 continue
         break
     if not has_doc:

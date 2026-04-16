@@ -1,4 +1,5 @@
 """Tests for the recommendations realtime refresh behavior."""
+
 from datetime import datetime, timedelta, timezone
 
 from app import api as api_module, auth, models
@@ -40,7 +41,9 @@ def _create_realtime_fixture(helpers, *, slug: str, title: str):
 def _refresh_jobs(db):
     """Implements the refresh jobs helper."""
     return (
-        db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml").all()
+        db.query(models.BackgroundJob)
+        .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
+        .all()
     )
 
 
@@ -54,7 +57,9 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
 
     originals = {}
     try:
-        originals["task_queue_enabled"] = _set_setting(api_module.settings, "task_queue_enabled", True)
+        originals["task_queue_enabled"] = _set_setting(
+            api_module.settings, "task_queue_enabled", True
+        )
         originals["recommendations_realtime_refresh_enabled"] = _set_setting(
             api_module.settings, "recommendations_realtime_refresh_enabled", True
         )
@@ -110,7 +115,9 @@ def test_interactions_respects_realtime_refresh_min_interval(helpers):
 
     originals = {}
     try:
-        originals["task_queue_enabled"] = _set_setting(api_module.settings, "task_queue_enabled", True)
+        originals["task_queue_enabled"] = _set_setting(
+            api_module.settings, "task_queue_enabled", True
+        )
         originals["recommendations_realtime_refresh_enabled"] = _set_setting(
             api_module.settings, "recommendations_realtime_refresh_enabled", True
         )

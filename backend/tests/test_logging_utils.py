@@ -1,4 +1,5 @@
 """Tests for the logging utils behavior."""
+
 import asyncio
 import logging
 

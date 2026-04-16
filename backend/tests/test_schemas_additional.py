@@ -1,4 +1,5 @@
 """Tests for the schemas additional behavior."""
+
 from __future__ import annotations
 
 import pytest

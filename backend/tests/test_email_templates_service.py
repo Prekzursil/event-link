@@ -1,4 +1,5 @@
 """Tests for the email templates service behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -11,6 +12,7 @@ from app import auth, email_service, email_templates, models
 
 class _FakeSmtpSuccess:
     """Test double standing in for a real smtp success."""
+
     def __init__(self, host, port, timeout):
         """Initializes the instance state."""
         self.host = host
@@ -45,6 +47,7 @@ class _FakeSmtpSuccess:
 
 class _FakeSmtpFail:
     """Test double standing in for a real smtp fail."""
+
     def __init__(self, *_args, **_kwargs):
         """Initializes the instance state."""
         # Intentional no-op fake used to exercise SMTP failure branches.
@@ -82,7 +85,9 @@ def _restore_settings(monkeypatch, original):
 def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
     """Verifies send email now handles disabled and missing smtp behavior."""
     warnings = []
-    monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
+    monkeypatch.setattr(
+        email_service, "log_warning", lambda event, **kw: warnings.append((event, kw))
+    )
 
     original = _set_email_settings(
         monkeypatch, email_enabled=False, smtp_host="smtp.test", smtp_sender="sender@test.ro"
@@ -95,7 +100,9 @@ def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
     assert warnings[0][0] == "email_disabled"
 
     warnings.clear()
-    original = _set_email_settings(monkeypatch, email_enabled=True, smtp_host=None, smtp_sender=None)
+    original = _set_email_settings(
+        monkeypatch, email_enabled=True, smtp_host=None, smtp_sender=None
+    )
     try:
         email_service.send_email_now("to@test.ro", "Sub", "Body")
     finally:
@@ -111,10 +118,14 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
     errors = []
 
     monkeypatch.setattr(email_service, "log_event", lambda event, **kw: events.append((event, kw)))
-    monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
+    monkeypatch.setattr(
+        email_service, "log_warning", lambda event, **kw: warnings.append((event, kw))
+    )
     monkeypatch.setattr(email_service, "log_error", lambda event, **kw: errors.append((event, kw)))
 
-    smtp_secret_field = "smtp_" + "".join(chr(code) for code in [112, 97, 115, 115, 119, 111, 114, 100])
+    smtp_secret_field = "smtp_" + "".join(
+        chr(code) for code in [112, 97, 115, 115, 119, 111, 114, 100]
+    )
     original = _set_email_settings(
         monkeypatch,
         email_enabled=True,
@@ -167,7 +178,9 @@ def test_send_email_async_branches(monkeypatch, db_session):
     """Verifies send email async branches behavior."""
     recorded = []
     monkeypatch.setattr(
-        email_service, "enqueue_job", lambda db, job_type, payload: recorded.append((db, job_type, payload))
+        email_service,
+        "enqueue_job",
+        lambda db, job_type, payload: recorded.append((db, job_type, payload)),
     )
 
     # task queue enabled but no DB
@@ -182,7 +195,9 @@ def test_send_email_async_branches(monkeypatch, db_session):
     # background None fallback
     monkeypatch.setattr(email_service.settings, "task_queue_enabled", False)
     called_now = []
-    monkeypatch.setattr(email_service, "send_email_now", lambda *args, **kwargs: called_now.append((args, kwargs)))
+    monkeypatch.setattr(
+        email_service, "send_email_now", lambda *args, **kwargs: called_now.append((args, kwargs))
+    )
     email_service.send_email_async(None, None, "to@test.ro", "Sub", "Body")
     assert called_now
 
@@ -251,7 +266,9 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
     assert "events/" in digest_en[1]
 
     fill_en = email_templates.render_filling_fast_email(user, event, available_seats=2, lang="en")
-    fill_ro = email_templates.render_filling_fast_email(user, event, available_seats=None, lang="ro")
+    fill_ro = email_templates.render_filling_fast_email(
+        user, event, available_seats=None, lang="ro"
+    )
     assert "Filling fast" in fill_en[0]
     assert "Se ocupă rapid" in fill_ro[0]
 

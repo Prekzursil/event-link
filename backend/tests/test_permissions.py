@@ -1,4 +1,6 @@
 """Tests for the permissions behavior."""
+
+
 def test_create_event_requires_auth(helpers):
     """Verifies create event requires auth behavior."""
     client = helpers["client"]

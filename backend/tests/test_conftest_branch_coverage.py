@@ -1,4 +1,5 @@
 """Tests for the conftest branch coverage behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -34,7 +35,9 @@ def test_ensure_schema_teardown_skips_missing_temp_db(monkeypatch, tmp_path):
     calls: list[str] = []
 
     monkeypatch.setattr(module.Base.metadata, "drop_all", lambda **_kwargs: calls.append("drop"))
-    monkeypatch.setattr(module.Base.metadata, "create_all", lambda **_kwargs: calls.append("create"))
+    monkeypatch.setattr(
+        module.Base.metadata, "create_all", lambda **_kwargs: calls.append("create")
+    )
     monkeypatch.setattr(module.engine, "dispose", lambda: calls.append("dispose"))
     monkeypatch.setattr(module, "_TEST_DB_PATH", tmp_path / "missing-test-db.sqlite3")
 

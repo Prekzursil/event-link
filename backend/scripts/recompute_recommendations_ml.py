@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 """Command-line helper: recompute recommendations ml."""
+
 from __future__ import annotations
 
 import argparse
@@ -75,7 +76,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Offline ML v1: train and cache recommendations to user_recommendations."
     )
-    parser.add_argument("--top-n", type=int, default=50, help="How many recommendations to store per user.")
+    parser.add_argument(
+        "--top-n", type=int, default=50, help="How many recommendations to store per user."
+    )
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.35)
     parser.add_argument("--l2", type=float, default=0.01)
@@ -83,14 +86,19 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--eval-negatives", type=int, default=50)
     parser.add_argument("--seed", type=int, default=1337)
     parser.add_argument(
-        "--user-id", type=int, default=None, help="Only recompute recommendations for a single student user."
+        "--user-id",
+        type=int,
+        default=None,
+        help="Only recompute recommendations for a single student user.",
     )
     parser.add_argument(
         "--skip-training",
         action="store_true",
         help="Skip training and load weights from the persisted recommender_models table.",
     )
-    parser.add_argument("--dry-run", action="store_true", help="Train/eval but do not write to the DB.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Train/eval but do not write to the DB."
+    )
     return parser.parse_args()
 
 
@@ -144,7 +152,12 @@ def _user_positive_ids(*, user_id: int, positives, holdout) -> set[int]:
 
 
 def _impression_negative_ids(
-    *, user_id: int, user_positive_ids: set[int], seen_by_user, impression_position_by_user_event, events
+    *,
+    user_id: int,
+    user_positive_ids: set[int],
+    seen_by_user,
+    impression_position_by_user_event,
+    events,
 ) -> list[int]:
     """Implements the impression negative ids helper."""
     impression_candidates = [
@@ -162,12 +175,19 @@ def _append_example(*, examples, user, event, now: datetime, label: int, weight:
 
 
 def _sample_negative_example(
-    *, rng, impression_negatives: list[int], impression_position_by_user_event, user_id: int, all_event_ids: list[int]
+    *,
+    rng,
+    impression_negatives: list[int],
+    impression_position_by_user_event,
+    user_id: int,
+    all_event_ids: list[int],
 ) -> tuple[int, float]:
     """Implements the sample negative example helper."""
     if impression_negatives:
         neg_event_id = rng.choice(impression_negatives)
-        neg_weight = _impression_negative_weight(impression_position_by_user_event.get((user_id, neg_event_id)))
+        neg_weight = _impression_negative_weight(
+            impression_position_by_user_event.get((user_id, neg_event_id))
+        )
         return neg_event_id, neg_weight
     return rng.choice(all_event_ids), 1.0
 
@@ -210,16 +230,26 @@ def _append_positive_examples(**kwargs) -> None:
 
 
 def _matches_weak_signal(
-    *, candidate_event: _EventFeatures, weak_tags: set[str], weak_categories: set[str], weak_city: str | None
+    *,
+    candidate_event: _EventFeatures,
+    weak_tags: set[str],
+    weak_categories: set[str],
+    weak_city: str | None,
 ) -> bool:
     """Implements the matches weak signal helper."""
-    matches_city = bool(weak_city and candidate_event.city and _normalize_city(candidate_event.city) == weak_city)
-    matches_category = bool(candidate_event.category and candidate_event.category in weak_categories)
+    matches_city = bool(
+        weak_city and candidate_event.city and _normalize_city(candidate_event.city) == weak_city
+    )
+    matches_category = bool(
+        candidate_event.category and candidate_event.category in weak_categories
+    )
     matches_tags = bool(weak_tags and (candidate_event.tags & weak_tags))
     return matches_city or matches_category or matches_tags
 
 
-def _next_weak_signal_candidate(*, kwargs, weak_tags: set[str], weak_categories: set[str], weak_city: str | None):
+def _next_weak_signal_candidate(
+    *, kwargs, weak_tags: set[str], weak_categories: set[str], weak_city: str | None
+):
     """Implements the next weak signal candidate helper."""
     candidate_id = kwargs["rng"].choice(kwargs["all_event_ids"])
     if candidate_id in kwargs["user_positive_ids"]:
@@ -235,7 +265,9 @@ def _next_weak_signal_candidate(*, kwargs, weak_tags: set[str], weak_categories:
     return candidate_event
 
 
-def _event_id_for_features(events: dict[int, _EventFeatures], candidate_event: _EventFeatures) -> int:
+def _event_id_for_features(
+    events: dict[int, _EventFeatures], candidate_event: _EventFeatures
+) -> int:
     """Implements the event id for features helper."""
     for event_id, event in events.items():
         if event is candidate_event:
@@ -274,7 +306,9 @@ def _append_weak_signal_examples(**kwargs) -> None:
         added += 1
 
 
-def _append_negative_feedback_examples(*, examples, negative_weights, users, events, now: datetime) -> None:
+def _append_negative_feedback_examples(
+    *, examples, negative_weights, users, events, now: datetime
+) -> None:
     """Implements the append negative feedback examples helper."""
     for (user_id, event_id), weight in negative_weights.items():
         user = users.get(user_id)
@@ -290,7 +324,9 @@ def _append_user_training_examples(*, kwargs, examples, rng) -> None:
         user = kwargs["users"].get(user_id)
         if not user:
             continue
-        user_positive_ids = _user_positive_ids(user_id=user_id, positives=positives, holdout=kwargs["holdout"])
+        user_positive_ids = _user_positive_ids(
+            user_id=user_id, positives=positives, holdout=kwargs["holdout"]
+        )
         impression_negatives = _impression_negative_ids(
             user_id=user_id,
             user_positive_ids=user_positive_ids,
@@ -404,7 +440,9 @@ def _train_model_state(
     print(f"[eval] hitrate@10={hitrate:.3f} users={len(state.holdout)}")
     meta = _training_meta(args=args, now=now, examples=examples, hitrate=hitrate)
     if not args.dry_run:
-        _persist_model_state(db=db, models=models, model_version=model_version, weights=weights, meta=meta)
+        _persist_model_state(
+            db=db, models=models, model_version=model_version, weights=weights, meta=meta
+        )
     return model_version, weights, None
 
 
@@ -429,7 +467,14 @@ def _resolve_model_state(
 
 
 def _store_recommendations(
-    *, db, models, args, state: _PreparedState, model_version: str | None, weights: list[float] | None, now: datetime
+    *,
+    db,
+    models,
+    args,
+    state: _PreparedState,
+    model_version: str | None,
+    weights: list[float] | None,
+    now: datetime,
 ) -> int | None:
     """Implements the store recommendations helper."""
     if args.dry_run:
@@ -439,9 +484,9 @@ def _store_recommendations(
         return 0
 
     eligible_event_ids = _eligible_event_ids(state.events, now)
-    db.query(models.UserRecommendation).filter(models.UserRecommendation.user_id.in_(state.user_ids)).delete(
-        synchronize_session=False
-    )
+    db.query(models.UserRecommendation).filter(
+        models.UserRecommendation.user_id.in_(state.user_ids)
+    ).delete(synchronize_session=False)
     inserts = _build_recommendation_rows(
         user_ids=state.user_ids,
         users=state.users,
