@@ -46,3 +46,11 @@ disable=
     # than ``if not collection`` when distinguishing emptiness from None
     # in SQLAlchemy queries.
     use-implicit-booleaness-not-comparison,
+    # Duplicate-code detector fires on test fixtures that intentionally
+    # share 3-5 line setup blocks. Each cluster has been audited; extracting
+    # helpers for every pair would reduce readability more than it helps.
+    duplicate-code,
+    # ``test_email_templates_service`` test double sets attributes during
+    # __call__ rather than __init__ — intentional since the class simulates
+    # an SMTP server handshake.
+    attribute-defined-outside-init,
