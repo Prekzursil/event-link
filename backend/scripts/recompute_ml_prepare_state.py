@@ -228,6 +228,8 @@ def _assemble_prepared_runtime_state(
     holdout: dict[int, int],
 ) -> _PreparedState:
     """Assemble the final state from already loaded entities and training signals."""
+    impression_positions = training_state.impression_position_by_user_event
+    implicit_tags = training_state.implicit_interest_tags_by_user
     return _assemble_prepared_state(
         inputs=_PreparedAssemblyInputs(
             user_ids=user_ids,
@@ -237,8 +239,8 @@ def _assemble_prepared_runtime_state(
             positive_weights=training_state.positive_weights,
             negative_weights=training_state.negative_weights,
             seen_by_user=training_state.seen_by_user,
-            impression_position_by_user_event=training_state.impression_position_by_user_event,
-            implicit_interest_tags_by_user=training_state.implicit_interest_tags_by_user,
+            impression_position_by_user_event=impression_positions,
+            implicit_interest_tags_by_user=implicit_tags,
             implicit_categories_by_user=training_state.implicit_categories_by_user,
             implicit_city_by_user=training_state.implicit_city_by_user,
             users=users,

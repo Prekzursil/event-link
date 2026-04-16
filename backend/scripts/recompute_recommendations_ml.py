@@ -74,7 +74,9 @@ __all__ = (
 def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
     parser = argparse.ArgumentParser(
-        description="Offline ML v1: train and cache recommendations to user_recommendations."
+        description=(
+            "Offline ML v1: train and cache recommendations to user_recommendations."
+        )
     )
     parser.add_argument(
         "--top-n",
@@ -97,7 +99,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--skip-training",
         action="store_true",
-        help="Skip training and load weights from the persisted recommender_models table.",
+        help=(
+            "Skip training and load weights from "
+            "the persisted recommender_models table."
+        ),
     )
     parser.add_argument(
         "--dry-run", action="store_true", help="Train/eval but do not write to the DB."
@@ -440,7 +445,8 @@ def _train_model_state(
     )
     if not examples:
         print(
-            "No training data found (no registrations/favorites/interactions); nothing to do."
+            "No training data found (no registrations/favorites/interactions); "
+            "nothing to do."
         )
         return None, None, 0
 
@@ -555,7 +561,9 @@ def main() -> int:
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
         print(
-            "Missing DATABASE_URL. Example:\n  DATABASE_URL=postgresql://... python backend/scripts/recompute_recommendations_ml.py"
+            "Missing DATABASE_URL. Example:\n"
+            "  DATABASE_URL=postgresql://... "
+            "python backend/scripts/recompute_recommendations_ml.py"
         )
         return 2
 
@@ -605,7 +613,8 @@ def main() -> int:
             return store_exit
 
     print(
-        f"Done. See docs/recommendations-ml.md for operational guidance (repo: {repo_root})."
+        "Done. See docs/recommendations-ml.md for operational guidance "
+        f"(repo: {repo_root})."
     )
     return 0
 

@@ -78,7 +78,7 @@ def _weekly_digest_events(
             models.Event.deleted_at.is_(None),
             models.Event.start_time >= now,
             models.Event.status == "published",
-            (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
+            models.Event.publish_at.is_(None) | (models.Event.publish_at <= now),
         )
         .order_by(
             models.UserRecommendation.rank.asc(),
@@ -214,7 +214,7 @@ def _filling_fast_rows(
             models.Event.deleted_at.is_(None),
             models.Event.start_time >= now,
             models.Event.status == "published",
-            (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
+            models.Event.publish_at.is_(None) | (models.Event.publish_at <= now),
             models.Event.max_seats.isnot(None),
         )
         .order_by(models.User.id.asc(), models.Event.start_time.asc())

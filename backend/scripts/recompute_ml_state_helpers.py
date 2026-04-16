@@ -108,12 +108,14 @@ def _validated_persisted_model(
     weights = [float(weight) for weight in (model_row.weights or [])]
     if feature_names != FEATURE_NAMES:
         print(
-            f"[error] persisted model feature_names mismatch: expected={FEATURE_NAMES} got={feature_names}"
+            "[error] persisted model feature_names mismatch: "
+            f"expected={FEATURE_NAMES} got={feature_names}"
         )
         return None, None, 2
     if len(weights) != len(FEATURE_NAMES):
         print(
-            f"[error] persisted model weights length mismatch: expected={len(FEATURE_NAMES)} got={len(weights)}"
+            "[error] persisted model weights length mismatch: "
+            f"expected={len(FEATURE_NAMES)} got={len(weights)}"
         )
         return None, None, 2
     return str(model_row.model_version), weights, None
@@ -284,7 +286,8 @@ def _feature_length_is_valid(
     if n_features == len(FEATURE_NAMES):
         return n_features, None
     print(
-        f"[error] feature vector length mismatch: expected={len(FEATURE_NAMES)} got={n_features}"
+        "[error] feature vector length mismatch: "
+        f"expected={len(FEATURE_NAMES)} got={n_features}"
     )
     return n_features, 2
 

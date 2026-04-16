@@ -151,8 +151,14 @@ def _digest_items(events: list[Event], frontend: str) -> tuple[list[str], list[s
 def _digest_fallback(lang: str) -> tuple[str, str]:
     """Implements the digest fallback helper."""
     if lang == "en":
-        return "- No recommendations yet.\n", "<p><em>No recommendations yet.</em></p>"
-    return "- Încă nu avem recomandări.\n", "<p><em>Încă nu avem recomandări.</em></p>"
+        return (
+            "- No recommendations yet.\n",
+            "<p><em>No recommendations yet.</em></p>",
+        )
+    return (
+        "- Încă nu avem recomandări.\n",
+        "<p><em>Încă nu avem recomandări.</em></p>",
+    )
 
 
 def _digest_copy(
@@ -169,7 +175,10 @@ def _digest_copy(
         html_outro = "<p>You can update notification preferences in your profile.</p>"
     else:
         subject = "Rezumat săptămânal EventLink"
-        intro = f"Salut {name},\n\nIată câteva evenimente recomandate pentru săptămâna aceasta:\n"
+        intro = (
+            f"Salut {name},\n\n"
+            "Iată câteva evenimente recomandate pentru săptămâna aceasta:\n"
+        )
         html_intro = (
             f"<p>Salut {name},</p>"
             "<p>Iată câteva evenimente recomandate pentru săptămâna aceasta:</p>"
@@ -227,12 +236,18 @@ def _filling_fast_copy(
         subject = f"Se ocupă rapid: {event.title}"
         headline = f"Evenimentul <strong>{event.title}</strong> se ocupă rapid."
         intro = f"Salut {name},\n\nEvenimentul '{event.title}' se ocupă rapid.\n"
-        labels = {"start": "Începe", "location": "Locație", "link": "Vezi evenimentul"}
+        labels = {
+            "start": "Începe",
+            "location": "Locație",
+            "link": "Vezi evenimentul",
+        }
         outro = "Poți schimba preferințele de notificări în profil."
 
     body = (
         intro
-        + f"{labels['start']}: {start_text}\n{labels['location']}: {location}\n{seats_line}\n\n"
+        + f"{labels['start']}: {start_text}\n"
+        + f"{labels['location']}: {location}\n"
+        + f"{seats_line}\n\n"
     )
     html_intro = (
         f"<p>{'Hi' if lang == 'en' else 'Salut'} {name},</p>"
