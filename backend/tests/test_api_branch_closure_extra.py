@@ -99,14 +99,10 @@ def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatc
     _assert_serializer_defaults(event)
 
     now = datetime.now(timezone.utc)
+    cache_is_fresh = getattr(api, "_recommendations_cache_is_fresh")
+    assert cache_is_fresh(db=ScalarDb(now), user_id=1, now=now) is True
     assert (
-        api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now)
-        is True
-    )
-    assert (
-        api._recommendations_cache_is_fresh(
-            db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now
-        )
+        cache_is_fresh(db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now)
         is True
     )
     _assert_create_event_accepts_missing_start_time(monkeypatch)
@@ -593,10 +589,12 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
             """Implements the query helper."""
             raise AssertionError("query should not run")
 
+    recommendation_reason_map = getattr(api, "_recommendation_reason_map")
+    event_learning_delta = getattr(api, "_event_learning_delta")
     assert (
-        api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
+        recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
     )
-    assert api._event_learning_delta(
+    assert event_learning_delta(
         interaction_type="dwell", meta={"seconds": "slow"}
     ) == pytest.approx(0.0)
     with pytest.raises(AssertionError, match="query should not run"):

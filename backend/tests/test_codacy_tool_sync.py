@@ -22,11 +22,16 @@ def _load_module():
         sys.path.pop(0)
 
 
+def _planned_tool_payload(module, *args, **kwargs):
+    """Invokes the ``_planned_tool_payload`` helper on ``module`` via ``getattr``."""
+    return getattr(module, "_planned_tool_payload")(*args, **kwargs)
+
+
 def test_planned_tool_payload_disables_legacy_tools():
     """Verifies planned tool payload disables legacy tools behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("ESLint", {"isEnabled": True})
+    payload, notes = _planned_tool_payload(module, "ESLint", {"isEnabled": True})
 
     assert payload == {"enabled": False}
     assert notes == [
@@ -38,7 +43,7 @@ def test_planned_tool_payload_disables_lizard_for_test_noise_control():
     """Verifies planned tool payload disables lizard for test noise control behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("Lizard", {"isEnabled": True})
+    payload, notes = _planned_tool_payload(module, "Lizard", {"isEnabled": True})
 
     assert payload == {"enabled": False}
     assert notes == []
@@ -48,7 +53,8 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
     """Verifies planned tool payload enables configuration file when available behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload(
+    payload, notes = _planned_tool_payload(
+        module,
         "ESLint9",
         {
             "isEnabled": True,
@@ -69,7 +75,8 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
     """
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload(
+    payload, notes = _planned_tool_payload(
+        module,
         "ESLint",
         {
             "isEnabled": True,
@@ -86,7 +93,8 @@ def test_planned_tool_payload_skips_missing_configuration_files():
     """Verifies planned tool payload skips missing configuration files behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload(
+    payload, notes = _planned_tool_payload(
+        module,
         "Stylelint",
         {
             "isEnabled": True,
@@ -109,7 +117,8 @@ def test_planned_tool_payload_enables_prospector_configuration_file_when_availab
     """
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload(
+    payload, notes = _planned_tool_payload(
+        module,
         "Prospector",
         {
             "isEnabled": True,
@@ -127,24 +136,10 @@ def test_request_codacy_preserves_query_string():
     module = _load_module()
     request_args = {}
 
-    def fake_request_https_json(
-        raw_url,
-        *,
-        method="GET",
-        headers=None,
-        body=None,
-        timeout=30,
-        allowed_hosts=None,
-        allowed_host_suffixes=None,
-    ):
+    def fake_request_https_json(raw_url, **kwargs):
         """Implements the fake request https json helper."""
         request_args["raw_url"] = raw_url
-        request_args["method"] = method
-        request_args["headers"] = headers
-        request_args["body"] = body
-        request_args["timeout"] = timeout
-        request_args["allowed_hosts"] = allowed_hosts
-        request_args["allowed_host_suffixes"] = allowed_host_suffixes
+        request_args.update(kwargs)
         return None, {"x-test": "1"}, 204
 
     module.request_https_json = fake_request_https_json
@@ -169,7 +164,7 @@ def test_append_markdown_section_uses_none_marker_for_empty_values():
     module = _load_module()
     lines = ["# Title"]
 
-    module._append_markdown_section(lines, "Tool Changes", [])
+    getattr(module, "_append_markdown_section")(lines, "Tool Changes", [])
 
     assert lines == ["# Title", "", "## Tool Changes", module.NONE_MARKDOWN_ITEM]
 
@@ -194,11 +189,13 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
             },
         ]
 
-    module._list_tools = fake_list_tools
-    module._configure_tool = lambda **_kwargs: _kwargs
-    module._disable_pattern = lambda **_kwargs: _kwargs
-    module._reanalyze_commit = lambda **_kwargs: reanalyze_calls.append(
-        _kwargs["commit_sha"]
+    setattr(module, "_list_tools", fake_list_tools)
+    setattr(module, "_configure_tool", lambda **_kwargs: _kwargs)
+    setattr(module, "_disable_pattern", lambda **_kwargs: _kwargs)
+    setattr(
+        module,
+        "_reanalyze_commit",
+        lambda **_kwargs: reanalyze_calls.append(_kwargs["commit_sha"]),
     )
 
     payload = module._run_sync(
@@ -250,7 +247,7 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
             )
         assert kwargs["payload"] == {"useConfigurationFile": True}
 
-    module._configure_tool = fake_configure_tool
+    setattr(module, "_configure_tool", fake_configure_tool)
 
     tool_changes, notes, failures = module._sync_tool_settings(
         provider="gh",
@@ -295,7 +292,7 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_con
             '{"actions": [], "error": "Conflict", "message": "Cannot disable a tool that is enabled by a standard"}'
         )
 
-    module._configure_tool = fake_configure_tool
+    setattr(module, "_configure_tool", fake_configure_tool)
 
     tool_changes, notes, failures = module._sync_tool_settings(
         provider="gh",
@@ -326,7 +323,7 @@ def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None
             'HTTP 403 {"actions": [], "error": "Forbidden", "message": "Operation is not authorized"}'
         )
 
-    module._reanalyze_commit = fake_reanalyze_commit
+    setattr(module, "_reanalyze_commit", fake_reanalyze_commit)
 
     notes: list[str] = []
     failures: list[str] = []

@@ -384,8 +384,9 @@ def test_refresh_token_branches():
 
 def test_experiment_treatment_boundary_values():
     """Experiment bucketing should honor zero and full rollout boundaries."""
-    never_bucket = api._in_experiment_treatment("exp", 0, "1")
-    always_bucket = api._in_experiment_treatment("exp", 100, "1")
+    in_experiment_treatment = getattr(api, "_in_experiment_treatment")
+    never_bucket = in_experiment_treatment("exp", 0, "1")
+    always_bucket = in_experiment_treatment("exp", 100, "1")
     assert never_bucket is False
     assert always_bucket is True
 

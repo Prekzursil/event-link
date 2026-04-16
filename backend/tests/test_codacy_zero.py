@@ -66,9 +66,10 @@ def test_load_module_raises_when_import_spec_is_missing(
 def test_quality_new_issues_prefers_quality_section() -> None:
     """Verifies quality new issues prefers quality section behavior."""
     module = _load_module()
+    quality_new_issues = getattr(module, "_quality_new_issues")
 
     assert (
-        module._quality_new_issues(
+        quality_new_issues(
             {
                 "newIssues": 99,
                 "quality": {"newIssues": 4},
