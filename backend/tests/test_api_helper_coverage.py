@@ -10,6 +10,7 @@ from types import SimpleNamespace
 from fastapi import HTTPException, Request
 
 from app import api, auth, models, schemas
+from api_coverage_helpers import _build_published_event
 
 
 _ACCESS_CODE_FIELD = "pass" + "word"
@@ -50,16 +51,8 @@ def _seed_favorite_context(helpers):
     assert organizer is not None
     student_token = helpers["register_student"]("favorite-student@test.ro")
     tag = models.Tag(name="favorite-tag")
-    event = models.Event(
-        title="Favorite Event",
-        description="desc",
-        category="Edu",
-        start_time=datetime.now(timezone.utc) + timedelta(days=2),
-        city="Cluj",
-        location="Hall",
-        max_seats=20,
-        owner_id=int(organizer.id),
-        status="published",
+    event = _build_published_event(
+        title="Favorite Event", owner_id=int(organizer.id), days_offset=2, max_seats=20
     )
     db.add_all([tag, event])
     db.commit()

@@ -9,6 +9,7 @@ import pytest
 from app import schemas
 
 from api_branch_extra_helpers import ScalarDb, api, auth_header, event_payload, models
+from api_coverage_helpers import _build_published_event
 
 
 def _serializer_edge_event():
@@ -120,27 +121,11 @@ def test_events_and_public_events_include_past_and_optional_detail_user(helpers)
     )
     assert organizer is not None
 
-    future_event = models.Event(
-        title="Future Visible",
-        description="desc",
-        category="Edu",
-        start_time=datetime.now(timezone.utc) + timedelta(days=2),
-        city="Cluj",
-        location="Hall",
-        max_seats=10,
-        owner_id=int(organizer.id),
-        status="published",
+    future_event = _build_published_event(
+        title="Future Visible", owner_id=int(organizer.id), days_offset=2
     )
-    past_event = models.Event(
-        title="Past Visible",
-        description="desc",
-        category="Edu",
-        start_time=datetime.now(timezone.utc) - timedelta(days=1),
-        city="Cluj",
-        location="Hall",
-        max_seats=10,
-        owner_id=int(organizer.id),
-        status="published",
+    past_event = _build_published_event(
+        title="Past Visible", owner_id=int(organizer.id), days_offset=-1
     )
     db.add_all([future_event, past_event])
     db.commit()

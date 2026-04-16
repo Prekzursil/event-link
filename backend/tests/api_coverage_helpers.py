@@ -20,6 +20,23 @@ def auth_header(token: str) -> dict[str, str]:
     return {"Authorization": f"Bearer {token}"}
 
 
+def _build_published_event(
+    *, title: str, owner_id: int, days_offset: int, max_seats: int = 10
+) -> models.Event:
+    """Returns a published Cluj/Hall event fixture N days from now."""
+    return models.Event(
+        title=title,
+        description="desc",
+        category="Edu",
+        start_time=datetime.now(timezone.utc) + timedelta(days=days_offset),
+        city="Cluj",
+        location="Hall",
+        max_seats=max_seats,
+        owner_id=int(owner_id),
+        status="published",
+    )
+
+
 def future_dt(*, days: int = 0, hours: int = 0) -> datetime:
     """Builds the future dt helper used by the test."""
     return datetime.now(timezone.utc) + timedelta(days=days, hours=hours)
