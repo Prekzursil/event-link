@@ -2576,7 +2576,9 @@ def _validate_event_create_payload(
     _validate_event_create_cover_url(cover_url)
 
 
-def _validate_event_create_times(*, start_time: datetime | None, end_time: datetime | None) -> None:
+def _validate_event_create_times(
+    *, start_time: datetime | None, end_time: datetime | None
+) -> None:
     """Validate the normalized time range for a new event."""
     if start_time:
         _ensure_future_date(start_time)
@@ -2717,7 +2719,9 @@ def delete_event(event_id: int, db: DbSession, current_user: OrganizerUser):
     if not db_event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if db_event.owner_id != current_user.id and not _is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Nu aveți dreptul să ștergeți acest eveniment.")
+        raise HTTPException(
+            status_code=403, detail="Nu aveți dreptul să ștergeți acest eveniment."
+        )
 
     now = datetime.now(timezone.utc)
     db_event.deleted_at = now
@@ -2869,7 +2873,9 @@ def clone_event(
     if not orig:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if orig.owner_id != current_user.id:
-        raise HTTPException(status_code=403, detail="Nu aveți dreptul să clonați acest eveniment.")
+        raise HTTPException(
+            status_code=403, detail="Nu aveți dreptul să clonați acest eveniment."
+        )
 
     start_time = _normalize_dt(orig.start_time)
     if start_time and start_time < datetime.now(timezone.utc):
@@ -3655,7 +3661,9 @@ def _favorite_export_rows(
     """Serialize favorite export rows with embedded event snapshots."""
     return [
         {
-            "favorited_at": (_normalize_dt(fav.created_at).isoformat() if fav.created_at else None),
+            "favorited_at": (
+                _normalize_dt(fav.created_at).isoformat() if fav.created_at else None
+            ),
             "event": _serialize_event_for_export(ev),
         }
         for fav, ev in rows
@@ -3767,9 +3775,9 @@ def _deleted_organizer_placeholder(*, db: Session):
 
 def _delete_user_relations(*, db: Session, user_id: int) -> None:
     """Delete rows that reference the user before removing the account."""
-    db.query(models.PasswordResetToken).filter(models.PasswordResetToken.user_id == user_id).delete(
-        synchronize_session=False
-    )
+    db.query(models.PasswordResetToken).filter(
+        models.PasswordResetToken.user_id == user_id
+    ).delete(synchronize_session=False)
     db.query(models.Registration).filter(models.Registration.user_id == user_id).delete(
         synchronize_session=False
     )
@@ -3861,7 +3869,9 @@ def event_participants(
     if not event:
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
     if event.owner_id != current_user.id and not _is_admin(current_user):
-        raise HTTPException(status_code=403, detail="Nu aveți dreptul să accesați acest eveniment.")
+        raise HTTPException(
+            status_code=403, detail="Nu aveți dreptul să accesați acest eveniment."
+        )
 
     sort_column = _participant_sort_column(sort_by)
     order_clause = sort_column.asc() if sort_dir.lower() != "desc" else sort_column.desc()
@@ -5266,7 +5276,9 @@ def password_forgot(
         window_seconds=300,
     )
     user = (
-        db.query(models.User).filter(func.lower(models.User.email) == payload.email.lower()).first()
+        db.query(models.User)
+        .filter(func.lower(models.User.email) == payload.email.lower())
+        .first()
     )
     if user:
         db.query(models.PasswordResetToken).filter(

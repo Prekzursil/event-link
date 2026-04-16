@@ -128,7 +128,10 @@ def _digest_item(event: Event, frontend: str) -> tuple[str, str]:
     text_suffix = f" — {link}" if link else ""
     text = f"- {event.title} ({start_text}) — {location}{text_suffix}"
     html_link = f' <a href="{link}">View</a>' if link else ""
-    html = f"<li><strong>{event.title}</strong> <span>({start_text})</span> — {location}{html_link}</li>"
+    html = (
+        f"<li><strong>{event.title}</strong> <span>({start_text})</span> — "
+        f"{location}{html_link}</li>"
+    )
     return text, html
 
 
@@ -162,8 +165,14 @@ def _digest_copy(
         html_outro = "<p>You can update notification preferences in your profile.</p>"
     else:
         subject = "Rezumat săptămânal EventLink"
-        intro = f"Salut {name},\n\nIată câteva evenimente recomandate pentru săptămâna aceasta:\n"
-        html_intro = f"<p>Salut {name},</p><p>Iată câteva evenimente recomandate pentru săptămâna aceasta:</p>"
+        intro = (
+            f"Salut {name},\n\n"
+            "Iată câteva evenimente recomandate pentru săptămâna aceasta:\n"
+        )
+        html_intro = (
+            f"<p>Salut {name},</p>"
+            "<p>Iată câteva evenimente recomandate pentru săptămâna aceasta:</p>"
+        )
         outro = "\n\nPoți schimba preferințele de notificări în profil."
         html_outro = "<p>Poți schimba preferințele de notificări în profil.</p>"
 

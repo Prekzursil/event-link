@@ -560,7 +560,9 @@ def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
                 event.tags.append(tag_objects[tag_name])
 
 
-def _create_registrations(session, event_objects, student_objects, *, now: datetime) -> int:  # noqa: ANN001
+def _create_registrations(  # noqa: ANN001
+    session, event_objects, student_objects, *, now: datetime
+) -> int:
     """Create seeded registrations linking students to sample events."""
     print("📝 Creating registrations...")
     registration_count = 0
@@ -654,7 +656,9 @@ def seed_database():
         session.flush()
         print(f"   Created {len(SAMPLE_EVENTS)} events")
 
-        registration_count = _create_registrations(session, event_objects, student_objects, now=now)
+        registration_count = _create_registrations(
+            session, event_objects, student_objects, now=now
+        )
         print(f"   Created {registration_count} registrations")
 
         favorite_count = _create_favorites(session, event_objects, student_objects)
