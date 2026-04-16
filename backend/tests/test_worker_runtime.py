@@ -64,7 +64,6 @@ def test_worker_main_graceful_shutdown(monkeypatch):
         """Implements the claim helper."""
         assert worker_id == "worker-test"
         handlers[worker.signal.SIGINT](worker.signal.SIGINT, None)
-        return None
 
     monkeypatch.setattr(worker, "claim_next_job", _claim)
     worker.main()

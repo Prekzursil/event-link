@@ -264,7 +264,9 @@ def _is_interaction_warning_query(args: tuple[object, ...]) -> bool:
 
 def _build_helper_user_and_events(module, now: datetime):
     """Builds the helper user and events fixture data."""
-    user = module._UserFeatures(
+    user_features_cls = getattr(module, "_UserFeatures")
+    event_features_cls = getattr(module, "_EventFeatures")
+    user = user_features_cls(
         city="cluj",
         interest_tag_weights={"python": 1.0},
         history_tags={"python"},
@@ -273,7 +275,7 @@ def _build_helper_user_and_events(module, now: datetime):
         category_weights={"seminar": 0.4},
         city_weights={"iasi": 0.6},
     )
-    event = module._EventFeatures(
+    event = event_features_cls(
         tags={"python"},
         category="workshop",
         city="cluj",
@@ -284,7 +286,7 @@ def _build_helper_user_and_events(module, now: datetime):
         status="published",
         publish_at=None,
     )
-    other_event = module._EventFeatures(
+    other_event = event_features_cls(
         tags={"go"},
         category="seminar",
         city="iasi",

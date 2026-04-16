@@ -59,6 +59,19 @@ def _humanize(name: str) -> str:
     return " ".join(piece.lower() for piece in pieces if piece)
 
 
+# (prefix, suffix_start, template). "tail" comes from human[suffix_start:] and
+# falls back to the untouched humanised form when empty.
+_DESCRIBE_RULES: tuple[tuple[str, int, str], ...] = (
+    ("render", 6, "Renders the {tail} scaffolding for tests."),
+    ("require", 7, "Returns the {tail} value or fails loudly when absent."),
+    ("define", 6, "Installs a {tail} hook for tests."),
+    ("handle", 6, "Handles the {tail} event."),
+    ("make", 4, "Builds a {tail} fixture."),
+    ("open", 4, "Opens the {tail} UI surface for tests."),
+    ("set", 3, "Sets the {tail} fixture state."),
+)
+
+
 def _describe(kind: str, name: str) -> str:
     """Returns a one-line JSDoc summary for a symbol of ``kind`` named ``name``."""
     human = _humanize(name)
@@ -66,20 +79,10 @@ def _describe(kind: str, name: str) -> str:
         return f"Test-support {human} helper class."
     if name.startswith("use") and name[3:4].isupper():
         return f"React hook: {human[4:].strip() or human}."
-    if name.startswith("render"):
-        return f"Renders the {human[6:].strip() or human} scaffolding for tests."
-    if name.startswith("require"):
-        return f"Returns the {human[7:].strip() or human} value or fails loudly when absent."
-    if name.startswith("define"):
-        return f"Installs a {human[6:].strip() or human} hook for tests."
-    if name.startswith("set"):
-        return f"Sets the {human[3:].strip() or human} fixture state."
-    if name.startswith("make"):
-        return f"Builds a {human[4:].strip() or human} fixture."
-    if name.startswith("handle"):
-        return f"Handles the {human[6:].strip() or human} event."
-    if name.startswith("open"):
-        return f"Opens the {human[4:].strip() or human} UI surface for tests."
+    for prefix, suffix_start, template in _DESCRIBE_RULES:
+        if name.startswith(prefix):
+            tail = human[suffix_start:].strip() or human
+            return template.format(tail=tail)
     return f"Test helper: {human}."
 
 

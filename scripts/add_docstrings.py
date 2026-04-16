@@ -86,7 +86,8 @@ def _function_doc(name: str) -> str:
         if lower.startswith(prefix) or lower.startswith("_" + prefix):
             tail = human[length:].strip() or name
             if prefix == "make_":
-                # preserve earlier special-case that emits "test" when humanised tail is empty
+                # preserve the original special case: when the humanised tail
+                # is empty we fall back to "test" rather than the raw name.
                 tail = tail or "test"
             return template.format(tail=tail)
     return f"Implements the {human or name} helper."
@@ -196,7 +197,8 @@ class _Injector(cst.CSTTransformer):
         self.added_module = True
         return updated_node.with_changes(body=new_body)
 
-    def _inject(self, node, new_doc: str):
+    @staticmethod
+    def _inject(node, new_doc: str):
         """Injects ``new_doc`` as the first statement of ``node.body`` when absent."""
         body = node.body
         if not isinstance(body, cst.IndentedBlock):

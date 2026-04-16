@@ -54,7 +54,7 @@ def client(db_session):
         """Implements the override get db helper."""
         yield db_session
 
-    api_module._RATE_LIMIT_STORE.clear()
+    getattr(api_module, "_RATE_LIMIT_STORE").clear()
     app.dependency_overrides[get_db] = _override_get_db
     with TestClient(app) as test_client:
         yield test_client
