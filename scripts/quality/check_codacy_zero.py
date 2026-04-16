@@ -594,14 +594,12 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
     if not request.token:
         return "fail", None, ["CODACY_API_TOKEN is missing."]
 
-    last_exc: Exception | None = None
     for candidate in _provider_candidates(request.provider):
         try:
             status, open_issues, findings = _evaluate_candidate(
                 request.with_provider(candidate)
             )
         except Exception as exc:  # pragma: no cover - network/runtime surface
-            last_exc = exc
             return "fail", None, [f"Codacy API request failed: {exc}"]
         if status == "retry":
             continue
@@ -611,8 +609,6 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
         f"Codacy API endpoint was not found for "
         f"provider(s): {request.provider}, gh, github."
     ]
-    if last_exc is not None:
-        findings.append(f"Last Codacy API error: {last_exc}")
     return "fail", None, findings
 
 

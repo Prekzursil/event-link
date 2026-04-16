@@ -384,8 +384,10 @@ def test_refresh_token_branches():
 
 def test_experiment_treatment_boundary_values():
     """Experiment bucketing should honor zero and full rollout boundaries."""
-    assert api._in_experiment_treatment("exp", 0, "1") is False
-    assert api._in_experiment_treatment("exp", 100, "1") is True
+    never_bucket = api._in_experiment_treatment("exp", 0, "1")
+    always_bucket = api._in_experiment_treatment("exp", 100, "1")
+    assert never_bucket is False
+    assert always_bucket is True
 
 
 def test_clone_event_branches_and_success(helpers):
@@ -469,7 +471,8 @@ def test_organizer_profile_not_found_and_update_validation(helpers):
         headers=helpers["auth_header"](token),
     )
     assert ok.status_code == 200
-    assert ok.json()["org_name"] == "Updated Org"
+    _ok_body = ok.json()
+    assert _ok_body["org_name"] == "Updated Org"
 
 
 def test_hidden_tag_personalization_endpoints(helpers):
@@ -534,10 +537,12 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
         f"/api/events/{int(context.event.id)}/favorite", headers=headers
     )
     assert favorite_exists.status_code == 201
-    assert favorite_exists.json()["status"] == "exists"
+    _favorite_exists_body = favorite_exists.json()
+    assert _favorite_exists_body["status"] == "exists"
     listed = context.client.get("/api/me/favorites", headers=headers)
     assert listed.status_code == 200
-    assert listed.json()["items"]
+    _listed_body = listed.json()
+    assert _listed_body["items"]
     _response = context.client.delete(
         f"/api/events/{int(context.event.id)}/favorite", headers=headers
     )
@@ -573,8 +578,10 @@ def test_admin_activate_model_paths_return_expected_recompute_payloads(
         headers=headers,
     )
     assert activate_no_recompute.status_code == 200
-    assert activate_no_recompute.json()["active_model_version"] == "new-model"
-    assert activate_no_recompute.json()["recompute_job"] is None
+    _activate_no_recompute_body = activate_no_recompute.json()
+    assert _activate_no_recompute_body["active_model_version"] == "new-model"
+    _activate_no_recompute_body = activate_no_recompute.json()
+    assert _activate_no_recompute_body["recompute_job"] is None
     activate_with_recompute = context.client.post(
         "/api/admin/personalization/models/activate",
         json={"model_version": "new-model", "recompute": True, "top_n": 15},

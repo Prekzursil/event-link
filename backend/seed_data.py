@@ -32,7 +32,6 @@ _rng = SystemRandom()
 
 _SECRET_FIELD = "pass" + "word"
 _PASSWORD_HASH_FIELD = "pass" + "word_hash"
-_RESET_RECORD_TABLE = _SECRET_FIELD + "_reset_tokens"
 _DEFAULT_SEED_CODE = os.environ.get("EVENTLINK_SEED_CODE", "seed-access-A1")
 MUSIC_TAG = "Muzică"
 TAGS = [

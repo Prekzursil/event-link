@@ -40,9 +40,12 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
     assert "many_links" in flags
     assert status in {"clean", "flagged"}
 
-    assert api._jaccard_similarity(set(), set()) == pytest.approx(1.0)
-    assert api._jaccard_similarity({"a"}, set()) == pytest.approx(0.0)
-    assert api._format_ics_dt(None) == ""
+    jaccard_empty = api._jaccard_similarity(set(), set())
+    jaccard_one_side = api._jaccard_similarity({"a"}, set())
+    ics_null = api._format_ics_dt(None)
+    assert jaccard_empty == pytest.approx(1.0)
+    assert jaccard_one_side == pytest.approx(0.0)
+    assert ics_null == ""
 
     ev = make_event(
         title="ICS",
@@ -59,16 +62,19 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
 
     bucket = api._experiment_bucket("exp", "identity")
     assert 0 <= bucket < 100
-    assert api._in_experiment_treatment("exp", 50, "identity") is (bucket < 50)
+    in_treatment = api._in_experiment_treatment("exp", 50, "identity")
+    none_is_admin = api._is_admin(None)
+    assert in_treatment is (bucket < 50)
 
-    assert api._is_admin(None) is False
+    assert none_is_admin is False
     user = models.User(
         email="ADMIN@Test.ro",
         password_hash=auth.get_password_hash("fixture-access-A1"),
         role=models.UserRole.student,
     )
     set_settings(monkeypatch, admin_emails=["admin@test.ro"])
-    assert api._is_admin(user) is True
+    user_is_admin = api._is_admin(user)
+    assert user_is_admin is True
 
 
 def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
@@ -446,7 +452,8 @@ def test_suggest_branches_infer_city_after_blank_tag_seed(helpers):
         headers=auth_header(ctx.owner_token),
     )
     assert suggest.status_code == 200
-    assert suggest.json().get("suggested_city")
+    _suggest_body = suggest.json()
+    assert _suggest_body.get("suggested_city")
 
 
 def test_admin_registration_and_participant_branches(helpers):
@@ -577,7 +584,8 @@ def test_export_handles_organizer_without_events(helpers):
     export = client.get("/api/me/export", headers=auth_header(owner_token))
 
     assert export.status_code == 200
-    assert export.json()["organized_events"] == []
+    _export_body = export.json()
+    assert _export_body["organized_events"] == []
 
 
 def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
