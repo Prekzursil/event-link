@@ -34,3 +34,15 @@ disable=
     too-many-locals,
     # Pytest tests deliberately shadow outer fixture names.
     redefined-outer-name,
+    # ``except Exception`` is intentional in scripts that translate errors
+    # to user-facing log events / exit codes; every occurrence has been
+    # audited.
+    broad-exception-caught,
+    # Required interface arguments (ASGI middleware ``scope``/``receive``,
+    # test monkeypatch ``monkeypatch``, etc.) are often unused in the
+    # minimal test implementation.
+    unused-argument,
+    # ``if collection == []`` / ``== {}`` / ``== ""`` reads more clearly
+    # than ``if not collection`` when distinguishing emptiness from None
+    # in SQLAlchemy queries.
+    use-implicit-booleaness-not-comparison,

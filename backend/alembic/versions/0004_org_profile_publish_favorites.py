@@ -7,7 +7,7 @@ Create Date: 2025-02-10
 
 # Alembic revision variables (revision, down_revision, branch_labels,
 # depends_on) are framework-mandated names.
-# pylint: disable=invalid-name
+# pylint: disable=invalid-name,no-name-in-module
 
 from alembic import op
 import sqlalchemy as sa
