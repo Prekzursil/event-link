@@ -52,7 +52,10 @@ DISABLED_PATTERNS_BY_TOOL = {
 def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
     parser = argparse.ArgumentParser(
-        description="Sync Codacy repository tool settings to the repo's intended analyzer profile."
+        description=(
+            "Sync Codacy repository tool settings to the repo's "
+            "intended analyzer profile."
+        )
     )
     parser.add_argument(
         "--provider", default="gh", help="Codacy provider slug, for example gh"
@@ -119,7 +122,10 @@ def _list_tools(
     """Implements the list tools helper."""
     status, payload, raw = _request_codacy(
         method="GET",
-        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools",
+        path=(
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/tools"
+        ),
         token=token,
     )
     if (
@@ -188,7 +194,10 @@ def _reanalyze_commit(
     """Implements the reanalyze commit helper."""
     status, _data, raw = _request_codacy(
         method="POST",
-        path=f"api/v3/organizations/{provider}/{owner}/repositories/{repo}/reanalyzeCommit",
+        path=(
+            f"api/v3/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/reanalyzeCommit"
+        ),
         token=token,
         body={"commitUuid": commit_sha, "cleanCache": True},
     )

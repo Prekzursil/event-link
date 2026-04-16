@@ -35,7 +35,10 @@ def _parse_args() -> argparse.Namespace:
         "--project",
         action="append",
         default=[],
-        help="Project slug (repeatable, falls back to SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)",
+        help=(
+            "Project slug (repeatable, falls back to "
+            "SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)"
+        ),
     )
     parser.add_argument(
         "--token",
@@ -143,7 +146,8 @@ def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
     """Implements the validated projects helper."""
     if not projects:
         findings.append(
-            "No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT)."
+            "No Sentry projects configured "
+            "(SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT)."
         )
         return []
 
@@ -190,7 +194,8 @@ def _project_result(
         unresolved = len(issues)
         if unresolved >= 1:
             findings.append(
-                f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
+                f"Sentry project {project} returned unresolved issues but no "
+                "X-Hits header for exact totals."
             )
     if unresolved != 0:
         findings.append(
