@@ -127,7 +127,10 @@ def _configure_tool(
     """Implements the configure tool helper."""
     status, _data, raw = _request_codacy(
         method="PATCH",
-        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools/{tool_uuid}",
+        path=(
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/tools/{tool_uuid}"
+        ),
         token=token,
         body=payload,
     )
@@ -148,19 +151,22 @@ def _disable_pattern(
     status, _data, raw = _request_codacy(
         method="PATCH",
         path=(
-            f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools/{tool_uuid}/patterns"
-            f"?search={pattern_id}"
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/tools/{tool_uuid}/patterns?search={pattern_id}"
         ),
         token=token,
         body={"enabled": False},
     )
     if status != 204:
         raise RuntimeError(
-            f"Codacy pattern patch failed for {pattern_id} on {tool_uuid}: HTTP {status} {raw[:400]}"
+            f"Codacy pattern patch failed for {pattern_id} on {tool_uuid}: "
+            f"HTTP {status} {raw[:400]}"
         )
 
 
-def _reanalyze_commit(*, provider: str, owner: str, repo: str, token: str, commit_sha: str) -> None:
+def _reanalyze_commit(
+    *, provider: str, owner: str, repo: str, token: str, commit_sha: str
+) -> None:
     """Implements the reanalyze commit helper."""
     status, _data, raw = _request_codacy(
         method="POST",
@@ -190,7 +196,8 @@ def _planned_tool_payload(
             payload["useConfigurationFile"] = True
         elif not has_config:
             notes.append(
-                f"{tool_name}: configuration file not detected by Codacy; skipping config-file mode request"
+                f"{tool_name}: configuration file not detected by Codacy; "
+                "skipping config-file mode request"
             )
 
     return (payload or None), notes
@@ -250,7 +257,8 @@ def _retry_standard_managed_tool_with_config_only(
         return [f"{tool_name}: managed by Codacy standard; skipping disable request"], []
 
     notes = [
-        f"{tool_name}: managed by Codacy standard; retrying config-file mode without disable request"
+        f"{tool_name}: managed by Codacy standard; retrying config-file mode "
+        "without disable request"
     ]
     try:
         _configure_tool(
@@ -400,7 +408,8 @@ def _trigger_reanalysis(
         message = str(exc)
         if _is_reanalysis_forbidden(message):
             return [
-                "Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis"
+                "Codacy reanalysis not authorized for this token; "
+                "waiting for normal Codacy analysis"
             ], []
         return [], [message]
     return [f"Triggered Codacy reanalysis for {commit_sha}"], []

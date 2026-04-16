@@ -21,28 +21,26 @@ SKIP_TOKENS = (
 )
 
 
+_FUNCTION_RE = (
+    r"^(?P<indent>[ \t]*)"
+    r"(?P<kw>export\s+(?:default\s+)?(?:async\s+)?function|function|async\s+function)"
+    r"\s+(?P<name>[A-Za-z_$][\w$]*)"
+)
+_CLASS_RE = (
+    r"^(?P<indent>[ \t]*)"
+    r"(?P<kw>export\s+(?:default\s+)?class|class)"
+    r"\s+(?P<name>[A-Za-z_$][\w$]*)"
+)
+_ARROW_RE = (
+    r"^(?P<indent>[ \t]*)"
+    r"(?P<kw>export\s+(?:const|let|var))"
+    r"\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\("
+)
+
 DECL_PATTERNS = [
-    (
-        re.compile(
-            r"^(?P<indent>[ \t]*)(?P<kw>export\s+(?:default\s+)?(?:async\s+)?function|function|async\s+function)\s+(?P<name>[A-Za-z_$][\w$]*)",
-            re.MULTILINE,
-        ),
-        "function",
-    ),
-    (
-        re.compile(
-            r"^(?P<indent>[ \t]*)(?P<kw>export\s+(?:default\s+)?class|class)\s+(?P<name>[A-Za-z_$][\w$]*)",
-            re.MULTILINE,
-        ),
-        "class",
-    ),
-    (
-        re.compile(
-            r"^(?P<indent>[ \t]*)(?P<kw>export\s+(?:const|let|var))\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\(",
-            re.MULTILINE,
-        ),
-        "arrow",
-    ),
+    (re.compile(_FUNCTION_RE, re.MULTILINE), "function"),
+    (re.compile(_CLASS_RE, re.MULTILINE), "class"),
+    (re.compile(_ARROW_RE, re.MULTILINE), "arrow"),
 ]
 
 
@@ -87,13 +85,10 @@ def _has_preceding_jsdoc(source: str, start_idx: int) -> bool:
         if not stripped:
             cursor = prev
             continue
-        # Either a JSDoc end, a line comment we accept, or decorator - treat any comment block starting
-        # with `/**` as JSDoc presence. If the line ends with `*/` and a matching `/**` can be found, accept.
-        if (
-            stripped.endswith("*/")
-            and "/**" in source[:cursor].rsplit("/**", 1)[0] + source[:cursor].split("/**")[-1]
-        ):
-            # Simpler check: just see if a `/**` exists after the last blank and before our start_idx.
+        # We accept any block immediately above that starts with `/**` as a
+        # JSDoc comment. A short window search between the previous blank
+        # line and start_idx is enough for this heuristic.
+        if stripped.endswith("*/"):
             block = source[:start_idx]
             last_blank = block.rfind("\n\n")
             region = block[last_blank:] if last_blank >= 0 else block
