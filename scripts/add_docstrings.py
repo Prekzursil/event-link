@@ -45,15 +45,17 @@ _FUNCTION_DUNDERS: dict[str, str] = {
     "__call__": "Makes the instance callable.",
 }
 
+_SETUP_DOC = "Prepares fixture state for the test scope."
+_TEARDOWN_DOC = "Tears down fixture state for the test scope."
 _FIXTURE_ALIASES: dict[str, str] = {
-    "setup": "Prepares fixture state for the test scope.",
-    "setup_method": "Prepares fixture state for the test scope.",
-    "setup_class": "Prepares fixture state for the test scope.",
-    "setup_module": "Prepares fixture state for the test scope.",
-    "teardown": "Tears down fixture state for the test scope.",
-    "teardown_method": "Tears down fixture state for the test scope.",
-    "teardown_class": "Tears down fixture state for the test scope.",
-    "teardown_module": "Tears down fixture state for the test scope.",
+    "setup": _SETUP_DOC,
+    "setup_method": _SETUP_DOC,
+    "setup_class": _SETUP_DOC,
+    "setup_module": _SETUP_DOC,
+    "teardown": _TEARDOWN_DOC,
+    "teardown_method": _TEARDOWN_DOC,
+    "teardown_class": _TEARDOWN_DOC,
+    "teardown_module": _TEARDOWN_DOC,
 }
 
 # (prefix_with_underscore, suffix_start_index, template). Evaluated in order;
@@ -227,6 +229,30 @@ class _Injector(cst.CSTTransformer):
         return new_node
 
 
+def _module_has_top_docstring(tree: cst.Module) -> bool:
+    """Returns True when ``tree`` already starts with a module-level docstring.
+
+    Leading ``from __future__`` imports are allowed between the docstring and
+    the rest of the module, so they are skipped without short-circuiting.
+    """
+    for stmt in tree.body:
+        if not isinstance(stmt, cst.SimpleStatementLine) or not stmt.body:
+            return False
+        head = stmt.body[0]
+        if isinstance(head, cst.Expr) and isinstance(
+            head.value, (cst.SimpleString, cst.ConcatenatedString)
+        ):
+            return True
+        if (
+            isinstance(head, cst.ImportFrom)
+            and head.module
+            and head.module.value == "__future__"
+        ):
+            continue
+        return False
+    return False
+
+
 def _process(path: pathlib.Path) -> tuple[int, int, bool]:
     """Processes one file and returns (classes_added, functions_added, module_added)."""
     src = path.read_text(encoding="utf-8")
@@ -234,28 +260,7 @@ def _process(path: pathlib.Path) -> tuple[int, int, bool]:
         tree = cst.parse_module(src)
     except cst.ParserSyntaxError:
         return 0, 0, False
-    # Decide whether this module needs a docstring. libcst parses module-level
-    # docstrings as a simple-statement so we replicate the check manually.
-    module_doc: str | None = None
-    stmts = list(tree.body)
-    has_doc = False
-    for stmt in stmts:
-        if isinstance(stmt, cst.SimpleStatementLine) and stmt.body:
-            head = stmt.body[0]
-            if isinstance(head, cst.Expr) and isinstance(
-                head.value, (cst.SimpleString, cst.ConcatenatedString)
-            ):
-                has_doc = True
-                break
-            if (
-                isinstance(head, cst.ImportFrom)
-                and head.module
-                and head.module.value == "__future__"
-            ):
-                continue
-        break
-    if not has_doc:
-        module_doc = _module_doc(path)
+    module_doc = None if _module_has_top_docstring(tree) else _module_doc(path)
     injector = _Injector(module_doc)
     new_tree = tree.visit(injector)
     if injector.added_classes or injector.added_functions or injector.added_module:

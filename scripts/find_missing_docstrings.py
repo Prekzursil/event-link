@@ -63,23 +63,24 @@ def scan(root: pathlib.Path) -> tuple[dict, dict, dict]:
     return classes, functions, modules
 
 
+_TOTAL_HEADER = "total:"
+
+
+def _print_section(header: str, counts: dict[str, int]) -> None:
+    """Prints ``header`` followed by the top 25 file counts in descending order."""
+    print(header)
+    print(_TOTAL_HEADER, sum(counts.values()))
+    for stem, count in sorted(counts.items(), key=lambda item: -item[1])[:25]:
+        print(count, stem)
+    print()
+
+
 def main() -> int:
     """Entry point for CLI invocation; returns the POSIX exit code."""
     classes, functions, modules = scan(pathlib.Path("."))
-    print("== missing class docstrings (PY-D0002) ==")
-    print("total:", sum(classes.values()))
-    for stem, count in sorted(classes.items(), key=lambda item: -item[1])[:25]:
-        print(count, stem)
-    print()
-    print("== missing function docstrings (PY-D0003) ==")
-    print("total:", sum(functions.values()))
-    for stem, count in sorted(functions.items(), key=lambda item: -item[1])[:25]:
-        print(count, stem)
-    print()
-    print("== missing module docstrings ==")
-    print("total:", sum(modules.values()))
-    for stem, count in sorted(modules.items(), key=lambda item: -item[1])[:25]:
-        print(count, stem)
+    _print_section("== missing class docstrings (PY-D0002) ==", classes)
+    _print_section("== missing function docstrings (PY-D0003) ==", functions)
+    _print_section("== missing module docstrings ==", modules)
     return 0
 
 
