@@ -35,6 +35,12 @@ from .email_templates import (
     render_password_reset_email,
     render_registration_email,
 )
+from .task_queue_shared import (
+    _apply_personalization_exclusions,
+    _fetch_active_recommender_model,
+    _load_personalization_exclusions,
+    _seats_taken_subquery,
+)
 from .logging_utils import (
     RequestIdMiddleware,
     configure_logging,
@@ -480,15 +486,7 @@ def _events_with_counts_query(db: Session, base_query=None):
     """Attach the computed registration count column used by event list responses."""
     if base_query is None:
         base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
-    seats_subquery = (
-        db.query(
-            models.Registration.event_id,
-            func.count(models.Registration.id).label("seats_taken"),
-        )
-        .filter(models.Registration.deleted_at.is_(None))
-        .group_by(models.Registration.event_id)
-        .subquery()
-    )
+    seats_subquery = _seats_taken_subquery(db)
     query = base_query.outerjoin(
         seats_subquery,
         models.Event.id == seats_subquery.c.event_id,
@@ -684,38 +682,8 @@ def _apply_event_list_filters(
     )
 
 
-def _load_personalization_exclusions(
-    *,
-    db: Session,
-    user_id: int,
-) -> tuple[set[int], set[int]]:
-    """Load hidden tags and blocked organizers used to filter recommendations."""
-    hidden_tag_ids = {
-        int(row[0])
-        for row in db.query(models.user_hidden_tags.c.tag_id)
-        .filter(models.user_hidden_tags.c.user_id == user_id)
-        .all()
-    }
-    blocked_organizer_ids = {
-        int(row[0])
-        for row in db.query(models.user_blocked_organizers.c.organizer_id)
-        .filter(models.user_blocked_organizers.c.user_id == user_id)
-        .all()
-    }
-    return hidden_tag_ids, blocked_organizer_ids
 
 
-def _apply_personalization_exclusions(
-    query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
-):  # noqa: ANN001
-    """Exclude hidden tags and blocked organizers from recommendation queries."""
-    if blocked_organizer_ids:
-        query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
-    if hidden_tag_ids:
-        query = query.filter(
-            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
-        )
-    return query
 
 
 def _load_cached_recommendations(
@@ -4475,13 +4443,7 @@ def admin_personalization_status(
     _current_user: AdminUser,
 ):
     """Return the current personalization system status."""
-    is_active_attr = "is_active"
-    active = (
-        db.query(models.RecommenderModel)
-        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
-        .order_by(models.RecommenderModel.id.desc())
-        .first()
-    )
+    active = _fetch_active_recommender_model(db)
     return {
         "task_queue_enabled": bool(settings.task_queue_enabled),
         "recommendations_realtime_refresh_enabled": bool(

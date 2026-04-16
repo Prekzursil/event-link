@@ -2,9 +2,46 @@
 
 from datetime import datetime, timezone
 
+from app import api as api_module
+from app.config import settings
 from api_test_support import (
     DEFAULT_ORG_CODE,
 )
+
+
+_FILTER_ORDER_BASE_PAYLOAD = {
+    "description": "Desc",
+    "category": "Tech",
+    "city": "București",
+    "location": "Loc",
+    "max_seats": 10,
+    "tags": [],
+}
+
+
+def _seed_three_filter_order_events(client, helpers, token: str):
+    """Posts the three seeding events used by the filter/order scenario."""
+    future_time = helpers["future_time"]
+    auth = helpers["auth_header"](token)
+    e1 = client.post(
+        "/api/events",
+        json={**_FILTER_ORDER_BASE_PAYLOAD, "title": "Python Workshop",
+              "start_time": future_time(days=2)},
+        headers=auth,
+    ).json()
+    e2 = client.post(
+        "/api/events",
+        json={**_FILTER_ORDER_BASE_PAYLOAD, "title": "Party Night",
+              "category": "Social", "start_time": future_time(days=3)},
+        headers=auth,
+    ).json()
+    client.post(
+        "/api/events",
+        json={**_FILTER_ORDER_BASE_PAYLOAD, "title": "Old Event",
+              "start_time": future_time(days=-1)},
+        headers=auth,
+    )
+    return e1, e2
 
 
 def test_events_list_filters_and_order(helpers):
@@ -12,70 +49,27 @@ def test_events_list_filters_and_order(helpers):
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
-    base_payload = {
-        "description": "Desc",
-        "category": "Tech",
-        "city": "București",
-        "location": "Loc",
-        "max_seats": 10,
-        "tags": [],
-    }
-    e1 = client.post(
-        "/api/events",
-        json={
-            **base_payload,
-            "title": "Python Workshop",
-            "start_time": helpers["future_time"](days=2),
-        },
-        headers=helpers["auth_header"](organizer_token),
-    ).json()
-    e2 = client.post(
-        "/api/events",
-        json={
-            **base_payload,
-            "title": "Party Night",
-            "category": "Social",
-            "start_time": helpers["future_time"](days=3),
-        },
-        headers=helpers["auth_header"](organizer_token),
-    ).json()
-    client.post(
-        "/api/events",
-        json={
-            **base_payload,
-            "title": "Old Event",
-            "start_time": helpers["future_time"](days=-1),
-        },
-        headers=helpers["auth_header"](organizer_token),
-    )
+    e1, e2 = _seed_three_filter_order_events(client, helpers, organizer_token)
 
     events = client.get("/api/events").json()
     assert [e1["id"], e2["id"]] == [e["id"] for e in events["items"]]
     assert events["total"] == 2
 
     search = client.get("/api/events", params={"search": "python"}).json()
-    assert search["total"] == 1
-    assert search["items"][0]["title"] == "Python Workshop"
+    assert search["total"] == 1 and search["items"][0]["title"] == "Python Workshop"
 
     category = client.get("/api/events", params={"category": "social"}).json()
-    assert category["total"] == 1
-    assert category["items"][0]["title"] == "Party Night"
+    assert category["total"] == 1 and category["items"][0]["title"] == "Party Night"
 
-    start_filter = client.get(
-        "/api/events",
-        params={"start_date": datetime.now(timezone.utc).date().isoformat()},
-    ).json()
+    today = datetime.now(timezone.utc).date().isoformat()
+    start_filter = client.get("/api/events", params={"start_date": today}).json()
     assert len(start_filter["items"]) >= 2
 
-    end_filter = client.get(
-        "/api/events",
-        params={"end_date": datetime.now(timezone.utc).date().isoformat()},
-    ).json()
+    end_filter = client.get("/api/events", params={"end_date": today}).json()
     assert end_filter["total"] == 0
 
     paging = client.get("/api/events", params={"page_size": 1, "page": 1}).json()
-    assert paging["page_size"] == 1
-    assert len(paging["items"]) == 1
+    assert paging["page_size"] == 1 and len(paging["items"]) == 1
     assert paging["total"] == 2
 
 
@@ -219,8 +213,6 @@ def test_public_events_api_exposes_published_only(helpers):
 def test_public_events_api_is_rate_limited(helpers):
     """Verifies public events api is rate limited behavior."""
     client = helpers["client"]
-    from app import api as api_module
-    from app.config import settings
 
     helpers["make_organizer"]("public-limit-org@test.ro", DEFAULT_ORG_CODE)
     organizer_token = helpers["login"]("public-limit-org@test.ro", DEFAULT_ORG_CODE)

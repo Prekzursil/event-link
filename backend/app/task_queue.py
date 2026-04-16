@@ -27,7 +27,7 @@ from .task_queue_delivery import (
     send_filling_fast_alerts as _send_filling_fast_alerts_impl,
     send_weekly_digest as _send_weekly_digest_impl,
 )
-from .task_queue_shared import (
+from .task_queue_shared import (  # noqa: F401 — re-exported for legacy callers
     JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS,
     JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
     JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
@@ -47,6 +47,7 @@ __all__ = [
     "JOB_TYPE_SEND_EMAIL",
     "JOB_TYPE_SEND_FILLING_FAST_ALERTS",
     "JOB_TYPE_SEND_WEEKLY_DIGEST",
+    "_apply_personalization_exclusions",
     "_coerce_bool",
     "enqueue_job",
 ]

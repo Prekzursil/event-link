@@ -5,6 +5,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any
 
+from sqlalchemy import func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -101,6 +102,30 @@ def _apply_personalization_exclusions(
             ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
         )
     return query
+
+
+def _seats_taken_subquery(db: Session):
+    """Returns a subquery mapping ``event_id`` to the live registration count."""
+    return (
+        db.query(
+            models.Registration.event_id,
+            func.count(models.Registration.id).label("seats_taken"),
+        )
+        .filter(models.Registration.deleted_at.is_(None))
+        .group_by(models.Registration.event_id)
+        .subquery()
+    )
+
+
+def _fetch_active_recommender_model(db: Session) -> "models.RecommenderModel | None":
+    """Returns the most recently inserted active ``RecommenderModel`` row, or None."""
+    is_active_attr = "is_active"
+    return (
+        db.query(models.RecommenderModel)
+        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
+        .order_by(models.RecommenderModel.id.desc())
+        .first()
+    )
 
 
 def _load_personalization_exclusions(

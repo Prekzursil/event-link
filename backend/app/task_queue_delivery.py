@@ -21,6 +21,7 @@ from .task_queue_shared import (
     _coerce_bool,
     _notification_exists,
     _preferred_lang,
+    _seats_taken_subquery,
     _send_email_payload,
 )
 
@@ -195,15 +196,7 @@ def _filling_fast_rows(
     db: Session, now: datetime
 ) -> list[tuple[models.User, models.Event, int]]:
     """Implements the filling fast rows helper."""
-    seats_subquery = (
-        db.query(
-            models.Registration.event_id,
-            func.count(models.Registration.id).label("seats_taken"),
-        )
-        .filter(models.Registration.deleted_at.is_(None))
-        .group_by(models.Registration.event_id)
-        .subquery()
-    )
+    seats_subquery = _seats_taken_subquery(db)
     return (
         db.query(
             models.User,

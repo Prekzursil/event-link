@@ -11,6 +11,7 @@ from sqlalchemy.orm import Session
 from . import models
 from .config import settings
 from .logging_utils import log_event, log_warning
+from .task_queue_shared import _fetch_active_recommender_model
 
 
 @dataclass(frozen=True)
@@ -210,13 +211,7 @@ def _active_and_previous_models(
     db: Session,
 ) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
     """Implements the active and previous models helper."""
-    is_active_attr = "is_active"
-    active = (
-        db.query(models.RecommenderModel)
-        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
-        .order_by(models.RecommenderModel.id.desc())
-        .first()
-    )
+    active = _fetch_active_recommender_model(db)
     if not active:
         return None, None
     previous = (
