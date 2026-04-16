@@ -109,11 +109,18 @@ def _is_inside_repo(path: pathlib.Path) -> bool:
     return True
 
 
+def _safe_resolve_in_repo(path: pathlib.Path) -> pathlib.Path:
+    """Resolves ``path`` and raises unless it sits inside the repository root."""
+    resolved = path.resolve(strict=True)
+    if resolved != _REPO_ROOT and _REPO_ROOT not in resolved.parents:
+        raise PermissionError(f"refusing to touch file outside repo root: {resolved}")
+    return resolved
+
+
 def _inject(path: pathlib.Path) -> int:
     """Adds JSDoc above each declaration in ``path`` that lacks one; returns count added."""
-    if not _is_inside_repo(path):
-        raise ValueError(f"refusing to write outside repo root: {path}")
-    text = path.read_text(encoding="utf-8")
+    safe_path = _safe_resolve_in_repo(path)
+    text = safe_path.read_text(encoding="utf-8")
     # Walk declarations in order by position so we do not disturb later offsets until we rebuild.
     hits: list[tuple[int, int, str, str]] = []
     for pattern, kind in DECL_PATTERNS:
@@ -148,7 +155,7 @@ def _inject(path: pathlib.Path) -> int:
         pieces.append(block)
         cursor = line_start
     pieces.append(text[cursor:])
-    path.write_text("".join(pieces), encoding="utf-8")
+    safe_path.write_text("".join(pieces), encoding="utf-8")
     return len(needing)
 
 
