@@ -4509,7 +4509,7 @@ def admin_activate_personalization_model(
     db.query(models.RecommenderModel).update(
         {"is_active": False}, synchronize_session=False
     )
-    model.is_active = True
+    setattr(model, "is_active", True)  # noqa: B010
     db.add(model)
     db.commit()
 

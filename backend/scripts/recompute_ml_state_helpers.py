@@ -315,7 +315,7 @@ def _persist_model_state(
         existing_model.feature_names = list(FEATURE_NAMES)
         existing_model.weights = [float(weight) for weight in weights]
         existing_model.meta = meta
-        existing_model.is_active = True
+        setattr(existing_model, "is_active", True)  # noqa: B010
 
     db.query(models.RecommenderModel).filter(
         models.RecommenderModel.model_version != model_version
