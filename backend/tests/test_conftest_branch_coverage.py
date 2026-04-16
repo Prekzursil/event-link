@@ -7,8 +7,6 @@ import os
 import uuid
 from pathlib import Path
 
-import pytest
-
 
 def _load_conftest_module():
     """Loads the conftest module resource."""

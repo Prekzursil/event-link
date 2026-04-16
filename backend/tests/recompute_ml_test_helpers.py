@@ -264,8 +264,10 @@ def _is_interaction_warning_query(args: tuple[object, ...]) -> bool:
 
 def _build_helper_user_and_events(module, now: datetime):
     """Builds the helper user and events fixture data."""
-    user_features_cls = getattr(module, "_UserFeatures")
-    event_features_cls = getattr(module, "_EventFeatures")
+    user_features_cls = getattr(module, "_UserFeatures", None)
+    event_features_cls = getattr(module, "_EventFeatures", None)
+    assert user_features_cls is not None, "module must expose _UserFeatures"
+    assert event_features_cls is not None, "module must expose _EventFeatures"
     user = user_features_cls(
         city="cluj",
         interest_tag_weights={"python": 1.0},

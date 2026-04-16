@@ -10,7 +10,6 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import models
-from .task_queue_guardrails import evaluate_personalization_guardrails
 from .task_queue_shared import (
     _coerce_bool,
     _notification_exists,
