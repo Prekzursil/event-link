@@ -153,6 +153,53 @@ def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_lea
     assert db.query(models.UserImplicitInterestCity).count() == 0
 
 
+def _seed_aware_implicit_rows(db, student_id: int, tag_id: int, seen_at):
+    """Seeds future-dated implicit tag/category/city rows for the given student."""
+    db.add_all(
+        [
+            models.UserImplicitInterestTag(
+                user_id=student_id, tag_id=tag_id, score=1.0, last_seen_at=seen_at
+            ),
+            models.UserImplicitInterestCategory(
+                user_id=student_id, category="tech", score=1.0, last_seen_at=seen_at
+            ),
+            models.UserImplicitInterestCity(
+                user_id=student_id, city="cluj", score=1.0, last_seen_at=seen_at
+            ),
+        ]
+    )
+    db.commit()
+
+
+def _enable_online_learning_without_task_queue(monkeypatch):
+    """Configures analytics + online-learning settings for these branch tests."""
+    monkeypatch.setattr(api.settings, "analytics_enabled", True, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_online_learning_enabled", True, raising=False
+    )
+    monkeypatch.setattr(api.settings, "task_queue_enabled", False, raising=False)
+
+
+def _first_implicit_rows(db, student_id: int):
+    """Returns the latest implicit tag/category/city rows for ``student_id``."""
+    tag_row = (
+        db.query(models.UserImplicitInterestTag)
+        .filter(models.UserImplicitInterestTag.user_id == student_id)
+        .first()
+    )
+    category_row = (
+        db.query(models.UserImplicitInterestCategory)
+        .filter(models.UserImplicitInterestCategory.user_id == student_id)
+        .first()
+    )
+    city_row = (
+        db.query(models.UserImplicitInterestCity)
+        .filter(models.UserImplicitInterestCity.user_id == student_id)
+        .first()
+    )
+    return tag_row, category_row, city_row
+
+
 def test_record_interactions_updates_aware_implicit_rows_without_realtime_refresh(
     helpers, monkeypatch
 ):
@@ -175,35 +222,8 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
     db.refresh(tag)
 
     future_seen = datetime.now(timezone.utc) + timedelta(hours=1)
-    db.add_all(
-        [
-            models.UserImplicitInterestTag(
-                user_id=int(student.id),
-                tag_id=int(tag.id),
-                score=1.0,
-                last_seen_at=future_seen,
-            ),
-            models.UserImplicitInterestCategory(
-                user_id=int(student.id),
-                category="tech",
-                score=1.0,
-                last_seen_at=future_seen,
-            ),
-            models.UserImplicitInterestCity(
-                user_id=int(student.id),
-                city="cluj",
-                score=1.0,
-                last_seen_at=future_seen,
-            ),
-        ]
-    )
-    db.commit()
-
-    monkeypatch.setattr(api.settings, "analytics_enabled", True, raising=False)
-    monkeypatch.setattr(
-        api.settings, "recommendations_online_learning_enabled", True, raising=False
-    )
-    monkeypatch.setattr(api.settings, "task_queue_enabled", False, raising=False)
+    _seed_aware_implicit_rows(db, int(student.id), int(tag.id), future_seen)
+    _enable_online_learning_without_task_queue(monkeypatch)
 
     resp = client.post(
         "/api/analytics/interactions",
@@ -219,24 +239,54 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
     )
 
     assert resp.status_code == 204
-    tag_row = (
-        db.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == int(student.id))
-        .first()
-    )
-    category_row = (
-        db.query(models.UserImplicitInterestCategory)
-        .filter(models.UserImplicitInterestCategory.user_id == int(student.id))
-        .first()
-    )
-    city_row = (
-        db.query(models.UserImplicitInterestCity)
-        .filter(models.UserImplicitInterestCity.user_id == int(student.id))
-        .first()
-    )
+    tag_row, category_row, city_row = _first_implicit_rows(db, int(student.id))
     assert tag_row is not None and float(tag_row.score or 0.0) >= 1.0
     assert category_row is not None and float(category_row.score or 0.0) >= 1.0
     assert city_row is not None and float(city_row.score or 0.0) >= 1.0
+
+
+def _enable_realtime_refresh_without_rate_limit(monkeypatch):
+    """Enables analytics+online-learning+realtime-refresh with a zero-second window."""
+    monkeypatch.setattr(api.settings, "analytics_enabled", True, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_online_learning_enabled", True, raising=False
+    )
+    monkeypatch.setattr(api.settings, "task_queue_enabled", True, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_use_ml_cache", True, raising=False
+    )
+    monkeypatch.setattr(
+        api.settings, "recommendations_realtime_refresh_enabled", True, raising=False
+    )
+    monkeypatch.setattr(
+        api.settings,
+        "recommendations_realtime_refresh_min_interval_seconds",
+        0,
+        raising=False,
+    )
+
+
+def _low_signal_interaction_payload(event_id: int):
+    """Returns an ``InteractionBatchIn`` with impression+dwell rows below the refresh threshold."""
+    return schemas.InteractionBatchIn.model_construct(
+        events=[
+            schemas.InteractionEventIn.model_construct(
+                interaction_type="impression",
+                event_id=event_id,
+                meta={"source": "events_list"},
+            ),
+            schemas.InteractionEventIn.model_construct(
+                interaction_type="dwell",
+                event_id=event_id,
+                meta="bad-meta",
+            ),
+            schemas.InteractionEventIn.model_construct(
+                interaction_type="dwell",
+                event_id=event_id,
+                meta={"seconds": 1},
+            ),
+        ]
+    )
 
 
 def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refresh(
@@ -265,23 +315,7 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
     jobs: list[tuple[str, dict, str | None]] = []
     import app.task_queue as task_queue_module
 
-    monkeypatch.setattr(api.settings, "analytics_enabled", True, raising=False)
-    monkeypatch.setattr(
-        api.settings, "recommendations_online_learning_enabled", True, raising=False
-    )
-    monkeypatch.setattr(api.settings, "task_queue_enabled", True, raising=False)
-    monkeypatch.setattr(
-        api.settings, "recommendations_use_ml_cache", True, raising=False
-    )
-    monkeypatch.setattr(
-        api.settings, "recommendations_realtime_refresh_enabled", True, raising=False
-    )
-    monkeypatch.setattr(
-        api.settings,
-        "recommendations_realtime_refresh_min_interval_seconds",
-        0,
-        raising=False,
-    )
+    _enable_realtime_refresh_without_rate_limit(monkeypatch)
     monkeypatch.setattr(
         task_queue_module,
         "enqueue_job",
@@ -297,25 +331,7 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
             "headers": [],
         }
     )
-    payload = schemas.InteractionBatchIn.model_construct(
-        events=[
-            schemas.InteractionEventIn.model_construct(
-                interaction_type="impression",
-                event_id=event_resp.json()["id"],
-                meta={"source": "events_list"},
-            ),
-            schemas.InteractionEventIn.model_construct(
-                interaction_type="dwell",
-                event_id=event_resp.json()["id"],
-                meta="bad-meta",
-            ),
-            schemas.InteractionEventIn.model_construct(
-                interaction_type="dwell",
-                event_id=event_resp.json()["id"],
-                meta={"seconds": 1},
-            ),
-        ]
-    )
+    payload = _low_signal_interaction_payload(event_resp.json()["id"])
 
     api.record_interactions(
         payload=payload, request=request, db=db, current_user=student

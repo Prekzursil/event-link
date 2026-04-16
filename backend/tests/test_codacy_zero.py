@@ -160,40 +160,32 @@ def test_wait_for_pr_analysis_reports_pr_new_issues(
     assert findings == ["Codacy reports 43 PR new issues (expected 0)."]
 
 
+_HEAD_SHA = "0123456789abcdef0123456789abcdef01234567"
+_OLD_SHA = "oldoldoldoldoldoldoldoldoldoldoldoldoldold"
+
+
+def _branch_analysis_payload(last_analysed_sha: str, issues_count: int):
+    """Returns a 200-status Codacy ``repositoryAnalysis`` payload tuple."""
+    return (
+        200,
+        {
+            "data": {
+                "selectedBranch": {"lastCommit": _HEAD_SHA},
+                "lastAnalysedCommit": {"sha": last_analysed_sha},
+                "issuesCount": issues_count,
+            }
+        },
+    )
+
+
 def test_wait_for_branch_analysis_uses_latest_branch_head(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
     """Verifies wait for branch analysis uses latest branch head behavior."""
     module = _load_module()
     payloads = [
-        (
-            200,
-            {
-                "data": {
-                    "selectedBranch": {
-                        "lastCommit": "0123456789abcdef0123456789abcdef01234567"
-                    },
-                    "lastAnalysedCommit": {
-                        "sha": "oldoldoldoldoldoldoldoldoldoldoldoldoldold"
-                    },
-                    "issuesCount": 12,
-                }
-            },
-        ),
-        (
-            200,
-            {
-                "data": {
-                    "selectedBranch": {
-                        "lastCommit": "0123456789abcdef0123456789abcdef01234567"
-                    },
-                    "lastAnalysedCommit": {
-                        "sha": "0123456789abcdef0123456789abcdef01234567"
-                    },
-                    "issuesCount": 0,
-                }
-            },
-        ),
+        _branch_analysis_payload(_OLD_SHA, 12),
+        _branch_analysis_payload(_HEAD_SHA, 0),
     ]
     sleeps: list[int] = []
 
@@ -202,13 +194,9 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(
     )
     monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
-    status, open_issues, findings = module._wait_for_branch_analysis(
-        _request(
-            module,
-            branch="main",
-            commit_sha="0123456789abcdef0123456789abcdef01234567",
-            poll_seconds=6,
-        )
+    wait_for_branch_analysis = getattr(module, "_wait_for_branch_analysis")
+    status, open_issues, findings = wait_for_branch_analysis(
+        _request(module, branch="main", commit_sha=_HEAD_SHA, poll_seconds=6)
     )
 
     assert status == "pass"

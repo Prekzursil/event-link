@@ -157,51 +157,37 @@ def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(
     assert result == {"users": 1, "emails": 0}
 
 
+def _seed_mixed_interaction_meta(db_session, user, event, now):
+    """Adds interaction rows with varied meta payloads for guardrail coverage."""
+    rows = [
+        ("impression", now, "not-a-dict"),
+        ("impression", now, {"source": "events_list"}),
+        ("impression", now, {"source": "other", "sort": "time"}),
+        ("click", now, {"source": "events_list", "sort": "unknown"}),
+        ("register", now + timedelta(hours=5), None),
+    ]
+    db_session.add_all(
+        [
+            interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind=kind,
+                occurred_at=occurred_at,
+                meta=meta,
+            )
+            for kind, occurred_at, meta in rows
+        ]
+    )
+    db_session.commit()
+
+
 def test_guardrails_low_volume_with_invalid_days_and_meta_variants(
     monkeypatch, db_session
 ):
     """Verifies guardrails low volume with invalid days and meta variants behavior."""
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-    db_session.add_all(
-        [
-            interaction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                kind="impression",
-                occurred_at=now,
-                meta="not-a-dict",
-            ),
-            interaction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                kind="impression",
-                occurred_at=now,
-                meta={"source": "events_list"},
-            ),
-            interaction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                kind="impression",
-                occurred_at=now,
-                meta={"source": "other", "sort": "time"},
-            ),
-            interaction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                kind="click",
-                occurred_at=now,
-                meta={"source": "events_list", "sort": "unknown"},
-            ),
-            interaction(
-                user_id=int(user.id),
-                event_id=int(event.id),
-                kind="register",
-                occurred_at=now + timedelta(hours=5),
-            ),
-        ]
-    )
-    db_session.commit()
+    _seed_mixed_interaction_meta(db_session, user, event, now)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_days", 7)
     result = task_queue._evaluate_personalization_guardrails(

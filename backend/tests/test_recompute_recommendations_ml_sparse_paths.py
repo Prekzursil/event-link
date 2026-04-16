@@ -139,59 +139,35 @@ def _refresh_sparse_interest_rows(
     return future_seen
 
 
+_SPARSE_INTERACTION_ROWS: tuple[tuple[str | None, str, object], ...] = (
+    (None, "search", {"tags": ["Python"], "category": "   ", "city": "   "}),
+    ("candidate", "impression", "bad-meta"),
+    ("candidate", "impression", {"position": "x"}),
+    ("candidate", "impression", {"position": 1}),
+    ("candidate", "impression", {"position": 2}),
+    ("candidate", "dwell", "bad-meta"),
+    ("candidate", "dwell", {"seconds": 0}),
+)
+
+
 def _add_sparse_interactions(
     db_session, *, student_id: int, candidate_id: int, positive_id: int
 ) -> None:
     """Adds sparse search and dwell rows that exercise the guarded training paths."""
-    db_session.add_all(
-        [
-            models.Registration(
-                user_id=student_id, event_id=positive_id, attended=True
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=None,
-                interaction_type="search",
-                meta={"tags": ["Python"], "category": "   ", "city": "   "},
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=candidate_id,
-                interaction_type="impression",
-                meta="bad-meta",
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=candidate_id,
-                interaction_type="impression",
-                meta={"position": "x"},
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=candidate_id,
-                interaction_type="impression",
-                meta={"position": 1},
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=candidate_id,
-                interaction_type="impression",
-                meta={"position": 2},
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=candidate_id,
-                interaction_type="dwell",
-                meta="bad-meta",
-            ),
-            models.EventInteraction(
-                user_id=student_id,
-                event_id=candidate_id,
-                interaction_type="dwell",
-                meta={"seconds": 0},
-            ),
-        ]
+    event_id_by_key = {"candidate": candidate_id, None: None}
+    rows: list[object] = [
+        models.Registration(user_id=student_id, event_id=positive_id, attended=True)
+    ]
+    rows.extend(
+        models.EventInteraction(
+            user_id=student_id,
+            event_id=event_id_by_key[key],
+            interaction_type=interaction_type,
+            meta=meta,
+        )
+        for key, interaction_type, meta in _SPARSE_INTERACTION_ROWS
     )
+    db_session.add_all(rows)
     db_session.commit()
 
 

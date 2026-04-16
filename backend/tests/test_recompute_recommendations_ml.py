@@ -247,13 +247,30 @@ def test_main_skip_training_returns_zero_when_loader_yields_empty_state(
     assert recommendations == []
 
 
-def test_main_training_paths_cover_no_examples_dry_run_and_write(
-    monkeypatch, db_session, capsys
-) -> None:
-    """Exercises main training paths cover no examples dry run and write."""
-    module = _load_script_module()
-    monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
+_RESET_TABLES = (
+    "UserRecommendation",
+    "RecommenderModel",
+    "EventInteraction",
+    "Registration",
+    "FavoriteEvent",
+    "UserImplicitInterestTag",
+    "UserImplicitInterestCategory",
+    "UserImplicitInterestCity",
+    "Event",
+    "Tag",
+    "User",
+)
 
+
+def _reset_training_tables(db_session) -> None:
+    """Deletes every row from the training tables so a follow-up run starts clean."""
+    for name in _RESET_TABLES:
+        db_session.query(getattr(models, name)).delete()
+    db_session.commit()
+
+
+def _seed_no_data_event(db_session) -> None:
+    """Seeds a single published event with no interactions so training finds no data."""
     organizer = _make_user(
         email="org-no-data@test.ro", role=models.UserRole.organizator
     )
@@ -272,33 +289,25 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(
     db_session.add_all([organizer, student, event])
     db_session.commit()
 
+
+def test_main_training_paths_cover_no_examples_dry_run_and_write(
+    monkeypatch, db_session, capsys
+) -> None:
+    """Exercises main training paths cover no examples dry run and write."""
+    module = _load_script_module()
+    monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
+
+    _seed_no_data_event(db_session)
     assert _run_main(module, monkeypatch, "--dry-run") == 0
     assert "No training data found" in capsys.readouterr().out
 
-    db_session.query(models.UserRecommendation).delete()
-    db_session.query(models.RecommenderModel).delete()
-    db_session.query(models.EventInteraction).delete()
-    db_session.query(models.Registration).delete()
-    db_session.query(models.FavoriteEvent).delete()
-    db_session.query(models.UserImplicitInterestTag).delete()
-    db_session.query(models.UserImplicitInterestCategory).delete()
-    db_session.query(models.UserImplicitInterestCity).delete()
-    db_session.query(models.Event).delete()
-    db_session.query(models.Tag).delete()
-    db_session.query(models.User).delete()
-    db_session.commit()
-
+    _reset_training_tables(db_session)
     student, event_candidate = _seed_training_rows(db_session)
 
     assert (
         _run_main(
-            module,
-            monkeypatch,
-            "--dry-run",
-            "--user-id",
-            str(student.id),
-            "--top-n",
-            "2",
+            module, monkeypatch, "--dry-run", "--user-id", str(student.id),
+            "--top-n", "2",
         )
         == 0
     )
