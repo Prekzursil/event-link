@@ -4759,7 +4759,7 @@ def _apply_admin_user_patch(
         changed = True
     payload_is_active = _is_active_value(payload)
     if payload_is_active is not None:
-        user.is_active = payload_is_active
+        setattr(user, "is_active", payload_is_active)  # noqa: B010
         changed = True
     return changed
 
