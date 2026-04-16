@@ -660,7 +660,9 @@ def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, h
 
 
 def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
-    """Interaction recording should enqueue a refresh job when realtime updates are enabled."""
+    """Interaction recording should enqueue a refresh job when realtime updates are
+    enabled.
+    """
     context = _seed_record_interactions_context(helpers, monkeypatch)
     response = context.client.post(
         "/api/analytics/interactions",

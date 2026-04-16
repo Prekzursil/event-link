@@ -124,7 +124,9 @@ def _safe_resolve_in_repo(path: pathlib.Path) -> str:
 
 
 def _inject(path: pathlib.Path) -> int:
-    """Adds JSDoc above each declaration in ``path`` that lacks one; returns count added."""
+    """Adds JSDoc above each declaration in ``path`` that lacks one; returns count
+    added.
+    """
     safe_str = _safe_resolve_in_repo(path)
     with open(safe_str, "r", encoding="utf-8") as handle:
         text = handle.read()

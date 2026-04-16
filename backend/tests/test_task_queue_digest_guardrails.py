@@ -237,7 +237,9 @@ def test_guardrails_returns_ok_for_balanced_metrics(monkeypatch, db_session):
 def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(
     monkeypatch, db_session
 ):
-    """Verifies guardrails reports no active model when recommended quality collapses behavior."""
+    """Verifies guardrails reports no active model when recommended quality collapses
+    behavior.
+    """
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -328,7 +330,9 @@ def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(
 def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(
     monkeypatch, db_session
 ):
-    """Verifies send filling fast alerts branch matrix defaults system language behavior."""
+    """Verifies send filling fast alerts branch matrix defaults system language
+    behavior.
+    """
     setup = seed_filling_fast_branch_matrix(db_session)
     enqueued = []
     langs = []

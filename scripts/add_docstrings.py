@@ -168,7 +168,9 @@ class _Injector(cst.CSTTransformer):
     def leave_Module(
         self, original_node: cst.Module, updated_node: cst.Module
     ) -> cst.Module:
-        """Inserts a module docstring as the very first top-level statement when missing."""
+        """Inserts a module docstring as the very first top-level statement when
+        missing.
+        """
         if self._module_doc is None:
             return updated_node
         stmts = list(updated_node.body)

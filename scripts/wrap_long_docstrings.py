@@ -13,7 +13,7 @@ import re
 import sys
 
 
-LINE_LIMIT = 95
+LINE_LIMIT = 88
 
 SKIP_TOKENS = (
     "/.venv",
@@ -70,7 +70,9 @@ _ALLOWED_ROOT = str(_REPO_ROOT)
 
 
 def _safe_resolve_in_repo(path: pathlib.Path) -> str:
-    """Normalizes ``path`` and returns a string path; raises for anything outside repo root."""
+    """Normalizes ``path`` and returns a string path; raises for anything outside repo
+    root.
+    """
     import os as _os
 
     absolute = _os.path.normpath(_os.path.abspath(str(path)))

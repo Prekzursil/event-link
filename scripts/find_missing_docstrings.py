@@ -37,7 +37,9 @@ def _missing(node) -> bool:
 
 
 def scan(root: pathlib.Path) -> tuple[dict, dict, dict]:
-    """Walks root and returns missing-class, missing-func and missing-module counts per file."""
+    """Walks root and returns missing-class, missing-func and missing-module counts per
+    file.
+    """
     classes: dict[str, int] = defaultdict(int)
     functions: dict[str, int] = defaultdict(int)
     modules: dict[str, int] = defaultdict(int)

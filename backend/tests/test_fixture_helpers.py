@@ -127,7 +127,9 @@ def test_build_test_helpers_return_access_tokens_on_success() -> None:
 
 
 def test_build_test_helpers_make_accounts_and_decode_binary_error_detail() -> None:
-    """Verifies build test helpers make accounts and decode binary error detail behavior."""
+    """Verifies build test helpers make accounts and decode binary error detail
+    behavior.
+    """
 
     class _BinaryResponse(_FakeResponse):
         """Binary Response value object used in the surrounding module."""

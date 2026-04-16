@@ -222,7 +222,9 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
 
 
 def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
-    """Verifies sync tool settings retries config mode when standard blocks disable behavior."""
+    """Verifies sync tool settings retries config mode when standard blocks disable
+    behavior.
+    """
     module = _load_module()
 
     tools_by_name = {
