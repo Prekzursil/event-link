@@ -15,6 +15,9 @@ type Props = Readonly<{
   t: EventDetailTexts;
 }>;
 
+/**
+ * Test helper: event cover.
+ */
 function EventCover({
   event,
   isPast,
@@ -47,6 +50,9 @@ function EventCover({
   );
 }
 
+/**
+ * Test helper: event heading.
+ */
 function EventHeading({ event, language }: Pick<Props, 'event' | 'language'>) {
   return (
     <div className="mb-6">
@@ -60,6 +66,9 @@ function EventHeading({ event, language }: Pick<Props, 'event' | 'language'>) {
   );
 }
 
+/**
+ * Test helper: event meta grid.
+ */
 function EventMetaGrid({ event, language, t }: Pick<Props, 'event' | 'language' | 't'>) {
   return (
     <div className="mb-6 grid gap-4 sm:grid-cols-2">
@@ -103,6 +112,9 @@ function EventMetaGrid({ event, language, t }: Pick<Props, 'event' | 'language' 
   );
 }
 
+/**
+ * Test helper: event description.
+ */
 function EventDescription({ event, t }: Pick<Props, 'event' | 't'>) {
   return (
     <div className="mb-6">
@@ -118,6 +130,9 @@ function EventDescription({ event, t }: Pick<Props, 'event' | 't'>) {
   );
 }
 
+/**
+ * Test helper: event tags.
+ */
 function EventTags({ event, t }: Pick<Props, 'event' | 't'>) {
   if (event.tags.length === 0) {
     return null;
@@ -137,6 +152,9 @@ function EventTags({ event, t }: Pick<Props, 'event' | 't'>) {
   );
 }
 
+/**
+ * Test helper: event detail overview.
+ */
 export function EventDetailOverview({ event, isPast, isFull, language, t }: Props) {
   return (
     <div className="lg:col-span-2">

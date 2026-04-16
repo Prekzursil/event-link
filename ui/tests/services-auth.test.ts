@@ -28,6 +28,9 @@ const PASSWORD_SEGMENT = 'pass' + 'word';
 const PASSWORD_FORGOT_PATH = `/${PASSWORD_SEGMENT}/forgot`;
 const PASSWORD_RESET_PATH = `/${PASSWORD_SEGMENT}/reset`;
 
+/**
+ * Test helper: reset service mocks.
+ */
 function resetServiceMocks() {
   vi.clearAllMocks();
   localStorage.clear();

@@ -114,6 +114,9 @@ vi.mock('@/components/events/EventCard', () => ({
   ),
 }));
 
+/**
+ * Test helper: get high impact page fixtures.
+ */
 export function getHighImpactPageFixtures() {
   return highImpactPageFixtures;
 }
@@ -135,6 +138,9 @@ const {
 
 export { makeEvent };
 
+/**
+ * Test helper: seed browser globals.
+ */
 function seedBrowserGlobals() {
   defineMutableValue(
     globalThis,
@@ -153,6 +159,9 @@ function seedBrowserGlobals() {
   defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://data'));
 }
 
+/**
+ * Test helper: seed auth defaults.
+ */
 function seedAuthDefaults() {
   authState.isAuthenticated = true;
   authState.isOrganizer = true;
@@ -161,6 +170,9 @@ function seedAuthDefaults() {
   authState.logout.mockResolvedValue();
 }
 
+/**
+ * Test helper: seed event list defaults.
+ */
 function seedEventListDefaults() {
   eventServiceMock.getEvents.mockResolvedValue({
     items: [makeEvent(1)],
@@ -174,6 +186,9 @@ function seedEventListDefaults() {
   eventServiceMock.removeFromFavorites.mockResolvedValue();
 }
 
+/**
+ * Test helper: seed profile defaults.
+ */
 function seedProfileDefaults() {
   eventServiceMock.getStudentProfile.mockResolvedValue(makeStudentProfile(11, { study_year: 4 }));
   eventServiceMock.getAllTags.mockResolvedValue([
@@ -211,6 +226,9 @@ function seedProfileDefaults() {
   eventServiceMock.deleteMyAccount.mockResolvedValue();
 }
 
+/**
+ * Test helper: seed organizer defaults.
+ */
 function seedOrganizerDefaults() {
   eventServiceMock.getOrganizerEvents.mockResolvedValue([makeEvent(3)]);
   eventServiceMock.bulkUpdateEventStatus.mockResolvedValue({ updated: 1 });
@@ -218,6 +236,9 @@ function seedOrganizerDefaults() {
   eventServiceMock.deleteEvent.mockResolvedValue();
 }
 
+/**
+ * Test helper: seed auth service defaults.
+ */
 function seedAuthServiceDefaults() {
   authServiceMock.updateThemePreference.mockResolvedValue();
   authServiceMock.updateLanguagePreference.mockResolvedValue();

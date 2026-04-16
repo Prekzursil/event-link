@@ -46,10 +46,16 @@ import {
 } from '@/components/ui/table';
 import { LoadingOverlay, LoadingPage, LoadingSpinner } from '@/components/ui/loading';
 
+/**
+ * Renders the with language scaffolding for tests.
+ */
 function renderWithLanguage(node: React.ReactElement) {
   return render(<LanguageProvider>{node}</LanguageProvider>);
 }
 
+/**
+ * Builds a event fixture.
+ */
 function makeEvent(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 101,

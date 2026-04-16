@@ -12,6 +12,9 @@ import { useI18n } from '@/contexts/LanguageContext';
 import { Calendar, CalendarPlus, Clock, History, Search, Plus, Megaphone } from 'lucide-react';
 
 /** Render the current user's saved, upcoming, past, and organizer-owned events. */
+/**
+ * Test helper: my events page.
+ */
 export function MyEventsPage() {
   const { isOrganizer } = useAuth();
   const { t } = useI18n();

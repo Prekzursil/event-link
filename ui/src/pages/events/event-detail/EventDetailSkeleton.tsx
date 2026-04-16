@@ -1,6 +1,9 @@
 import { Separator } from '@/components/ui/separator';
 import { Skeleton } from '@/components/ui/skeleton';
 
+/**
+ * Test helper: event detail skeleton.
+ */
 export function EventDetailSkeleton() {
   return (
     <div className="container mx-auto px-4 py-8">

@@ -51,6 +51,9 @@ vi.mock('@/components/ui/loading', () => ({
 import { FavoritesPage } from '@/pages/FavoritesPage';
 import { MyEventsPage } from '@/pages/MyEventsPage';
 
+/**
+ * Renders the with providers scaffolding for tests.
+ */
 function renderWithProviders(node: React.ReactNode, initialEntry = '/') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
@@ -63,6 +66,9 @@ function renderWithProviders(node: React.ReactNode, initialEntry = '/') {
   );
 }
 
+/**
+ * Builds a event fixture.
+ */
 function makeEvent(id: number, startOffsetDays: number) {
   const start = new Date();
   start.setDate(start.getDate() + startOffsetDays);

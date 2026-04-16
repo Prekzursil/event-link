@@ -29,6 +29,9 @@ type TagOptionCardProps = Readonly<{
 }>;
 
 /** Render a single selectable interest tag with keyboard and pointer support. */
+/**
+ * Test helper: tag option card.
+ */
 function TagOptionCard({ tag, isSelected, onToggle }: TagOptionCardProps) {
   return (
     <label
@@ -535,6 +538,9 @@ type ProfileActionsProps = Readonly<{
   onSave: () => void;
 }>;
 
+/**
+ * Test helper: profile actions.
+ */
 export function ProfileActions({ isExporting, isSaving, t, onExport, onSave }: ProfileActionsProps) {
   // skipcq: JS-0415 - the action row intentionally keeps all save and export button states in one block.
   return (

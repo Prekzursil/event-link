@@ -19,6 +19,9 @@ import { useI18n } from '@/contexts/LanguageContext';
 type ForgotPasswordTexts = ReturnType<typeof useI18n>['t']['auth']['forgotAccessCode'];
 
 /** Center auth-page cards inside the shared route shell. */
+/**
+ * Test helper: forgot password page shell.
+ */
 function ForgotPasswordPageShell({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">

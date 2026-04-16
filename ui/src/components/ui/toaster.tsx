@@ -8,6 +8,9 @@ import {
 } from "@/components/ui/toast"
 import { useToast } from "@/hooks/use-toast"
 
+/**
+ * Test helper: toaster.
+ */
 export function Toaster() {
   const { toasts } = useToast()
 

@@ -16,6 +16,9 @@ vi.mock('@/services/api', () => ({
 
 import { recordInteractions } from '@/services/analytics.service';
 
+/**
+ * Test helper: reset service mocks.
+ */
 function resetServiceMocks() {
   vi.clearAllMocks();
   localStorage.clear();

@@ -29,6 +29,9 @@ type PersonalizationSectionProps = Readonly<{
 }>;
 
 /** Render the list of hidden tags that can be restored to the student profile. */
+/**
+ * Test helper: hidden tags panel.
+ */
 function HiddenTagsPanel({
   hiddenTags,
   t,

@@ -41,6 +41,9 @@ type DerivedCollections = Readonly<{
 }>;
 
 /** Partition all profile tags into music interests and the remaining tags. */
+/**
+ * Test helper: group interest tags.
+ */
 function groupInterestTags(allTags: Tag[]): InterestTagGroups {
   return {
     musicTags: allTags.filter((tag) => MUSIC_INTEREST_NAMES.has(tag.name)),

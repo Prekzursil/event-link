@@ -35,6 +35,9 @@ import {
 type RouteProps = Readonly<{ children: ReactNode }>;
 
 // Protected route wrapper
+/**
+ * Test helper: protected route.
+ */
 function ProtectedRoute({ children }: RouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -50,6 +53,9 @@ function ProtectedRoute({ children }: RouteProps) {
 }
 
 // Organizer route wrapper
+/**
+ * Test helper: organizer route.
+ */
 function OrganizerRoute({ children }: RouteProps) {
   const { isAuthenticated, isOrganizer, isLoading } = useAuth();
 
@@ -69,6 +75,9 @@ function OrganizerRoute({ children }: RouteProps) {
 }
 
 // Admin route wrapper
+/**
+ * Test helper: admin route.
+ */
 function AdminRoute({ children }: RouteProps) {
   const { isAuthenticated, isAdmin, isLoading } = useAuth();
 
@@ -88,6 +97,9 @@ function AdminRoute({ children }: RouteProps) {
 }
 
 // Guest only route (login/register)
+/**
+ * Test helper: guest route.
+ */
 function GuestRoute({ children }: RouteProps) {
   const { isAuthenticated, isLoading } = useAuth();
 
@@ -103,6 +115,9 @@ function GuestRoute({ children }: RouteProps) {
 }
 
 /** Render the routed application screens. */
+/**
+ * Test helper: app routes.
+ */
 function AppRoutes() {
   return (
     <Routes>

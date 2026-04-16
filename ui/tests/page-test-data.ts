@@ -1,7 +1,13 @@
+/**
+ * Test helper: hours from now.
+ */
 function hoursFromNow(hours: number) {
   return new Date(Date.now() + hours * 3_600_000).toISOString();
 }
 
+/**
+ * Builds a event fixture.
+ */
 export function makeEvent(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -23,6 +29,9 @@ export function makeEvent(id: number, overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * Builds a event detail fixture.
+ */
 export function makeEventDetail(id: number, overrides: Record<string, unknown> = {}) {
   return makeEvent(id, {
     location: 'Main hall',
@@ -40,6 +49,9 @@ export function makeEventDetail(id: number, overrides: Record<string, unknown> =
   });
 }
 
+/**
+ * Builds a student profile fixture.
+ */
 export function makeStudentProfile(userId: number, overrides: Record<string, unknown> = {}) {
   return {
     user_id: userId,
@@ -55,6 +67,9 @@ export function makeStudentProfile(userId: number, overrides: Record<string, unk
   };
 }
 
+/**
+ * Builds a updated student profile fixture.
+ */
 export function makeUpdatedStudentProfile(userId: number, overrides: Record<string, unknown> = {}) {
   return makeStudentProfile(userId, {
     full_name: 'Student Name Updated',
@@ -63,6 +78,9 @@ export function makeUpdatedStudentProfile(userId: number, overrides: Record<stri
   });
 }
 
+/**
+ * Builds a personalization settings fixture.
+ */
 export function makePersonalizationSettings(overrides: Record<string, unknown> = {}) {
   return {
     hidden_tags: [{ id: 4, name: 'Hidden' }],
@@ -71,6 +89,9 @@ export function makePersonalizationSettings(overrides: Record<string, unknown> =
   };
 }
 
+/**
+ * Builds a notification preferences fixture.
+ */
 export function makeNotificationPreferences(overrides: Record<string, unknown> = {}) {
   return {
     email_digest_enabled: true,
@@ -79,10 +100,16 @@ export function makeNotificationPreferences(overrides: Record<string, unknown> =
   };
 }
 
+/**
+ * Builds a university catalog fixture.
+ */
 export function makeUniversityCatalog() {
   return [{ name: 'UTCN', city: 'Cluj', faculties: ['Automatica', 'Informatica'] }];
 }
 
+/**
+ * Builds a organizer event fixture.
+ */
 export function makeOrganizerEvent(id: number, overrides: Record<string, unknown> = {}) {
   return makeEvent(id, {
     description: 'desc',
@@ -95,6 +122,9 @@ export function makeOrganizerEvent(id: number, overrides: Record<string, unknown
   });
 }
 
+/**
+ * Builds a participant fixture.
+ */
 export function makeParticipant(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -106,6 +136,9 @@ export function makeParticipant(id: number, overrides: Record<string, unknown> =
   };
 }
 
+/**
+ * Builds a participants page fixture.
+ */
 export function makeParticipantsPage(eventId: number, overrides: Record<string, unknown> = {}) {
   return {
     event_id: eventId,
@@ -120,6 +153,9 @@ export function makeParticipantsPage(eventId: number, overrides: Record<string, 
   };
 }
 
+/**
+ * Builds a admin user fixture.
+ */
 export function makeAdminUser(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -136,6 +172,9 @@ export function makeAdminUser(id: number, overrides: Record<string, unknown> = {
   };
 }
 
+/**
+ * Builds a admin user page fixture.
+ */
 export function makeAdminUserPage(overrides: Record<string, unknown> = {}) {
   return {
     items: [makeAdminUser(1)],
@@ -146,6 +185,9 @@ export function makeAdminUserPage(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * Builds a admin event fixture.
+ */
 export function makeAdminEvent(id: number, overrides: Record<string, unknown> = {}) {
   return {
     id,
@@ -171,6 +213,9 @@ export function makeAdminEvent(id: number, overrides: Record<string, unknown> = 
   };
 }
 
+/**
+ * Builds a admin event page fixture.
+ */
 export function makeAdminEventPage(overrides: Record<string, unknown> = {}) {
   return {
     items: [makeAdminEvent(21), makeAdminEvent(22)],
@@ -181,6 +226,9 @@ export function makeAdminEventPage(overrides: Record<string, unknown> = {}) {
   };
 }
 
+/**
+ * Builds a admin stats fixture.
+ */
 export function makeAdminStats() {
   return {
     total_users: 3,
@@ -191,6 +239,9 @@ export function makeAdminStats() {
   };
 }
 
+/**
+ * Builds a personalization metrics fixture.
+ */
 export function makePersonalizationMetrics() {
   return {
     items: [

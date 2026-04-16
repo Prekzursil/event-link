@@ -17,6 +17,9 @@ interface ThemeContextType {
 const ThemeContext = createContext<ThemeContextType | null>(null);
 
 /** Provide the active theme preference and resolved theme to the app. */
+/**
+ * Test helper: theme provider.
+ */
 export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
   const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(getStoredThemePreference()));

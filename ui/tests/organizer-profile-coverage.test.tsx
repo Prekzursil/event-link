@@ -23,6 +23,9 @@ vi.mock('@/components/events/EventCard', () => ({
 
 import { OrganizerProfilePage } from '@/pages/organizer/OrganizerProfilePage';
 
+/**
+ * Builds a event fixture.
+ */
 function makeEvent(id: number, startOffsetHours: number) {
   return {
     id,
@@ -42,6 +45,9 @@ function makeEvent(id: number, startOffsetHours: number) {
   };
 }
 
+/**
+ * Builds a organizer profile fixture.
+ */
 function makeOrganizerProfile(overrides: Record<string, unknown> = {}) {
   return {
     id: 7,

@@ -22,6 +22,9 @@ type SaveHandlerArgs = ProfileSnapshotSetters & Readonly<{
 }>;
 
 /** Persist the edited student profile and project the saved snapshot back into form state. */
+/**
+ * Test helper: save student profile updates.
+ */
 async function saveStudentProfileUpdates(args: SaveHandlerArgs) {
   const {
     city,

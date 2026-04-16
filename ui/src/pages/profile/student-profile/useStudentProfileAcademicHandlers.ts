@@ -10,6 +10,9 @@ type AcademicHandlersArgs = ProfileSnapshotSetters & Readonly<{
 }>;
 
 /** Derive field-level profile handlers for academic and university inputs. */
+/**
+ * React hook: student profile academic handlers.
+ */
 export function useStudentProfileAcademicHandlers(args: AcademicHandlersArgs) {
   const {
     setCity,

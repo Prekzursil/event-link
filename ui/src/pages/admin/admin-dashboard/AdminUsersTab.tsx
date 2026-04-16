@@ -53,6 +53,9 @@ type UsersFiltersProps = Readonly<{
 }>;
 
 /** Render the email and optional full name for one admin user row. */
+/**
+ * Test helper: user identity cell.
+ */
 function UserIdentityCell({ user }: Readonly<{ user: UserRecord }>) {
   return (
     <TableCell>

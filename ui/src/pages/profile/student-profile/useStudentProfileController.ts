@@ -14,6 +14,9 @@ import { useStudentProfileSaveHandler } from './useStudentProfileSaveHandler';
 import { useStudentProfileState } from './useStudentProfileState';
 
 /** Coordinate student profile state, async mutations, and derived form options. */
+/**
+ * React hook: student profile controller.
+ */
 export function useStudentProfileController() {
   const { toast } = useToast();
   const { user, logout, refreshUser } = useAuth();

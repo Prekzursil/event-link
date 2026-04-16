@@ -89,10 +89,16 @@ vi.mock('@/components/events/EventCard', () => ({
 export const { EventsPage } = await import('@/pages/events/EventsPage');
 export const { EventFormPage } = await import('@/pages/organizer/EventFormPage');
 
+/**
+ * Test helper: get event pages fixtures.
+ */
 export function getEventPagesFixtures() {
   return eventPagesFixtures;
 }
 
+/**
+ * Returns the form value or fails loudly when absent.
+ */
 export function requireForm(buttonName: RegExp, screen: typeof import('@testing-library/react').screen) {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
@@ -101,6 +107,9 @@ export function requireForm(buttonName: RegExp, screen: typeof import('@testing-
   return form;
 }
 
+/**
+ * Builds a event fixture.
+ */
 export function makeEvent(id: number, title = `Event ${id}`) {
   return {
     id,

@@ -4,6 +4,9 @@ import { beforeEach, vi } from 'vitest';
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
 /** Creates the event-service mock used across event-detail tests. */
+/**
+ * Test helper: create event service mock.
+ */
 function createEventServiceMock() {
   return {
     getEvent: vi.fn(),

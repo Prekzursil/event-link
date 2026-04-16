@@ -17,10 +17,16 @@ type FavoritesGridProps = Readonly<{
 }>;
 type FavoritesSectionProps = Readonly<{ favorites: FavoritesTranslations }>;
 
+/**
+ * Test helper: favorite ids.
+ */
 function favoriteIds(events: Event[]): Set<number> {
   return new Set(events.map((event) => event.id));
 }
 
+/**
+ * Test helper: favorites header.
+ */
 function FavoritesHeader({ favorites }: FavoritesSectionProps) {
   return (
     <div className="mb-8">
@@ -30,6 +36,9 @@ function FavoritesHeader({ favorites }: FavoritesSectionProps) {
   );
 }
 
+/**
+ * Test helper: favorites empty state.
+ */
 function FavoritesEmptyState({ favorites }: FavoritesSectionProps) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
@@ -46,6 +55,9 @@ function FavoritesEmptyState({ favorites }: FavoritesSectionProps) {
   );
 }
 
+/**
+ * Test helper: favorites grid.
+ */
 function FavoritesGrid({ events, favorites, onFavoriteToggle }: FavoritesGridProps) {
   return (
     <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -61,6 +73,9 @@ function FavoritesGrid({ events, favorites, onFavoriteToggle }: FavoritesGridPro
   );
 }
 
+/**
+ * Test helper: favorites page.
+ */
 export function FavoritesPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());

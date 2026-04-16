@@ -50,6 +50,9 @@ export const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 };
 
 /** Copy a nullable text field into a controlled string input setter. */
+/**
+ * Test helper: apply text snapshot.
+ */
 function applyTextSnapshot(setter: Dispatch<SetStateAction<string>>, value: string | null | undefined) {
   setter(value ?? '');
 }

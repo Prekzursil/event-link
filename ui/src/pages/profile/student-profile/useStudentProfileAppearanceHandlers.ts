@@ -20,6 +20,9 @@ type AppearanceHandlerArgs = Readonly<{
 }>;
 
 /** Persist language and theme preference changes with optimistic UI updates. */
+/**
+ * React hook: student profile appearance handlers.
+ */
 export function useStudentProfileAppearanceHandlers({
   languagePreference,
   refreshUser,

@@ -50,6 +50,9 @@ import { LoginPage } from '@/pages/auth/LoginPage';
 import { RegisterPage } from '@/pages/auth/RegisterPage';
 import { ResetPasswordPage } from '@/pages/auth/ResetPasswordPage';
 
+/**
+ * Renders the with providers scaffolding for tests.
+ */
 function renderWithProviders(node: React.ReactNode, initialEntry = '/') {
   return render(
     <MemoryRouter initialEntries={[initialEntry]}>
@@ -62,6 +65,9 @@ function renderWithProviders(node: React.ReactNode, initialEntry = '/') {
   );
 }
 
+/**
+ * Returns the form value or fails loudly when absent.
+ */
 function requireForm(buttonName: RegExp): HTMLFormElement {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
@@ -70,11 +76,17 @@ function requireForm(buttonName: RegExp): HTMLFormElement {
   return form;
 }
 
+/**
+ * Renders the register page scaffolding for tests.
+ */
 function renderRegisterPage() {
   cleanup();
   renderWithProviders(<RegisterPage />, '/register');
 }
 
+/**
+ * Test helper: populate register form.
+ */
 function populateRegisterForm(
   password: string,
   confirmPassword: string,

@@ -9,6 +9,9 @@ import type {
 } from '@/types';
 
 /** Own the raw editable state that backs the student profile screen. */
+/**
+ * React hook: student profile state.
+ */
 export function useStudentProfileState() {
   const [isLoading, setIsLoading] = useState(true);
   const [allTags, setAllTags] = useState<Tag[]>([]);

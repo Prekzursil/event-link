@@ -6,6 +6,9 @@ export type ResolvedLanguage = 'ro' | 'en';
 const LANGUAGE_PREFERENCE_STORAGE_KEY = ['language', 'preference'].join('_');
 
 /** Normalize arbitrary input into a supported language preference value. */
+/**
+ * Test helper: normalize language preference.
+ */
 export function normalizeLanguagePreference(value: unknown): LanguagePreference {
   if (value === 'ro' || value === 'en' || value === 'system') return value;
   return 'system';

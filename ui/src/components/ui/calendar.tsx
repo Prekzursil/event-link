@@ -12,11 +12,17 @@ type CalendarChevronProps = Readonly<{
   orientation?: "right" | "left" | "up" | "down"
 }>
 
+/**
+ * Test helper: calendar chevron.
+ */
 function CalendarChevron({ className, orientation = "right" }: CalendarChevronProps) {
   const Icon = orientation === "left" ? ChevronLeft : ChevronRight
   return <Icon className={cn("h-4 w-4", className)} />
 }
 
+/**
+ * Test helper: calendar.
+ */
 function Calendar({
   className,
   classNames,

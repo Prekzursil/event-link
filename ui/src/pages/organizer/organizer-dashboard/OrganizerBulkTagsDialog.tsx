@@ -27,6 +27,9 @@ type Props = Readonly<{
 }>;
 
 /** Render the input row used to add tags inside the bulk-tag dialog. */
+/**
+ * Test helper: bulk tags input row.
+ */
 function BulkTagsInputRow({
   inputValue,
   onAddTag,
@@ -80,6 +83,9 @@ function BulkTagsBadgeList({
   );
 }
 
+/**
+ * Test helper: organizer bulk tags dialog.
+ */
 export function OrganizerBulkTagsDialog({
   cancelText,
   inputValue,

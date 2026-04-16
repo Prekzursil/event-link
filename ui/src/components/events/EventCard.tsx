@@ -19,6 +19,9 @@ export type EventCardProps = Readonly<{
 }>;
 
 /** Render one event summary card with optional favorite and organizer controls. */
+/**
+ * Test helper: event card.
+ */
 export function EventCard({
   event,
   onFavoriteToggle,

@@ -229,6 +229,9 @@ function handleRecommendationClick(eventId: number) {
 
 /** Render the events discovery page with filter, recommendation, and pagination controls. */
 // skipcq: JS-R1005 - this page intentionally co-locates filter, paging, recommendation, and analytics state.
+/**
+ * Test helper: events page.
+ */
 export function EventsPage() {
   const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);

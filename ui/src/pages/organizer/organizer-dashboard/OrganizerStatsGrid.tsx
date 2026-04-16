@@ -10,6 +10,9 @@ type Props = Readonly<{
   upcomingEvents: number;
 }>;
 
+/**
+ * Test helper: organizer stats grid.
+ */
 export function OrganizerStatsGrid({
   draftEvents,
   texts,

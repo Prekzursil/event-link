@@ -4,6 +4,9 @@ import { beforeEach, vi } from 'vitest';
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
 /** Build the shared event-service mock used by the mega-page smoke tests. */
+/**
+ * Test helper: create mega pages event service mock.
+ */
 function createMegaPagesEventServiceMock() {
   return {
     getEvents: vi.fn(),
@@ -140,10 +143,16 @@ export const { OrganizerProfilePage } = await import('@/pages/organizer/Organize
 export const { AdminDashboardPage } = await import('@/pages/admin/AdminDashboardPage');
 export const { StudentProfilePage } = await import('@/pages/profile/StudentProfilePage');
 
+/**
+ * Test helper: get mega pages smoke fixtures.
+ */
 export const getMegaPagesSmokeFixtures = () => {
   return megaPagesSmokeFixtures;
 };
 
+/**
+ * Builds a event fixture.
+ */
 export const makeEvent = (id: number, startOffsetDays: number) => {
   const start = new Date();
   start.setDate(start.getDate() + startOffsetDays);
@@ -167,6 +176,9 @@ export const makeEvent = (id: number, startOffsetDays: number) => {
   };
 };
 
+/**
+ * Builds a event detail fixture.
+ */
 export const makeEventDetail = (id: number) => {
   return {
     ...makeEvent(id, 2),

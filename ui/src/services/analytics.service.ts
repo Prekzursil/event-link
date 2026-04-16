@@ -19,6 +19,9 @@ export interface InteractionEventIn {
   meta?: Record<string, unknown>;
 }
 
+/**
+ * Test helper: record interactions.
+ */
 export async function recordInteractions(events: InteractionEventIn[]): Promise<void> {
   if (!events.length) return;
   try {

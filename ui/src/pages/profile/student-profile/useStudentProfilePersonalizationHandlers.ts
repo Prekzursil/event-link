@@ -13,6 +13,9 @@ type PersonalizationHandlerArgs = Readonly<{
 }>;
 
 /** Persist notification and personalization changes exposed in the profile page. */
+/**
+ * React hook: student profile personalization handlers.
+ */
 export function useStudentProfilePersonalizationHandlers({
   currentNotificationPreferences,
   currentPersonalization,

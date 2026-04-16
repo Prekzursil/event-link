@@ -5,6 +5,9 @@ import { SearchX, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/contexts/LanguageContext';
 
 /** Render the back-to-events call to action for the not-found page. */
+/**
+ * Test helper: not found back button.
+ */
 function NotFoundBackButton({ label }: Readonly<{ label: string }>) {
   return (
     <Button asChild>

@@ -9,6 +9,9 @@ const { authState, eventServiceMock } = getHighImpactPageFixtures();
 const { useStudentProfileController } = await import('@/pages/profile/student-profile/useStudentProfileController');
 
 /** Capture the loaded student-profile controller so guard methods can be exercised directly. */
+/**
+ * Test helper: controller harness.
+ */
 function ControllerHarness({
   onReady,
 }: Readonly<{ onReady: (controller: ReturnType<typeof useStudentProfileController>) => void }>) {

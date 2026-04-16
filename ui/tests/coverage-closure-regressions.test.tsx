@@ -72,6 +72,9 @@ const ADMIN_EVENTS_BASE_TIME = Date.parse('2030-01-01T00:00:00Z');
 const FLAGGED_EVENT_START_TIME = new Date(ADMIN_EVENTS_BASE_TIME + 3_600_000).toISOString();
 const CLEAN_EVENT_START_TIME = new Date(ADMIN_EVENTS_BASE_TIME + 7_200_000).toISOString();
 
+/**
+ * Builds a event detail fixture.
+ */
 function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDetail {
   return {
     id: 1,
@@ -98,6 +101,9 @@ function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDetail {
   };
 }
 
+/**
+ * Test helper: event detail overview harness.
+ */
 function EventDetailOverviewHarness({ event }: Readonly<{ event: EventDetail }>) {
   const { language, t } = useI18n();
   return (
@@ -111,6 +117,9 @@ function EventDetailOverviewHarness({ event }: Readonly<{ event: EventDetail }>)
   );
 }
 
+/**
+ * Test helper: event detail controller harness.
+ */
 function EventDetailControllerHarness() {
   const controller = useEventDetailController();
 
@@ -129,11 +138,17 @@ function EventDetailControllerHarness() {
   );
 }
 
+/**
+ * Test helper: event form controller harness.
+ */
 function EventFormControllerHarness() {
   const controller = useEventFormController();
   return <button onClick={controller.applySuggestion}>apply-suggestion</button>;
 }
 
+/**
+ * Test helper: admin users tab harness.
+ */
 function AdminUsersTabHarness({ loadUsers }: Readonly<{ loadUsers: ReturnType<typeof vi.fn> }>) {
   const { language, t } = useI18n();
   const controller = {
@@ -175,6 +190,9 @@ function AdminUsersTabHarness({ loadUsers }: Readonly<{ loadUsers: ReturnType<ty
   return <AdminUsersTab controller={controller} />;
 }
 
+/**
+ * Test helper: admin events tab harness.
+ */
 function AdminEventsTabHarness() {
   const { language, t } = useI18n();
   const controller = {

@@ -29,6 +29,9 @@ type PasswordRequirement = {
 type ResetStrings = ReturnType<typeof useI18n>['t']['auth']['resetAccessCode'];
 
 /** Center reset-password cards inside the shared auth page shell. */
+/**
+ * Test helper: reset password page shell.
+ */
 function ResetPasswordPageShell({ children }: Readonly<{ children: ReactNode }>) {
   return (
     <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">

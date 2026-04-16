@@ -106,6 +106,9 @@ type ParticipantsPaginationProps = Readonly<{
 }>;
 
 /** Generate a bounded list of placeholder-row keys for the loading skeleton. */
+/**
+ * Test helper: skeleton keys.
+ */
 function skeletonKeys(pageSize: number) {
   return Array.from({ length: Math.min(pageSize, 10) }, (_, position) => `skeleton-${position + 1}`);
 }

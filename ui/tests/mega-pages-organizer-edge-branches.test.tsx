@@ -12,6 +12,9 @@ import {
 const { eventServiceMock, navigateSpy, toastSpy } = getMegaPageFixtures();
 
 /** Exercise organizer dashboard and participants callbacks that only occur on edge branches. */
+/**
+ * Test helper: cover organizer and participants callback edge branches.
+ */
 async function coverOrganizerAndParticipantsCallbackEdgeBranches() {
   renderLanguageRoute('/organizer', '/organizer', <OrganizerDashboardPage />);
   await waitFor(() => expect(eventServiceMock.getOrganizerEvents).toHaveBeenCalled());

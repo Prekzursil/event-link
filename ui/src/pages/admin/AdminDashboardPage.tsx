@@ -8,6 +8,9 @@ import { type AdminTab } from './admin-dashboard/shared';
 import { AdminUsersTab } from './admin-dashboard/AdminUsersTab';
 import { useAdminDashboardController } from './admin-dashboard/useAdminDashboardController';
 
+/**
+ * Test helper: admin dashboard page.
+ */
 export function AdminDashboardPage() {
   const controller = useAdminDashboardController();
 

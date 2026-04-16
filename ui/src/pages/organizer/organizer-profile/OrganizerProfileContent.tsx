@@ -65,6 +65,9 @@ type OrganizerEventsTabsProps = Readonly<{
 }>;
 
 /** Renders the shared back-to-events call to action. */
+/**
+ * Test helper: back to events button.
+ */
 function BackToEventsButton({ label, className }: BackToEventsButtonProps) {
   return (
     <Button variant="ghost" className={className} asChild>

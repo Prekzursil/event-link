@@ -4,6 +4,9 @@ export type AdminTab = 'overview' | 'users' | 'events';
 type ModerationLabels = { flagged: string; reviewed: string; clean: string };
 export type ModerationBadgeVariant = 'destructive' | 'secondary' | 'outline';
 
+/**
+ * Test helper: role badge variant.
+ */
 export function roleBadgeVariant(role: UserRole): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (role === 'admin') {
     return 'destructive';
@@ -14,6 +17,9 @@ export function roleBadgeVariant(role: UserRole): 'default' | 'secondary' | 'des
   return 'outline';
 }
 
+/**
+ * Test helper: get moderation presentation.
+ */
 export function getModerationPresentation(
   status: AdminEvent['moderation_status'],
   labels: ModerationLabels,

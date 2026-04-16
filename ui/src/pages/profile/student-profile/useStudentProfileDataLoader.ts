@@ -27,6 +27,9 @@ type DataLoaderArgs = ProfileSnapshotSetters & Readonly<{
 }>;
 
 /** Load the editable profile form state, tags, and optional student preferences. */
+/**
+ * React hook: student profile data loader.
+ */
 export function useStudentProfileDataLoader({
   isStudent,
   setAllTags,

@@ -19,6 +19,9 @@ import eventService from '@/services/event.service';
 const ACCESS_CODE_FIELD = 'pass' + 'word';
 const ACCOUNT_CONFIRMATION = ['Account', 'Removal', '123A'].join('');
 
+/**
+ * Test helper: reset service mocks.
+ */
 function resetServiceMocks() {
   vi.clearAllMocks();
   localStorage.clear();
