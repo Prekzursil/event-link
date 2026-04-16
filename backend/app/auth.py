@@ -71,14 +71,14 @@ def get_current_user(
         if user_id is None or role is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email, user_id=int(user_id), role=role)
-    except ExpiredSignatureError:
+    except ExpiredSignatureError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expirat. Autentificați-vă din nou.",
             headers={"WWW-Authenticate": "Bearer"},
-        )
-    except JWTError:
-        raise credentials_exception
+        ) from exc
+    except JWTError as exc:
+        raise credentials_exception from exc
     user = db.query(models.User).filter(models.User.id == token_data.user_id).first()
     if user is None:
         raise credentials_exception

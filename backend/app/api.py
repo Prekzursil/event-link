@@ -1466,10 +1466,14 @@ def refresh_token(payload: schemas.RefreshRequest):
             settings.secret_key,
             algorithms=[settings.algorithm],
         )
-    except auth.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Refresh token expirat.")
-    except auth.JWTError:
-        raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
+    except auth.ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=401, detail="Refresh token expirat."
+        ) from exc
+    except auth.JWTError as exc:
+        raise HTTPException(
+            status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL
+        ) from exc
 
     if decoded.get("type") != "refresh":
         raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
@@ -4505,7 +4509,7 @@ def admin_activate_personalization_model(
     db.query(models.RecommenderModel).update(
         {"is_active": False}, synchronize_session=False
     )
-    setattr(model, "is_active", True)
+    model.is_active = True
     db.add(model)
     db.commit()
 
@@ -4755,7 +4759,7 @@ def _apply_admin_user_patch(
         changed = True
     payload_is_active = _is_active_value(payload)
     if payload_is_active is not None:
-        setattr(user, "is_active", payload_is_active)
+        user.is_active = payload_is_active
         changed = True
     return changed
 
@@ -5317,8 +5321,10 @@ def health_check(db: DbSession):
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
-    except Exception:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail="Database unavailable"
+        ) from exc
 
 
 @app.get("/api/events/{event_id}/ics", responses=_responses(404))

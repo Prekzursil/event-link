@@ -71,7 +71,7 @@ def enqueue_job(
         existing = _find_existing_duplicate(db, job_type, dedupe_key)
         if existing is None:
             raise
-        setattr(existing, "_deduped", True)
+        existing._deduped = True  # pylint: disable=protected-access
         return existing
     db.refresh(job)
     log_event("job_enqueued", job_id=job.id, job_type=job.job_type)

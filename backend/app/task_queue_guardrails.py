@@ -233,8 +233,8 @@ def _rollback_guardrail_model(
     result: dict[str, Any],
 ) -> dict[str, Any]:
     """Implements the rollback guardrail model helper."""
-    setattr(active, "is_active", False)
-    setattr(previous, "is_active", True)
+    active.is_active = False
+    previous.is_active = True
     db.add_all([active, previous])
     db.commit()
     log_warning(

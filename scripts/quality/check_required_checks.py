@@ -294,7 +294,7 @@ def main() -> int:
     try:
         token, required, owner, repo, sha = _validated_runtime(args)
     except ValueError as exc:
-        raise SystemExit(str(exc))
+        raise SystemExit(str(exc)) from exc
 
     final_payload = _poll_required_contexts(
         owner=owner,
