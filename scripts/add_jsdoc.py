@@ -31,16 +31,25 @@ _CLASS_RE = (
     r"(?P<kw>export\s+(?:default\s+)?class|class)"
     r"\s+(?P<name>[A-Za-z_$][\w$]*)"
 )
-_ARROW_RE = (
+_EXPORTED_ARROW_RE = (
     r"^(?P<indent>[ \t]*)"
     r"(?P<kw>export\s+(?:const|let|var))"
     r"\s+(?P<name>[A-Za-z_$][\w$]*)\s*=\s*(?:async\s*)?\("
+)
+# Non-exported local arrow / handler pattern. Skipped when already preceded by
+# a JSDoc comment so we don't double-document inner closures.
+_LOCAL_ARROW_RE = (
+    r"^(?P<indent>[ \t]*)"
+    r"(?P<kw>const|let)"
+    r"\s+(?P<name>handle[A-Z][\w$]*|install[A-Z][\w$]*|"
+    r"seed[A-Z][\w$]*|render[A-Z][\w$]*|make[A-Z][\w$]*)\s*=\s*(?:async\s*)?\("
 )
 
 DECL_PATTERNS = [
     (re.compile(_FUNCTION_RE, re.MULTILINE), "function"),
     (re.compile(_CLASS_RE, re.MULTILINE), "class"),
-    (re.compile(_ARROW_RE, re.MULTILINE), "arrow"),
+    (re.compile(_EXPORTED_ARROW_RE, re.MULTILINE), "arrow"),
+    (re.compile(_LOCAL_ARROW_RE, re.MULTILINE), "arrow"),
 ]
 
 
