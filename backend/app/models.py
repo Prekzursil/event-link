@@ -1,5 +1,8 @@
 """SQLAlchemy models for the event-link backend."""
 
+# SQLAlchemy ORM classes are column declarations — no public methods needed.
+# pylint: disable=too-few-public-methods
+
 import enum
 from sqlalchemy import (
     Column,

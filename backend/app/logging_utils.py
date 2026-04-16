@@ -82,8 +82,12 @@ def configure_logging(level: int = logging.INFO) -> None:
         logging.getLogger(noisy).handlers.clear()
 
 
-class RequestIdMiddleware:
-    """Attach a request identifier to each HTTP request lifecycle."""
+class RequestIdMiddleware:  # pylint: disable=too-few-public-methods
+    """Attach a request identifier to each HTTP request lifecycle.
+
+    ASGI middleware interface has one callable method; no extra public
+    surface is intentional.
+    """
 
     def __init__(self, app):
         """Store the downstream ASGI application."""

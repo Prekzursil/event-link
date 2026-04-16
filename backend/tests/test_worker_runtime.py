@@ -1,5 +1,8 @@
 """Tests for the worker runtime behavior."""
 
+# Test fixture classes commonly have a single public method by design.
+# pylint: disable=too-few-public-methods
+
 from __future__ import annotations
 
 

@@ -1,5 +1,8 @@
 """Pydantic schemas for API requests and responses."""
 
+# Pydantic model classes are data-only — they do not need 2+ public methods.
+# pylint: disable=too-few-public-methods
+
 from datetime import date, datetime
 from typing import Any, List, Optional, Literal
 from pydantic import (
