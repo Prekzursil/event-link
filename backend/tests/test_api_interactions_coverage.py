@@ -2,12 +2,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
-from datetime import timedelta
-
 from app import api, auth, models
+import app.task_queue as task_queue_module
 
 
 def _configure_record_interactions_settings(monkeypatch) -> None:
@@ -63,6 +62,19 @@ def _record_interactions_payload(event_id: int) -> dict:
     }
 
 
+def _install_enqueue_capture(monkeypatch) -> list[tuple[str, dict, str | None]]:
+    """Replaces ``enqueue_job`` with a spy that records the (type, payload, dedupe)."""
+    captured_jobs: list[tuple[str, dict, str | None]] = []
+
+    def _capture(_db, job_type, payload, dedupe_key=None):
+        """Records the call and returns a deterministic queued response."""
+        captured_jobs.append((job_type, payload, dedupe_key))
+        return SimpleNamespace(id=77, job_type=job_type, status="queued")
+
+    monkeypatch.setattr(task_queue_module, "enqueue_job", _capture)
+    return captured_jobs
+
+
 def _seed_implicit_interest_rows(db, student_id: int, visible_tag_id: int) -> None:
     """Seeds implicit-interest tag/category/city rows for a student."""
     now_naive = datetime.now(timezone.utc).replace(tzinfo=None)
@@ -90,10 +102,23 @@ def _seed_implicit_interest_rows(db, student_id: int, visible_tag_id: int) -> No
     db.commit()
 
 
+def _build_interaction_fixture_event() -> models.Event:
+    """Returns the Tech/Bucuresti published-event fixture used by interaction tests."""
+    return models.Event(
+        title="Interaction Event",
+        description="desc",
+        category="Tech",
+        start_time=datetime.now(timezone.utc) + timedelta(days=2),
+        city="Bucuresti",
+        location="Hall",
+        max_seats=20,
+        status="published",
+    )
+
+
 def _seed_record_interactions_context(helpers, monkeypatch):
     """Create an interaction-heavy fixture set for analytics helper coverage."""
-    client = helpers["client"]
-    db = helpers["db"]
+    client, db = helpers["client"], helpers["db"]
     student_token = helpers["register_student"]("interactions@test.ro")
     student = (
         db.query(models.User)
@@ -108,17 +133,8 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     )
     visible_tag = models.Tag(name="analytics-visible")
     hidden_tag = models.Tag(name="analytics-hidden")
-    event = models.Event(
-        title="Interaction Event",
-        description="desc",
-        category="Tech",
-        start_time=datetime.now(timezone.utc) + timedelta(days=2),
-        city="Bucuresti",
-        location="Hall",
-        max_seats=20,
-        owner=organizer,
-        status="published",
-    )
+    event = _build_interaction_fixture_event()
+    event.owner = organizer
     event.tags.extend([visible_tag, hidden_tag])
     db.add_all([organizer, visible_tag, hidden_tag, event])
     db.commit()
@@ -129,23 +145,10 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     )
     _seed_implicit_interest_rows(db, int(student.id), int(visible_tag.id))
     _configure_record_interactions_settings(monkeypatch)
-    captured_jobs: list[tuple[str, dict, str | None]] = []
-    import app.task_queue as tq
-
-    def _capture_enqueue_job(_db, job_type, payload, dedupe_key=None):
-        """Capture queued jobs while returning a deterministic queued response."""
-        captured_jobs.append((job_type, payload, dedupe_key))
-        return SimpleNamespace(id=77, job_type=job_type, status="queued")
-
-    monkeypatch.setattr(tq, "enqueue_job", _capture_enqueue_job)
+    captured_jobs = _install_enqueue_capture(monkeypatch)
     return SimpleNamespace(
-        client=client,
-        db=db,
-        student=student,
-        student_token=student_token,
-        visible_tag=visible_tag,
-        hidden_tag=hidden_tag,
-        event=event,
+        client=client, db=db, student=student, student_token=student_token,
+        visible_tag=visible_tag, hidden_tag=hidden_tag, event=event,
         payload=_record_interactions_payload(int(event.id)),
         captured_jobs=captured_jobs,
     )
