@@ -163,6 +163,7 @@ def send_email_now(
     )
 
 
+# pylint: disable-next=too-many-positional-arguments
 def send_email_async(
     background_tasks: BackgroundTasks | None,
     db: Session | None,

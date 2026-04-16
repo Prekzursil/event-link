@@ -25,7 +25,7 @@ export default function runEventsLoadtest() {
 
   const rec = http.get(`${BASE_URL}/api/events/recommended?page=1&page_size=5`, {
     headers: {
-      Authorization: env.K6_TOKEN ? `Bearer ${env.K6_TOKEN}` : '',
+      Authorization: env.K6_TOKEN ? `Bearer ${env.K6_TOKEN}` : ''
     }
   });
   check(rec, {
