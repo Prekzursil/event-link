@@ -1,6 +1,9 @@
 import { useCallback, useState, type SetStateAction } from 'react';
 
 /** Manage delete-account dialog visibility and clear the access code when it closes. */
+/**
+ * React hook: delete dialog state.
+ */
 export function useDeleteDialogState() {
   const [deleteDialogOpen, setDeleteDialogOpen] = useState<boolean>(false);
   const [deletePassword, setDeletePassword] = useState('');

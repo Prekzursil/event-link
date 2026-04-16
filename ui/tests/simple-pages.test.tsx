@@ -7,6 +7,9 @@ import { LanguageProvider } from '@/contexts/LanguageContext';
 import { ForbiddenPage } from '@/pages/ForbiddenPage';
 import { NotFoundPage } from '@/pages/NotFoundPage';
 
+/**
+ * Renders the with providers scaffolding for tests.
+ */
 function renderWithProviders(node: React.ReactNode) {
   return render(
     <MemoryRouter>

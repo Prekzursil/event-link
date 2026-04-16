@@ -28,12 +28,8 @@ def upgrade() -> None:
             nullable=False,
             server_default="queued",
         ),
-        sa.Column(
-            "attempts", sa.Integer(), nullable=False, server_default="0"
-        ),
-        sa.Column(
-            "max_attempts", sa.Integer(), nullable=False, server_default="3"
-        ),
+        sa.Column("attempts", sa.Integer(), nullable=False, server_default="0"),
+        sa.Column("max_attempts", sa.Integer(), nullable=False, server_default="3"),
         sa.Column(
             "run_at",
             sa.TIMESTAMP(timezone=True),
@@ -80,9 +76,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert the background-jobs migration."""
-    op.drop_index(
-        "ix_background_jobs_status_run_at", table_name="background_jobs"
-    )
+    op.drop_index("ix_background_jobs_status_run_at", table_name="background_jobs")
     op.drop_index("ix_background_jobs_run_at", table_name="background_jobs")
     op.drop_index("ix_background_jobs_status", table_name="background_jobs")
     op.drop_index("ix_background_jobs_job_type", table_name="background_jobs")

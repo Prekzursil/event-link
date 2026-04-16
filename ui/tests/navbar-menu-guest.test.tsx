@@ -7,7 +7,7 @@ import {
   renderNavbar,
 } from './navbar-smoke.helpers';
 
-it('renders the guest navbar and opens the mobile menu', async () => {
+it('renders the guest navbar and opens the mobile menu', () => {
   renderNavbar();
 
   expect(screen.getByText(/EventLink/i)).toBeInTheDocument();

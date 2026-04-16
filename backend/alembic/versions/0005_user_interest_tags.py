@@ -26,9 +26,7 @@ def upgrade():
             sa.ForeignKey("users.id"),
             primary_key=True,
         ),
-        sa.Column(
-            "tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True
-        ),
+        sa.Column("tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True),
     )
 
 

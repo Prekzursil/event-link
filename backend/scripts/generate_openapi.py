@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Command-line helper: generate openapi."""
+
 import json
 import os
 import sys
@@ -6,6 +8,7 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Implements the main helper."""
     repo_root = Path(__file__).resolve().parents[2]
     backend_root = Path(__file__).resolve().parents[1]
 
@@ -20,7 +23,10 @@ def main() -> int:
     schema = app.openapi()
     out_path = repo_root / "contracts" / "openapi.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    out_path.write_text(json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8")
+    out_path.write_text(
+        json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
+    )
     print(f"Wrote {out_path.relative_to(repo_root)}")
     return 0
 

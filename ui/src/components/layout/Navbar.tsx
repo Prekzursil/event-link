@@ -38,6 +38,9 @@ import type { LanguagePreference, ThemePreference } from '@/types';
 type NavTexts = ReturnType<typeof useI18n>['t']['nav'];
 
 /** Render the avatar button that opens the authenticated desktop user menu. */
+/**
+ * Test helper: navbar user avatar button.
+ */
 function NavbarUserAvatarButton({ initials }: Readonly<{ initials: string }>) {
   return (
     <Button variant="ghost" className="relative h-9 w-9 rounded-full">

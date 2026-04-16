@@ -1,4 +1,5 @@
 """Focused sparse-path coverage for recommendation recomputation training."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -59,7 +60,9 @@ def _install_session_local(monkeypatch, db_session) -> None:
     monkeypatch.setattr(database_module, "SessionLocal", _session_local)
 
 
-def _install_sparse_query_interceptor(monkeypatch, db_session, student_id: int, future_seen: datetime) -> None:
+def _install_sparse_query_interceptor(
+    monkeypatch, db_session, student_id: int, future_seen: datetime
+) -> None:
     """Intercepts the implicit-tag query to inject the sparse-path fixture row."""
     real_query = db_session.query
 
@@ -101,20 +104,33 @@ def _seed_sparse_positive_rows(db_session, *, now: datetime):
     return student, candidate, no_category_positive
 
 
-def _refresh_sparse_interest_rows(db_session, *, student_id: int, now: datetime) -> datetime:
+def _refresh_sparse_interest_rows(
+    db_session, *, student_id: int, now: datetime
+) -> datetime:
     """Refreshes the implicit-interest rows so the non-decayed branch is exercised."""
-    python_tag = db_session.query(models.Tag).filter(models.Tag.name == "Python").first()
+    python_tag = (
+        db_session.query(models.Tag).filter(models.Tag.name == "Python").first()
+    )
     assert python_tag is not None
     future_seen = now + timedelta(hours=2)
     rows = (
         db_session.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == student_id, models.UserImplicitInterestTag.tag_id == int(python_tag.id))
+        .filter(
+            models.UserImplicitInterestTag.user_id == student_id,
+            models.UserImplicitInterestTag.tag_id == int(python_tag.id),
+        )
         .first(),
         db_session.query(models.UserImplicitInterestCategory)
-        .filter(models.UserImplicitInterestCategory.user_id == student_id, models.UserImplicitInterestCategory.category == "Workshop")
+        .filter(
+            models.UserImplicitInterestCategory.user_id == student_id,
+            models.UserImplicitInterestCategory.category == "Workshop",
+        )
         .first(),
         db_session.query(models.UserImplicitInterestCity)
-        .filter(models.UserImplicitInterestCity.user_id == student_id, models.UserImplicitInterestCity.city == "Cluj")
+        .filter(
+            models.UserImplicitInterestCity.user_id == student_id,
+            models.UserImplicitInterestCity.city == "Cluj",
+        )
         .first(),
     )
     assert all(row is not None for row in rows)
@@ -123,32 +139,55 @@ def _refresh_sparse_interest_rows(db_session, *, student_id: int, now: datetime)
     return future_seen
 
 
-def _add_sparse_interactions(db_session, *, student_id: int, candidate_id: int, positive_id: int) -> None:
+_SPARSE_INTERACTION_ROWS: tuple[tuple[str | None, str, object], ...] = (
+    (None, "search", {"tags": ["Python"], "category": "   ", "city": "   "}),
+    ("candidate", "impression", "bad-meta"),
+    ("candidate", "impression", {"position": "x"}),
+    ("candidate", "impression", {"position": 1}),
+    ("candidate", "impression", {"position": 2}),
+    ("candidate", "dwell", "bad-meta"),
+    ("candidate", "dwell", {"seconds": 0}),
+)
+
+
+def _add_sparse_interactions(
+    db_session, *, student_id: int, candidate_id: int, positive_id: int
+) -> None:
     """Adds sparse search and dwell rows that exercise the guarded training paths."""
-    db_session.add_all(
-        [
-            models.Registration(user_id=student_id, event_id=positive_id, attended=True),
-            models.EventInteraction(user_id=student_id, event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "   ", "city": "   "}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta="bad-meta"),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": "x"}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 1}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 2}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta="bad-meta"),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta={"seconds": 0}),
-        ]
+    event_id_by_key = {"candidate": candidate_id, None: None}
+    rows: list[object] = [
+        models.Registration(user_id=student_id, event_id=positive_id, attended=True)
+    ]
+    rows.extend(
+        models.EventInteraction(
+            user_id=student_id,
+            event_id=event_id_by_key[key],
+            interaction_type=interaction_type,
+            meta=meta,
+        )
+        for key, interaction_type, meta in _SPARSE_INTERACTION_ROWS
     )
+    db_session.add_all(rows)
     db_session.commit()
 
 
-def test_main_training_covers_sparse_meta_and_nondecayed_paths(monkeypatch, db_session) -> None:
+def test_main_training_covers_sparse_meta_and_nondecayed_paths(
+    monkeypatch, db_session
+) -> None:
     """Exercises main training covers sparse meta and nondecayed paths."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
     _install_session_local(monkeypatch, db_session)
-    student, candidate, no_category_positive = _seed_sparse_positive_rows(db_session, now=now)
-    future_seen = _refresh_sparse_interest_rows(db_session, student_id=int(student.id), now=now)
-    _install_sparse_query_interceptor(monkeypatch, db_session, int(student.id), future_seen)
+    student, candidate, no_category_positive = _seed_sparse_positive_rows(
+        db_session, now=now
+    )
+    future_seen = _refresh_sparse_interest_rows(
+        db_session, student_id=int(student.id), now=now
+    )
+    _install_sparse_query_interceptor(
+        monkeypatch, db_session, int(student.id), future_seen
+    )
     _add_sparse_interactions(
         db_session,
         student_id=int(student.id),

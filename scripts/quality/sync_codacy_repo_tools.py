@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Support module: sync codacy repo tools."""
+
 from __future__ import annotations
 
 import argparse
@@ -48,15 +50,35 @@ DISABLED_PATTERNS_BY_TOOL = {
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Sync Codacy repository tool settings to the repo's intended analyzer profile.")
-    parser.add_argument("--provider", default="gh", help="Codacy provider slug, for example gh")
+    """Implements the parse args helper."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Sync Codacy repository tool settings to the repo's "
+            "intended analyzer profile."
+        )
+    )
+    parser.add_argument(
+        "--provider", default="gh", help="Codacy provider slug, for example gh"
+    )
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
     parser.add_argument("--commit", required=True, help="Commit SHA to reanalyze")
-    parser.add_argument("--token", default="", help="Codacy API token, defaults to CODACY_API_TOKEN")
-    parser.add_argument("--dry-run", action="store_true", help="Report changes without mutating Codacy")
-    parser.add_argument("--out-json", default="codacy-tool-sync/codacy-sync.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="codacy-tool-sync/codacy-sync.md", help="Output markdown path")
+    parser.add_argument(
+        "--token", default="", help="Codacy API token, defaults to CODACY_API_TOKEN"
+    )
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Report changes without mutating Codacy"
+    )
+    parser.add_argument(
+        "--out-json",
+        default="codacy-tool-sync/codacy-sync.json",
+        help="Output JSON path",
+    )
+    parser.add_argument(
+        "--out-md",
+        default="codacy-tool-sync/codacy-sync.md",
+        help="Output markdown path",
+    )
     return parser.parse_args()
 
 
@@ -67,8 +89,11 @@ def _request_codacy(
     token: str,
     body: dict[str, Any] | None = None,
 ) -> tuple[int, Any, str]:
+    """Implements the request codacy helper."""
     url = build_https_url(host=CODACY_HOST, path=path)
-    payload_bytes = b"" if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    payload_bytes = (
+        b"" if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    )
     headers = {
         "Accept": "application/json",
         "User-Agent": "event-link-codacy-tool-sync",
@@ -85,17 +110,29 @@ def _request_codacy(
         timeout=30,
         allowed_hosts={CODACY_HOST},
     )
-    raw_text = "" if parsed_payload is None else json.dumps(parsed_payload, sort_keys=True)
+    raw_text = (
+        "" if parsed_payload is None else json.dumps(parsed_payload, sort_keys=True)
+    )
     return status, parsed_payload, raw_text
 
 
-def _list_tools(*, provider: str, owner: str, repo: str, token: str) -> list[dict[str, Any]]:
+def _list_tools(
+    *, provider: str, owner: str, repo: str, token: str
+) -> list[dict[str, Any]]:
+    """Implements the list tools helper."""
     status, payload, raw = _request_codacy(
         method="GET",
-        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools",
+        path=(
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/tools"
+        ),
         token=token,
     )
-    if status != 200 or not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+    if (
+        status != 200
+        or not isinstance(payload, dict)
+        or not isinstance(payload.get("data"), list)
+    ):
         raise RuntimeError(f"Unable to list Codacy tools: HTTP {status} {raw[:400]}")
     return payload["data"]
 
@@ -109,14 +146,20 @@ def _configure_tool(
     tool_uuid: str,
     payload: dict[str, Any],
 ) -> None:
+    """Implements the configure tool helper."""
     status, _data, raw = _request_codacy(
         method="PATCH",
-        path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools/{tool_uuid}",
+        path=(
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/tools/{tool_uuid}"
+        ),
         token=token,
         body=payload,
     )
     if status != 204:
-        raise RuntimeError(f"Codacy tool patch failed for {tool_uuid}: HTTP {status} {raw[:400]}")
+        raise RuntimeError(
+            f"Codacy tool patch failed for {tool_uuid}: HTTP {status} {raw[:400]}"
+        )
 
 
 def _disable_pattern(
@@ -128,31 +171,46 @@ def _disable_pattern(
     tool_uuid: str,
     pattern_id: str,
 ) -> None:
+    """Implements the disable pattern helper."""
     status, _data, raw = _request_codacy(
         method="PATCH",
         path=(
-            f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools/{tool_uuid}/patterns"
-            f"?search={pattern_id}"
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/tools/{tool_uuid}/patterns?search={pattern_id}"
         ),
         token=token,
         body={"enabled": False},
     )
     if status != 204:
-        raise RuntimeError(f"Codacy pattern patch failed for {pattern_id} on {tool_uuid}: HTTP {status} {raw[:400]}")
+        raise RuntimeError(
+            f"Codacy pattern patch failed for {pattern_id} on {tool_uuid}: "
+            f"HTTP {status} {raw[:400]}"
+        )
 
 
-def _reanalyze_commit(*, provider: str, owner: str, repo: str, token: str, commit_sha: str) -> None:
+def _reanalyze_commit(
+    *, provider: str, owner: str, repo: str, token: str, commit_sha: str
+) -> None:
+    """Implements the reanalyze commit helper."""
     status, _data, raw = _request_codacy(
         method="POST",
-        path=f"api/v3/organizations/{provider}/{owner}/repositories/{repo}/reanalyzeCommit",
+        path=(
+            f"api/v3/organizations/{provider}/{owner}"
+            f"/repositories/{repo}/reanalyzeCommit"
+        ),
         token=token,
         body={"commitUuid": commit_sha, "cleanCache": True},
     )
     if status != 204:
-        raise RuntimeError(f"Codacy reanalyze failed for {commit_sha}: HTTP {status} {raw[:400]}")
+        raise RuntimeError(
+            f"Codacy reanalyze failed for {commit_sha}: HTTP {status} {raw[:400]}"
+        )
 
 
-def _planned_tool_payload(tool_name: str, settings: dict[str, Any]) -> tuple[dict[str, Any] | None, list[str]]:
+def _planned_tool_payload(
+    tool_name: str, settings: dict[str, Any]
+) -> tuple[dict[str, Any] | None, list[str]]:
+    """Implements the planned tool payload helper."""
     notes: list[str] = []
     payload: dict[str, Any] = {}
 
@@ -166,12 +224,16 @@ def _planned_tool_payload(tool_name: str, settings: dict[str, Any]) -> tuple[dic
         if has_config and not uses_config:
             payload["useConfigurationFile"] = True
         elif not has_config:
-            notes.append(f"{tool_name}: configuration file not detected by Codacy; skipping config-file mode request")
+            notes.append(
+                f"{tool_name}: configuration file not detected by Codacy; "
+                "skipping config-file mode request"
+            )
 
     return (payload or None), notes
 
 
 def _append_markdown_section(lines: list[str], title: str, items: list[str]) -> None:
+    """Implements the append markdown section helper."""
     lines.extend(["", f"## {title}"])
     if items:
         lines.extend(items)
@@ -180,22 +242,31 @@ def _append_markdown_section(lines: list[str], title: str, items: list[str]) -> 
 
 
 def _tool_uuid(tool_name: str, tool: dict[str, Any]) -> str:
+    """Implements the tool uuid helper."""
     return validate_slug(str(tool["uuid"]), field_name=f"{tool_name} uuid")
 
 
 def _tools_by_name(tools: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
-    return {str(tool["name"]): tool for tool in tools if isinstance(tool, dict) and tool.get("name")}
+    """Implements the tools by name helper."""
+    return {
+        str(tool["name"]): tool
+        for tool in tools
+        if isinstance(tool, dict) and tool.get("name")
+    }
 
 
 def _is_standard_managed_tool_conflict(message: str) -> bool:
+    """Implements the is standard managed tool conflict helper."""
     return "HTTP 409" in message and "enabled by a standard" in message
 
 
 def _is_reanalysis_forbidden(message: str) -> bool:
+    """Implements the is reanalysis forbidden helper."""
     return "HTTP 403" in message and "Operation is not authorized" in message
 
 
 def _config_only_payload(payload: dict[str, Any]) -> dict[str, Any] | None:
+    """Implements the config only payload helper."""
     if payload.get("useConfigurationFile") is True:
         return {"useConfigurationFile": True}
     return None
@@ -211,11 +282,18 @@ def _retry_standard_managed_tool_with_config_only(
     tool_uuid: str,
     payload: dict[str, Any],
 ) -> tuple[list[str], list[str]]:
+    """Implements the retry standard managed tool with config only helper."""
     config_payload = _config_only_payload(payload)
     if config_payload is None:
-        return [f"{tool_name}: managed by Codacy standard; skipping disable request"], []
+        return [
+            f"{tool_name}: managed by Codacy standard; skipping disable request"
+        ], []
 
-    notes = [f"{tool_name}: managed by Codacy standard; retrying config-file mode without disable request"]
+    note = (
+        f"{tool_name}: managed by Codacy standard; retrying config-file mode "
+        "without disable request"
+    )
+    notes = [note]
     try:
         _configure_tool(
             provider=provider,
@@ -240,6 +318,7 @@ def _apply_tool_configuration(
     tool_uuid: str,
     payload: dict[str, Any],
 ) -> tuple[list[str], list[str]]:
+    """Applies tool configuration to the target."""
     try:
         _configure_tool(
             provider=provider,
@@ -274,12 +353,15 @@ def _sync_tool_settings(
     tools_by_name: dict[str, dict[str, Any]],
     dry_run: bool,
 ) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Implements the sync tool settings helper."""
     notes: list[str] = []
     failures: list[str] = []
     tool_changes: list[dict[str, Any]] = []
 
     for tool_name, tool in sorted(tools_by_name.items()):
-        settings = tool.get("settings") if isinstance(tool.get("settings"), dict) else {}
+        settings = (
+            tool.get("settings") if isinstance(tool.get("settings"), dict) else {}
+        )
         payload, tool_notes = _planned_tool_payload(tool_name, settings)
         notes.extend(tool_notes)
         if payload is None:
@@ -312,6 +394,7 @@ def _sync_pattern_settings(
     tools_by_name: dict[str, dict[str, Any]],
     dry_run: bool,
 ) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    """Implements the sync pattern settings helper."""
     notes: list[str] = []
     failures: list[str] = []
     pattern_changes: list[dict[str, Any]] = []
@@ -350,14 +433,25 @@ def _trigger_reanalysis(
     commit_sha: str,
     dry_run: bool,
 ) -> tuple[list[str], list[str]]:
+    """Implements the trigger reanalysis helper."""
     if dry_run:
         return [], []
     try:
-        _reanalyze_commit(provider=provider, owner=owner, repo=repo, token=token, commit_sha=commit_sha)
+        _reanalyze_commit(
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            commit_sha=commit_sha,
+        )
     except Exception as exc:
         message = str(exc)
         if _is_reanalysis_forbidden(message):
-            return ["Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis"], []
+            not_authorized_note = (
+                "Codacy reanalysis not authorized for this token; "
+                "waiting for normal Codacy analysis"
+            )
+            return [not_authorized_note], []
         return [], [message]
     return [f"Triggered Codacy reanalysis for {commit_sha}"], []
 
@@ -370,6 +464,7 @@ def _build_payload(
     notes: list[str],
     failures: list[str],
 ) -> dict[str, Any]:
+    """Constructs a payload structure."""
     return {
         "status": "pass" if not failures else "fail",
         **context,
@@ -380,7 +475,10 @@ def _build_payload(
     }
 
 
-def _sync_context(*, provider: str, owner: str, repo: str, commit_sha: str, dry_run: bool) -> dict[str, Any]:
+def _sync_context(
+    *, provider: str, owner: str, repo: str, commit_sha: str, dry_run: bool
+) -> dict[str, Any]:
+    """Implements the sync context helper."""
     return {
         "provider": provider,
         "owner": owner,
@@ -402,6 +500,7 @@ def _apply_reanalysis_if_clean(
     notes: list[str],
     failures: list[str],
 ) -> None:
+    """Applies reanalysis if clean to the target."""
     if failures:
         return
     reanalysis_notes, reanalysis_failures = _trigger_reanalysis(
@@ -425,6 +524,7 @@ def _sync_changes(
     tools_by_name: dict[str, dict[str, Any]],
     dry_run: bool,
 ) -> tuple[list[dict[str, Any]], list[dict[str, Any]], list[str], list[str]]:
+    """Implements the sync changes helper."""
     tool_changes, notes, failures = _sync_tool_settings(
         provider=provider,
         owner=owner,
@@ -455,7 +555,10 @@ def _run_sync(
     commit_sha: str,
     dry_run: bool,
 ) -> dict[str, Any]:
-    tools_by_name = _tools_by_name(_list_tools(provider=provider, owner=owner, repo=repo, token=token))
+    """Runs the sync helper path."""
+    tools_by_name = _tools_by_name(
+        _list_tools(provider=provider, owner=owner, repo=repo, token=token)
+    )
     tool_changes, pattern_changes, notes, failures = _sync_changes(
         provider=provider,
         owner=owner,
@@ -474,7 +577,13 @@ def _run_sync(
         notes=notes,
         failures=failures,
     )
-    context = _sync_context(provider=provider, owner=owner, repo=repo, commit_sha=commit_sha, dry_run=dry_run)
+    context = _sync_context(
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        commit_sha=commit_sha,
+        dry_run=dry_run,
+    )
     return _build_payload(
         context=context,
         tool_changes=tool_changes,
@@ -485,6 +594,7 @@ def _run_sync(
 
 
 def _tool_change_lines(payload: dict[str, Any]) -> list[str]:
+    """Implements the tool change lines helper."""
     return [
         f"- `{item['tool']}` -> `{json.dumps(item['payload'], sort_keys=True)}`"
         for item in payload.get("tool_changes") or []
@@ -492,14 +602,20 @@ def _tool_change_lines(payload: dict[str, Any]) -> list[str]:
 
 
 def _pattern_change_lines(payload: dict[str, Any]) -> list[str]:
-    return [f"- `{item['tool']}` disable `{item['pattern_id']}`" for item in payload.get("pattern_changes") or []]
+    """Implements the pattern change lines helper."""
+    return [
+        f"- `{item['tool']}` disable `{item['pattern_id']}`"
+        for item in payload.get("pattern_changes") or []
+    ]
 
 
 def _prefixed_lines(items: list[str], prefix: str = "- ") -> list[str]:
+    """Implements the prefixed lines helper."""
     return [f"{prefix}{item}" for item in items]
 
 
 def _render_md(payload: dict[str, Any]) -> str:
+    """Implements the render md helper."""
     lines = [
         "# Codacy Tool Sync",
         "",
@@ -511,15 +627,22 @@ def _render_md(payload: dict[str, Any]) -> str:
     ]
     _append_markdown_section(lines, "Tool Changes", _tool_change_lines(payload))
     _append_markdown_section(lines, "Pattern Changes", _pattern_change_lines(payload))
-    _append_markdown_section(lines, "Notes", _prefixed_lines(list(payload.get("notes") or [])))
-    _append_markdown_section(lines, "Failures", _prefixed_lines(list(payload.get("failures") or [])))
+    _append_markdown_section(
+        lines, "Notes", _prefixed_lines(list(payload.get("notes") or []))
+    )
+    _append_markdown_section(
+        lines, "Failures", _prefixed_lines(list(payload.get("failures") or []))
+    )
     return "\n".join(lines) + "\n"
 
+
 def _resolve_token(cli_token: str) -> str:
+    """Implements the resolve token helper."""
     return (cli_token or os.environ.get("CODACY_API_TOKEN", "")).strip()
 
 
 def main() -> int:
+    """Implements the main helper."""
     args = _parse_args()
     token = _resolve_token(args.token)
     if not token:
@@ -545,8 +668,16 @@ def main() -> int:
         return 1
 
     try:
-        write_workspace_json(raw_path=args.out_json, fallback="codacy-tool-sync/codacy-sync.json", payload=payload)
-        md_path = write_workspace_text(raw_path=args.out_md, fallback="codacy-tool-sync/codacy-sync.md", text=_render_md(payload))
+        write_workspace_json(
+            raw_path=args.out_json,
+            fallback="codacy-tool-sync/codacy-sync.json",
+            payload=payload,
+        )
+        md_path = write_workspace_text(
+            raw_path=args.out_md,
+            fallback="codacy-tool-sync/codacy-sync.md",
+            text=_render_md(payload),
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

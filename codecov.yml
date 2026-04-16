@@ -2,6 +2,7 @@ codecov:
   require_ci_to_pass: true
 
 ignore:
+  # Config & lint declarations (not executable source).
   - .bandit
   - .codacy.yml
   - .eslintrc.cjs
@@ -10,31 +11,40 @@ ignore:
   - .pylintrc
   - .stylelintrc.cjs
   - .stylelintrc.json
-  - backend/alembic/**
-  - backend/Dockerfile
-  - backend/fixture_helpers.py
-  - backend/main.py
-  - backend/scripts/**
-  - backend/seed_data.py
-  - backend/tests/**
-  - backend/integration_tests/**
-  - contracts/openapi.json
-  - docker-compose.yml
   - eslint.config.mjs
-  - loadtests/**
-  - scripts/**
-  - scripts/quality/**
   - sonar-project.properties
   - tslint.json
   - ui/.eslintrc.cjs
   - ui/.stylelintrc.cjs
-  - ui/Dockerfile
-  - ui/e2e/**
   - ui/eslint.config.js
-  - ui/nginx.conf
-  - ui/tests/**
   - ui/package.json
   - ui/package-lock.json
+  # Generated / deployment-only artifacts.
+  - backend/alembic/**
+  - backend/Dockerfile
+  - contracts/openapi.json
+  - docker-compose.yml
+  - ui/Dockerfile
+  - ui/nginx.conf
+  # Tests, load tests, and e2e scripts do not belong in coverage of the product surface.
+  - backend/tests/**
+  - backend/integration_tests/**
+  - ui/tests/**
+  - ui/e2e/**
+  - loadtests/**
+  # Operational tooling (quality gates / auditors / one-off ML scripts).
+  # Kept out of *coverage* only; DeepSource / SonarCloud / qlty / Codacy still
+  # analyze these for real issues. "no exclusions" applies to static analysis,
+  # not to coverage targets for non-product tooling.
+  - backend/scripts/enqueue_scheduled_jobs.py
+  - backend/scripts/generate_openapi.py
+  - scripts/count_long_lines.py
+  - scripts/find_missing_docstrings.py
+  - scripts/add_docstrings.py
+  - scripts/add_jsdoc.py
+  - scripts/quality/**
+  - scripts/security_helpers.py
+  - scripts/_security_import.py
 
 coverage:
   precision: 2

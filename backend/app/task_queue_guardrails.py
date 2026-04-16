@@ -1,3 +1,5 @@
+"""Support module: task queue guardrails."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -9,10 +11,13 @@ from sqlalchemy.orm import Session
 from . import models
 from .config import settings
 from .logging_utils import log_event, log_warning
+from .task_queue_shared import _fetch_active_recommender_model
 
 
 @dataclass(frozen=True)
 class _GuardrailConfig:
+    """Guardrail Config value object used in the surrounding module."""
+
     days: int
     min_impressions: int
     ctr_drop_ratio: float
@@ -21,24 +26,34 @@ class _GuardrailConfig:
 
 
 def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
+    """Implements the guardrail config helper."""
     days = int(payload.get("days") or settings.personalization_guardrails_days)
     if days < 1 or days > 365:
         days = int(settings.personalization_guardrails_days)
     click_to_register_hours = int(
-        payload.get("click_to_register_window_hours") or settings.personalization_guardrails_click_to_register_window_hours
+        payload.get("click_to_register_window_hours")
+        or settings.personalization_guardrails_click_to_register_window_hours
     )
     return _GuardrailConfig(
         days=days,
-        min_impressions=int(payload.get("min_impressions") or settings.personalization_guardrails_min_impressions),
-        ctr_drop_ratio=float(payload.get("ctr_drop_ratio") or settings.personalization_guardrails_ctr_drop_ratio),
+        min_impressions=int(
+            payload.get("min_impressions")
+            or settings.personalization_guardrails_min_impressions
+        ),
+        ctr_drop_ratio=float(
+            payload.get("ctr_drop_ratio")
+            or settings.personalization_guardrails_ctr_drop_ratio
+        ),
         conversion_drop_ratio=float(
-            payload.get("conversion_drop_ratio") or settings.personalization_guardrails_conversion_drop_ratio
+            payload.get("conversion_drop_ratio")
+            or settings.personalization_guardrails_conversion_drop_ratio
         ),
         click_to_register_window=timedelta(hours=max(1, click_to_register_hours)),
     )
 
 
 def _meta_value(meta: object, key: str) -> str | None:
+    """Implements the meta value helper."""
     if isinstance(meta, dict):
         value = meta.get(key)
         return None if value is None else str(value)
@@ -46,10 +61,12 @@ def _meta_value(meta: object, key: str) -> str | None:
 
 
 def _guardrail_buckets() -> dict[str, int]:
+    """Implements the guardrail buckets helper."""
     return {"recommended": 0, "time": 0}
 
 
 def _load_impression_counts(*, db: Session, start: datetime) -> dict[str, int]:
+    """Loads the impression counts resource."""
     impressions = _guardrail_buckets()
     rows = (
         db.query(
@@ -77,6 +94,7 @@ def _load_click_counts(
     db: Session,
     start: datetime,
 ) -> tuple[dict[str, int], dict[tuple[int, int], tuple[str, datetime]]]:
+    """Loads the click counts resource."""
     clicks = _guardrail_buckets()
     click_by_user_event: dict[tuple[int, int], tuple[str, datetime]] = {}
     rows = (
@@ -112,6 +130,7 @@ def _load_conversion_counts(
     click_by_user_event: dict[tuple[int, int], tuple[str, datetime]],
     window: timedelta,
 ) -> dict[str, int]:
+    """Loads the conversion counts resource."""
     conversions = _guardrail_buckets()
     rows = (
         db.query(
@@ -136,6 +155,7 @@ def _load_conversion_counts(
 
 
 def _safe_ratio(num: int, den: int) -> float:
+    """Implements the safe ratio helper."""
     return float(num) / float(den) if den else 0.0
 
 
@@ -146,6 +166,7 @@ def _guardrail_result(
     clicks: dict[str, int],
     conversions: dict[str, int],
 ) -> dict[str, Any]:
+    """Implements the guardrail result helper."""
     ctr = {key: _safe_ratio(clicks[key], impressions[key]) for key in impressions}
     conversion = {key: _safe_ratio(conversions[key], clicks[key]) for key in clicks}
     return {
@@ -160,7 +181,11 @@ def _guardrail_result(
 
 
 def _is_low_volume(result: dict[str, Any], *, min_impressions: int) -> bool:
-    return result["impressions"]["recommended"] < min_impressions or result["impressions"]["time"] < min_impressions
+    """Implements the is low volume helper."""
+    return (
+        result["impressions"]["recommended"] < min_impressions
+        or result["impressions"]["time"] < min_impressions
+    )
 
 
 def _guardrail_threshold_status(
@@ -168,23 +193,25 @@ def _guardrail_threshold_status(
     *,
     config: _GuardrailConfig,
 ) -> tuple[bool, bool]:
+    """Implements the guardrail threshold status helper."""
     recommended_ctr = result["ctr"]["recommended"]
     time_ctr = result["ctr"]["time"]
     recommended_conv = result["conversion"]["recommended"]
     time_conv = result["conversion"]["time"]
-    ctr_ok = time_ctr == 0 or recommended_ctr >= time_ctr * (1.0 - config.ctr_drop_ratio)
-    conv_ok = time_conv == 0 or recommended_conv >= time_conv * (1.0 - config.conversion_drop_ratio)
+    ctr_ok = time_ctr == 0 or recommended_ctr >= time_ctr * (
+        1.0 - config.ctr_drop_ratio
+    )
+    conv_ok = time_conv == 0 or recommended_conv >= time_conv * (
+        1.0 - config.conversion_drop_ratio
+    )
     return ctr_ok, conv_ok
 
 
-def _active_and_previous_models(db: Session) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
-    is_active_attr = "is_active"
-    active = (
-        db.query(models.RecommenderModel)
-        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
-        .order_by(models.RecommenderModel.id.desc())
-        .first()
-    )
+def _active_and_previous_models(
+    db: Session,
+) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
+    """Implements the active and previous models helper."""
+    active = _fetch_active_recommender_model(db)
     if not active:
         return None, None
     previous = (
@@ -205,8 +232,9 @@ def _rollback_guardrail_model(
     recompute_job_type: str,
     result: dict[str, Any],
 ) -> dict[str, Any]:
-    setattr(active, "is_active", False)
-    setattr(previous, "is_active", True)
+    """Implements the rollback guardrail model helper."""
+    setattr(active, "is_active", False)  # noqa: B010 - avoids Semgrep is-method mix-up
+    setattr(previous, "is_active", True)  # noqa: B010
     db.add_all([active, previous])
     db.commit()
     log_warning(
@@ -218,7 +246,10 @@ def _rollback_guardrail_model(
     enqueue_job_fn(
         db,
         recompute_job_type,
-        {"top_n": int(settings.recommendations_realtime_refresh_top_n), "skip_training": True},
+        {
+            "top_n": int(settings.recommendations_realtime_refresh_top_n),
+            "skip_training": True,
+        },
         dedupe_key="global",
     )
     result["action"] = "rollback"
@@ -234,6 +265,7 @@ def evaluate_personalization_guardrails(
     enqueue_job_fn: Callable[..., Any],
     recompute_job_type: str,
 ) -> dict[str, Any]:
+    """Implements the evaluate personalization guardrails helper."""
     if not settings.personalization_guardrails_enabled:
         return {"enabled": False}
 
@@ -247,7 +279,9 @@ def evaluate_personalization_guardrails(
         click_by_user_event=click_by_user_event,
         window=config.click_to_register_window,
     )
-    result = _guardrail_result(config=config, impressions=impressions, clicks=clicks, conversions=conversions)
+    result = _guardrail_result(
+        config=config, impressions=impressions, clicks=clicks, conversions=conversions
+    )
 
     if _is_low_volume(result, min_impressions=config.min_impressions):
         log_event("personalization_guardrails_skip_low_volume", **result)
@@ -268,7 +302,11 @@ def evaluate_personalization_guardrails(
         result["action"] = "no_active_model"
         return result
     if not previous:
-        log_warning("personalization_guardrails_no_previous_model", active_model_version=active.model_version, **result)
+        log_warning(
+            "personalization_guardrails_no_previous_model",
+            active_model_version=active.model_version,
+            **result,
+        )
         result["action"] = "no_previous_model"
         return result
     return _rollback_guardrail_model(

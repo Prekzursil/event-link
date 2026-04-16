@@ -1,3 +1,5 @@
+"""Tests for the email templates service behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -9,7 +11,10 @@ from app import auth, email_service, email_templates, models
 
 
 class _FakeSmtpSuccess:
+    """Test double standing in for a real smtp success."""
+
     def __init__(self, host, port, timeout):
+        """Initializes the instance state."""
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -18,40 +23,53 @@ class _FakeSmtpSuccess:
         self.sent = False
 
     def __enter__(self):
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        """Leaves the context manager and releases any held state."""
         return False
 
     def starttls(self):
+        """Implements the starttls helper."""
         self.started_tls = True
 
     def login(self, username, password):
+        """Implements the login helper."""
         self.logged_in = True
         self.login_args = (username, password)
 
     def send_message(self, message):
+        """Implements the send message helper."""
         self.sent = True
         self.subject = message["Subject"]
 
 
 class _FakeSmtpFail:
+    """Test double standing in for a real smtp fail."""
+
     def __init__(self, *_args, **_kwargs):
-        # Intentional no-op fake used to exercise SMTP failure branches.
-        pass
+        """Initializes the instance state.
+
+        Intentional no-op fake used to exercise SMTP failure branches.
+        """
 
     def __enter__(self):
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        """Leaves the context manager and releases any held state."""
         return False
 
     @staticmethod
     def send_message(_message):
+        """Implements the send message helper."""
         raise RuntimeError("smtp failed")
 
 
 def _set_email_settings(monkeypatch, **overrides):
+    """Sets the email settings value."""
     original = {}
     for key, value in overrides.items():
         original[key] = getattr(email_service.settings, key)
@@ -60,15 +78,24 @@ def _set_email_settings(monkeypatch, **overrides):
 
 
 def _restore_settings(monkeypatch, original):
+    """Implements the restore settings helper."""
     for key, value in original.items():
         monkeypatch.setattr(email_service.settings, key, value)
 
 
 def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
+    """Verifies send email now handles disabled and missing smtp behavior."""
     warnings = []
-    monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
+    monkeypatch.setattr(
+        email_service, "log_warning", lambda event, **kw: warnings.append((event, kw))
+    )
 
-    original = _set_email_settings(monkeypatch, email_enabled=False, smtp_host="smtp.test", smtp_sender="sender@test.ro")
+    original = _set_email_settings(
+        monkeypatch,
+        email_enabled=False,
+        smtp_host="smtp.test",
+        smtp_sender="sender@test.ro",
+    )
     try:
         email_service.send_email_now("to@test.ro", "Sub", "Body")
     finally:
@@ -77,7 +104,9 @@ def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
     assert warnings[0][0] == "email_disabled"
 
     warnings.clear()
-    original = _set_email_settings(monkeypatch, email_enabled=True, smtp_host=None, smtp_sender=None)
+    original = _set_email_settings(
+        monkeypatch, email_enabled=True, smtp_host=None, smtp_sender=None
+    )
     try:
         email_service.send_email_now("to@test.ro", "Sub", "Body")
     finally:
@@ -87,15 +116,24 @@ def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
 
 
 def test_send_email_now_success_and_retry_failure(monkeypatch):
+    """Verifies send email now success and retry failure behavior."""
     events = []
     warnings = []
     errors = []
 
-    monkeypatch.setattr(email_service, "log_event", lambda event, **kw: events.append((event, kw)))
-    monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
-    monkeypatch.setattr(email_service, "log_error", lambda event, **kw: errors.append((event, kw)))
+    monkeypatch.setattr(
+        email_service, "log_event", lambda event, **kw: events.append((event, kw))
+    )
+    monkeypatch.setattr(
+        email_service, "log_warning", lambda event, **kw: warnings.append((event, kw))
+    )
+    monkeypatch.setattr(
+        email_service, "log_error", lambda event, **kw: errors.append((event, kw))
+    )
 
-    smtp_secret_field = "smtp_" + "".join(chr(code) for code in [112, 97, 115, 115, 119, 111, 114, 100])
+    smtp_secret_field = "smtp_" + "".join(
+        chr(code) for code in [112, 97, 115, 115, 119, 111, 114, 100]
+    )
     original = _set_email_settings(
         monkeypatch,
         email_enabled=True,
@@ -106,13 +144,17 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
         smtp_username="u",
     )
     original[smtp_secret_field] = getattr(email_service.settings, smtp_secret_field)
-    monkeypatch.setattr(email_service.settings, smtp_secret_field, "smtp-login-marker-A1")
+    monkeypatch.setattr(
+        email_service.settings, smtp_secret_field, "smtp-login-marker-A1"
+    )
     monkeypatch.setattr(email_service.smtplib, "SMTP", _FakeSmtpSuccess)
     email_service.emails_sent_ok = 0
     email_service.emails_send_failed = 0
 
     try:
-        email_service.send_email_now("to@test.ro", "Hello", "Body", "<p>Body</p>", {"ctx": "ok"})
+        email_service.send_email_now(
+            "to@test.ro", "Hello", "Body", "<p>Body</p>", {"ctx": "ok"}
+        )
     finally:
         _restore_settings(monkeypatch, original)
 
@@ -145,8 +187,13 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
 
 
 def test_send_email_async_branches(monkeypatch, db_session):
+    """Verifies send email async branches behavior."""
     recorded = []
-    monkeypatch.setattr(email_service, "enqueue_job", lambda db, job_type, payload: recorded.append((db, job_type, payload)))
+    monkeypatch.setattr(
+        email_service,
+        "enqueue_job",
+        lambda db, job_type, payload: recorded.append((db, job_type, payload)),
+    )
 
     # task queue enabled but no DB
     monkeypatch.setattr(email_service.settings, "task_queue_enabled", True)
@@ -160,7 +207,11 @@ def test_send_email_async_branches(monkeypatch, db_session):
     # background None fallback
     monkeypatch.setattr(email_service.settings, "task_queue_enabled", False)
     called_now = []
-    monkeypatch.setattr(email_service, "send_email_now", lambda *args, **kwargs: called_now.append((args, kwargs)))
+    monkeypatch.setattr(
+        email_service,
+        "send_email_now",
+        lambda *args, **kwargs: called_now.append((args, kwargs)),
+    )
     email_service.send_email_async(None, None, "to@test.ro", "Sub", "Body")
     assert called_now
 
@@ -172,6 +223,7 @@ def test_send_email_async_branches(monkeypatch, db_session):
 
 
 def _mk_user_event(db_session):
+    """Implements the mk user event helper."""
     user = models.User(
         email="templ-user@test.ro",
         password_hash=auth.get_password_hash("templ-user-marker-A1"),
@@ -203,37 +255,52 @@ def _mk_user_event(db_session):
 
 
 def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
+    """Verifies email template renderers cover language paths behavior."""
     user, event = _mk_user_event(db_session)
 
     assert email_templates._format_dt(None) == ""
 
-    sub_en, body_en, html_en = email_templates.render_registration_email(event, user, "en-US")
-    sub_ro, body_ro, html_ro = email_templates.render_registration_email(event, user, "ro")
+    sub_en, body_en, html_en = email_templates.render_registration_email(
+        event, user, "en-US"
+    )
+    sub_ro, body_ro, html_ro = email_templates.render_registration_email(
+        event, user, "ro"
+    )
     assert "Registration confirmed" in sub_en
     assert "Confirmare înscriere" in sub_ro
     assert "Template Event" in body_en and "Template Event" in body_ro
     assert "<p>" in html_en and "<p>" in html_ro
 
-    reset_en = email_templates.render_password_reset_email(user, "https://example/reset", "en")
-    reset_ro = email_templates.render_password_reset_email(user, "https://example/reset", "ro")
+    reset_en = email_templates.render_password_reset_email(
+        user, "https://example/reset", "en"
+    )
+    reset_ro = email_templates.render_password_reset_email(
+        user, "https://example/reset", "ro"
+    )
     assert "Reset your EventLink" in reset_en[0]
     assert "Resetare parolă" in reset_ro[0]
 
-    monkeypatch.setattr(email_templates.settings, "allowed_origins", ["https://frontend.test"])
+    monkeypatch.setattr(
+        email_templates.settings, "allowed_origins", ["https://frontend.test"]
+    )
     digest_en = email_templates.render_weekly_digest_email(user, [event], lang="en")
     digest_ro = email_templates.render_weekly_digest_email(user, [], lang="ro")
     assert "weekly EventLink digest" in digest_en[0]
     assert "Rezumat săptămânal" in digest_ro[0]
     assert "events/" in digest_en[1]
 
-    fill_en = email_templates.render_filling_fast_email(user, event, available_seats=2, lang="en")
-    fill_ro = email_templates.render_filling_fast_email(user, event, available_seats=None, lang="ro")
+    fill_en = email_templates.render_filling_fast_email(
+        user, event, available_seats=2, lang="en"
+    )
+    fill_ro = email_templates.render_filling_fast_email(
+        user, event, available_seats=None, lang="ro"
+    )
     assert "Filling fast" in fill_en[0]
     assert "Se ocupă rapid" in fill_ro[0]
 
 
-
 def test_frontend_hint_and_ro_digest_with_events(monkeypatch, db_session):
+    """Verifies frontend hint and ro digest with events behavior."""
     user, event = _mk_user_event(db_session)
 
     monkeypatch.setattr(email_templates.settings, "allowed_origins", [])

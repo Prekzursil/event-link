@@ -26,9 +26,7 @@ def upgrade() -> None:
             sa.ForeignKey(USER_ID_FK),
             primary_key=True,
         ),
-        sa.Column(
-            "tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True
-        ),
+        sa.Column("tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True),
     )
     op.create_index(
         "ix_user_hidden_tags_user_id",

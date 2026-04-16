@@ -13,6 +13,9 @@ type AccountHandlerArgs = Readonly<{
 }>;
 
 /** Export the current student's retained account data as a downloadable blob. */
+/**
+ * Test helper: export student profile data.
+ */
 async function exportStudentProfileData(t: TranslationStrings, toast: ToastFn) {
   const blob = await eventService.exportMyData();
   triggerDataExport(blob);

@@ -58,6 +58,9 @@ export const EVENT_CATEGORY_LABELS: Record<'ro' | 'en', Record<EventCategory, st
   },
 };
 
+/**
+ * Test helper: get event category label.
+ */
 export function getEventCategoryLabel(category: string | undefined | null, language: 'ro' | 'en'): string | undefined {
   if (!category) return undefined;
   const cat = category as EventCategory;

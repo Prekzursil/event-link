@@ -49,6 +49,9 @@ type LoginFormCardProps = Readonly<{
 }>;
 
 /** Extract the most useful message from an API-shaped auth error. */
+/**
+ * Test helper: describe api error.
+ */
 function describeApiError(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>;
   return (

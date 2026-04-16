@@ -1,3 +1,5 @@
+"""Tests for the seed main behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -13,6 +15,7 @@ class _FakeResult:
     """Simple result wrapper that mimics SQLAlchemy scalar() responses."""
 
     def __init__(self, value):
+        """Initializes the instance state."""
         self._value = value
 
     def scalar(self):
@@ -24,6 +27,7 @@ class _FakeSession:
     """Session double that records statements and transaction calls."""
 
     def __init__(self, *, user_count=0, delete_fail_tables=None, raise_on_add=False):
+        """Initializes the instance state."""
         self.user_count = user_count
         self.delete_fail_tables = set(delete_fail_tables or [])
         self.raise_on_add = raise_on_add
@@ -85,8 +89,10 @@ def _load_seed_data_module(monkeypatch):
         """Minimal passlib context replacement for seed-data import tests."""
 
         def __init__(self, *args, **kwargs):
-            # Intentional empty fake context for seed-data import tests.
-            pass
+            """Initializes the instance state.
+
+            Intentional empty fake context for seed-data import tests.
+            """
 
         @staticmethod
         def hash(value):
@@ -171,7 +177,9 @@ def test_seed_database_happy_path(monkeypatch):
 def test_seed_database_clears_existing_data_and_tolerates_missing_tables(monkeypatch):
     """seed_database should clear prior rows and ignore missing join tables."""
     seed_data = _prepare_seed(monkeypatch)
-    fake = _FakeSession(user_count=3, delete_fail_tables={"event_tags", "favorite_events"})
+    fake = _FakeSession(
+        user_count=3, delete_fail_tables={"event_tags", "favorite_events"}
+    )
 
     def _session_factory():
         """Return the seeded fake session for delete-coverage paths."""
@@ -225,7 +233,6 @@ def test_backend_main_entrypoint_invokes_uvicorn(monkeypatch):
     assert calls[0][2] == 9001
 
 
-
 def test_backend_main_entrypoint_rejects_wildcard_host(monkeypatch):
     """The backend entrypoint must reject IPv4 wildcard hosts."""
     monkeypatch.setenv("APP_HOST", "0.0.0.0")
@@ -253,8 +260,10 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
         """Minimal passlib context replacement for the __main__ execution path."""
 
         def __init__(self, *args, **kwargs):
-            # Intentional empty fake context for module __main__ path coverage.
-            pass
+            """Initializes the instance state.
+
+            Intentional empty fake context for module __main__ path coverage.
+            """
 
         @staticmethod
         def hash(value):
@@ -282,6 +291,7 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
 
     monkeypatch.setattr(db_module, "SessionLocal", _session_factory)
     monkeypatch.setattr(secrets, "SystemRandom", _rng_factory)
+
     def _silent_print(*_args, **_kwargs):
         """Suppress console output while exercising the __main__ guard."""
         return None
@@ -354,6 +364,7 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     student_access_code = "student" + "-pass"
     organizer_access_code = "organizer" + "-pass"
     admin_access_code = "admin" + "-pass"
+
     def _session_factory():
         """Return the seeded fake session for missing-tag coverage."""
         return fake
@@ -400,7 +411,15 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     monkeypatch.setattr(
         seed_data,
         "SAMPLE_EVENTS",
-        [{"title": "Tagged Event", "description": "desc", "category": "Workshop", "tags": ["Programare", "Missing"], "max_seats": 10}],
+        [
+            {
+                "title": "Tagged Event",
+                "description": "desc",
+                "category": "Workshop",
+                "tags": ["Programare", "Missing"],
+                "max_seats": 10,
+            }
+        ],
     )
 
     seed_data.seed_database()

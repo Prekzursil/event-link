@@ -1,3 +1,5 @@
+"""Tests for the task queue unit behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -14,12 +16,15 @@ from task_queue_test_support import (
 
 
 def test_unexpected_enqueue_guard_raises() -> None:
-    with pytest.raises(AssertionError, match='enqueue_job should not run'):
+    """Verifies unexpected enqueue guard raises behavior."""
+    with pytest.raises(AssertionError, match="enqueue_job should not run"):
         unexpected_enqueue()
-    with pytest.raises(AssertionError, match='timeout path'):
-        raise_assertion('timeout path')
+    with pytest.raises(AssertionError, match="timeout path"):
+        raise_assertion("timeout path")
+
 
 def test_coerce_bool_variants() -> None:
+    """Verifies coerce bool variants behavior."""
     assert task_queue._coerce_bool(True) is True
     assert task_queue._coerce_bool(False) is False
     assert task_queue._coerce_bool(1) is True
@@ -28,14 +33,16 @@ def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool("off") is False
     assert task_queue._coerce_bool(None) is False
 
+
 def test_backend_root_points_to_backend_directory() -> None:
+    """Verifies backend root points to backend directory behavior."""
     backend_root = task_queue._backend_root()
     assert backend_root.name == "backend"
     assert (backend_root / "app" / "task_queue.py").exists()
 
 
-
 def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
+    """Verifies requeue stale jobs claim and retry paths behavior."""
     stale_job = mk_job(
         db_session,
         job_type="stale",
@@ -79,10 +86,12 @@ def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
 
 
 def test_requeue_stale_jobs_returns_zero_without_matches(db_session):
+    """Verifies requeue stale jobs returns zero without matches behavior."""
     assert task_queue.requeue_stale_jobs(db_session, stale_after_seconds=30) == 0
 
 
 def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
+    """Verifies run recompute recommendations ml paths behavior."""
     backend_root = tmp_path / "backend"
     script_path = backend_root / "scripts" / "recompute_recommendations_ml.py"
     script_path.parent.mkdir(parents=True)
@@ -91,6 +100,7 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
     observed = {}
 
     def _run_script(**kwargs):
+        """Runs the script helper path."""
         observed.update(kwargs)
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -128,22 +138,49 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
 
 
 def test_process_job_dispatches_all_paths(monkeypatch, db_session):
+    """Verifies process job dispatches all paths behavior."""
     succeeded = []
     failed = []
 
-    monkeypatch.setattr(task_queue, "mark_job_succeeded", lambda _db, job: succeeded.append(job.job_type))
-    monkeypatch.setattr(task_queue, "mark_job_failed", lambda _db, job, error: failed.append((job.job_type, error)))
+    monkeypatch.setattr(
+        task_queue,
+        "mark_job_succeeded",
+        lambda _db, job: succeeded.append(job.job_type),
+    )
+    monkeypatch.setattr(
+        task_queue,
+        "mark_job_failed",
+        lambda _db, job, error: failed.append((job.job_type, error)),
+    )
     monkeypatch.setattr(task_queue, "log_event", lambda *_args, **_kwargs: None)
 
     import app.email_service as email_service_module
 
     monkeypatch.setattr(email_service_module, "send_email_now", lambda **_kwargs: None)
-    monkeypatch.setattr(task_queue, "_run_recompute_recommendations_ml", lambda payload: None)
-    monkeypatch.setattr(task_queue, "_send_weekly_digest", lambda **_kwargs: {"users": 1, "emails": 1})
-    monkeypatch.setattr(task_queue, "_send_filling_fast_alerts", lambda **_kwargs: {"pairs": 2, "emails": 1})
-    monkeypatch.setattr(task_queue, "_evaluate_personalization_guardrails", lambda **_kwargs: {"action": "ok"})
+    monkeypatch.setattr(
+        task_queue, "_run_recompute_recommendations_ml", lambda payload: None
+    )
+    monkeypatch.setattr(
+        task_queue, "_send_weekly_digest", lambda **_kwargs: {"users": 1, "emails": 1}
+    )
+    monkeypatch.setattr(
+        task_queue,
+        "_send_filling_fast_alerts",
+        lambda **_kwargs: {"pairs": 2, "emails": 1},
+    )
+    monkeypatch.setattr(
+        task_queue,
+        "_evaluate_personalization_guardrails",
+        lambda **_kwargs: {"action": "ok"},
+    )
 
-    payload = {"to_email": "a@test.ro", "subject": "s", "body_text": "b", "body_html": None, "context": {}}
+    payload = {
+        "to_email": "a@test.ro",
+        "subject": "s",
+        "body_text": "b",
+        "body_html": None,
+        "context": {},
+    }
 
     for jt, pl in [
         (task_queue.JOB_TYPE_SEND_EMAIL, payload),
@@ -153,16 +190,31 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
         (task_queue.JOB_TYPE_SEND_FILLING_FAST_ALERTS, {}),
         (task_queue.JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS, {}),
     ]:
-        job = models.BackgroundJob(job_type=jt, payload=pl, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc))
+        job = models.BackgroundJob(
+            job_type=jt,
+            payload=pl,
+            status="queued",
+            attempts=0,
+            max_attempts=3,
+            run_at=datetime.now(timezone.utc),
+        )
         task_queue.process_job(db_session, job)
 
-    unknown = models.BackgroundJob(job_type="unknown", payload={}, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc))
+    unknown = models.BackgroundJob(
+        job_type="unknown",
+        payload={},
+        status="queued",
+        attempts=0,
+        max_attempts=3,
+        run_at=datetime.now(timezone.utc),
+    )
     task_queue.process_job(db_session, unknown)
 
     assert task_queue.JOB_TYPE_SEND_EMAIL in succeeded
     assert any(name == "unknown" for name, _ in failed)
 
     def _boom(payload):
+        """Implements the boom helper."""
         raise RuntimeError("explode")
 
     monkeypatch.setattr(task_queue, "_run_recompute_recommendations_ml", _boom)
@@ -175,10 +227,13 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
         run_at=datetime.now(timezone.utc),
     )
     task_queue.process_job(db_session, failing_job)
-    assert any(name == task_queue.JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML for name, _ in failed)
+    assert any(
+        name == task_queue.JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML for name, _ in failed
+    )
 
 
 def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
+    """Verifies send filling fast alerts enqueues and dedupes behavior."""
     user = models.User(
         email="fill@test.ro",
         password_hash=auth.get_password_hash("fixture-access-A1"),
@@ -186,7 +241,11 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
         email_filling_fast_enabled=True,
         language_preference="en",
     )
-    org = models.User(email="fill-org@test.ro", password_hash=auth.get_password_hash("organizer-fixture-A1"), role=models.UserRole.organizator)
+    org = models.User(
+        email="fill-org@test.ro",
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
+        role=models.UserRole.organizator,
+    )
     event = models.Event(
         title="Filling Event",
         description="desc",
@@ -208,11 +267,20 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
     db_session.add_all([fav, reg])
     db_session.commit()
 
-    monkeypatch.setattr(task_queue, "enqueue_job", lambda db, job_type, payload: db.commit())
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "enqueue_job", lambda db, job_type, payload: db.commit()
+    )
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
 
     import app.email_templates as tpl
-    monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: ("sub", "txt", "html"))
+
+    monkeypatch.setattr(
+        tpl,
+        "render_filling_fast_email",
+        lambda *_args, **_kwargs: ("sub", "txt", "html"),
+    )
 
     result_first = task_queue._send_filling_fast_alerts(
         db=db_session,
@@ -230,6 +298,7 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
 
 
 def test_idle_sleep_uses_minimum_poll_interval(monkeypatch):
+    """Verifies idle sleep uses minimum poll interval behavior."""
     seen = []
     monkeypatch.setattr(task_queue.settings, "task_queue_poll_interval_seconds", 0.0)
     monkeypatch.setattr(task_queue.time, "sleep", seen.append)
@@ -238,9 +307,11 @@ def test_idle_sleep_uses_minimum_poll_interval(monkeypatch):
 
 
 def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
+    """Verifies enqueue job integrity error paths behavior."""
     from sqlalchemy.exc import IntegrityError
 
     def _commit_fail():
+        """Implements the commit fail helper."""
         raise IntegrityError("stmt", {}, RuntimeError("dup"))
 
     monkeypatch.setattr(db_session, "commit", _commit_fail)
@@ -249,14 +320,19 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
         task_queue.enqueue_job(db_session, "x", {}, dedupe_key=None)
 
     class _NoMatchQuery:
+        """Query stub that chains filter()/order_by() and never finds a row."""
+
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             return self
 
         def order_by(self, *_args, **_kwargs):
+            """Implements the order by helper."""
             return self
 
         @staticmethod
         def first():
+            """Implements the first helper."""
             return None
 
     monkeypatch.setattr(db_session, "query", lambda *_args, **_kwargs: _NoMatchQuery())
@@ -265,11 +341,17 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
 
 
 def test_apply_personalization_exclusions_applies_both_filters():
+    """Verifies apply personalization exclusions applies both filters behavior."""
+
     class _Query:
+        """Minimal query stub that counts how many times filter() was called."""
+
         def __init__(self) -> None:
+            """Initializes the instance state."""
             self.filters = 0
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             self.filters += 1
             return self
 
@@ -284,11 +366,17 @@ def test_apply_personalization_exclusions_applies_both_filters():
 
 
 def test_apply_personalization_exclusions_returns_query_when_sets_empty():
+    """Verifies apply personalization exclusions returns query when sets empty behavior."""
+
     class _Query:
+        """Minimal query stub that counts how many times filter() was called."""
+
         def __init__(self) -> None:
+            """Initializes the instance state."""
             self.filters = 0
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             self.filters += 1
             return self
 

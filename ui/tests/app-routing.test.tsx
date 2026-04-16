@@ -95,6 +95,9 @@ vi.mock('@/pages/auth/ResetPasswordPage', () => ({
 
 import App from '@/App';
 
+/**
+ * Renders the route scaffolding for tests.
+ */
 const renderRoute = (path: string, state: Partial<AuthState> = {}) => {
   authState = { ...DEFAULT_AUTH_STATE, ...state };
   globalThis.history.pushState({}, '', path);

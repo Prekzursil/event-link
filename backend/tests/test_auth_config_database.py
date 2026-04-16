@@ -1,3 +1,5 @@
+"""Tests for the auth config database behavior."""
+
 from __future__ import annotations
 
 from datetime import timedelta
@@ -12,6 +14,7 @@ class _DummySession:
     """Minimal session double that records whether close() was called."""
 
     def __init__(self) -> None:
+        """Initializes the instance state."""
         self.closed = False
 
     def close(self) -> None:
@@ -26,11 +29,21 @@ def test_verify_password_handles_invalid_hash() -> None:
 
 def test_create_access_and_refresh_token_include_expected_type() -> None:
     """Access and refresh tokens should encode their token type."""
-    access = auth.create_access_token({"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=5))
-    refresh = auth.create_refresh_token({"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=10))
+    access = auth.create_access_token(
+        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value},
+        timedelta(minutes=5),
+    )
+    refresh = auth.create_refresh_token(
+        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value},
+        timedelta(minutes=10),
+    )
 
-    access_payload = auth.jwt.decode(access, config.settings.secret_key, algorithms=[config.settings.algorithm])
-    refresh_payload = auth.jwt.decode(refresh, config.settings.secret_key, algorithms=[config.settings.algorithm])
+    access_payload = auth.jwt.decode(
+        access, config.settings.secret_key, algorithms=[config.settings.algorithm]
+    )
+    refresh_payload = auth.jwt.decode(
+        refresh, config.settings.secret_key, algorithms=[config.settings.algorithm]
+    )
 
     assert access_payload["type"] == "access"
     assert refresh_payload["type"] == "refresh"
@@ -56,7 +69,9 @@ def test_get_current_user_rejects_inactive_user(db_session) -> None:
     db_session.commit()
     db_session.refresh(user)
 
-    token = auth.create_access_token({"sub": str(user.id), "email": user.email, "role": user.role.value})
+    token = auth.create_access_token(
+        {"sub": str(user.id), "email": user.email, "role": user.role.value}
+    )
     with pytest.raises(HTTPException) as exc_info:
         auth.get_current_user(token=token, db=db_session)
     assert exc_info.value.status_code == 403
@@ -70,9 +85,21 @@ def test_get_optional_user_returns_none_for_invalid_token(db_session) -> None:
 
 def test_role_guards_and_is_admin_paths() -> None:
     """Role guard helpers should accept only the matching user role."""
-    student = models.User(email="student-role@test.ro", password_hash=auth.get_password_hash("student-marker-A1"), role=models.UserRole.student)
-    organizer = models.User(email="org-role@test.ro", password_hash=auth.get_password_hash("organizer-marker-A1"), role=models.UserRole.organizator)
-    admin = models.User(email="admin-role@test.ro", password_hash=auth.get_password_hash("admin-marker-A1"), role=models.UserRole.admin)
+    student = models.User(
+        email="student-role@test.ro",
+        password_hash=auth.get_password_hash("student-marker-A1"),
+        role=models.UserRole.student,
+    )
+    organizer = models.User(
+        email="org-role@test.ro",
+        password_hash=auth.get_password_hash("organizer-marker-A1"),
+        role=models.UserRole.organizator,
+    )
+    admin = models.User(
+        email="admin-role@test.ro",
+        password_hash=auth.get_password_hash("admin-marker-A1"),
+        role=models.UserRole.admin,
+    )
 
     assert auth.require_student(student) is student
     assert auth.require_organizer(organizer) is organizer
@@ -88,9 +115,15 @@ def test_role_guards_and_is_admin_paths() -> None:
 
 def test_is_admin_accepts_whitelisted_email(monkeypatch) -> None:
     """Configured admin e-mail allowlists should elevate matching users."""
-    user = models.User(email="special-admin@test.ro", password_hash=auth.get_password_hash("student-marker-A1"), role=models.UserRole.student)
+    user = models.User(
+        email="special-admin@test.ro",
+        password_hash=auth.get_password_hash("student-marker-A1"),
+        role=models.UserRole.student,
+    )
     old = list(config.settings.admin_emails)
-    monkeypatch.setattr(config.settings, "admin_emails", ["special-admin@test.ro", "other@test.ro"])
+    monkeypatch.setattr(
+        config.settings, "admin_emails", ["special-admin@test.ro", "other@test.ro"]
+    )
     try:
         assert auth.is_admin(user) is True
     finally:
@@ -100,9 +133,19 @@ def test_is_admin_accepts_whitelisted_email(monkeypatch) -> None:
 def test_settings_parsers_support_csv_json_and_invalid() -> None:
     """Settings parsers should normalize CSV and JSON string inputs."""
     assert config.Settings.parse_allowed_origins("") == config.DEFAULT_ALLOWED_ORIGINS
-    assert config.Settings.parse_allowed_origins("https://a.test, https://b.test") == ["https://a.test", "https://b.test"]
-    assert config.Settings.parse_allowed_origins('["https://a.test","https://b.test"]') == ["https://a.test", "https://b.test"]
-    assert config.Settings.parse_allowed_origins('["https://a.test",""]') == ["https://a.test"]
+    assert config.Settings.parse_allowed_origins("https://a.test, https://b.test") == [
+        "https://a.test",
+        "https://b.test",
+    ]
+    assert config.Settings.parse_allowed_origins(
+        '["https://a.test","https://b.test"]'
+    ) == [
+        "https://a.test",
+        "https://b.test",
+    ]
+    assert config.Settings.parse_allowed_origins('["https://a.test",""]') == [
+        "https://a.test"
+    ]
     assert config.Settings.parse_allowed_origins("123") == ["123"]
     assert config.Settings.parse_admin_emails("") == []
     assert config.Settings.parse_admin_emails("A@T.RO,b@t.ro") == ["a@t.ro", "b@t.ro"]
@@ -156,7 +199,11 @@ def test_get_current_user_rejects_missing_role_in_token(db_session) -> None:
 def test_get_current_user_rejects_expired_token(db_session) -> None:
     """Expired access tokens should surface the translated auth error."""
     token = auth.create_access_token(
-        {"sub": "99", "email": "expired@test.ro", "role": models.UserRole.student.value},
+        {
+            "sub": "99",
+            "email": "expired@test.ro",
+            "role": models.UserRole.student.value,
+        },
         expires_delta=timedelta(seconds=-1),
     )
     with pytest.raises(HTTPException) as exc_info:

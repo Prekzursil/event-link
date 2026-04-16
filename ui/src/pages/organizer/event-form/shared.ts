@@ -33,27 +33,45 @@ export const EMPTY_EVENT_FORM_STATE: EventFormState = {
   status: 'published',
 };
 
+/**
+ * Test helper: format date time local.
+ */
 export function formatDateTimeLocal(dateString: string) {
   const date = new Date(dateString);
   return new Date(date.getTime() - date.getTimezoneOffset() * 60000).toISOString().slice(0, 16);
 }
 
+/**
+ * Test helper: error detail.
+ */
 export function errorDetail(error: unknown, fallback: string) {
   return (error as AxiosDetailError).response?.data?.detail || fallback;
 }
 
+/**
+ * Test helper: text or empty.
+ */
 function textOrEmpty(value: string | null | undefined) {
   return value ?? '';
 }
 
+/**
+ * Test helper: optional date time local.
+ */
 function optionalDateTimeLocal(value: string | null | undefined) {
   return value ? formatDateTimeLocal(value) : '';
 }
 
+/**
+ * Test helper: event status.
+ */
 function eventStatus(value: Event['status'] | null | undefined): 'draft' | 'published' {
   return value === 'draft' ? 'draft' : 'published';
 }
 
+/**
+ * Test helper: event to form state.
+ */
 export function eventToFormState(event: Event & { tags: EventTag[] }): EventFormState {
   return {
     title: event.title,
@@ -70,6 +88,9 @@ export function eventToFormState(event: Event & { tags: EventTag[] }): EventForm
   };
 }
 
+/**
+ * Test helper: build suggestion payload.
+ */
 export function buildSuggestionPayload(formData: EventFormState) {
   return {
     title: formData.title.trim(),
@@ -81,6 +102,9 @@ export function buildSuggestionPayload(formData: EventFormState) {
   };
 }
 
+/**
+ * Test helper: apply suggestion to form data.
+ */
 export function applySuggestionToFormData(
   formData: EventFormState,
   suggestion: EventSuggestResponse,
@@ -98,6 +122,9 @@ type EventFormValidator = Readonly<{
   message: (t: EventFormTexts) => string;
 }>;
 
+/**
+ * Test helper: has short text.
+ */
 function hasShortText(value: string) {
   return value.trim().length < 2;
 }
@@ -129,11 +156,17 @@ const EVENT_FORM_VALIDATORS: readonly EventFormValidator[] = [
   },
 ];
 
+/**
+ * Test helper: validate event form.
+ */
 export function validateEventForm(formData: EventFormState, t: EventFormTexts) {
   const failingValidator = EVENT_FORM_VALIDATORS.find((validator) => validator.invalid(formData));
   return failingValidator ? failingValidator.message(t) : null;
 }
 
+/**
+ * Test helper: build event payload.
+ */
 export function buildEventPayload(formData: EventFormState): EventFormData {
   const trimmedDescription = formData.description.trim();
   const trimmedCoverUrl = formData.cover_url.trim();
@@ -160,6 +193,9 @@ export function buildEventPayload(formData: EventFormState): EventFormData {
   return payload;
 }
 
+/**
+ * Test helper: get submit label.
+ */
 export function getSubmitLabel(isSaving: boolean, isEditing: boolean, t: EventFormTexts) {
   if (isSaving) {
     return t.eventForm.saving;

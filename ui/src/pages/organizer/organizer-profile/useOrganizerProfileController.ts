@@ -4,10 +4,16 @@ import eventService from '@/services/event.service';
 import type { OrganizerProfile } from '@/types';
 import { useI18n } from '@/contexts/LanguageContext';
 
+/**
+ * Test helper: swallow promise.
+ */
 function swallowPromise(result: Promise<unknown>) {
   result.catch(() => undefined);
 }
 
+/**
+ * Test helper: split events.
+ */
 function splitEvents(profile: OrganizerProfile | null) {
   const now = new Date();
   const events = profile?.events ?? [];
@@ -17,10 +23,16 @@ function splitEvents(profile: OrganizerProfile | null) {
   };
 }
 
+/**
+ * Test helper: display name.
+ */
 function displayName(profile: OrganizerProfile | null, fallback: string) {
   return profile?.org_name || profile?.full_name || fallback;
 }
 
+/**
+ * Test helper: initials from name.
+ */
 function initialsFromName(name: string) {
   return name
     .split(' ')
@@ -30,6 +42,9 @@ function initialsFromName(name: string) {
     .slice(0, 2);
 }
 
+/**
+ * React hook: organizer profile controller.
+ */
 export function useOrganizerProfileController() {
   const { id } = useParams<{ id: string }>();
   const { t } = useI18n();

@@ -19,6 +19,9 @@ interface LanguageContextType {
 const LanguageContext = createContext<LanguageContextType | null>(null);
 
 /** Provide the active UI language, strings, and preference setter. */
+/**
+ * Test helper: language provider.
+ */
 export function LanguageProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<LanguagePreference>(() => getStoredLanguagePreference());
   const [language, setLanguage] = useState<ResolvedLanguage>(() => resolveLanguage(getStoredLanguagePreference()));

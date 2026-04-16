@@ -32,7 +32,6 @@ _rng = SystemRandom()
 
 _SECRET_FIELD = "pass" + "word"
 _PASSWORD_HASH_FIELD = "pass" + "word_hash"
-_RESET_RECORD_TABLE = _SECRET_FIELD + "_reset_tokens"
 _DEFAULT_SEED_CODE = os.environ.get("EVENTLINK_SEED_CODE", "seed-access-A1")
 MUSIC_TAG = "Muzică"
 TAGS = [
@@ -102,47 +101,22 @@ LOCATIONS = [
     "Online - Zoom/Teams",
 ]
 
+_UNSPLASH_BASE = "https://images.unsplash.com/photo-"
+_UNSPLASH_SUFFIX = "?w=800&h=400&fit=crop"
 COVER_IMAGES = [
-    (
-        "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1515187029135-18ee286d815b"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1475721027785-f74eccf877e2"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1559223607-a43c990c692c"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1505373877841-8d25f7d46678"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1591115765373-5207764f72e7"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1528901166007-3784c7dd3653"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1517048676732-d65bc937f952"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1523580494863-6f3031224c94"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1522158637959-30385a09e0da"
-        "?w=800&h=400&fit=crop"
-    ),
+    _UNSPLASH_BASE + slug + _UNSPLASH_SUFFIX
+    for slug in (
+        "1540575467063-178a50c2df87",
+        "1515187029135-18ee286d815b",
+        "1475721027785-f74eccf877e2",
+        "1559223607-a43c990c692c",
+        "1505373877841-8d25f7d46678",
+        "1591115765373-5207764f72e7",
+        "1528901166007-3784c7dd3653",
+        "1517048676732-d65bc937f952",
+        "1523580494863-6f3031224c94",
+        "1522158637959-30385a09e0da",
+    )
 ]
 
 SAMPLE_EVENTS = [
@@ -426,8 +400,7 @@ ORGANIZERS = [
         ),
         "org_website": "https://ligait.ro",
         "org_logo_url": (
-            "https://api.dicebear.com/7.x/initials/svg"
-            "?seed=LSIT&backgroundColor=3b82f6"
+            "https://api.dicebear.com/7.x/initials/svg?seed=LSIT&backgroundColor=3b82f6"
         ),
     },
     {
@@ -442,8 +415,7 @@ ORGANIZERS = [
         ),
         "org_website": "https://cariere.uni.ro",
         "org_logo_url": (
-            "https://api.dicebear.com/7.x/initials/svg"
-            "?seed=CC&backgroundColor=10b981"
+            "https://api.dicebear.com/7.x/initials/svg?seed=CC&backgroundColor=10b981"
         ),
     },
     {
@@ -457,8 +429,7 @@ ORGANIZERS = [
         ),
         "org_website": "https://sport.uni.ro",
         "org_logo_url": (
-            "https://api.dicebear.com/7.x/initials/svg"
-            "?seed=CSU&backgroundColor=ef4444"
+            "https://api.dicebear.com/7.x/initials/svg?seed=CSU&backgroundColor=ef4444"
         ),
     },
 ]
@@ -534,9 +505,7 @@ def _create_users(
     return created_users
 
 
-def _assign_student_interest_tags(
-    student_objects, tag_objects: dict[str, Tag]
-) -> None:
+def _assign_student_interest_tags(student_objects, tag_objects: dict[str, Tag]) -> None:
     """Assign a deterministic sample of interest tags to each student."""
     print("🏷️  Assigning interest tags to students...")
     available_tags = list(tag_objects.values())
@@ -601,9 +570,9 @@ def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
                 event.tags.append(tag_objects[tag_name])
 
 
-def _create_registrations(
+def _create_registrations(  # noqa: ANN001
     session, event_objects, student_objects, *, now: datetime
-) -> int:  # noqa: ANN001
+) -> int:
     """Create seeded registrations linking students to sample events."""
     print("📝 Creating registrations...")
     registration_count = 0
@@ -623,9 +592,7 @@ def _create_registrations(
     return registration_count
 
 
-def _create_favorites(
-    session, event_objects, student_objects
-) -> int:  # noqa: ANN001
+def _create_favorites(session, event_objects, student_objects) -> int:  # noqa: ANN001
     """Create seeded favorite-event rows for sample students."""
     print("❤️  Creating favorites...")
     favorite_count = 0
@@ -665,9 +632,7 @@ def seed_database():
     session = SessionLocal()
     try:
         # Check if data already exists
-        user_count = (
-            session.scalar(select(func.count()).select_from(User)) or 0
-        )
+        user_count = session.scalar(select(func.count()).select_from(User)) or 0
 
         if user_count > 0:
             _clear_existing_data(session)
@@ -712,9 +677,7 @@ def seed_database():
         )
         print(f"   Created {registration_count} registrations")
 
-        favorite_count = _create_favorites(
-            session, event_objects, student_objects
-        )
+        favorite_count = _create_favorites(session, event_objects, student_objects)
         print(f"   Created {favorite_count} favorites")
 
         session.commit()

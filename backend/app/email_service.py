@@ -10,7 +10,7 @@ from sqlalchemy.orm import Session
 
 from .config import settings
 from .logging_utils import log_error, log_event, log_warning
-from .task_queue import JOB_TYPE_SEND_EMAIL, enqueue_job
+from .task_queue_shared import JOB_TYPE_SEND_EMAIL, enqueue_job
 
 emails_sent_ok = 0
 emails_send_failed = 0
@@ -25,9 +25,7 @@ def _email_settings_ready(
         return False
     if settings.smtp_host and settings.smtp_sender:
         return True
-    log_warning(
-        "email_smtp_not_configured", to=to_email, subject=subject, **context
-    )
+    log_warning("email_smtp_not_configured", to=to_email, subject=subject, **context)
     return False
 
 
@@ -132,9 +130,7 @@ def send_email_now(
 ) -> None:
     """Send an email immediately in the current process."""
     context = context or {}
-    if not _email_settings_ready(
-        to_email=to_email, subject=subject, context=context
-    ):
+    if not _email_settings_ready(to_email=to_email, subject=subject, context=context):
         return
 
     message = _build_message(

@@ -69,6 +69,9 @@ type RegisterFormCardProps = Readonly<{
 }>;
 
 /** Build the derived access-code requirement state for the registration form. */
+/**
+ * Test helper: build password requirement state.
+ */
 function buildPasswordRequirementState(password: string): PasswordRequirementState {
   return {
     hasLetters: /[a-zA-Z]/.test(password),

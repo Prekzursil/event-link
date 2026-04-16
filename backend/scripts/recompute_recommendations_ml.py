@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Command-line helper: recompute recommendations ml."""
+
 from __future__ import annotations
 
 import argparse
@@ -70,25 +72,46 @@ __all__ = (
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Offline ML v1: train and cache recommendations to user_recommendations.")
-    parser.add_argument("--top-n", type=int, default=50, help="How many recommendations to store per user.")
+    """Implements the parse args helper."""
+    parser = argparse.ArgumentParser(
+        description=(
+            "Offline ML v1: train and cache recommendations to user_recommendations."
+        )
+    )
+    parser.add_argument(
+        "--top-n",
+        type=int,
+        default=50,
+        help="How many recommendations to store per user.",
+    )
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.35)
     parser.add_argument("--l2", type=float, default=0.01)
     parser.add_argument("--negatives-per-positive", type=int, default=3)
     parser.add_argument("--eval-negatives", type=int, default=50)
     parser.add_argument("--seed", type=int, default=1337)
-    parser.add_argument("--user-id", type=int, default=None, help="Only recompute recommendations for a single student user.")
+    parser.add_argument(
+        "--user-id",
+        type=int,
+        default=None,
+        help="Only recompute recommendations for a single student user.",
+    )
     parser.add_argument(
         "--skip-training",
         action="store_true",
-        help="Skip training and load weights from the persisted recommender_models table.",
+        help=(
+            "Skip training and load weights from "
+            "the persisted recommender_models table."
+        ),
     )
-    parser.add_argument("--dry-run", action="store_true", help="Train/eval but do not write to the DB.")
+    parser.add_argument(
+        "--dry-run", action="store_true", help="Train/eval but do not write to the DB."
+    )
     return parser.parse_args()
 
 
 def _bootstrap_script_environment() -> Path:
+    """Implements the bootstrap script environment helper."""
     repo_root = Path(__file__).resolve().parents[2]
     backend_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(backend_root))
@@ -98,6 +121,7 @@ def _bootstrap_script_environment() -> Path:
 
 
 def _load_runtime_objects():
+    """Loads the runtime objects resource."""
     from app import models  # noqa: PLC0415
     from app.config import settings  # noqa: PLC0415
     from app.database import SessionLocal  # noqa: PLC0415
@@ -107,6 +131,7 @@ def _load_runtime_objects():
 
 
 def _evaluate_hitrate_at_k(**kwargs) -> float:
+    """Implements the evaluate hitrate at k helper."""
     return evaluate_hitrate_at_k_impl(
         state=_EvaluationState(**kwargs),
         deps=_EvaluationDependencies(
@@ -118,7 +143,10 @@ def _evaluate_hitrate_at_k(**kwargs) -> float:
     )
 
 
-def _load_persisted_model_state(*, db, models, requested_model_version: str | None) -> tuple[str | None, list[float] | None, int | None]:
+def _load_persisted_model_state(
+    *, db, models, requested_model_version: str | None
+) -> tuple[str | None, list[float] | None, int | None]:
+    """Loads the persisted model state resource."""
     return _load_persisted_model_state_impl(
         db=db,
         models=models,
@@ -127,10 +155,19 @@ def _load_persisted_model_state(*, db, models, requested_model_version: str | No
 
 
 def _user_positive_ids(*, user_id: int, positives, holdout) -> set[int]:
+    """Implements the user positive ids helper."""
     return set(positives.keys()) | ({holdout[user_id]} if user_id in holdout else set())
 
 
-def _impression_negative_ids(*, user_id: int, user_positive_ids: set[int], seen_by_user, impression_position_by_user_event, events) -> list[int]:
+def _impression_negative_ids(
+    *,
+    user_id: int,
+    user_positive_ids: set[int],
+    seen_by_user,
+    impression_position_by_user_event,
+    events,
+) -> list[int]:
+    """Implements the impression negative ids helper."""
     impression_candidates = [
         (event_id, impression_position_by_user_event.get((user_id, event_id), 999))
         for event_id in (seen_by_user.get(user_id, set()) - user_positive_ids)
@@ -140,19 +177,36 @@ def _impression_negative_ids(*, user_id: int, user_positive_ids: set[int], seen_
     return [event_id for event_id, _position in impression_candidates[:50]]
 
 
-def _append_example(*, examples, user, event, now: datetime, label: int, weight: float) -> None:
-    examples.append((_build_feature_vector(user=user, event=event, now=now), label, float(weight)))
+# pylint: disable-next=too-many-arguments
+def _append_example(
+    *, examples, user, event, now: datetime, label: int, weight: float
+) -> None:
+    """Implements the append example helper."""
+    examples.append(
+        (_build_feature_vector(user=user, event=event, now=now), label, float(weight))
+    )
 
 
-def _sample_negative_example(*, rng, impression_negatives: list[int], impression_position_by_user_event, user_id: int, all_event_ids: list[int]) -> tuple[int, float]:
+def _sample_negative_example(
+    *,
+    rng,
+    impression_negatives: list[int],
+    impression_position_by_user_event,
+    user_id: int,
+    all_event_ids: list[int],
+) -> tuple[int, float]:
+    """Implements the sample negative example helper."""
     if impression_negatives:
         neg_event_id = rng.choice(impression_negatives)
-        neg_weight = _impression_negative_weight(impression_position_by_user_event.get((user_id, neg_event_id)))
+        neg_weight = _impression_negative_weight(
+            impression_position_by_user_event.get((user_id, neg_event_id))
+        )
         return neg_event_id, neg_weight
     return rng.choice(all_event_ids), 1.0
 
 
 def _append_positive_examples(**kwargs) -> None:
+    """Implements the append positive examples helper."""
     for event_id, weight in kwargs["positives"].items():
         event = kwargs["events"].get(event_id)
         if not event:
@@ -167,11 +221,16 @@ def _append_positive_examples(**kwargs) -> None:
         )
         neg_added = 0
         max_attempts = len(kwargs["all_event_ids"])
-        while neg_added < int(kwargs["negatives_per_positive"]) and neg_added < max_attempts:
+        while (
+            neg_added < int(kwargs["negatives_per_positive"])
+            and neg_added < max_attempts
+        ):
             neg_event_id, neg_weight = _sample_negative_example(
                 rng=kwargs["rng"],
                 impression_negatives=kwargs["impression_negatives"],
-                impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+                impression_position_by_user_event=kwargs[
+                    "impression_position_by_user_event"
+                ],
                 user_id=int(kwargs["user_id"]),
                 all_event_ids=kwargs["all_event_ids"],
             )
@@ -188,14 +247,30 @@ def _append_positive_examples(**kwargs) -> None:
             neg_added += 1
 
 
-def _matches_weak_signal(*, candidate_event: _EventFeatures, weak_tags: set[str], weak_categories: set[str], weak_city: str | None) -> bool:
-    matches_city = bool(weak_city and candidate_event.city and _normalize_city(candidate_event.city) == weak_city)
-    matches_category = bool(candidate_event.category and candidate_event.category in weak_categories)
+def _matches_weak_signal(
+    *,
+    candidate_event: _EventFeatures,
+    weak_tags: set[str],
+    weak_categories: set[str],
+    weak_city: str | None,
+) -> bool:
+    """Implements the matches weak signal helper."""
+    matches_city = bool(
+        weak_city
+        and candidate_event.city
+        and _normalize_city(candidate_event.city) == weak_city
+    )
+    matches_category = bool(
+        candidate_event.category and candidate_event.category in weak_categories
+    )
     matches_tags = bool(weak_tags and (candidate_event.tags & weak_tags))
     return matches_city or matches_category or matches_tags
 
 
-def _next_weak_signal_candidate(*, kwargs, weak_tags: set[str], weak_categories: set[str], weak_city: str | None):
+def _next_weak_signal_candidate(
+    *, kwargs, weak_tags: set[str], weak_categories: set[str], weak_city: str | None
+):
+    """Implements the next weak signal candidate helper."""
     candidate_id = kwargs["rng"].choice(kwargs["all_event_ids"])
     if candidate_id in kwargs["user_positive_ids"]:
         return None
@@ -210,7 +285,10 @@ def _next_weak_signal_candidate(*, kwargs, weak_tags: set[str], weak_categories:
     return candidate_event
 
 
-def _event_id_for_features(events: dict[int, _EventFeatures], candidate_event: _EventFeatures) -> int:
+def _event_id_for_features(
+    events: dict[int, _EventFeatures], candidate_event: _EventFeatures
+) -> int:
+    """Implements the event id for features helper."""
     for event_id, event in events.items():
         if event is candidate_event:
             return event_id
@@ -218,6 +296,7 @@ def _event_id_for_features(events: dict[int, _EventFeatures], candidate_event: _
 
 
 def _append_weak_signal_examples(**kwargs) -> None:
+    """Implements the append weak signal examples helper."""
     weak_tags = kwargs["weak_tags"]
     weak_categories = kwargs["weak_categories"]
     weak_city = kwargs["weak_city"]
@@ -243,30 +322,42 @@ def _append_weak_signal_examples(**kwargs) -> None:
             label=1,
             weight=0.15,
         )
-        kwargs["user_positive_ids"].add(_event_id_for_features(kwargs["events"], candidate_event))
+        kwargs["user_positive_ids"].add(
+            _event_id_for_features(kwargs["events"], candidate_event)
+        )
         added += 1
 
 
-def _append_negative_feedback_examples(*, examples, negative_weights, users, events, now: datetime) -> None:
+def _append_negative_feedback_examples(
+    *, examples, negative_weights, users, events, now: datetime
+) -> None:
+    """Implements the append negative feedback examples helper."""
     for (user_id, event_id), weight in negative_weights.items():
         user = users.get(user_id)
         event = events.get(event_id)
         if not user or not event:
             continue
-        _append_example(examples=examples, user=user, event=event, now=now, label=0, weight=weight)
+        _append_example(
+            examples=examples, user=user, event=event, now=now, label=0, weight=weight
+        )
 
 
 def _append_user_training_examples(*, kwargs, examples, rng) -> None:
+    """Implements the append user training examples helper."""
     for user_id, positives in kwargs["positives_by_user"].items():
         user = kwargs["users"].get(user_id)
         if not user:
             continue
-        user_positive_ids = _user_positive_ids(user_id=user_id, positives=positives, holdout=kwargs["holdout"])
+        user_positive_ids = _user_positive_ids(
+            user_id=user_id, positives=positives, holdout=kwargs["holdout"]
+        )
         impression_negatives = _impression_negative_ids(
             user_id=user_id,
             user_positive_ids=user_positive_ids,
             seen_by_user=kwargs["seen_by_user"],
-            impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+            impression_position_by_user_event=kwargs[
+                "impression_position_by_user_event"
+            ],
             events=kwargs["events"],
         )
         _append_positive_examples(
@@ -278,7 +369,9 @@ def _append_user_training_examples(*, kwargs, examples, rng) -> None:
             events=kwargs["events"],
             all_event_ids=kwargs["all_event_ids"],
             impression_negatives=impression_negatives,
-            impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+            impression_position_by_user_event=kwargs[
+                "impression_position_by_user_event"
+            ],
             negatives_per_positive=kwargs["args"].negatives_per_positive,
             now=kwargs["now"],
             rng=rng,
@@ -298,6 +391,7 @@ def _append_user_training_examples(*, kwargs, examples, rng) -> None:
 
 
 def _build_training_examples(**kwargs) -> list[tuple[list[float], int, float]]:
+    """Constructs a training examples structure."""
     examples: list[tuple[list[float], int, float]] = []
     rng = _DeterministicRng(int(kwargs["args"].seed))
     _append_user_training_examples(kwargs=kwargs, examples=examples, rng=rng)
@@ -312,6 +406,7 @@ def _build_training_examples(**kwargs) -> list[tuple[list[float], int, float]]:
 
 
 def _build_recommendation_rows(**kwargs):
+    """Constructs a recommendation rows structure."""
     return build_recommendation_rows_impl(
         state=_RecommendationBuildState(**kwargs),
         deps=_RecommendationDependencies(
@@ -323,9 +418,11 @@ def _build_recommendation_rows(**kwargs):
     )
 
 
-def _train_model_state(*, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime) -> tuple[str | None, list[float] | None, int | None]:
-    model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
-    examples = _build_training_examples(
+def _gather_training_examples(
+    *, args, state: _PreparedState, now: datetime
+):
+    """Collects training examples from ``state``; handles the empty-data path."""
+    return _build_training_examples(
         args=args,
         positives_by_user=state.positives_by_user,
         users=state.users,
@@ -340,14 +437,12 @@ def _train_model_state(*, db, models, args, requested_model_version: str | None,
         all_event_ids=state.all_event_ids,
         now=now,
     )
-    if not examples:
-        print("No training data found (no registrations/favorites/interactions); nothing to do.")
-        return None, None, 0
 
-    n_features, exit_code = _feature_length_is_valid(examples)
-    if exit_code is not None:
-        return None, None, exit_code
 
+def _train_and_evaluate(
+    *, args, state: _PreparedState, examples, n_features: int, now: datetime
+) -> tuple[list[float], float]:
+    """Runs SGD training + holdout hit-rate evaluation and logs the result."""
     weights = _train_log_regression_sgd(
         examples=examples,
         n_features=n_features,
@@ -368,13 +463,57 @@ def _train_model_state(*, db, models, args, requested_model_version: str | None,
         seed=args.seed,
     )
     print(f"[eval] hitrate@10={hitrate:.3f} users={len(state.holdout)}")
+    return weights, hitrate
+
+
+# pylint: disable-next=too-many-arguments
+def _train_model_state(
+    *,
+    db,
+    models,
+    args,
+    requested_model_version: str | None,
+    state: _PreparedState,
+    now: datetime,
+) -> tuple[str | None, list[float] | None, int | None]:
+    """Implements the train model state helper."""
+    model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
+    examples = _gather_training_examples(args=args, state=state, now=now)
+    if not examples:
+        print(
+            "No training data found (no registrations/favorites/interactions); "
+            "nothing to do."
+        )
+        return None, None, 0
+    n_features, exit_code = _feature_length_is_valid(examples)
+    if exit_code is not None:
+        return None, None, exit_code
+    weights, hitrate = _train_and_evaluate(
+        args=args, state=state, examples=examples, n_features=n_features, now=now
+    )
     meta = _training_meta(args=args, now=now, examples=examples, hitrate=hitrate)
     if not args.dry_run:
-        _persist_model_state(db=db, models=models, model_version=model_version, weights=weights, meta=meta)
+        _persist_model_state(
+            db=db,
+            models=models,
+            model_version=model_version,
+            weights=weights,
+            meta=meta,
+        )
     return model_version, weights, None
 
 
-def _resolve_model_state(*, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime) -> tuple[str | None, list[float] | None, int | None]:
+# pylint: disable-next=too-many-arguments
+def _resolve_model_state(
+    *,
+    db,
+    models,
+    args,
+    requested_model_version: str | None,
+    state: _PreparedState,
+    now: datetime,
+) -> tuple[str | None, list[float] | None, int | None]:
+    """Implements the resolve model state helper."""
     if args.skip_training:
         return _load_persisted_model_state(
             db=db,
@@ -391,7 +530,18 @@ def _resolve_model_state(*, db, models, args, requested_model_version: str | Non
     )
 
 
-def _store_recommendations(*, db, models, args, state: _PreparedState, model_version: str | None, weights: list[float] | None, now: datetime) -> int | None:
+# pylint: disable-next=too-many-arguments
+def _store_recommendations(
+    *,
+    db,
+    models,
+    args,
+    state: _PreparedState,
+    model_version: str | None,
+    weights: list[float] | None,
+    now: datetime,
+) -> int | None:
+    """Implements the store recommendations helper."""
     if args.dry_run:
         print("[write] dry-run enabled; skipping DB writes.")
         return 0
@@ -399,9 +549,9 @@ def _store_recommendations(*, db, models, args, state: _PreparedState, model_ver
         return 0
 
     eligible_event_ids = _eligible_event_ids(state.events, now)
-    db.query(models.UserRecommendation).filter(models.UserRecommendation.user_id.in_(state.user_ids)).delete(
-        synchronize_session=False
-    )
+    db.query(models.UserRecommendation).filter(
+        models.UserRecommendation.user_id.in_(state.user_ids)
+    ).delete(synchronize_session=False)
     inserts = _build_recommendation_rows(
         user_ids=state.user_ids,
         users=state.users,
@@ -417,22 +567,31 @@ def _store_recommendations(*, db, models, args, state: _PreparedState, model_ver
     )
     db.add_all(inserts)
     db.commit()
-    print(f"[write] stored {len(inserts)} recommendations (model_version={model_version})")
+    print(
+        f"[write] stored {len(inserts)} recommendations (model_version={model_version})"
+    )
     return None
 
 
 def main() -> int:
+    """Implements the main helper."""
     args = _parse_args()
     repo_root = _bootstrap_script_environment()
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        print("Missing DATABASE_URL. Example:\n  DATABASE_URL=postgresql://... python backend/scripts/recompute_recommendations_ml.py")
+        print(
+            "Missing DATABASE_URL. Example:\n"
+            "  DATABASE_URL=postgresql://... "
+            "python backend/scripts/recompute_recommendations_ml.py"
+        )
         return 2
 
     models, settings, session_local_factory, func = _load_runtime_objects()
     now = datetime.now(timezone.utc)
     requested_model_version = os.environ.get("RECOMMENDER_MODEL_VERSION")
-    half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
+    half_life_hours = max(
+        1, int(settings.recommendations_online_learning_decay_half_life_hours)
+    )
     decay_lambda = math.log(2.0) / (float(half_life_hours) * 3600.0)
     max_score = float(settings.recommendations_online_learning_max_score)
 
@@ -472,7 +631,10 @@ def main() -> int:
         if store_exit is not None:
             return store_exit
 
-    print(f"Done. See docs/recommendations-ml.md for operational guidance (repo: {repo_root}).")
+    print(
+        "Done. See docs/recommendations-ml.md for operational guidance "
+        f"(repo: {repo_root})."
+    )
     return 0
 
 

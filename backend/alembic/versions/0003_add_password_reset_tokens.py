@@ -23,9 +23,7 @@ def upgrade():
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("token", sa.String(length=255), nullable=False),
         sa.Column("expires_at", sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.Column(
-            "used", sa.Boolean(), server_default="false", nullable=False
-        ),
+        sa.Column("used", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),

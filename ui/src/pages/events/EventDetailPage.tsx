@@ -5,6 +5,9 @@ import { EventDetailSidebar } from './event-detail/EventDetailSidebar';
 import { EventDetailSkeleton } from './event-detail/EventDetailSkeleton';
 import { useEventDetailController } from './event-detail/useEventDetailController';
 
+/**
+ * Test helper: event detail page.
+ */
 export function EventDetailPage() {
   const controller = useEventDetailController();
 

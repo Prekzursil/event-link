@@ -14,6 +14,9 @@ type Props = Readonly<{
 }>;
 
 /** Render the title and description inputs for the organizer event form. */
+/**
+ * Test helper: title description fields.
+ */
 function TitleDescriptionFields({ controller }: Props) {
   const { formData, t, updateField } = controller;
 

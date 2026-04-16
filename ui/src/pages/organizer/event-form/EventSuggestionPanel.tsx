@@ -9,6 +9,9 @@ type Props = Readonly<{
   controller: EventFormController;
 }>;
 
+/**
+ * Test helper: event suggestion panel.
+ */
 export function EventSuggestionPanel({ controller }: Props) {
   const { language, suggestion, t, applySuggestion } = controller;
 

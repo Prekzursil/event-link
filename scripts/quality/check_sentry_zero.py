@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Support module: check sentry zero."""
+
 from __future__ import annotations
 
 import argparse
@@ -22,21 +24,38 @@ SENTRY_API_BASE = f"https://{SENTRY_HOST}/api/0"
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Assert Sentry has zero unresolved issues for configured projects.")
-    parser.add_argument("--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)")
+    """Implements the parse args helper."""
+    parser = argparse.ArgumentParser(
+        description="Assert Sentry has zero unresolved issues for configured projects."
+    )
+    parser.add_argument(
+        "--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)"
+    )
     parser.add_argument(
         "--project",
         action="append",
         default=[],
-        help="Project slug (repeatable, falls back to SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)",
+        help=(
+            "Project slug (repeatable, falls back to "
+            "SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)"
+        ),
     )
-    parser.add_argument("--token", default="", help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)")
-    parser.add_argument("--out-json", default="sentry-zero/sentry.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="sentry-zero/sentry.md", help="Output markdown path")
+    parser.add_argument(
+        "--token",
+        default="",
+        help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)",
+    )
+    parser.add_argument(
+        "--out-json", default="sentry-zero/sentry.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="sentry-zero/sentry.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
 def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
+    """Implements the request helper."""
     safe_url = normalize_https_url(url, allowed_host_suffixes={SENTRY_HOST})
     payload, headers, status = request_https_json(
         safe_url,
@@ -57,6 +76,7 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
 
 
 def _hits_from_headers(headers: dict[str, str]) -> int | None:
+    """Implements the hits from headers helper."""
     raw = headers.get("x-hits")
     if not raw:
         return None
@@ -67,6 +87,7 @@ def _hits_from_headers(headers: dict[str, str]) -> int | None:
 
 
 def _render_md(payload: dict) -> str:
+    """Implements the render md helper."""
     lines = [
         "# Sentry Zero Gate",
         "",
@@ -80,7 +101,9 @@ def _render_md(payload: dict) -> str:
     for item in payload.get("projects", []):
         state = item.get("state")
         state_suffix = "" if not state or state == "ok" else f" state=`{state}`"
-        lines.append(f"- `{item['project']}` unresolved=`{item['unresolved']}`{state_suffix}")
+        lines.append(
+            f"- `{item['project']}` unresolved=`{item['unresolved']}`{state_suffix}"
+        )
 
     if not payload.get("projects"):
         lines.append("- None")
@@ -96,6 +119,7 @@ def _render_md(payload: dict) -> str:
 
 
 def _collect_projects(args: argparse.Namespace) -> list[str]:
+    """Implements the collect projects helper."""
     projects = [project for project in args.project if project]
     if projects:
         return projects
@@ -107,6 +131,7 @@ def _collect_projects(args: argparse.Namespace) -> list[str]:
 
 
 def _validated_org(org_input: str, findings: list[str]) -> str:
+    """Implements the validated org helper."""
     if not org_input:
         findings.append("SENTRY_ORG is missing.")
         return ""
@@ -118,8 +143,12 @@ def _validated_org(org_input: str, findings: list[str]) -> str:
 
 
 def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
+    """Implements the validated projects helper."""
     if not projects:
-        findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT).")
+        findings.append(
+            "No Sentry projects configured "
+            "(SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT)."
+        )
         return []
 
     safe_projects: list[str] = []
@@ -131,7 +160,10 @@ def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
     return safe_projects
 
 
-def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], str, list[str]]:
+def _validated_inputs(
+    args: argparse.Namespace,
+) -> tuple[str, str, list[str], str, list[str]]:
+    """Implements the validated inputs helper."""
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org_input = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
     findings: list[str] = []
@@ -141,11 +173,16 @@ def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], st
 
     org = _validated_org(org_input, findings)
     safe_projects = _validated_projects(_collect_projects(args), findings)
-    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={SENTRY_HOST}).rstrip("/")
+    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={SENTRY_HOST}).rstrip(
+        "/"
+    )
     return token, org, safe_projects, api_base, findings
 
 
-def _project_result(*, api_base: str, token: str, org: str, project: str) -> tuple[dict[str, Any], list[str]]:
+def _project_result(
+    *, api_base: str, token: str, org: str, project: str
+) -> tuple[dict[str, Any], list[str]]:
+    """Implements the project result helper."""
     query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
     org_slug = urllib.parse.quote(org, safe="")
     project_slug = urllib.parse.quote(project, safe="")
@@ -157,14 +194,18 @@ def _project_result(*, api_base: str, token: str, org: str, project: str) -> tup
         unresolved = len(issues)
         if unresolved >= 1:
             findings.append(
-                f"Sentry project {project} returned unresolved issues but no X-Hits header for exact totals."
+                f"Sentry project {project} returned unresolved issues but no "
+                "X-Hits header for exact totals."
             )
     if unresolved != 0:
-        findings.append(f"Sentry project {project} has {unresolved} unresolved issues (expected 0).")
+        findings.append(
+            f"Sentry project {project} has {unresolved} unresolved issues (expected 0)."
+        )
     return {"project": project, "unresolved": unresolved}, findings
 
 
 def _is_not_found_error(message: str) -> bool:
+    """Implements the is not found error helper."""
     return "HTTP 404" in message
 
 
@@ -176,6 +217,7 @@ def _evaluate_sentry(
     api_base: str,
     findings: list[str],
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
+    """Implements the evaluate sentry helper."""
     if findings:
         return "fail", [], findings
 
@@ -191,9 +233,15 @@ def _evaluate_sentry(
         except Exception as exc:  # pragma: no cover - network/runtime surface
             message = str(exc)
             if _is_not_found_error(message):
-                project_results.append({"project": project, "unresolved": 0, "state": "not_found"})
+                project_results.append(
+                    {"project": project, "unresolved": 0, "state": "not_found"}
+                )
                 continue
-            return "fail", project_results, [*findings, f"Sentry API request failed: {exc}"]
+            return (
+                "fail",
+                project_results,
+                [*findings, f"Sentry API request failed: {exc}"],
+            )
         project_results.append({**result, "state": "ok"})
         findings.extend(project_findings)
 
@@ -202,6 +250,7 @@ def _evaluate_sentry(
 
 
 def main() -> int:
+    """Implements the main helper."""
     args = _parse_args()
     token, org, safe_projects, api_base, findings = _validated_inputs(args)
     status, project_results, findings = _evaluate_sentry(
@@ -220,7 +269,9 @@ def main() -> int:
     }
 
     try:
-        write_workspace_json(raw_path=args.out_json, fallback="sentry-zero/sentry.json", payload=payload)
+        write_workspace_json(
+            raw_path=args.out_json, fallback="sentry-zero/sentry.json", payload=payload
+        )
         out_md = write_workspace_text(
             raw_path=args.out_md,
             fallback="sentry-zero/sentry.md",

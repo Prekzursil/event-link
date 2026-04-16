@@ -1,3 +1,5 @@
+"""Tests for the api misc flows behavior."""
+
 from app import models
 from api_test_support import (
     CONFIRM_SECRET_FIELD,
@@ -13,6 +15,7 @@ from api_test_support import (
 
 
 def test_health_endpoint(helpers):
+    """Verifies health endpoint behavior."""
     client = helpers["client"]
     resp = client.get("/api/health")
     assert resp.status_code == 200
@@ -22,6 +25,7 @@ def test_health_endpoint(helpers):
 
 
 def test_event_ics_and_calendar_feed(helpers):
+    """Verifies event ics and calendar feed behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -55,31 +59,43 @@ def test_event_ics_and_calendar_feed(helpers):
     )
     assert registered.status_code == 201
 
-    feed_resp = client.get("/api/me/calendar", headers=helpers["auth_header"](student_token))
+    feed_resp = client.get(
+        "/api/me/calendar", headers=helpers["auth_header"](student_token)
+    )
     assert feed_resp.status_code == 200
     assert "ICS Event" in feed_resp.text
 
 
 def test_access_code_reset_flow(helpers):
+    """Verifies access code reset flow behavior."""
     client = helpers["client"]
     helpers["register_student"]("reset@test.ro")
     req = client.post(f"{PASSCODE_ROUTE}/forgot", json={"email": "reset@test.ro"})
     assert req.status_code == 200
 
-    reset_row = helpers["db"].query(RESET_RECORD).filter(RESET_RECORD.used.is_(False)).first()
+    reset_row = (
+        helpers["db"].query(RESET_RECORD).filter(RESET_RECORD.used.is_(False)).first()
+    )
     reset_key = getattr(reset_row, RESET_KEY_FIELD)  # type: ignore[name-defined]
 
     reset = client.post(
         f"{PASSCODE_ROUTE}/reset",
-        json={RESET_KEY_FIELD: reset_key, NEW_SECRET_FIELD: RESET_CODE, CONFIRM_SECRET_FIELD: RESET_CODE},
+        json={
+            RESET_KEY_FIELD: reset_key,
+            NEW_SECRET_FIELD: RESET_CODE,
+            CONFIRM_SECRET_FIELD: RESET_CODE,
+        },
     )
     assert reset.status_code == 200
 
-    login_ok = client.post("/login", json={"email": "reset@test.ro", SECRET_FIELD: RESET_CODE})
+    login_ok = client.post(
+        "/login", json={"email": "reset@test.ro", SECRET_FIELD: RESET_CODE}
+    )
     assert login_ok.status_code == 200
 
 
 def test_participants_pagination(helpers):
+    """Verifies participants pagination behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     org_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -121,6 +137,7 @@ def test_participants_pagination(helpers):
 
 
 def test_account_export_and_deletion_student(helpers):
+    """Verifies account export and deletion student behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     org_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -146,7 +163,9 @@ def test_account_export_and_deletion_student(helpers):
     )
     assert reg.status_code == 201
 
-    export_resp = client.get("/api/me/export", headers=helpers["auth_header"](student_token))
+    export_resp = client.get(
+        "/api/me/export", headers=helpers["auth_header"](student_token)
+    )
     assert export_resp.status_code == 200
     payload = export_resp.json()
     assert payload["user"]["email"] == "export@test.ro"
@@ -175,6 +194,7 @@ def test_account_export_and_deletion_student(helpers):
 
 
 def test_organizer_account_deletion_reassigns_events(helpers):
+    """Verifies organizer account deletion reassigns events behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     org_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -201,8 +221,15 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     )
     assert delete_resp.status_code == 200
 
-    placeholder = helpers["db"].query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
+    placeholder = (
+        helpers["db"]
+        .query(models.User)
+        .filter(models.User.email == "deleted-organizer@eventlink.invalid")
+        .first()
+    )
     assert placeholder is not None
-    event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
+    event_row = (
+        helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
+    )
     assert event_row is not None
     assert event_row.owner_id == placeholder.id

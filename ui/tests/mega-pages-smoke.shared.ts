@@ -4,6 +4,9 @@ import { beforeEach, vi } from 'vitest';
 import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
 
 /** Build the shared event-service mock used by the mega-page smoke tests. */
+/**
+ * Test helper: create mega pages event service mock.
+ */
 function createMegaPagesEventServiceMock() {
   return {
     getEvents: vi.fn(),
@@ -140,10 +143,16 @@ export const { OrganizerProfilePage } = await import('@/pages/organizer/Organize
 export const { AdminDashboardPage } = await import('@/pages/admin/AdminDashboardPage');
 export const { StudentProfilePage } = await import('@/pages/profile/StudentProfilePage');
 
+/**
+ * Test helper: get mega pages smoke fixtures.
+ */
 export const getMegaPagesSmokeFixtures = () => {
   return megaPagesSmokeFixtures;
 };
 
+/**
+ * Builds a event fixture.
+ */
 export const makeEvent = (id: number, startOffsetDays: number) => {
   const start = new Date();
   start.setDate(start.getDate() + startOffsetDays);
@@ -167,6 +176,9 @@ export const makeEvent = (id: number, startOffsetDays: number) => {
   };
 };
 
+/**
+ * Builds a event detail fixture.
+ */
 export const makeEventDetail = (id: number) => {
   return {
     ...makeEvent(id, 2),
@@ -179,6 +191,9 @@ export const makeEventDetail = (id: number) => {
   };
 };
 
+/**
+ * Test helper: install mega pages browser state.
+ */
 const installMegaPagesBrowserState = () => {
   defineMutableValue(
     globalThis,
@@ -200,6 +215,10 @@ const installMegaPagesBrowserState = () => {
   defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://mock-file'));
 };
 
+/**
+ * Restores the shared auth state to the default fully-authorised student
+ * test fixture so each it-block starts from the same baseline.
+ */
 const resetMegaPagesAuthState = () => {
   authState.isAuthenticated = true;
   authState.isOrganizer = true;
@@ -207,6 +226,9 @@ const resetMegaPagesAuthState = () => {
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
 };
 
+/**
+ * Test helper: seed mega pages event list defaults.
+ */
 const seedMegaPagesEventListDefaults = () => {
   const listEvents = [makeEvent(1, 2), makeEvent(2, -1)];
   eventServiceMock.getEvents.mockResolvedValue({
@@ -242,6 +264,9 @@ const seedMegaPagesEventListDefaults = () => {
   eventServiceMock.updateEvent.mockResolvedValue(makeEvent(10, 7));
 };
 
+/**
+ * Test helper: seed mega pages participant defaults.
+ */
 const seedMegaPagesParticipantDefaults = () => {
   eventServiceMock.getEventParticipants.mockResolvedValue({
     event_id: 3,
@@ -264,11 +289,17 @@ const seedMegaPagesParticipantDefaults = () => {
   eventServiceMock.emailEventParticipants.mockResolvedValue({ recipients: 1 });
 };
 
+/**
+ * Test helper: seed mega pages event defaults.
+ */
 const seedMegaPagesEventDefaults = () => {
   seedMegaPagesEventListDefaults();
   seedMegaPagesParticipantDefaults();
 };
 
+/**
+ * Test helper: seed mega pages organizer profile defaults.
+ */
 const seedMegaPagesOrganizerProfileDefaults = () => {
   eventServiceMock.getOrganizerProfile.mockResolvedValue({
     id: 7,
@@ -282,6 +313,9 @@ const seedMegaPagesOrganizerProfileDefaults = () => {
   });
 };
 
+/**
+ * Test helper: seed mega pages student profile defaults.
+ */
 const seedMegaPagesStudentProfileDefaults = () => {
   eventServiceMock.getStudentProfile.mockResolvedValue({
     email: 'student@test.local',
@@ -331,11 +365,17 @@ const seedMegaPagesStudentProfileDefaults = () => {
   eventServiceMock.deleteMyAccount.mockResolvedValue();
 };
 
+/**
+ * Test helper: seed mega pages profile defaults.
+ */
 const seedMegaPagesProfileDefaults = () => {
   seedMegaPagesOrganizerProfileDefaults();
   seedMegaPagesStudentProfileDefaults();
 };
 
+/**
+ * Test helper: seed mega pages admin stats defaults.
+ */
 const seedMegaPagesAdminStatsDefaults = () => {
   adminServiceMock.getStats.mockResolvedValue({
     users_total: 1,
@@ -352,6 +392,9 @@ const seedMegaPagesAdminStatsDefaults = () => {
   });
 };
 
+/**
+ * Test helper: seed mega pages admin user defaults.
+ */
 const seedMegaPagesAdminUserDefaults = () => {
   adminServiceMock.getUsers.mockResolvedValue({
     items: [
@@ -378,6 +421,9 @@ const seedMegaPagesAdminUserDefaults = () => {
   });
 };
 
+/**
+ * Test helper: seed mega pages admin event defaults.
+ */
 const seedMegaPagesAdminEventDefaults = () => {
   adminServiceMock.getEvents.mockResolvedValue({
     items: [
@@ -409,6 +455,9 @@ const seedMegaPagesAdminEventDefaults = () => {
   adminServiceMock.reviewEventModeration.mockResolvedValue({ status: 'ok' });
 };
 
+/**
+ * Test helper: seed mega pages admin job defaults.
+ */
 const seedMegaPagesAdminJobDefaults = () => {
   adminServiceMock.getPersonalizationMetrics.mockResolvedValue({
     from: '2026-01-01T00:00:00Z',
@@ -437,6 +486,9 @@ const seedMegaPagesAdminJobDefaults = () => {
   });
 };
 
+/**
+ * Test helper: seed mega pages admin defaults.
+ */
 const seedMegaPagesAdminDefaults = () => {
   seedMegaPagesAdminStatsDefaults();
   seedMegaPagesAdminUserDefaults();
@@ -444,6 +496,9 @@ const seedMegaPagesAdminDefaults = () => {
   seedMegaPagesAdminJobDefaults();
 };
 
+/**
+ * Test helper: seed mega pages auth defaults.
+ */
 const seedMegaPagesAuthDefaults = () => {
   authServiceMock.updateThemePreference.mockResolvedValue();
   authServiceMock.updateLanguagePreference.mockResolvedValue();

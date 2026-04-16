@@ -17,6 +17,9 @@ import {
 import { useStudentProfileController } from './student-profile/useStudentProfileController';
 
 /** Render the heading copy and spacing for the student profile page. */
+/**
+ * Test helper: student profile header.
+ */
 function StudentProfileHeader({
   subtitle,
   title,

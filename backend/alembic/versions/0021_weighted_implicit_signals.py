@@ -25,9 +25,7 @@ def _create_weighted_interest_table(
     op.create_table(
         table_name,
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column(value_column, sa.String(length=100), nullable=False),
         sa.Column("score", sa.Float(), nullable=False, server_default="1.0"),
         sa.Column(
@@ -43,9 +41,7 @@ def _create_weighted_interest_table(
         (value_column, [value_column]),
         ("last_seen_at", ["last_seen_at"]),
     ):
-        op.create_index(
-            f"ix_{table_name}_{suffix}", table_name, columns, unique=False
-        )
+        op.create_index(f"ix_{table_name}_{suffix}", table_name, columns, unique=False)
 
 
 def upgrade() -> None:

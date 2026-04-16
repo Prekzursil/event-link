@@ -6,10 +6,16 @@ import { EventDetailPage, getEventDetailFixtures } from './event-detail-branches
 
 const { eventServiceMock, toastSpy } = getEventDetailFixtures();
 
+/**
+ * Renders the event detail scaffolding for tests.
+ */
 function renderEventDetail(path = '/events/1') {
   return renderLanguageRoute(path, '/events/:id', <EventDetailPage />);
 }
 
+/**
+ * Builds a event fixture.
+ */
 function makeEvent(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,

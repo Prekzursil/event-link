@@ -96,6 +96,9 @@ vi.mock('react-router-dom', async () => {
   };
 });
 
+/**
+ * Test helper: get mega page fixtures.
+ */
 export function getMegaPageFixtures() {
   return megaPageFixtures;
 }
@@ -132,6 +135,9 @@ const {
 
 export { makeEventDetail };
 
+/**
+ * Test helper: seed core auth and globals.
+ */
 function seedCoreAuthAndGlobals() {
   defineMutableValue(globalThis, 'confirm', vi.fn().mockReturnValue(true));
   defineMutableValue(globalThis, 'open', vi.fn());
@@ -144,6 +150,9 @@ function seedCoreAuthAndGlobals() {
   authState.logout.mockResolvedValue();
 }
 
+/**
+ * Test helper: seed event service defaults.
+ */
 function seedEventServiceDefaults() {
   eventServiceMock.getEvent.mockResolvedValue(makeEventDetail(1));
   eventServiceMock.registerForEvent.mockResolvedValue();
@@ -164,6 +173,9 @@ function seedEventServiceDefaults() {
   eventServiceMock.emailEventParticipants.mockResolvedValue({ recipients: 1 });
 }
 
+/**
+ * Test helper: seed student profile defaults.
+ */
 function seedStudentProfileDefaults() {
   eventServiceMock.getStudentProfile.mockResolvedValue(makeStudentProfile(1));
   eventServiceMock.getAllTags.mockResolvedValue([
@@ -188,17 +200,26 @@ function seedStudentProfileDefaults() {
   eventServiceMock.deleteMyAccount.mockResolvedValue();
 }
 
+/**
+ * Test helper: seed admin stats and users defaults.
+ */
 function seedAdminStatsAndUsersDefaults() {
   adminServiceMock.getStats.mockResolvedValue(makeAdminStats());
   adminServiceMock.getUsers.mockResolvedValue(makeAdminUserPage());
   adminServiceMock.updateUser.mockResolvedValue(makeAdminUser(1, { role: 'admin' }));
 }
 
+/**
+ * Test helper: seed admin event defaults.
+ */
 function seedAdminEventDefaults() {
   adminServiceMock.getEvents.mockResolvedValue(makeAdminEventPage());
   adminServiceMock.reviewEventModeration.mockResolvedValue({ ok: true });
 }
 
+/**
+ * Test helper: seed admin job defaults.
+ */
 function seedAdminJobDefaults() {
   adminServiceMock.getPersonalizationMetrics.mockResolvedValue(makePersonalizationMetrics());
   adminServiceMock.enqueueRecommendationsRetrain.mockResolvedValue({
@@ -218,6 +239,9 @@ function seedAdminJobDefaults() {
   });
 }
 
+/**
+ * Test helper: seed auth service defaults.
+ */
 function seedAuthServiceDefaults() {
   authServiceMock.updateThemePreference.mockResolvedValue();
   authServiceMock.updateLanguagePreference.mockResolvedValue();

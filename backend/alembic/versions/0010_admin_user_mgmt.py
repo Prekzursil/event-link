@@ -21,9 +21,7 @@ def upgrade() -> None:
     if bind.dialect.name == "postgresql":
         # PostgreSQL enum alterations must run outside of a transaction.
         with op.get_context().autocommit_block():
-            op.execute(
-                sa.text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'admin'")
-            )
+            op.execute(sa.text("ALTER TYPE userrole ADD VALUE IF NOT EXISTS 'admin'"))
 
     op.add_column(
         "users",

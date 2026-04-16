@@ -42,18 +42,14 @@ def _dedupe_join_table(
     """Retarget duplicate join-table rows to the canonical tag id."""
     owner_column = join_table.c[owner_col]
     tag_column = join_table.c.tag_id
-    canonical_owners = sa.select(owner_column).where(
-        tag_column == canonical_id
-    )
+    canonical_owners = sa.select(owner_column).where(tag_column == canonical_id)
     conn.execute(
         sa.delete(join_table)
         .where(tag_column == dup_id)
         .where(owner_column.in_(canonical_owners))
     )
     conn.execute(
-        sa.update(join_table)
-        .where(tag_column == dup_id)
-        .values(tag_id=canonical_id)
+        sa.update(join_table).where(tag_column == dup_id).values(tag_id=canonical_id)
     )
 
 
@@ -90,18 +86,12 @@ def upgrade() -> None:
         if not trimmed:
             empty_tag_ids.append(int(tag_id))
             continue
-        groups.setdefault(trimmed.lower(), []).append(
-            (int(tag_id), trimmed, raw)
-        )
+        groups.setdefault(trimmed.lower(), []).append((int(tag_id), trimmed, raw))
 
     for tag_id in empty_tag_ids:
+        conn.execute(sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id))
         conn.execute(
-            sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id)
-        )
-        conn.execute(
-            sa.delete(_USER_INTEREST_TAGS).where(
-                _USER_INTEREST_TAGS.c.tag_id == tag_id
-            )
+            sa.delete(_USER_INTEREST_TAGS).where(_USER_INTEREST_TAGS.c.tag_id == tag_id)
         )
         conn.execute(sa.delete(_TAGS).where(_TAGS.c.id == tag_id))
 
@@ -117,9 +107,7 @@ def upgrade() -> None:
             )
 
         for dup_id, _dup_trimmed, _dup_raw in entries[1:]:
-            _dedupe_join_table(
-                conn, _EVENT_TAGS, "event_id", canonical_id, dup_id
-            )
+            _dedupe_join_table(conn, _EVENT_TAGS, "event_id", canonical_id, dup_id)
             _dedupe_join_table(
                 conn, _USER_INTEREST_TAGS, "user_id", canonical_id, dup_id
             )
@@ -127,7 +115,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Revert the event-data normalization migration where possible."""
-    # Normalization merged duplicate tags and trimmed stored values
-    # in place; downgrade cannot reconstruct the original data.
-    pass
+    """Revert the event-data normalization migration where possible.
+
+    Normalization merged duplicate tags and trimmed stored values in
+    place; downgrade cannot reconstruct the original data, so this is
+    intentionally a no-op.
+    """

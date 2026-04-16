@@ -16,12 +16,8 @@ depends_on = None
 
 def upgrade() -> None:
     """Apply organizer profile, publishing, and favorites changes."""
-    op.add_column(
-        "users", sa.Column("org_name", sa.String(length=255), nullable=True)
-    )
-    op.add_column(
-        "users", sa.Column("org_description", sa.Text(), nullable=True)
-    )
+    op.add_column("users", sa.Column("org_name", sa.String(length=255), nullable=True))
+    op.add_column("users", sa.Column("org_description", sa.Text(), nullable=True))
     op.add_column(
         "users",
         sa.Column("org_logo_url", sa.String(length=500), nullable=True),

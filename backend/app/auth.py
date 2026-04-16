@@ -1,3 +1,5 @@
+"""Support module: auth."""
+
 from datetime import datetime, timedelta, timezone
 from typing import Optional
 import bcrypt
@@ -15,18 +17,23 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
+    """Implements the verify password helper."""
     try:
-        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+        )
     except ValueError:
         return False
 
 
 def get_password_hash(password: str) -> str:
+    """Returns the password hash value."""
     hashed = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt())
     return hashed.decode("utf-8")
 
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Implements the create access token helper."""
     to_encode = data.copy()
     to_encode["type"] = "access"
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(minutes=15))
@@ -35,6 +42,7 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
+    """Implements the create refresh token helper."""
     to_encode = data.copy()
     to_encode["type"] = "refresh"
     expire = datetime.now(timezone.utc) + (expires_delta or timedelta(days=30))
@@ -42,7 +50,10 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)
+):
+    """Returns the current user value."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
         detail="Could not validate credentials",
@@ -51,30 +62,37 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     if not token:
         raise credentials_exception
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
         user_id = payload.get("sub")
         email: str = payload.get("email")
         role = payload.get("role")
         if user_id is None or role is None:
             raise credentials_exception
         token_data = schemas.TokenData(email=email, user_id=int(user_id), role=role)
-    except ExpiredSignatureError:
+    except ExpiredSignatureError as exc:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Token expirat. Autentificați-vă din nou.",
             headers={"WWW-Authenticate": "Bearer"},
-        )
-    except JWTError:
-        raise credentials_exception
+        ) from exc
+    except JWTError as exc:
+        raise credentials_exception from exc
     user = db.query(models.User).filter(models.User.id == token_data.user_id).first()
     if user is None:
         raise credentials_exception
     if getattr(user, "is_active", True) is False:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat."
+        )
     return user
 
 
-def get_optional_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
+def get_optional_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)
+):
+    """Returns the optional user value."""
     if not token:
         return None
     try:
@@ -84,18 +102,26 @@ def get_optional_user(token: str = Depends(oauth2_scheme), db: Session = Depends
 
 
 def require_student(user: models.User = Depends(get_current_user)):
+    """Implements the require student helper."""
     if user.role != models.UserRole.student:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru studenți.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru studenți."
+        )
     return user
 
 
 def require_organizer(user: models.User = Depends(get_current_user)):
+    """Implements the require organizer helper."""
     if user.role not in {models.UserRole.organizator, models.UserRole.admin}:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru organizatori.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acces doar pentru organizatori.",
+        )
     return user
 
 
 def is_admin(user: models.User) -> bool:
+    """Implements the is admin helper."""
     if user.role == models.UserRole.admin:
         return True
     if user.email and user.email.strip().lower() in set(settings.admin_emails or []):
@@ -104,6 +130,10 @@ def is_admin(user: models.User) -> bool:
 
 
 def require_admin(user: models.User = Depends(get_current_user)):
+    """Implements the require admin helper."""
     if not is_admin(user):
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru administratori.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acces doar pentru administratori.",
+        )
     return user

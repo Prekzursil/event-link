@@ -8,6 +8,9 @@ import {
   requireValue,
 } from './layout-and-ui-smoke.shared';
 
+/**
+ * Renders the navbar scaffolding for tests.
+ */
 export function renderNavbar() {
   render(
     <MemoryRouter>
@@ -20,6 +23,9 @@ export function renderNavbar() {
   );
 }
 
+/**
+ * Opens the mobile navbar menu UI surface for tests.
+ */
 export function openMobileNavbarMenu(label: string) {
   const menuButton = requireValue(
     screen.getAllByRole('button').find((button) => button.className.includes('md:hidden')),

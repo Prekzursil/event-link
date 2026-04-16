@@ -31,9 +31,7 @@ def upgrade() -> None:
             nullable=True,
         ),
     )
-    op.create_index(
-        "ix_events_deleted_at", "events", ["deleted_at"], unique=False
-    )
+    op.create_index("ix_events_deleted_at", "events", ["deleted_at"], unique=False)
 
     op.add_column(
         "registrations",
@@ -84,9 +82,7 @@ def upgrade() -> None:
     op.create_index(
         "ix_audit_logs_entity_id", "audit_logs", ["entity_id"], unique=False
     )
-    op.create_index(
-        "ix_audit_logs_action", "audit_logs", ["action"], unique=False
-    )
+    op.create_index("ix_audit_logs_action", "audit_logs", ["action"], unique=False)
     op.create_index(
         "ix_audit_logs_actor_user_id",
         "audit_logs",

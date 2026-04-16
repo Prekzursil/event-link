@@ -1,20 +1,28 @@
+"""Tests for the recommendations realtime refresh behavior."""
+
 from datetime import datetime, timedelta, timezone
 
 from app import api as api_module, auth, models
 
 
 def _set_setting(obj, name: str, value):  # noqa: ANN001
+    """Sets the setting value."""
     original = getattr(obj, name)
     setattr(obj, name, value)
     return original
 
 
 def _create_realtime_fixture(helpers, *, slug: str, title: str):
+    """Implements the create realtime fixture helper."""
     client = helpers["client"]
     db = helpers["db"]
 
     token = helpers["register_student"](f"student-{slug}@test.ro")
-    student = db.query(models.User).filter(models.User.email == f"student-{slug}@test.ro").first()
+    student = (
+        db.query(models.User)
+        .filter(models.User.email == f"student-{slug}@test.ro")
+        .first()
+    )
     assert student is not None
 
     organizer = models.User(
@@ -35,6 +43,7 @@ def _create_realtime_fixture(helpers, *, slug: str, title: str):
 
 
 def _refresh_jobs(db):
+    """Implements the refresh jobs helper."""
     return (
         db.query(models.BackgroundJob)
         .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
@@ -43,6 +52,7 @@ def _refresh_jobs(db):
 
 
 def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
+    """Verifies interactions enqueues refresh job when enabled and dedupes behavior."""
     client, db, token, student, event = _create_realtime_fixture(
         helpers,
         slug="realtime",
@@ -51,12 +61,18 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
 
     originals = {}
     try:
-        originals["task_queue_enabled"] = _set_setting(api_module.settings, "task_queue_enabled", True)
+        originals["task_queue_enabled"] = _set_setting(
+            api_module.settings, "task_queue_enabled", True
+        )
         originals["recommendations_realtime_refresh_enabled"] = _set_setting(
             api_module.settings, "recommendations_realtime_refresh_enabled", True
         )
-        originals["recommendations_realtime_refresh_min_interval_seconds"] = _set_setting(
-            api_module.settings, "recommendations_realtime_refresh_min_interval_seconds", 0
+        originals["recommendations_realtime_refresh_min_interval_seconds"] = (
+            _set_setting(
+                api_module.settings,
+                "recommendations_realtime_refresh_min_interval_seconds",
+                0,
+            )
         )
 
         resp = client.post(
@@ -85,6 +101,7 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
 
 
 def test_interactions_respects_realtime_refresh_min_interval(helpers):
+    """Verifies interactions respects realtime refresh min interval behavior."""
     client, db, token, student, event = _create_realtime_fixture(
         helpers,
         slug="interval",
@@ -106,12 +123,18 @@ def test_interactions_respects_realtime_refresh_min_interval(helpers):
 
     originals = {}
     try:
-        originals["task_queue_enabled"] = _set_setting(api_module.settings, "task_queue_enabled", True)
+        originals["task_queue_enabled"] = _set_setting(
+            api_module.settings, "task_queue_enabled", True
+        )
         originals["recommendations_realtime_refresh_enabled"] = _set_setting(
             api_module.settings, "recommendations_realtime_refresh_enabled", True
         )
-        originals["recommendations_realtime_refresh_min_interval_seconds"] = _set_setting(
-            api_module.settings, "recommendations_realtime_refresh_min_interval_seconds", 3600
+        originals["recommendations_realtime_refresh_min_interval_seconds"] = (
+            _set_setting(
+                api_module.settings,
+                "recommendations_realtime_refresh_min_interval_seconds",
+                3600,
+            )
         )
 
         resp = client.post(

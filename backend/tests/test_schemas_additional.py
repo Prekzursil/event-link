@@ -1,3 +1,5 @@
+"""Tests for the schemas additional behavior."""
+
 from __future__ import annotations
 
 import pytest
@@ -12,18 +14,23 @@ _RESET_LINK_FIELD = "to" + "ken"
 
 
 def _compose_code(*parts: str) -> str:
+    """Implements the compose code helper."""
     return "".join(parts)
 
 
 def test_user_create_password_validators_reject_invalid_inputs() -> None:
+    """Verifies user create password validators reject invalid inputs behavior."""
     with pytest.raises(ValidationError):
         schemas.UserCreate(email="a@test.ro", **{_ACCESS_CODE_FIELD: "short"})
 
     with pytest.raises(ValidationError):
-        schemas.UserCreate(email="a@test.ro", **{_ACCESS_CODE_FIELD: _compose_code("2468", "2468")})
+        schemas.UserCreate(
+            email="a@test.ro", **{_ACCESS_CODE_FIELD: _compose_code("2468", "2468")}
+        )
 
 
 def test_student_register_rejects_mismatched_confirmation() -> None:
+    """Verifies student register rejects mismatched confirmation behavior."""
     payload = {
         "email": "student@test.ro",
         _ACCESS_CODE_FIELD: _compose_code("Entry", "Code", "123A"),
@@ -34,6 +41,7 @@ def test_student_register_rejects_mismatched_confirmation() -> None:
 
 
 def test_password_reset_confirm_requires_matching_values() -> None:
+    """Verifies password reset confirm requires matching values behavior."""
     kwargs = {
         _RESET_LINK_FIELD: "tok",
         "new_" + _ACCESS_CODE_FIELD: _compose_code("Rotate", "Code", "123A"),
@@ -41,4 +49,3 @@ def test_password_reset_confirm_requires_matching_values() -> None:
     }
     with pytest.raises(ValidationError):
         schemas.PasswordResetConfirm(**kwargs)
-

@@ -18,6 +18,9 @@ import type {
   UniversityCatalogItem,
 } from '../types';
 
+/**
+ * Test helper: append param.
+ */
 function appendParam(params: URLSearchParams, key: string, value: string | number | undefined | null) {
   if (value === undefined || value === null || value === '') {
     return;
@@ -26,6 +29,9 @@ function appendParam(params: URLSearchParams, key: string, value: string | numbe
 }
 
 
+/**
+ * Test helper: build event filters params.
+ */
 function buildEventFiltersParams(filters: EventFilters): URLSearchParams {
   const params = new URLSearchParams();
   appendParam(params, 'search', filters.search);

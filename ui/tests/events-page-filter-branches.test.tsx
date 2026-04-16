@@ -155,11 +155,17 @@ describe('events page filter branches', () => {
     await Promise.resolve();
 
     cleanup();
-    eventServiceMock.getEvents.mockImplementation(async (filters: { sort?: string; page_size?: number }) => {
+    eventServiceMock.getEvents.mockImplementation((filters: { sort?: string; page_size?: number }) => {
       if (filters?.sort === 'recommended' && filters?.page_size === 4) {
-        throw new Error('recommended-panel-fail');
+        return Promise.reject(new Error('recommended-panel-fail'));
       }
-      return { items: [makeEvent(42, 'Fallback event')], total: 1, page: 1, page_size: 12, total_pages: 1 };
+      return Promise.resolve({
+        items: [makeEvent(42, 'Fallback event')],
+        total: 1,
+        page: 1,
+        page_size: 12,
+        total_pages: 1,
+      });
     });
     eventServiceMock.getFavorites.mockRejectedValueOnce(new Error('favorites-panel-fail'));
 

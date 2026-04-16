@@ -57,9 +57,7 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert recommender-model metadata tables and columns."""
-    op.drop_index(
-        "ix_recommender_models_is_active", table_name="recommender_models"
-    )
+    op.drop_index("ix_recommender_models_is_active", table_name="recommender_models")
     op.drop_index(
         "ix_recommender_models_model_version", table_name="recommender_models"
     )

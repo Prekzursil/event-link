@@ -1,4 +1,5 @@
 """Shared helpers for recommendation recomputation tests."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -20,7 +21,11 @@ def _make_user(**kwargs):
 
 def _load_script_module():
     """Loads the script module helper resource."""
-    script_path = Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
+    script_path = (
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "recompute_recommendations_ml.py"
+    )
     module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, script_path)
     if spec is None or spec.loader is None:
@@ -67,7 +72,9 @@ def _refresh_all(db_session, *instances) -> None:
 
 def _build_seed_training_entities(now: datetime):
     """Builds the seed training entities fixture data."""
-    organizer = _make_user(email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj")
+    organizer = _make_user(
+        email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj"
+    )
     student = _make_user(
         email="student-ml@test.ro",
         role=models.UserRole.student,
@@ -76,42 +83,144 @@ def _build_seed_training_entities(now: datetime):
     )
     tag = models.Tag(name="Python")
     events = {
-        "positive": _make_event(owner=organizer, title="Positive Event", now=now, days=5, location="Hall A", end_hours=2),
-        "candidate": _make_event(owner=organizer, title="Candidate Event", now=now, days=8, location="Hall B", max_seats=15, end_hours=2),
-        "filtered_status": _make_event(owner=organizer, title="Draft Event", now=now, days=9, location="Hall C", max_seats=12, status="draft"),
-        "filtered_publish": _make_event(owner=organizer, title="Future Publish", now=now, days=10, location="Hall D", max_seats=12, publish_at=now + timedelta(days=1)),
-        "filtered_past": _make_event(owner=organizer, title="Past Event", now=now, days=-1, location="Hall E", max_seats=12),
-        "filtered_full": _make_event(owner=organizer, title="Full Event", now=now, days=12, location="Hall F", max_seats=1),
+        "positive": _make_event(
+            owner=organizer,
+            title="Positive Event",
+            now=now,
+            days=5,
+            location="Hall A",
+            end_hours=2,
+        ),
+        "candidate": _make_event(
+            owner=organizer,
+            title="Candidate Event",
+            now=now,
+            days=8,
+            location="Hall B",
+            max_seats=15,
+            end_hours=2,
+        ),
+        "filtered_status": _make_event(
+            owner=organizer,
+            title="Draft Event",
+            now=now,
+            days=9,
+            location="Hall C",
+            max_seats=12,
+            status="draft",
+        ),
+        "filtered_publish": _make_event(
+            owner=organizer,
+            title="Future Publish",
+            now=now,
+            days=10,
+            location="Hall D",
+            max_seats=12,
+            publish_at=now + timedelta(days=1),
+        ),
+        "filtered_past": _make_event(
+            owner=organizer,
+            title="Past Event",
+            now=now,
+            days=-1,
+            location="Hall E",
+            max_seats=12,
+        ),
+        "filtered_full": _make_event(
+            owner=organizer,
+            title="Full Event",
+            now=now,
+            days=12,
+            location="Hall F",
+            max_seats=1,
+        ),
     }
     return organizer, student, tag, events
 
 
-def _persist_seed_training_entities(db_session, organizer, student, tag, events) -> None:
+def _persist_seed_training_entities(
+    db_session, organizer, student, tag, events
+) -> None:
     """Persists the seed training entities fixture rows."""
     events["positive"].tags.append(tag)
     events["candidate"].tags.append(tag)
     student.interest_tags.append(tag)
     db_session.add_all([organizer, student, tag, *events.values()])
     db_session.commit()
-    _refresh_all(db_session, student, events["positive"], events["candidate"], events["filtered_full"])
+    _refresh_all(
+        db_session,
+        student,
+        events["positive"],
+        events["candidate"],
+        events["filtered_full"],
+    )
 
 
 def _build_seed_training_interactions(now: datetime, student, tag, events):
     """Builds the seed training interactions fixture data."""
     return [
-        models.Registration(user_id=int(student.id), event_id=int(events["positive"].id), attended=True),
-        models.Registration(user_id=int(student.id), event_id=int(events["filtered_full"].id), attended=False),
-        models.FavoriteEvent(user_id=int(student.id), event_id=int(events["positive"].id)),
-        models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now),
-        models.UserImplicitInterestCategory(user_id=int(student.id), category="Workshop", score=0.8, last_seen_at=now),
-        models.UserImplicitInterestCity(user_id=int(student.id), city="Cluj", score=0.7, last_seen_at=now),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="impression", meta={"position": 1}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="click", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="dwell", meta={"seconds": 30}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="share", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="register", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["positive"].id), interaction_type="unregister", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"}),
+        models.Registration(
+            user_id=int(student.id), event_id=int(events["positive"].id), attended=True
+        ),
+        models.Registration(
+            user_id=int(student.id),
+            event_id=int(events["filtered_full"].id),
+            attended=False,
+        ),
+        models.FavoriteEvent(
+            user_id=int(student.id), event_id=int(events["positive"].id)
+        ),
+        models.UserImplicitInterestTag(
+            user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now
+        ),
+        models.UserImplicitInterestCategory(
+            user_id=int(student.id), category="Workshop", score=0.8, last_seen_at=now
+        ),
+        models.UserImplicitInterestCity(
+            user_id=int(student.id), city="Cluj", score=0.7, last_seen_at=now
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="impression",
+            meta={"position": 1},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="click",
+            meta={},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="dwell",
+            meta={"seconds": 30},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="share",
+            meta={},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="register",
+            meta={},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["positive"].id),
+            interaction_type="unregister",
+            meta={},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=None,
+            interaction_type="search",
+            meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"},
+        ),
     ]
 
 
@@ -125,7 +234,9 @@ def _seed_training_rows(db_session):
     return student, events["candidate"]
 
 
-def _warning_path_query_error(args: tuple[object, ...], state: dict[str, bool]) -> str | None:
+def _warning_path_query_error(
+    args: tuple[object, ...], state: dict[str, bool]
+) -> str | None:
     """Returns the warning for path query error."""
     for column, key, message in (
         (models.UserImplicitInterestCategory.user_id, "category", "category boom"),
@@ -153,7 +264,11 @@ def _is_interaction_warning_query(args: tuple[object, ...]) -> bool:
 
 def _build_helper_user_and_events(module, now: datetime):
     """Builds the helper user and events fixture data."""
-    user = module._UserFeatures(
+    user_features_cls = getattr(module, "_UserFeatures", None)
+    event_features_cls = getattr(module, "_EventFeatures", None)
+    assert user_features_cls is not None, "module must expose _UserFeatures"
+    assert event_features_cls is not None, "module must expose _EventFeatures"
+    user = user_features_cls(
         city="cluj",
         interest_tag_weights={"python": 1.0},
         history_tags={"python"},
@@ -162,7 +277,7 @@ def _build_helper_user_and_events(module, now: datetime):
         category_weights={"seminar": 0.4},
         city_weights={"iasi": 0.6},
     )
-    event = module._EventFeatures(
+    event = event_features_cls(
         tags={"python"},
         category="workshop",
         city="cluj",
@@ -173,7 +288,7 @@ def _build_helper_user_and_events(module, now: datetime):
         status="published",
         publish_at=None,
     )
-    other_event = module._EventFeatures(
+    other_event = event_features_cls(
         tags={"go"},
         category="seminar",
         city="iasi",

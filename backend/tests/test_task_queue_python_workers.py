@@ -1,3 +1,5 @@
+"""Tests for the task queue python workers behavior."""
+
 from __future__ import annotations
 
 import os
@@ -6,10 +8,16 @@ from datetime import datetime, timezone
 import pytest
 
 from app import auth, models, task_queue
-from task_queue_test_support import mk_job, raise_assertion, raise_queue_empty, unexpected_enqueue
+from task_queue_test_support import (
+    mk_job,
+    raise_assertion,
+    raise_queue_empty,
+    unexpected_enqueue,
+)
 
 
 def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
+    """Verifies execute python script handles success timeout and exceptions behavior."""
     script_ok = tmp_path / "ok.py"
     script_ok.write_text("print('ok')\nraise SystemExit(0)\n", encoding="utf-8")
     result_ok = task_queue._execute_python_script(
@@ -48,17 +56,26 @@ def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
 
 
 def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path):
+    """Verifies run python entrypoint worker restores env and reports failures behavior."""
+
     class _Queue:
+        """Queue value object used in the surrounding module."""
+
         def __init__(self) -> None:
+            """Initializes the instance state."""
             self.payload = None
 
         def put(self, value) -> None:
+            """Implements the put helper."""
             self.payload = value
 
     os.environ["EVENT_LINK_QUEUE_FLAG"] = "parent-flag"
     original_flag = os.environ.get("EVENT_LINK_QUEUE_FLAG")
     script_ok = tmp_path / "ok_worker.py"
-    script_ok.write_text("import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n", encoding="utf-8")
+    script_ok.write_text(
+        "import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n",
+        encoding="utf-8",
+    )
     queue_ok = _Queue()
     with pytest.raises(SystemExit) as excinfo:
         task_queue._run_python_entrypoint_worker(
@@ -89,6 +106,7 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
 
 
 def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
+    """Verifies execute python script timeout path behavior."""
     process = type(
         "_Process",
         (),
@@ -108,13 +126,19 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
             "Queue": lambda self: type(
                 "_Queue",
                 (),
-                {"get": lambda self, timeout: raise_assertion("queue get should not run on timeout path")},
+                {
+                    "get": lambda self, timeout: raise_assertion(
+                        "queue get should not run on timeout path"
+                    )
+                },
             )(),
             "Process": lambda self, *args, **kwargs: process,
         },
     )()
 
-    monkeypatch.setattr(task_queue.multiprocessing, "get_context", lambda _mode: context)
+    monkeypatch.setattr(
+        task_queue.multiprocessing, "get_context", lambda _mode: context
+    )
     script_path = tmp_path / "noop_timeout.py"
     script_path.write_text("print('noop')\n", encoding="utf-8")
 
@@ -131,6 +155,7 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
 
 
 def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
+    """Verifies execute python script queue empty fallback behavior."""
     process = type(
         "_Process",
         (),
@@ -145,12 +170,16 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
         "_Context",
         (),
         {
-            "Queue": lambda self: type("_EmptyQueue", (), {"get": lambda self, timeout: raise_queue_empty()})(),
+            "Queue": lambda self: type(
+                "_EmptyQueue", (), {"get": lambda self, timeout: raise_queue_empty()}
+            )(),
             "Process": lambda self, *args, **kwargs: process,
         },
     )()
 
-    monkeypatch.setattr(task_queue.multiprocessing, "get_context", lambda _mode: context)
+    monkeypatch.setattr(
+        task_queue.multiprocessing, "get_context", lambda _mode: context
+    )
     script_path = tmp_path / "noop.py"
     script_path.write_text("print('noop')\n", encoding="utf-8")
 
@@ -166,6 +195,7 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
 
 
 def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
+    """Verifies enqueue job success and deduped existing path behavior."""
     from sqlalchemy.exc import IntegrityError
 
     job = task_queue.enqueue_job(db_session, "mail", {"x": 1}, dedupe_key="fresh-key")
@@ -184,6 +214,7 @@ def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
     db_session.refresh(existing)
 
     def _commit_fail():
+        """Implements the commit fail helper."""
         raise IntegrityError("stmt", {}, RuntimeError("dup"))
 
     monkeypatch.setattr(db_session, "commit", _commit_fail)
@@ -193,6 +224,7 @@ def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
 
 
 def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
+    """Verifies mark job succeeded and load personalization exclusions behavior."""
     user = models.User(
         email="prefs@test.ro",
         password_hash=auth.get_password_hash("student-fixture-A1"),
@@ -211,7 +243,9 @@ def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
     db_session.refresh(tag)
 
     db_session.execute(
-        models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id))
+        models.user_hidden_tags.insert().values(
+            user_id=int(user.id), tag_id=int(tag.id)
+        )
     )
     db_session.execute(
         models.user_blocked_organizers.insert().values(
@@ -237,6 +271,7 @@ def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
 
 
 def test_send_weekly_digest_skips_already_sent_delivery(monkeypatch, db_session):
+    """Verifies send weekly digest skips already sent delivery behavior."""
     now = datetime.now(timezone.utc)
     iso = now.isocalendar()
     week_key = f"{iso.year}-W{iso.week:02d}"
@@ -262,7 +297,9 @@ def test_send_weekly_digest_skips_already_sent_delivery(monkeypatch, db_session)
     )
     db_session.commit()
 
-    monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
     monkeypatch.setattr(task_queue, "enqueue_job", unexpected_enqueue)
 
     result = task_queue._send_weekly_digest(db=db_session, payload={"top_n": 1})

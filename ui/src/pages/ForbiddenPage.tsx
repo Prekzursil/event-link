@@ -5,6 +5,9 @@ import { ShieldAlert, ArrowLeft } from 'lucide-react';
 import { useI18n } from '@/contexts/LanguageContext';
 
 /** Render the back-to-events call to action for the forbidden page. */
+/**
+ * Test helper: forbidden back button.
+ */
 function ForbiddenBackButton({ label }: Readonly<{ label: string }>) {
   return (
     <Button asChild>

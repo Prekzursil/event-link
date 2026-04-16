@@ -1,6 +1,9 @@
 import { cleanup, screen } from '@testing-library/react';
 import { afterEach, beforeEach, vi } from 'vitest';
 
+/**
+ * Test helper: create auth state.
+ */
 function createAuthState() {
   return {
     isAuthenticated: false,
@@ -13,6 +16,9 @@ function createAuthState() {
   };
 }
 
+/**
+ * Test helper: create toast state.
+ */
 function createToastState() {
   return {
     toasts: [] as Array<{
@@ -25,6 +31,9 @@ function createToastState() {
   };
 }
 
+/**
+ * Test helper: create auth service mock.
+ */
 function createAuthServiceMock() {
   return {
     updateThemePreference: vi.fn(),
@@ -70,10 +79,16 @@ export const {
 } = await import('@/components/ui/toast');
 export const { Toaster } = await import('@/components/ui/toaster');
 
+/**
+ * Test helper: get layout ui fixtures.
+ */
 export function getLayoutUiFixtures() {
   return layoutUiFixtures;
 }
 
+/**
+ * Returns the value value or fails loudly when absent.
+ */
 export function requireValue<T>(value: T | null | undefined, label: string): T {
   if (value == null) {
     throw new Error(`Expected ${label}`);
@@ -81,6 +96,9 @@ export function requireValue<T>(value: T | null | undefined, label: string): T {
   return value;
 }
 
+/**
+ * Test helper: get enabled button.
+ */
 export function getEnabledButton(
   name: Parameters<typeof screen.getAllByRole>[1]['name'],
   label: string,

@@ -10,6 +10,9 @@ const USERS_PAGE_SIZE = 20;
 const EVENTS_PAGE_SIZE = 20;
 
 /** Build the server-side filter payload for the users table. */
+/**
+ * Test helper: build users filters.
+ */
 function buildUsersFilters(
   page: number,
   search: string,

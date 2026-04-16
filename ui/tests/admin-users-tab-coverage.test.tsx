@@ -10,6 +10,9 @@ vi.mock('@/components/ui/select', () =>
 
 import { AdminUsersTab } from '@/pages/admin/admin-dashboard/AdminUsersTab';
 
+/**
+ * Test helper: harness.
+ */
 function Harness() {
   const { language, t } = useI18n();
   const controller = { handleUpdateUser: vi.fn(), isLoadingUsers: false, language, loadUsers: vi.fn(), roleLabels: { admin: t.adminDashboard.roles.admin, organizator: t.adminDashboard.roles.organizer, student: t.adminDashboard.roles.student }, setUsersActive: vi.fn(), setUsersRole: vi.fn(), setUsersSearch: vi.fn(), t, totalUserPages: 1, users: [{ id: 1, email: 'no-name@test.local', full_name: null, role: 'student', is_active: true, created_at: '2030-01-01T00:00:00Z', last_seen_at: null, registrations_count: 0, attended_count: 0, events_created_count: 0 }], usersActive: 'all', usersPage: 1, usersRole: 'all', usersSearch: '', usersTotal: 1 } as never;

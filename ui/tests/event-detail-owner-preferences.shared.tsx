@@ -1,10 +1,16 @@
 import { renderLanguageRoute } from './page-test-helpers';
 import { EventDetailPage } from './event-detail-branches.shared';
 
+/**
+ * Renders the event detail scaffolding for tests.
+ */
 export function renderEventDetail(path = '/events/1') {
   return renderLanguageRoute(path, '/events/:id', <EventDetailPage />);
 }
 
+/**
+ * Builds a event fixture.
+ */
 export function makeEvent(overrides?: Partial<Record<string, unknown>>) {
   return {
     id: 1,

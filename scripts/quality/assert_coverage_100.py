@@ -145,8 +145,8 @@ def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
         except ValueError:
             continue
 
-    for _percent_raw, covered_raw, total_raw in (
-        _XML_CONDITION_COVERAGE_RE.findall(text)
+    for _percent_raw, covered_raw, total_raw in _XML_CONDITION_COVERAGE_RE.findall(
+        text
     ):
         branch_covered += int(covered_raw)
         branch_total += int(total_raw)

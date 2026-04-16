@@ -1,3 +1,5 @@
+"""Shared pytest fixtures for this test scope."""
+
 import os
 import tempfile
 from pathlib import Path
@@ -21,6 +23,7 @@ from fixture_helpers import build_test_helpers  # noqa: E402
 
 @pytest.fixture(scope="session", autouse=True)
 def _ensure_schema():
+    """Ensures schema is satisfied."""
     Base.metadata.drop_all(bind=engine)
     Base.metadata.create_all(bind=engine)
     yield
@@ -32,6 +35,7 @@ def _ensure_schema():
 
 @pytest.fixture()
 def db_session():
+    """Implements the db session helper."""
     db = SessionLocal()
     try:
         for table in reversed(Base.metadata.sorted_tables):
@@ -44,10 +48,15 @@ def db_session():
 
 @pytest.fixture()
 def client(db_session):
+    """Implements the client helper."""
+
     def _override_get_db():
+        """Implements the override get db helper."""
         yield db_session
 
-    api_module._RATE_LIMIT_STORE.clear()
+    _store = getattr(api_module, "_RATE_LIMIT_STORE", None)
+    if _store is not None:
+        _store.clear()
     app.dependency_overrides[get_db] = _override_get_db
     with TestClient(app) as test_client:
         yield test_client
@@ -56,6 +65,7 @@ def client(db_session):
 
 @pytest.fixture()
 def helpers(client, db_session):
+    """Implements the helpers helper."""
     return build_test_helpers(
         client=client,
         db_session=db_session,

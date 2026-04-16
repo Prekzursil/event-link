@@ -20,9 +20,7 @@ def upgrade() -> None:
     op.create_table(
         "user_recommendations",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column(
             "event_id",
             sa.Integer(),
@@ -39,9 +37,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.Column("reason", sa.Text(), nullable=True),
-        sa.UniqueConstraint(
-            "user_id", "event_id", name="uq_user_recommendation"
-        ),
+        sa.UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),
     )
 
     op.create_index(
@@ -80,10 +76,6 @@ def downgrade() -> None:
         "ix_user_recommendations_generated_at",
         table_name="user_recommendations",
     )
-    op.drop_index(
-        "ix_user_recommendations_event_id", table_name="user_recommendations"
-    )
-    op.drop_index(
-        "ix_user_recommendations_user_id", table_name="user_recommendations"
-    )
+    op.drop_index("ix_user_recommendations_event_id", table_name="user_recommendations")
+    op.drop_index("ix_user_recommendations_user_id", table_name="user_recommendations")
     op.drop_table("user_recommendations")

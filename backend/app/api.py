@@ -35,6 +35,12 @@ from .email_templates import (
     render_password_reset_email,
     render_registration_email,
 )
+from .task_queue_shared import (
+    _apply_personalization_exclusions,
+    _fetch_active_recommender_model,
+    _load_personalization_exclusions,
+    _seats_taken_subquery,
+)
 from .logging_utils import (
     RequestIdMiddleware,
     configure_logging,
@@ -480,15 +486,7 @@ def _events_with_counts_query(db: Session, base_query=None):
     """Attach the computed registration count column used by event list responses."""
     if base_query is None:
         base_query = db.query(models.Event).filter(models.Event.deleted_at.is_(None))
-    seats_subquery = (
-        db.query(
-            models.Registration.event_id,
-            func.count(models.Registration.id).label("seats_taken"),
-        )
-        .filter(models.Registration.deleted_at.is_(None))
-        .group_by(models.Registration.event_id)
-        .subquery()
-    )
+    seats_subquery = _seats_taken_subquery(db)
     query = base_query.outerjoin(
         seats_subquery,
         models.Event.id == seats_subquery.c.event_id,
@@ -590,15 +588,14 @@ def _merged_tag_filters(*, tags: list[str] | None, tags_csv: str | None) -> list
     return tag_filters
 
 
-def _apply_event_visibility_filters(
+def _apply_event_visibility_filters(  # noqa: ANN001
     query, *, now: datetime, include_past: bool
-):  # noqa: ANN001
+):
     """Apply publication and past-event visibility filters to event list queries."""
     if not include_past:
         query = query.filter(models.Event.start_time >= now)
     return query.filter(models.Event.status == "published").filter(
-        (models.Event.publish_at == None)
-        | (models.Event.publish_at <= now)  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now)
     )
 
 
@@ -685,38 +682,8 @@ def _apply_event_list_filters(
     )
 
 
-def _load_personalization_exclusions(
-    *,
-    db: Session,
-    user_id: int,
-) -> tuple[set[int], set[int]]:
-    """Load hidden tags and blocked organizers used to filter recommendations."""
-    hidden_tag_ids = {
-        int(row[0])
-        for row in db.query(models.user_hidden_tags.c.tag_id)
-        .filter(models.user_hidden_tags.c.user_id == user_id)
-        .all()
-    }
-    blocked_organizer_ids = {
-        int(row[0])
-        for row in db.query(models.user_blocked_organizers.c.organizer_id)
-        .filter(models.user_blocked_organizers.c.user_id == user_id)
-        .all()
-    }
-    return hidden_tag_ids, blocked_organizer_ids
 
 
-def _apply_personalization_exclusions(
-    query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
-):  # noqa: ANN001
-    """Exclude hidden tags and blocked organizers from recommendation queries."""
-    if blocked_organizer_ids:
-        query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
-    if hidden_tag_ids:
-        query = query.filter(
-            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
-        )
-    return query
 
 
 def _load_cached_recommendations(
@@ -790,9 +757,7 @@ def _cached_recommendation_event_query(
         .filter(models.Event.deleted_at.is_(None))
         .filter(models.Event.start_time >= now)
         .filter(models.Event.status == "published")
-        .filter(
-            (models.Event.publish_at == None) | (models.Event.publish_at <= now)
-        )  # noqa: E711
+        .filter(models.Event.publish_at.is_(None) | (models.Event.publish_at <= now))
     )
     if registered_event_ids:
         base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
@@ -1501,10 +1466,14 @@ def refresh_token(payload: schemas.RefreshRequest):
             settings.secret_key,
             algorithms=[settings.algorithm],
         )
-    except auth.ExpiredSignatureError:
-        raise HTTPException(status_code=401, detail="Refresh token expirat.")
-    except auth.JWTError:
-        raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
+    except auth.ExpiredSignatureError as exc:
+        raise HTTPException(
+            status_code=401, detail="Refresh token expirat."
+        ) from exc
+    except auth.JWTError as exc:
+        raise HTTPException(
+            status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL
+        ) from exc
 
     if decoded.get("type") != "refresh":
         raise HTTPException(status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL)
@@ -3271,8 +3240,7 @@ def _serialize_profile(
     now = datetime.now(timezone.utc)
     base_query = base_query.filter(
         models.Event.status == "published",
-        (models.Event.publish_at == None)
-        | (models.Event.publish_at <= now),  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now),
     ).order_by(models.Event.start_time)
     query, _ = _events_with_counts_query(db, base_query)
     events = [_serialize_event(ev, seats) for ev, seats in query.all()]
@@ -3408,10 +3376,7 @@ def _validate_student_study_year(current_user: models.User) -> None:
         current_user.study_level, 10
     )
     if current_user.study_year < 1 or current_user.study_year > max_year:
-        detail = (
-            f"An invalid pentru nivelul {current_user.study_level}. "
-            f"(1-{max_year})"
-        )
+        detail = f"An invalid pentru nivelul {current_user.study_level}. (1-{max_year})"
         raise HTTPException(
             status_code=400,
             detail=detail,
@@ -3841,9 +3806,7 @@ def export_my_data(
 
     filename_date = exported_at.strftime("%Y%m%d")
     disposition = f'attachment; filename="eventlink-export-{filename_date}.json"'
-    headers = {
-        "Content-Disposition": disposition
-    }
+    headers = {"Content-Disposition": disposition}
     return JSONResponse(content=export_payload, headers=headers)
 
 
@@ -4484,13 +4447,7 @@ def admin_personalization_status(
     _current_user: AdminUser,
 ):
     """Return the current personalization system status."""
-    is_active_attr = "is_active"
-    active = (
-        db.query(models.RecommenderModel)
-        .filter(getattr(models.RecommenderModel, is_active_attr).is_(True))
-        .order_by(models.RecommenderModel.id.desc())
-        .first()
-    )
+    active = _fetch_active_recommender_model(db)
     return {
         "task_queue_enabled": bool(settings.task_queue_enabled),
         "recommendations_realtime_refresh_enabled": bool(
@@ -4552,7 +4509,7 @@ def admin_activate_personalization_model(
     db.query(models.RecommenderModel).update(
         {"is_active": False}, synchronize_session=False
     )
-    setattr(model, "is_active", True)
+    setattr(model, "is_active", True)  # noqa: B010
     db.add(model)
     db.commit()
 
@@ -4802,7 +4759,7 @@ def _apply_admin_user_patch(
         changed = True
     payload_is_active = _is_active_value(payload)
     if payload_is_active is not None:
-        setattr(user, "is_active", payload_is_active)
+        setattr(user, "is_active", payload_is_active)  # noqa: B010
         changed = True
     return changed
 
@@ -5059,8 +5016,7 @@ def list_favorites(db: DbSession, current_user: StudentUser):
     base_query = base_query.filter(
         models.Event.deleted_at.is_(None),
         models.Event.status == "published",
-        (models.Event.publish_at == None)
-        | (models.Event.publish_at <= now),  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now),
     )
     query, _ = _events_with_counts_query(db, base_query)
     items = [
@@ -5093,7 +5049,7 @@ def _registered_event_ids(*, db: Session, user_id: int) -> list[int]:
     """Return active registration event IDs for the given user."""
     return [
         event_id
-        for event_id, in db.query(models.Registration.event_id)
+        for (event_id,) in db.query(models.Registration.event_id)
         .filter(
             models.Registration.user_id == user_id,
             models.Registration.deleted_at.is_(None),
@@ -5106,7 +5062,7 @@ def _recommendation_history_tag_names(*, db: Session, user_id: int) -> list[str]
     """Return tag names from the user's registration history."""
     return [
         tag_name
-        for tag_name, in (
+        for (tag_name,) in (
             db.query(models.Tag.name)
             .join(models.event_tags, models.Tag.id == models.event_tags.c.tag_id)
             .join(models.Event, models.Event.id == models.event_tags.c.event_id)
@@ -5204,9 +5160,7 @@ def _tag_recommendation_base_query(
         .filter(models.Event.deleted_at.is_(None))
         .filter(models.Event.start_time >= now)
         .filter(models.Event.status == "published")
-        .filter(
-            (models.Event.publish_at == None) | (models.Event.publish_at <= now)
-        )  # noqa: E711
+        .filter(models.Event.publish_at.is_(None) | (models.Event.publish_at <= now))
     )
 
 
@@ -5231,8 +5185,7 @@ def _popular_recommendations(
         blocked_organizer_ids=blocked_organizer_ids,
     )
     base_query = base_query.filter(models.Event.status == "published").filter(
-        (models.Event.publish_at == None)
-        | (models.Event.publish_at <= now)  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now)
     )
     query, seats_subquery = _events_with_counts_query(db, base_query)
     fallback_reason = (
@@ -5368,8 +5321,10 @@ def health_check(db: DbSession):
     try:
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
-    except Exception:
-        raise HTTPException(status_code=503, detail="Database unavailable")
+    except Exception as exc:
+        raise HTTPException(
+            status_code=503, detail="Database unavailable"
+        ) from exc
 
 
 @app.get("/api/events/{event_id}/ics", responses=_responses(404))

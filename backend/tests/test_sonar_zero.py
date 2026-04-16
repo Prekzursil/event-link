@@ -1,3 +1,5 @@
+"""Tests for the sonar zero behavior."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -10,6 +12,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _load_module():
+    """Loads the module resource."""
     module_path = REPO_ROOT / "scripts" / "quality" / "check_sonar_zero.py"
     parent = str(module_path.parent)
     if parent not in sys.path:
@@ -22,35 +25,47 @@ def _load_module():
     return module
 
 
-def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_module_raises_when_import_spec_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies load module raises when import spec is missing behavior."""
     original_parent = str((REPO_ROOT / "scripts" / "quality").resolve())
-    monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != original_parent])
+    monkeypatch.setattr(
+        importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
+    )
+    monkeypatch.setattr(
+        sys, "path", [entry for entry in sys.path if entry != original_parent]
+    )
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
         _load_module()
 
 
 def test_pull_request_summary_uses_scoped_status_counts() -> None:
+    """Verifies pull request summary uses scoped status counts behavior."""
     module = _load_module()
 
     def fake_request_json(url: str, auth_header: str):
+        """Implements the fake request json helper."""
         if "project_pull_requests/list" in url:
             assert auth_header == "auth"
             return {
                 "pullRequests": [
                     {
                         "key": "97",
-                        "status": {"qualityGateStatus": "OK", "bugs": 0, "vulnerabilities": 0, "codeSmells": 0},
+                        "status": {
+                            "qualityGateStatus": "OK",
+                            "bugs": 0,
+                            "vulnerabilities": 0,
+                            "codeSmells": 0,
+                        },
                         "commit": {"sha": "abc123abc123abc123abc123abc123abc123abcd"},
                     }
                 ]
             }
         assert "hotspots/search" in url
         assert auth_header == "auth"
-        return {
-            "paging": {"total": 2}
-        }
+        return {"paging": {"total": 2}}
 
     module._request_json = fake_request_json
 
@@ -67,7 +82,10 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
     assert commit_sha == "abc123abc123abc123abc123abc123abc123abcd"
 
 
-def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_sonar_waits_for_expected_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies evaluate sonar waits for expected commit behavior."""
     module = _load_module()
     summaries = [
         (1, "ERROR", 3, "oldoldoldoldoldoldoldoldoldoldoldoldoldold"),
@@ -100,14 +118,17 @@ def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatc
     assert sleeps == [7]
 
 
-def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_sonar_fails_when_expected_commit_never_arrives(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies evaluate sonar fails when expected commit never arrives behavior."""
     module = _load_module()
     summaries = [(0, "OK", 1, "feedfeedfeedfeedfeedfeedfeedfeedfeedfeed")] * 2
     timestamps = iter([0, 2, 4])
 
     monkeypatch.setattr(module, "_current_summary", lambda **_kwargs: summaries.pop(0))
     monkeypatch.setattr(module.time, "sleep", lambda _seconds: None)
-    monkeypatch.setattr(module.time, "time", lambda: next(timestamps))
+    monkeypatch.setattr(module.time, "time", lambda: next(timestamps, 4))
 
     status, open_issues, quality_gate, open_hotspots, findings = module._evaluate_sonar(
         runtime={
@@ -132,7 +153,10 @@ def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: py
     ]
 
 
-def test_evaluate_sonar_fails_when_hotspots_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_sonar_fails_when_hotspots_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Verifies evaluate sonar fails when hotspots exist behavior."""
     module = _load_module()
 
     monkeypatch.setattr(

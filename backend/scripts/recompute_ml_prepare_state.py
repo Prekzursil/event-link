@@ -1,4 +1,6 @@
 #!/usr/bin/env python3
+"""Command-line helper: recompute ml prepare state."""
+
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -23,7 +25,9 @@ from recompute_ml_state_helpers import (
 )
 
 
-def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
+def _build_users_and_holdout(
+    **kwargs,
+) -> tuple[dict[int, _UserFeatures], dict[int, str], dict[int, int]]:
     """Build user feature rows together with language and holdout state."""
     users: dict[int, _UserFeatures] = {}
     user_lang: dict[int, str] = {}
@@ -52,11 +56,15 @@ def _build_users_and_holdout(**kwargs) -> tuple[dict[int, _UserFeatures], dict[i
         ) = _history_from_positive_events(
             positive_event_ids=positive_event_ids,
             events=kwargs["events"],
-            implicit_categories=kwargs["implicit_categories_by_user"].get(user_id, set()),
+            implicit_categories=kwargs["implicit_categories_by_user"].get(
+                user_id, set()
+            ),
         )
         users[user_id] = _UserFeatures(
             city=city,
-            interest_tag_weights=kwargs["interest_tag_weights_by_user"].get(user_id, {}),
+            interest_tag_weights=kwargs["interest_tag_weights_by_user"].get(
+                user_id, {}
+            ),
             history_tags=history_tags,
             history_categories=history_categories,
             history_organizer_ids=history_organizers,
@@ -190,7 +198,9 @@ def _load_prepared_training_state(
     return _PreparedTrainingState(*weight_buckets, *interaction_state)
 
 
-def _build_prepared_user_context(*, students, args, events, training_state: _PreparedTrainingState):
+def _build_prepared_user_context(
+    *, students, args, events, training_state: _PreparedTrainingState
+):
     """Build user state and holdout data from loaded entity and interaction state."""
     return _build_prepared_user_state(
         inputs=_PreparedUserStateInputs(
@@ -218,6 +228,8 @@ def _assemble_prepared_runtime_state(
     holdout: dict[int, int],
 ) -> _PreparedState:
     """Assemble the final state from already loaded entities and training signals."""
+    impression_positions = training_state.impression_position_by_user_event
+    implicit_tags = training_state.implicit_interest_tags_by_user
     return _assemble_prepared_state(
         inputs=_PreparedAssemblyInputs(
             user_ids=user_ids,
@@ -227,8 +239,8 @@ def _assemble_prepared_runtime_state(
             positive_weights=training_state.positive_weights,
             negative_weights=training_state.negative_weights,
             seen_by_user=training_state.seen_by_user,
-            impression_position_by_user_event=training_state.impression_position_by_user_event,
-            implicit_interest_tags_by_user=training_state.implicit_interest_tags_by_user,
+            impression_position_by_user_event=impression_positions,
+            implicit_interest_tags_by_user=implicit_tags,
             implicit_categories_by_user=training_state.implicit_categories_by_user,
             implicit_city_by_user=training_state.implicit_city_by_user,
             users=users,

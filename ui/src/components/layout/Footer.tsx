@@ -34,6 +34,9 @@ type FooterCopyrightProps = Readonly<{
 }>;
 
 /** Render the shared brand block in the footer grid. */
+/**
+ * Test helper: footer brand.
+ */
 function FooterBrand({ appName, description }: FooterBrandProps) {
   return (
     <div className="space-y-4">

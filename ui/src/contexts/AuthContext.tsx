@@ -19,6 +19,9 @@ interface AuthContextType {
 const AuthContext = createContext<AuthContextType | null>(null);
 
 /** Provide authentication state and actions to the React tree. */
+/**
+ * Test helper: auth provider.
+ */
 export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [user, setUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);

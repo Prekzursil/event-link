@@ -6,6 +6,9 @@ import { EventFormEditor } from './event-form/EventFormEditor';
 import { EventSuggestionPanel } from './event-form/EventSuggestionPanel';
 import { useEventFormController } from './event-form/useEventFormController';
 
+/**
+ * Test helper: event form page.
+ */
 export function EventFormPage() {
   const controller = useEventFormController();
 

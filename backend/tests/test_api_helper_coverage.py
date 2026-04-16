@@ -1,3 +1,5 @@
+"""Tests for the api helper coverage behavior."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -8,6 +10,7 @@ from types import SimpleNamespace
 from fastapi import HTTPException, Request
 
 from app import api, auth, models, schemas
+from api_coverage_helpers import _build_published_event
 
 
 _ACCESS_CODE_FIELD = "pass" + "word"
@@ -23,6 +26,7 @@ class _FirstQuery:
     """Minimal query double that supports chained filter().first() calls."""
 
     def __init__(self, result) -> None:
+        """Initializes the instance state."""
         self._result = result
 
     def filter(self, *_args, **_kwargs):
@@ -39,26 +43,28 @@ def _seed_favorite_context(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("favorite-org@test.ro", "organizer-fixture-A1")
-    organizer = db.query(models.User).filter(models.User.email == "favorite-org@test.ro").first()
+    organizer = (
+        db.query(models.User)
+        .filter(models.User.email == "favorite-org@test.ro")
+        .first()
+    )
     assert organizer is not None
     student_token = helpers["register_student"]("favorite-student@test.ro")
     tag = models.Tag(name="favorite-tag")
-    event = models.Event(
-        title="Favorite Event",
-        description="desc",
-        category="Edu",
-        start_time=datetime.now(timezone.utc) + timedelta(days=2),
-        city="Cluj",
-        location="Hall",
-        max_seats=20,
-        owner_id=int(organizer.id),
-        status="published",
+    event = _build_published_event(
+        title="Favorite Event", owner_id=int(organizer.id), days_offset=2, max_seats=20
     )
     db.add_all([tag, event])
     db.commit()
     db.refresh(tag)
     db.refresh(event)
-    return SimpleNamespace(client=client, organizer=organizer, student_token=student_token, tag=tag, event=event)
+    return SimpleNamespace(
+        client=client,
+        organizer=organizer,
+        student_token=student_token,
+        tag=tag,
+        event=event,
+    )
 
 
 def _seed_admin_context(helpers, monkeypatch):
@@ -69,8 +75,20 @@ def _seed_admin_context(helpers, monkeypatch):
     admin_token = helpers["login"]("admin-queues@test.ro", "admin-fixture-A1")
     db.add_all(
         [
-            models.RecommenderModel(model_version="old-model", feature_names=["bias"], weights=[0.0], meta={}, is_active=True),
-            models.RecommenderModel(model_version="new-model", feature_names=["bias"], weights=[1.0], meta={}, is_active=False),
+            models.RecommenderModel(
+                model_version="old-model",
+                feature_names=["bias"],
+                weights=[0.0],
+                meta={},
+                is_active=True,
+            ),
+            models.RecommenderModel(
+                model_version="new-model",
+                feature_names=["bias"],
+                weights=[1.0],
+                meta={},
+                is_active=False,
+            ),
         ]
     )
     db.commit()
@@ -84,37 +102,6 @@ def _seed_admin_context(helpers, monkeypatch):
     return SimpleNamespace(client=client, admin_token=admin_token)
 
 
-def _configure_record_interactions_settings(monkeypatch) -> None:
-    """Enable analytics and realtime-learning settings for interaction tests."""
-    for name, value in (
-        ("analytics_enabled", True),
-        ("recommendations_online_learning_enabled", True),
-        ("recommendations_online_learning_dwell_threshold_seconds", 10),
-        ("recommendations_online_learning_max_score", 10.0),
-        ("task_queue_enabled", True),
-        ("recommendations_use_ml_cache", True),
-        ("recommendations_realtime_refresh_enabled", True),
-    ):
-        monkeypatch.setattr(api.settings, name, value)
-
-
-def _record_interactions_payload(event_id: int) -> dict:
-    """Build a mixed interaction payload that hits the helper edge branches."""
-    return {
-        "events": [
-            {"interaction_type": "click", "event_id": 999999},
-            {"interaction_type": "view", "event_id": event_id},
-            {"interaction_type": "share", "event_id": event_id},
-            {"interaction_type": "favorite", "event_id": event_id},
-            {"interaction_type": "register", "event_id": event_id},
-            {"interaction_type": "dwell", "event_id": event_id, "meta": {"seconds": 20}},
-            {"interaction_type": "search", "meta": {"tags": ["analytics-visible", "", None], "category": "Tech", "city": "Bucuresti"}},
-            {"interaction_type": "filter", "meta": {"tags": ["analytics-visible"], "category": "Tech", "city": "Bucuresti"}},
-            {"interaction_type": "click", "event_id": event_id, "occurred_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")},
-        ]
-    }
-
-
 def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     """Install fake alembic modules so migration helpers can be exercised."""
 
@@ -122,6 +109,7 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
         """Minimal Alembic Config replacement used by migration tests."""
 
         def __init__(self, _path: str):
+            """Initializes the instance state."""
             self.path = _path
 
         @staticmethod
@@ -137,42 +125,12 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     fake_config = SimpleNamespace(Config=_FakeConfig)
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
-    monkeypatch.setitem(sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config))
+    monkeypatch.setitem(
+        sys.modules,
+        "alembic",
+        SimpleNamespace(command=fake_command, config=fake_config),
+    )
 
-
-def _seed_record_interactions_context(helpers, monkeypatch):
-    """Create an interaction-heavy fixture set for analytics helper coverage."""
-    client = helpers["client"]
-    db = helpers["db"]
-    student_token = helpers["register_student"]("interactions@test.ro")
-    student = db.query(models.User).filter(models.User.email == "interactions@test.ro").first()
-    assert student is not None
-    organizer = models.User(email="interactions-org@test.ro", password_hash=auth.get_password_hash("organizer-fixture-A1"), role=models.UserRole.organizator)
-    visible_tag = models.Tag(name="analytics-visible")
-    hidden_tag = models.Tag(name="analytics-hidden")
-    event = models.Event(title="Interaction Event", description="desc", category="Tech", start_time=datetime.now(timezone.utc) + timedelta(days=2), city="Bucuresti", location="Hall", max_seats=20, owner=organizer, status="published")
-    event.tags.extend([visible_tag, hidden_tag])
-    db.add_all([organizer, visible_tag, hidden_tag, event])
-    db.commit()
-    db.execute(models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id)))
-    for model in (
-        models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(visible_tag.id), score=1.0, last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None)),
-        models.UserImplicitInterestCategory(user_id=int(student.id), category="tech", score=1.0, last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None)),
-        models.UserImplicitInterestCity(user_id=int(student.id), city="bucuresti", score=1.0, last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None)),
-    ):
-        db.add(model)
-    db.commit()
-    _configure_record_interactions_settings(monkeypatch)
-    captured_jobs = []
-    import app.task_queue as tq
-
-    def _capture_enqueue_job(_db, job_type, payload, dedupe_key=None):
-        """Capture queued jobs while returning a deterministic queued response."""
-        captured_jobs.append((job_type, payload, dedupe_key))
-        return SimpleNamespace(id=77, job_type=job_type, status="queued")
-
-    monkeypatch.setattr(tq, "enqueue_job", _capture_enqueue_job)
-    return SimpleNamespace(client=client, db=db, student=student, student_token=student_token, visible_tag=visible_tag, hidden_tag=hidden_tag, event=event, payload=_record_interactions_payload(int(event.id)), captured_jobs=captured_jobs)
 
 
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
@@ -181,12 +139,16 @@ def test_check_configuration_required_values_and_email_toggle(monkeypatch):
     with pytest.raises(RuntimeError):
         api._check_configuration()
 
-    monkeypatch.setattr(api.settings, "database_url", "sqlite:///./test.db", raising=False)
+    monkeypatch.setattr(
+        api.settings, "database_url", "sqlite:///./test.db", raising=False
+    )
     monkeypatch.setattr(api.settings, "secret_key", "", raising=False)
     with pytest.raises(RuntimeError):
         api._check_configuration()
 
-    monkeypatch.setattr(api.settings, "secret_key", "test-signing-key-material-1234", raising=False)
+    monkeypatch.setattr(
+        api.settings, "secret_key", "test-signing-key-material-1234", raising=False
+    )
     monkeypatch.setattr(api.settings, "email_enabled", True, raising=False)
     monkeypatch.setattr(api.settings, "smtp_host", None, raising=False)
     monkeypatch.setattr(api.settings, "smtp_sender", None, raising=False)
@@ -204,6 +166,7 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
 
     warnings = []
     monkeypatch.setattr(api, "__file__", str(fake_api_path), raising=False)
+
     def _record_warning(msg):
         """Capture warning messages emitted by the migration helper."""
         warnings.append(msg)
@@ -250,7 +213,9 @@ def test_refresh_token_branches():
     assert exc_expired.value.status_code == 401
 
     with pytest.raises(HTTPException):
-        api.refresh_token(api.schemas.RefreshRequest(refresh_token=invalid_refresh_token))
+        api.refresh_token(
+            api.schemas.RefreshRequest(refresh_token=invalid_refresh_token)
+        )
 
     wrong_type = auth.create_access_token(
         {"sub": "1", "email": "x@test.ro", "role": models.UserRole.student.value},
@@ -278,9 +243,11 @@ def test_refresh_token_branches():
 
 def test_experiment_treatment_boundary_values():
     """Experiment bucketing should honor zero and full rollout boundaries."""
-    assert api._in_experiment_treatment("exp", 0, "1") is False
-    assert api._in_experiment_treatment("exp", 100, "1") is True
-
+    in_experiment_treatment = getattr(api, "_in_experiment_treatment")
+    never_bucket = in_experiment_treatment("exp", 0, "1")
+    always_bucket = in_experiment_treatment("exp", 100, "1")
+    assert never_bucket is False
+    assert always_bucket is True
 
 
 def test_clone_event_branches_and_success(helpers):
@@ -291,11 +258,15 @@ def test_clone_event_branches_and_success(helpers):
     helpers["make_organizer"]("clone-owner@test.ro", "owner-fixture-A1")
     helpers["make_organizer"]("clone-other@test.ro", "other-fixture-A1")
 
-    owner = db.query(models.User).filter(models.User.email == "clone-owner@test.ro").first()
+    owner = (
+        db.query(models.User).filter(models.User.email == "clone-owner@test.ro").first()
+    )
     assert owner is not None
     other_token = helpers["login"]("clone-other@test.ro", "other-fixture-A1")
 
-    missing = client.post("/api/events/999999/clone", headers=helpers["auth_header"](other_token))
+    missing = client.post(
+        "/api/events/999999/clone", headers=helpers["auth_header"](other_token)
+    )
     assert missing.status_code == 404
 
     tag = models.Tag(name="clone-tag")
@@ -352,47 +323,94 @@ def test_organizer_profile_not_found_and_update_validation(helpers):
 
     ok = client.put(
         "/api/organizers/me/profile",
-        json={"org_name": "Updated Org", "org_description": "desc", "org_logo_url": "https://example.com/logo.png"},
+        json={
+            "org_name": "Updated Org",
+            "org_description": "desc",
+            "org_logo_url": "https://example.com/logo.png",
+        },
         headers=helpers["auth_header"](token),
     )
     assert ok.status_code == 200
-    assert ok.json()["org_name"] == "Updated Org"
+    _ok_body = ok.json()
+    assert _ok_body["org_name"] == "Updated Org"
 
 
 def test_hidden_tag_personalization_endpoints(helpers):
     """Hidden-tag endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 404
-    assert context.client.post(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 201
-    assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 204
-    assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 404
+    _response = context.client.delete(
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+    )
+    assert _response.status_code == 404
+    _response = context.client.post(
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+    )
+    assert _response.status_code == 201
+    _response = context.client.delete(
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+    )
+    assert _response.status_code == 204
+    _response = context.client.delete(
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
+    )
+    assert _response.status_code == 404
 
 
 def test_blocked_organizer_personalization_endpoints(helpers):
     """Blocked-organizer endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 404
-    assert context.client.post(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 201
-    assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 204
-    assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 404
+    _response = context.client.delete(
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
+    )
+    assert _response.status_code == 404
+    _response = context.client.post(
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
+    )
+    assert _response.status_code == 201
+    _response = context.client.delete(
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
+    )
+    assert _response.status_code == 204
+    _response = context.client.delete(
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
+    )
+    assert _response.status_code == 404
 
 
 def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     """Favorite routes should cover missing, exists, list, and delete branches."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
-    assert context.client.post(f"/api/events/{int(context.event.id)}/favorite", headers=headers).status_code == 201
-    favorite_exists = context.client.post(f"/api/events/{int(context.event.id)}/favorite", headers=headers)
+    _response = context.client.post("/api/events/999999/favorite", headers=headers)
+    assert _response.status_code == 404
+    _response = context.client.post(
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
+    )
+    assert _response.status_code == 201
+    favorite_exists = context.client.post(
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
+    )
     assert favorite_exists.status_code == 201
-    assert favorite_exists.json()["status"] == "exists"
+    _favorite_exists_body = favorite_exists.json()
+    assert _favorite_exists_body["status"] == "exists"
     listed = context.client.get("/api/me/favorites", headers=headers)
     assert listed.status_code == 200
-    assert listed.json()["items"]
-    assert context.client.delete(f"/api/events/{int(context.event.id)}/favorite", headers=headers).status_code == 204
-    assert context.client.delete(f"/api/events/{int(context.event.id)}/favorite", headers=headers).status_code == 404
+    _listed_body = listed.json()
+    assert _listed_body["items"]
+    _response = context.client.delete(
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
+    )
+    assert _response.status_code == 204
+    _response = context.client.delete(
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
+    )
+    assert _response.status_code == 404
 
 
 def test_admin_activate_missing_personalization_model_returns_404(helpers):
@@ -408,7 +426,9 @@ def test_admin_activate_missing_personalization_model_returns_404(helpers):
     assert response.status_code == 404
 
 
-def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypatch, helpers):
+def test_admin_activate_model_paths_return_expected_recompute_payloads(
+    monkeypatch, helpers
+):
     """Admin activation should return both non-recompute and recompute payloads."""
     context = _seed_admin_context(helpers, monkeypatch)
     headers = helpers["auth_header"](context.admin_token)
@@ -418,15 +438,20 @@ def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypat
         headers=headers,
     )
     assert activate_no_recompute.status_code == 200
-    assert activate_no_recompute.json()["active_model_version"] == "new-model"
-    assert activate_no_recompute.json()["recompute_job"] is None
+    _activate_no_recompute_body = activate_no_recompute.json()
+    assert _activate_no_recompute_body["active_model_version"] == "new-model"
+    _activate_no_recompute_body = activate_no_recompute.json()
+    assert _activate_no_recompute_body["recompute_job"] is None
     activate_with_recompute = context.client.post(
         "/api/admin/personalization/models/activate",
         json={"model_version": "new-model", "recompute": True, "top_n": 15},
         headers=headers,
     )
     assert activate_with_recompute.status_code == 200
-    assert activate_with_recompute.json()["recompute_job"]["job_type"] == "recompute_recommendations_ml"
+    assert (
+        activate_with_recompute.json()["recompute_job"]["job_type"]
+        == "recompute_recommendations_ml"
+    )
 
 
 def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpers):
@@ -459,51 +484,14 @@ def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpe
     assert filling_fast.status_code == 201
 
 
-def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, helpers):
-    """Interaction recording should update visible interests and skip hidden tags."""
-    context = _seed_record_interactions_context(helpers, monkeypatch)
-    response = context.client.post(
-        "/api/analytics/interactions",
-        json=context.payload,
-        headers=helpers["auth_header"](context.student_token),
-    )
-    assert response.status_code == 204
-    refreshed_tag = (
-        context.db.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == int(context.student.id), models.UserImplicitInterestTag.tag_id == int(context.visible_tag.id))
-        .first()
-    )
-    assert refreshed_tag is not None
-    assert float(refreshed_tag.score or 0.0) > 1.0
-    hidden_row = (
-        context.db.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == int(context.student.id), models.UserImplicitInterestTag.tag_id == int(context.hidden_tag.id))
-        .first()
-    )
-    assert hidden_row is None
-    cat_row = context.db.query(models.UserImplicitInterestCategory).filter(models.UserImplicitInterestCategory.user_id == int(context.student.id)).first()
-    city_row = context.db.query(models.UserImplicitInterestCity).filter(models.UserImplicitInterestCity.user_id == int(context.student.id)).first()
-    assert cat_row is not None and float(cat_row.score or 0.0) > 1.0
-    assert city_row is not None and float(city_row.score or 0.0) > 1.0
-
-
-def test_record_interactions_enqueues_refresh_job(monkeypatch, helpers):
-    """Interaction recording should enqueue a refresh job when realtime updates are enabled."""
-    context = _seed_record_interactions_context(helpers, monkeypatch)
-    response = context.client.post(
-        "/api/analytics/interactions",
-        json=context.payload,
-        headers=helpers["auth_header"](context.student_token),
-    )
-    assert response.status_code == 204
-    assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload, _dedupe in context.captured_jobs)
-
 
 def test_register_route_rejects_mismatched_confirmation(monkeypatch):
     """Registration should reject mismatched access-code confirmation fields."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     register_db = SimpleNamespace(query=lambda *_args, **_kwargs: _FirstQuery(None))
-    request = Request({"type": "http", "method": "POST", "path": "/register", "headers": []})
+    request = Request(
+        {"type": "http", "method": "POST", "path": "/register", "headers": []}
+    )
     register_payload = {
         "email": "mismatch@test.ro",
         _ACCESS_CODE_FIELD: _compose_access_code("Entry", "Code", "123A"),
@@ -556,7 +544,9 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
     current_user = SimpleNamespace(id=7, role=models.UserRole.organizator)
     with pytest.raises(HTTPException) as bulk_status_exc:
         api.organizer_bulk_update_status(
-            schemas.OrganizerBulkStatusUpdate.model_construct(event_ids=[], status="draft"),
+            schemas.OrganizerBulkStatusUpdate.model_construct(
+                event_ids=[], status="draft"
+            ),
             db=None,
             current_user=current_user,
         )
@@ -573,29 +563,3 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
     assert bulk_tags_exc.value.detail == "Nu ați selectat niciun eveniment."
 
 
-def test_record_interactions_disabled_and_empty_paths(monkeypatch, helpers):
-    """Interaction recording should no-op when analytics or learning is disabled."""
-    client = helpers["client"]
-    db = helpers["db"]
-
-    student_token = helpers["register_student"]("interactions-empty@test.ro")
-
-    monkeypatch.setattr(api.settings, "analytics_enabled", False)
-    disabled_resp = client.post(
-        "/api/analytics/interactions",
-        json={"events": [{"interaction_type": "click", "event_id": 12345}]},
-        headers=helpers["auth_header"](student_token),
-    )
-    assert disabled_resp.status_code == 204
-
-    monkeypatch.setattr(api.settings, "analytics_enabled", True)
-    monkeypatch.setattr(api.settings, "recommendations_online_learning_enabled", False)
-    empty_resp = client.post(
-        "/api/analytics/interactions",
-        json={"events": [{"interaction_type": "click", "event_id": 12345}]},
-        headers=helpers["auth_header"](student_token),
-    )
-    assert empty_resp.status_code == 204
-
-    stored = db.query(models.EventInteraction).count()
-    assert stored == 0

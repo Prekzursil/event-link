@@ -129,9 +129,7 @@ def _request_json(
     """Request JSON from the Codacy API and validate the top-level payload."""
     url = build_https_url(host="api.codacy.com", path=path)
     payload_bytes = (
-        None
-        if body is None
-        else json.dumps(body, sort_keys=True).encode("utf-8")
+        None if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
     )
     payload, _headers, status = request_https_json(
         url,
@@ -186,8 +184,8 @@ def _repository_analysis_request(
     branch_query = f"?branch={quote(branch, safe='')}" if branch else ""
     return _request_json(
         path=(
-            f"api/v3/analysis/organizations/{provider}/{owner}/repositories/"
-            f"{repo}{branch_query}"
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}{branch_query}"
         ),
         token=token,
     )
@@ -435,8 +433,7 @@ def _branch_analysis_result(
     return _issues_result(
         open_issues=state.open_issues,
         missing_message=(
-            "Codacy repository response did not include a parseable "
-            "total issue count."
+            "Codacy repository response did not include a parseable total issue count."
         ),
         nonzero_message=f"Codacy reports {state.open_issues} open issues (expected 0).",
     )
@@ -569,8 +566,8 @@ def _evaluate_commit_analysis(
             "Codacy commit response did not include a parseable new issue count."
         ),
         nonzero_message=(
-            "Codacy reports "
-            f"{_quality_new_issues(payload)} commit new issues (expected 0)."
+            f"Codacy reports {_quality_new_issues(payload)} "
+            "commit new issues (expected 0)."
         ),
     )
 
@@ -597,26 +594,22 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
     if not request.token:
         return "fail", None, ["CODACY_API_TOKEN is missing."]
 
-    last_exc: Exception | None = None
     for candidate in _provider_candidates(request.provider):
         try:
             status, open_issues, findings = _evaluate_candidate(
                 request.with_provider(candidate)
             )
         except Exception as exc:  # pragma: no cover - network/runtime surface
-            last_exc = exc
             return "fail", None, [f"Codacy API request failed: {exc}"]
         if status == "retry":
             continue
         return status, open_issues, findings
 
-    findings = [
-        "Codacy API endpoint was not found for provider(s): "
-        f"{request.provider}, gh, github."
-    ]
-    if last_exc is not None:
-        findings.append(f"Last Codacy API error: {last_exc}")
-    return "fail", None, findings
+    message = (
+        f"Codacy API endpoint was not found for "
+        f"provider(s): {request.provider}, gh, github."
+    )
+    return "fail", None, [message]
 
 
 def _result_payload(

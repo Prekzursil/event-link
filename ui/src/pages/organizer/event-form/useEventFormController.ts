@@ -16,10 +16,16 @@ import {
   validateEventForm,
 } from './shared';
 
+/**
+ * Test helper: swallow promise.
+ */
 function swallowPromise(result: Promise<unknown>) {
   result.catch(() => undefined);
 }
 
+/**
+ * React hook: event form controller.
+ */
 export function useEventFormController() {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();

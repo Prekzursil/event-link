@@ -25,6 +25,9 @@ const actionTypes = {
 let count = 0
 
 /** Allocate a stable toast identifier for the in-memory reducer state. */
+/**
+ * Test helper: gen id.
+ */
 function genId() {
   count = (count + 1) % Number.MAX_SAFE_INTEGER
   return count.toString()

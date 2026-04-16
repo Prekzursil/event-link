@@ -16,6 +16,9 @@ type AxiosDetailError = {
 };
 
 /** Read an API error detail when the backend includes one. */
+/**
+ * Test helper: error detail.
+ */
 function errorDetail(error: unknown, fallback: string) {
   return (error as AxiosDetailError).response?.data?.detail || fallback;
 }

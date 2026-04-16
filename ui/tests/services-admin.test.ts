@@ -16,6 +16,9 @@ vi.mock('@/services/api', () => ({
 
 import { adminService } from '@/services/admin.service';
 
+/**
+ * Test helper: reset service mocks.
+ */
 function resetServiceMocks() {
   vi.clearAllMocks();
   localStorage.clear();

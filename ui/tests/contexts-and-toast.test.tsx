@@ -26,21 +26,33 @@ const CONFIRM_ACCESS_CODE_FIELD = `confirm_${ACCESS_CODE_FIELD}`;
 const PRIMARY_SESSION_KEY = ['access', 'token'].join('_');
 const DEMO_ENTRY_CODE = ['Entry', 'Code', '123A'].join('');
 
+/**
+ * Test helper: auth only consumer.
+ */
 function AuthOnlyConsumer() {
   const auth = useAuth();
   return <div>{String(auth.isAuthenticated)}</div>;
 }
 
+/**
+ * Test helper: language only consumer.
+ */
 function LanguageOnlyConsumer() {
   const i18n = useI18n();
   return <div>{i18n.language}</div>;
 }
 
+/**
+ * Test helper: theme only consumer.
+ */
 function ThemeOnlyConsumer() {
   const theme = useTheme();
   return <div>{theme.resolvedTheme}</div>;
 }
 
+/**
+ * Test helper: combined consumer.
+ */
 function CombinedConsumer() {
   const auth = useAuth();
   const i18n = useI18n();
@@ -62,6 +74,9 @@ function CombinedConsumer() {
   );
 }
 
+/**
+ * Renders the providers scaffolding for tests.
+ */
 function renderProviders() {
   return render(
     <ThemeProvider>

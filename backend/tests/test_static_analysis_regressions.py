@@ -1,3 +1,5 @@
+"""Tests for the static analysis regressions behavior."""
+
 from __future__ import annotations
 
 import json
@@ -32,6 +34,7 @@ EXACT_VERSION_RE = re.compile(r"^\d+\.\d+\.\d+(?:[-+][A-Za-z0-9][A-Za-z0-9.+-]*)
 
 
 def test_ui_package_versions_are_exact() -> None:
+    """Verifies ui package versions are exact behavior."""
     package_json = json.loads(UI_PACKAGE_JSON.read_text(encoding="utf-8"))
     offenders: list[str] = []
 
@@ -44,6 +47,7 @@ def test_ui_package_versions_are_exact() -> None:
 
 
 def test_no_current_is_prefix_attribute_regressions() -> None:
+    """Verifies no current is prefix attribute regressions behavior."""
     offenders: list[str] = []
 
     for path, snippets in ANALYZER_REGRESSION_TARGETS.items():
@@ -55,7 +59,10 @@ def test_no_current_is_prefix_attribute_regressions() -> None:
     assert offenders == [], offenders
 
 
-def test_ui_package_versions_are_exact_reports_offenders(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+def test_ui_package_versions_are_exact_reports_offenders(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """Verifies ui package versions are exact reports offenders behavior."""
     package_json = tmp_path / "package.json"
     package_json.write_text(
         json.dumps({"dependencies": {"react": "^19.1.0"}}, indent=2),
@@ -70,6 +77,7 @@ def test_ui_package_versions_are_exact_reports_offenders(tmp_path: Path, monkeyp
 def test_no_current_is_prefix_attribute_regressions_reports_offenders(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
+    """Verifies no current is prefix attribute regressions reports offenders behavior."""
     module_path = tmp_path / "backend" / "app" / "api.py"
     module_path.parent.mkdir(parents=True)
     module_path.write_text("payload.is_active = True\n", encoding="utf-8")
@@ -83,5 +91,5 @@ def test_no_current_is_prefix_attribute_regressions_reports_offenders(
     with pytest.raises(AssertionError) as exc_info:
         test_no_current_is_prefix_attribute_regressions()
 
-    message = str(exc_info.value).replace('\\', '/')
+    message = str(exc_info.value).replace("\\", "/")
     assert "api.py:payload.is_active" in message

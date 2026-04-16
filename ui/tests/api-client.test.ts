@@ -16,14 +16,31 @@ type ResponseInterceptorHandler = {
   rejected: (error: AxiosError) => unknown;
 };
 
-function getRequestHandlers(api: { interceptors: { request: { handlers: unknown[] } } }): RequestInterceptorHandler {
-  const handlers = (api.interceptors.request as unknown as { handlers: RequestInterceptorHandler[] }).handlers;
-  return handlers.at(-1)!;
+/**
+ * Returns the last element or throws if the array is empty.
+ */
+function lastOrThrow<T>(items: readonly T[], label: string): T {
+  const last = items.at(-1);
+  if (last === undefined) {
+    throw new Error(`expected ${label} to contain at least one handler`);
+  }
+  return last;
 }
 
+/**
+ * Test helper: get request handlers.
+ */
+function getRequestHandlers(api: { interceptors: { request: { handlers: unknown[] } } }): RequestInterceptorHandler {
+  const handlers = (api.interceptors.request as unknown as { handlers: RequestInterceptorHandler[] }).handlers;
+  return lastOrThrow(handlers, 'request handlers');
+}
+
+/**
+ * Test helper: get response handlers.
+ */
 function getResponseHandlers(api: { interceptors: { response: { handlers: unknown[] } } }): ResponseInterceptorHandler {
   const handlers = (api.interceptors.response as unknown as { handlers: ResponseInterceptorHandler[] }).handlers;
-  return handlers.at(-1)!;
+  return lastOrThrow(handlers, 'response handlers');
 }
 
 describe('api client interceptors', () => {

@@ -51,6 +51,9 @@ type CalendarProps = {
  *
  * @returns The mocked select primitives wired for interactive page-level tests.
  */
+/**
+ * Test helper: create select mock module.
+ */
 export function createSelectMockModule() {
   const SelectContext = React.createContext<SelectContextValue>({})
 

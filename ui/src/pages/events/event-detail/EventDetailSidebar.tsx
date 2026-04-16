@@ -31,6 +31,9 @@ type RegistrationActionsProps = Readonly<{
 }>;
 
 /** Render the registration controls for attendees based on seat and timing state. */
+/**
+ * Test helper: registration actions.
+ */
 function RegistrationActions(props: RegistrationActionsProps) {
   const {
     event,

@@ -58,6 +58,9 @@ type OrganizerEventsSelectionTableProps = Readonly<{
 }>;
 
 /** Render the localized status badge shown for one organizer-owned event row. */
+/**
+ * Test helper: status badge.
+ */
 function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['status'], isPast: boolean) {
   if (status === 'draft') {
     return <Badge variant="secondary">{texts.statusDraft}</Badge>;

@@ -89,10 +89,16 @@ vi.mock('@/components/events/EventCard', () => ({
 export const { EventsPage } = await import('@/pages/events/EventsPage');
 export const { EventFormPage } = await import('@/pages/organizer/EventFormPage');
 
+/**
+ * Test helper: get event pages fixtures.
+ */
 export function getEventPagesFixtures() {
   return eventPagesFixtures;
 }
 
+/**
+ * Returns the form value or fails loudly when absent.
+ */
 export function requireForm(buttonName: RegExp, screen: typeof import('@testing-library/react').screen) {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
@@ -101,6 +107,9 @@ export function requireForm(buttonName: RegExp, screen: typeof import('@testing-
   return form;
 }
 
+/**
+ * Builds a event fixture.
+ */
 export function makeEvent(id: number, title = `Event ${id}`) {
   return {
     id,
@@ -142,11 +151,17 @@ beforeEach(() => {
   authState.isAuthenticated = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
 
-  eventServiceMock.getEvents.mockImplementation(async (filters: { sort?: string; page_size?: number }) => {
+  eventServiceMock.getEvents.mockImplementation((filters: { sort?: string; page_size?: number }) => {
     if (filters?.sort === 'recommended' && filters?.page_size === 4) {
-      return { items: [makeEvent(90, 'Recommended 90')], total: 1, page: 1, page_size: 4, total_pages: 1 };
+      return Promise.resolve({
+        items: [makeEvent(90, 'Recommended 90')],
+        total: 1,
+        page: 1,
+        page_size: 4,
+        total_pages: 1,
+      });
     }
-    return { items: [makeEvent(1)], total: 1, page: 1, page_size: 12, total_pages: 1 };
+    return Promise.resolve({ items: [makeEvent(1)], total: 1, page: 1, page_size: 12, total_pages: 1 });
   });
   eventServiceMock.getFavorites.mockResolvedValue({ items: [makeEvent(90, 'Recommended 90')] });
   eventServiceMock.addToFavorites.mockResolvedValue();

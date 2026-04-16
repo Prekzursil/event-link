@@ -46,10 +46,16 @@ import {
 } from '@/components/ui/table';
 import { LoadingOverlay, LoadingPage, LoadingSpinner } from '@/components/ui/loading';
 
+/**
+ * Renders the with language scaffolding for tests.
+ */
 function renderWithLanguage(node: React.ReactElement) {
   return render(<LanguageProvider>{node}</LanguageProvider>);
 }
 
+/**
+ * Builds a event fixture.
+ */
 function makeEvent(overrides: Partial<Record<string, unknown>> = {}) {
   return {
     id: 101,
@@ -96,7 +102,7 @@ describe('shared component coverage matrix', () => {
     });
   });
 
-  it('covers EventCard image/favorite/recommendation/edit/past/full branches', async () => {
+  it('covers EventCard image/favorite/recommendation/edit/past/full branches', () => {
     const onFavoriteToggle = vi.fn();
     const onEventClick = vi.fn();
 
@@ -200,6 +206,36 @@ describe('shared component coverage matrix', () => {
     const onCheckedChange = vi.fn();
     const onValueChange = vi.fn();
 
+    const subMenu = (
+      <DropdownMenuSub open>
+        <DropdownMenuSubTrigger inset>More</DropdownMenuSubTrigger>
+        <DropdownMenuPortal>
+          <DropdownMenuSubContent>
+            <DropdownMenuItem>Nested item</DropdownMenuItem>
+          </DropdownMenuSubContent>
+        </DropdownMenuPortal>
+      </DropdownMenuSub>
+    );
+
+    const radioGroup = (
+      <DropdownMenuRadioGroup value="one" onValueChange={onValueChange}>
+        <DropdownMenuRadioItem value="one">Radio one</DropdownMenuRadioItem>
+        <DropdownMenuRadioItem value="two">Radio two</DropdownMenuRadioItem>
+      </DropdownMenuRadioGroup>
+    );
+
+    const itemsGroup = (
+      <DropdownMenuGroup>
+        <DropdownMenuItem inset>
+          Menu item
+          <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
+        </DropdownMenuItem>
+        <DropdownMenuCheckboxItem checked onCheckedChange={onCheckedChange}>
+          Checkbox item
+        </DropdownMenuCheckboxItem>
+      </DropdownMenuGroup>
+    );
+
     render(
       <DropdownMenu open>
         <DropdownMenuTrigger asChild>
@@ -208,27 +244,9 @@ describe('shared component coverage matrix', () => {
         <DropdownMenuContent>
           <DropdownMenuLabel inset>Menu label</DropdownMenuLabel>
           <DropdownMenuSeparator />
-          <DropdownMenuGroup>
-            <DropdownMenuItem inset>
-              Menu item
-              <DropdownMenuShortcut>⌘K</DropdownMenuShortcut>
-            </DropdownMenuItem>
-            <DropdownMenuCheckboxItem checked onCheckedChange={onCheckedChange}>
-              Checkbox item
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuGroup>
-          <DropdownMenuRadioGroup value="one" onValueChange={onValueChange}>
-            <DropdownMenuRadioItem value="one">Radio one</DropdownMenuRadioItem>
-            <DropdownMenuRadioItem value="two">Radio two</DropdownMenuRadioItem>
-          </DropdownMenuRadioGroup>
-          <DropdownMenuSub open>
-            <DropdownMenuSubTrigger inset>More</DropdownMenuSubTrigger>
-            <DropdownMenuPortal>
-              <DropdownMenuSubContent>
-                <DropdownMenuItem>Nested item</DropdownMenuItem>
-              </DropdownMenuSubContent>
-            </DropdownMenuPortal>
-          </DropdownMenuSub>
+          {itemsGroup}
+          {radioGroup}
+          {subMenu}
         </DropdownMenuContent>
       </DropdownMenu>,
     );
@@ -237,41 +255,48 @@ describe('shared component coverage matrix', () => {
   });
 
   it('covers select and table wrappers including label/separator/footer/caption', () => {
+    const selectBlock = (
+      <Select value="one" onValueChange={() => undefined}>
+        <SelectTrigger aria-label="coverage-select">
+          <SelectValue placeholder="Choose one" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectGroup>
+            <SelectLabel>Group Label</SelectLabel>
+            <SelectItem value="one">One</SelectItem>
+            <SelectSeparator />
+            <SelectItem value="two">Two</SelectItem>
+          </SelectGroup>
+        </SelectContent>
+      </Select>
+    );
+
+    const tableBlock = (
+      <Table>
+        <TableCaption>Coverage caption</TableCaption>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Header</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          <TableRow>
+            <TableCell>Value</TableCell>
+          </TableRow>
+        </TableBody>
+        <TableFooter>
+          <TableRow>
+            <TableCell>Footer</TableCell>
+          </TableRow>
+        </TableFooter>
+      </Table>
+    );
+
     render(
       <div>
         <Separator orientation="vertical" />
-        <Select value="one" onValueChange={() => undefined}>
-          <SelectTrigger aria-label="coverage-select">
-            <SelectValue placeholder="Choose one" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectGroup>
-              <SelectLabel>Group Label</SelectLabel>
-              <SelectItem value="one">One</SelectItem>
-              <SelectSeparator />
-              <SelectItem value="two">Two</SelectItem>
-            </SelectGroup>
-          </SelectContent>
-        </Select>
-
-        <Table>
-          <TableCaption>Coverage caption</TableCaption>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Header</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            <TableRow>
-              <TableCell>Value</TableCell>
-            </TableRow>
-          </TableBody>
-          <TableFooter>
-            <TableRow>
-              <TableCell>Footer</TableCell>
-            </TableRow>
-          </TableFooter>
-        </Table>
+        {selectBlock}
+        {tableBlock}
       </div>,
     );
 

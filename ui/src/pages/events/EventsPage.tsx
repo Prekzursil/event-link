@@ -1,8 +1,13 @@
 import { useState, useEffect, useMemo, type ReactNode } from 'react';
-import { useSearchParams } from 'react-router-dom';
 import eventService from '@/services/event.service';
 import { recordInteractions, type InteractionEventIn } from '@/services/analytics.service';
 import type { Event, EventFilters } from '@/types';
+import {
+  EVENTS_PAGE_ALL_CATEGORIES_VALUE as ALL_CATEGORIES_VALUE_IMPORT,
+  EVENTS_PAGE_RECOMMENDATIONS_ENABLED as RECOMMENDATIONS_ENABLED,
+  useEventsPageFilters,
+  type EventsPageFilters as EventsPageFiltersShape,
+} from './useEventsPageFilters';
 import { EventCard } from '@/components/events/EventCard';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -34,19 +39,12 @@ import { getDateFnsLocale } from '@/lib/language';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 
 const PAGE_SIZES = [6, 12, 24, 48];
-const ALL_CATEGORIES_VALUE = '__all__';
+const ALL_CATEGORIES_VALUE = ALL_CATEGORIES_VALUE_IMPORT;
 /** Ignore analytics-side interaction failures so the UI can continue normally. */
 const ignoreInteractionError = () => undefined;
 
-const RECOMMENDATIONS_ENABLED =
-  (import.meta.env.VITE_FEATURE_RECOMMENDATIONS ?? 'true').toLowerCase() !== 'false';
 const CALENDAR_MEDIA_QUERY = '(min-width: 640px)';
-type EventsPageFilters = EventFilters & {
-  tags: string[];
-  page: number;
-  page_size: number;
-  sort: NonNullable<EventFilters['sort']>;
-};
+type EventsPageFilters = EventsPageFiltersShape;
 type EventsListPayload = Readonly<{
   items: Event[];
   total: number;
@@ -61,11 +59,6 @@ function formatEventDateForQuery(date: Date | undefined): string {
   const month = String(date.getMonth() + 1).padStart(2, '0');
   const day = String(date.getDate()).padStart(2, '0');
   return `${year}-${month}-${day}`;
-}
-
-/** Parse a query-string date into a local midnight Date object for the calendar widget. */
-function parseQueryDate(value: string | undefined): Date | undefined {
-  return value ? new Date(`${value}T00:00:00`) : undefined;
 }
 
 /** Read the responsive calendar layout preference from the current viewport. */
@@ -229,8 +222,10 @@ function handleRecommendationClick(eventId: number) {
 
 /** Render the events discovery page with filter, recommendation, and pagination controls. */
 // skipcq: JS-R1005 - this page intentionally co-locates filter, paging, recommendation, and analytics state.
+/**
+ * Test helper: events page.
+ */
 export function EventsPage() {
-  const [searchParams, setSearchParams] = useSearchParams();
   const [events, setEvents] = useState<Event[]>([]);
   const [recommendations, setRecommendations] = useState<Event[]>([]);
   const [favorites, setFavorites] = useState<Set<number>>(new Set());
@@ -259,89 +254,19 @@ export function EventsPage() {
     [language, t],
   );
 
-  // Memoize filters to prevent infinite loops
-  const search = searchParams.get('search') || '';
-  const category = searchParams.get('category') || '';
-  const start_date = searchParams.get('start_date') || '';
-  const end_date = searchParams.get('end_date') || '';
-  const city = searchParams.get('city') || '';
-  const location = searchParams.get('location') || '';
-  const tagsParam = searchParams.get('tags') || '';
-  const sortParam = searchParams.get('sort') || '';
-  const page = Number.parseInt(searchParams.get('page') || '1', 10);
-  const page_size = Number.parseInt(searchParams.get('page_size') || '12', 10);
-  const defaultSort: EventsPageFilters['sort'] =
-    isAuthenticated && user?.role === 'student' && RECOMMENDATIONS_ENABLED
-      ? 'recommended'
-      : 'time';
-  const sort: EventsPageFilters['sort'] =
-    sortParam === 'recommended' || sortParam === 'time' ? sortParam : defaultSort;
-
-  const filters = useMemo<EventsPageFilters>(
-    () => ({
-      search,
-      category,
-      start_date,
-      end_date,
-      city,
-      location,
-      tags: tagsParam ? tagsParam.split(',').filter(Boolean) : [],
-      sort,
-      page,
-      page_size,
-    }),
-    [search, category, start_date, end_date, city, location, tagsParam, sort, page, page_size],
-  );
-  const dateRangeLabel = useMemo(() => {
-    if (!filters.start_date) {
-      return t.events.dateRangePlaceholder;
-    }
-    if (!filters.end_date) {
-      return format(new Date(filters.start_date), 'd MMM yyyy', { locale: dateFnsLocale });
-    }
-    const startLabel = format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale });
-    const endLabel = format(new Date(filters.end_date), 'd MMM', { locale: dateFnsLocale });
-    return `${startLabel} - ${endLabel}`;
-  }, [dateFnsLocale, filters.end_date, filters.start_date, t.events.dateRangePlaceholder]);
-
-  const hasActiveFilters = Boolean(
-    filters.search ||
-      filters.category ||
-      filters.start_date ||
-      filters.end_date ||
-      filters.city ||
-      filters.location ||
-      filters.tags.length > 0,
-  );
-  const selectedDateRange = {
-    from: parseQueryDate(filters.start_date),
-    to: parseQueryDate(filters.end_date),
-  };
-  const defaultCalendarMonth = parseQueryDate(filters.start_date) ?? new Date();
-
-  /** Persist partial filter changes into the URL and reset paging unless the caller overrides it. */
-  function updateFilters(newFilters: Partial<EventFilters>) {
-    const params = new URLSearchParams(searchParams);
-
-    Object.entries(newFilters).forEach(([key, value]) => {
-      if (value === '' || value === null) {
-        params.delete(key);
-        return;
-      }
-      params.set(key, String(value));
-    });
-
-    if (!('page' in newFilters)) {
-      params.set('page', '1');
-    }
-
-    setSearchParams(params);
-  }
-
-  /** Translate the synthetic all-categories option back into the query-string representation. */
-  function handleCategoryChange(value: string) {
-    updateFilters({ category: value === ALL_CATEGORIES_VALUE ? '' : value });
-  }
+  const {
+    filters,
+    hasActiveFilters,
+    dateRangeLabel,
+    selectedDateRange,
+    defaultCalendarMonth,
+    updateFilters,
+    handleCategoryChange,
+    clearFilters,
+  } = useEventsPageFilters({
+    dateRangePlaceholder: t.events.dateRangePlaceholder,
+    dateFnsLocale,
+  });
 
   useEffect(() => {
     return syncEventsList(
@@ -390,11 +315,6 @@ export function EventsPage() {
       setFavorites(favoriteIds);
     });
   }, [isAuthenticated, user?.role]);
-
-  /** Clear every active filter and return the page to the default route state. */
-  function clearFilters() {
-    setSearchParams({});
-  }
 
   /** Apply the selected calendar range to the query-string backed filter state. */
   function handleDateRangeSelect(range: { from?: Date; to?: Date } | undefined) {

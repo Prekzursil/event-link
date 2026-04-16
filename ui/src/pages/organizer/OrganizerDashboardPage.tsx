@@ -12,6 +12,9 @@ import { OrganizerStatsGrid } from './organizer-dashboard/OrganizerStatsGrid';
 import { Plus } from 'lucide-react';
 
 /** Render the organizer dashboard with stats, bulk actions, and event management. */
+/**
+ * Test helper: organizer dashboard page.
+ */
 export function OrganizerDashboardPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [isLoading, setIsLoading] = useState(true);

@@ -93,9 +93,7 @@ class Tag(Base):
     id = Column(Integer, primary_key=True, index=True)
     name = Column(String(100), unique=True, nullable=False)
 
-    events = relationship(
-        "Event", secondary="event_tags", back_populates="tags"
-    )
+    events = relationship("Event", secondary="event_tags", back_populates="tags")
 
 
 class Event(Base):
@@ -117,9 +115,7 @@ class Event(Base):
     created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
     status = Column(String(20), nullable=False, server_default="published")
     publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    moderation_score = Column(
-        Float, nullable=False, server_default="0", default=0.0
-    )
+    moderation_score = Column(Float, nullable=False, server_default="0", default=0.0)
     moderation_flags = Column(JSON, nullable=True)
     moderation_status = Column(
         String(20), nullable=False, server_default="clean", default="clean"
@@ -131,9 +127,7 @@ class Event(Base):
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
-    owner = relationship(
-        "User", back_populates="events", foreign_keys=[owner_id]
-    )
+    owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
     registrations = relationship(
         "Registration", back_populates="event", cascade=CASCADE_DELETE_ORPHAN
     )
@@ -151,23 +145,17 @@ class Registration(Base):
     """Student registration for an event."""
 
     __tablename__ = "registrations"
-    __table_args__ = (
-        UniqueConstraint("user_id", "event_id", name="uq_registration"),
-    )
+    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_registration"),)
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
     event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False)
-    registration_time = Column(
-        TIMESTAMP(timezone=True), server_default=func.now()
-    )
+    registration_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
     attended = Column(Boolean, server_default="false", nullable=False)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
-    user = relationship(
-        "User", back_populates="registrations", foreign_keys=[user_id]
-    )
+    user = relationship("User", back_populates="registrations", foreign_keys=[user_id])
     event = relationship("Event", back_populates="registrations")
     deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
 
@@ -213,18 +201,14 @@ class BackgroundJob(Base):
 
     __tablename__ = "background_jobs"
     __table_args__ = (
-        UniqueConstraint(
-            "job_type", "dedupe_key", name="uq_background_job_dedupe_key"
-        ),
+        UniqueConstraint("job_type", "dedupe_key", name="uq_background_job_dedupe_key"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     job_type = Column(String(50), nullable=False, index=True)
     dedupe_key = Column(String(200), nullable=True, index=True)
     payload = Column(JSON, nullable=False)
-    status = Column(
-        String(20), nullable=False, index=True, server_default="queued"
-    )
+    status = Column(String(20), nullable=False, index=True, server_default="queued")
     attempts = Column(Integer, nullable=False, server_default="0")
     max_attempts = Column(Integer, nullable=False, server_default="3")
     run_at = Column(
@@ -247,20 +231,14 @@ class NotificationDelivery(Base):
 
     __tablename__ = "notification_deliveries"
     __table_args__ = (
-        UniqueConstraint(
-            "dedupe_key", name="uq_notification_delivery_dedupe_key"
-        ),
+        UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
     dedupe_key = Column(String(200), nullable=False)
     notification_type = Column(String(50), nullable=False, index=True)
-    user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
-    )
-    event_id = Column(
-        Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True
-    )
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
     sent_at = Column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -279,9 +257,7 @@ class AuditLog(Base):
     entity_type = Column(String(50), nullable=False, index=True)
     entity_id = Column(Integer, nullable=False, index=True)
     action = Column(String(50), nullable=False, index=True)
-    actor_user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=True, index=True
-    )
+    actor_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
     created_at = Column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
@@ -299,12 +275,8 @@ class UserRecommendation(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
-    )
-    event_id = Column(
-        Integer, ForeignKey(EVENT_ID_FK), nullable=False, index=True
-    )
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False, index=True)
     score = Column(Float, nullable=False)
     rank = Column(Integer, nullable=False)
     model_version = Column(String(50), nullable=True)
@@ -322,9 +294,7 @@ class RecommenderModel(Base):
 
     __tablename__ = "recommender_models"
     __table_args__ = (
-        UniqueConstraint(
-            "model_version", name="uq_recommender_models_model_version"
-        ),
+        UniqueConstraint("model_version", name="uq_recommender_models_model_version"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
@@ -344,12 +314,8 @@ class EventInteraction(Base):
     __tablename__ = "event_interactions"
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=True, index=True
-    )
-    event_id = Column(
-        Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True
-    )
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
+    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
     interaction_type = Column(String(50), nullable=False, index=True)
     occurred_at = Column(
         TIMESTAMP(timezone=True),
@@ -368,15 +334,11 @@ class UserImplicitInterestTag(Base):
 
     __tablename__ = "user_implicit_interest_tags"
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "tag_id", name="uq_user_implicit_interest_tag"
-        ),
+        UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
-    )
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
     tag_id = Column(Integer, ForeignKey(TAG_ID_FK), nullable=False, index=True)
     score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(
@@ -401,9 +363,7 @@ class UserImplicitInterestCategory(Base):
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
-    )
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
     category = Column(String(100), nullable=False, index=True)
     score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(
@@ -421,15 +381,11 @@ class UserImplicitInterestCity(Base):
 
     __tablename__ = "user_implicit_interest_cities"
     __table_args__ = (
-        UniqueConstraint(
-            "user_id", "city", name="uq_user_implicit_interest_city"
-        ),
+        UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),
     )
 
     id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(
-        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
-    )
+    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
     city = Column(String(100), nullable=False, index=True)
     score = Column(Float, nullable=False, server_default="1.0", default=1.0)
     last_seen_at = Column(
