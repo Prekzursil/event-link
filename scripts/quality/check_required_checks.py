@@ -25,7 +25,9 @@ write_workspace_text = _security_helpers.write_workspace_text
 def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
     parser = argparse.ArgumentParser(
-        description="Wait for required GitHub check contexts and assert they are successful."
+        description=(
+            "Wait for required GitHub check contexts and assert they are successful."
+        )
     )
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--sha", required=True, help="commit SHA")
