@@ -608,25 +608,20 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
 
 def _result_payload(
     *,
+    request: CodacyRequest,
     status: str,
-    owner: str,
-    repo: str,
-    provider: str,
-    branch: str,
-    pr_number: str,
-    commit_sha: str,
     open_issues: int | None,
     findings: list[str],
 ) -> dict[str, Any]:
     """Build the serialized result payload for the Codacy gate."""
     return {
         "status": status,
-        "owner": owner,
-        "repo": repo,
-        "provider": provider,
-        "branch": branch,
-        "pr_number": pr_number,
-        "commit": commit_sha,
+        "owner": request.owner,
+        "repo": request.repo,
+        "provider": request.provider,
+        "branch": request.branch,
+        "pr_number": request.pr_number,
+        "commit": request.commit_sha,
         "open_issues": open_issues,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),
         "findings": findings,
@@ -674,13 +669,8 @@ def main() -> int:
     )
     status, open_issues, findings = _evaluate_codacy(request)
     payload = _result_payload(
+        request=request,
         status=status,
-        owner=owner,
-        repo=repo,
-        provider=provider,
-        branch=branch,
-        pr_number=pr_number,
-        commit_sha=commit_sha,
         open_issues=open_issues,
         findings=findings,
     )

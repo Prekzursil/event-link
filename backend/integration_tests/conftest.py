@@ -1,5 +1,10 @@
 """Shared pytest fixtures for this test scope."""
 
+# Alembic injects ``command`` / ``config`` dynamically, so Pylint can't
+# resolve them. Declared at the top of the file so the imports below are
+# covered by the disable.
+# pylint: disable=no-name-in-module
+
 import os
 from pathlib import Path
 

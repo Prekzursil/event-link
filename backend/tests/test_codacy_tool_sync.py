@@ -292,10 +292,12 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_con
 
     def fake_configure_tool(**_kwargs):
         """Implements the fake configure tool helper."""
-        raise RuntimeError(
+        conflict_message = (
             "Codacy tool patch failed for jshint-uuid: HTTP 409 "
-            '{"actions": [], "error": "Conflict", "message": "Cannot disable a tool that is enabled by a standard"}'
+            '{"actions": [], "error": "Conflict", '
+            '"message": "Cannot disable a tool that is enabled by a standard"}'
         )
+        raise RuntimeError(conflict_message)
 
     setattr(module, "_configure_tool", fake_configure_tool)
 
