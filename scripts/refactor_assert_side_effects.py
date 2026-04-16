@@ -13,6 +13,7 @@ from __future__ import annotations
 
 import pathlib
 import sys
+from typing import cast
 
 import libcst as cst
 
@@ -51,11 +52,14 @@ def _rewrite_side_effect_assert(
     line: cst.SimpleStatementLine,
     assert_node: cst.Assert,
 ) -> cst.FlattenSentinel[cst.BaseStatement]:
-    """Splits ``assert call.status_code == N`` into ``_response = call`` + assert."""
-    test = assert_node.test  # type: ignore[assignment]
-    assert isinstance(test, cst.Comparison)
-    left = test.left
-    assert isinstance(left, cst.Attribute)
+    """Splits ``assert call.status_code == N`` into ``_response = call`` + assert.
+
+    Callers must pass nodes that already satisfy ``_is_convertible_assert``,
+    so the type narrowing below is a static-check helper rather than a runtime
+    check (which would violate bandit B101 when compiled with -O).
+    """
+    test = cast(cst.Comparison, assert_node.test)
+    left = cast(cst.Attribute, test.left)
     assign = cst.Assign(
         targets=[cst.AssignTarget(target=cst.Name("_response"))],
         value=left.value,

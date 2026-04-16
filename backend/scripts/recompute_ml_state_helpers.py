@@ -143,6 +143,7 @@ def _positive_weights_by_user(positive_weights) -> dict[int, dict[int, float]]:
     return positives_by_user
 
 
+# pylint: disable-next=too-many-arguments
 def _load_decay_weight_buckets(
     *, db, models, args, now: datetime, decay_lambda: float, max_score: float
 ):

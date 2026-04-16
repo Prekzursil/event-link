@@ -34,6 +34,7 @@ from .task_queue_shared import (
     JOB_TYPE_SEND_EMAIL,
     JOB_TYPE_SEND_FILLING_FAST_ALERTS,
     JOB_TYPE_SEND_WEEKLY_DIGEST,
+    _apply_personalization_exclusions,
     _coerce_bool,
     _load_personalization_exclusions,
     enqueue_job,
@@ -260,19 +261,6 @@ def _backend_root() -> Path:
     """Implements the backend root helper."""
     # backend/app/task_queue.py -> backend/
     return Path(__file__).resolve().parents[1]
-
-
-def _apply_personalization_exclusions(
-    query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
-):  # noqa: ANN001
-    """Applies personalization exclusions to the target."""
-    if blocked_organizer_ids:
-        query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
-    if hidden_tag_ids:
-        query = query.filter(
-            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
-        )
-    return query
 
 
 def _run_recompute_recommendations_ml(*, payload: dict[str, Any]) -> None:

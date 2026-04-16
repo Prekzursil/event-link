@@ -605,13 +605,11 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
             continue
         return status, open_issues, findings
 
-    findings = [
-        (
-            f"Codacy API endpoint was not found for "
-            f"provider(s): {request.provider}, gh, github."
-        )
-    ]
-    return "fail", None, findings
+    message = (
+        f"Codacy API endpoint was not found for "
+        f"provider(s): {request.provider}, gh, github."
+    )
+    return "fail", None, [message]
 
 
 def _result_payload(

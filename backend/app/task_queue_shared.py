@@ -90,6 +90,19 @@ def _coerce_bool(value: object) -> bool:
     return bool(value)
 
 
+def _apply_personalization_exclusions(
+    query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
+):  # noqa: ANN001
+    """Applies personalization exclusions to an event query."""
+    if blocked_organizer_ids:
+        query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
+    if hidden_tag_ids:
+        query = query.filter(
+            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
+        )
+    return query
+
+
 def _load_personalization_exclusions(
     *, db: Session, user_id: int
 ) -> tuple[set[int], set[int]]:

@@ -46,6 +46,7 @@ def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = No
     return client, db, student_token, student, earlier, later, generated_at
 
 
+# pylint: disable-next=too-many-arguments
 def _store_ml_cache(
     *,
     db,

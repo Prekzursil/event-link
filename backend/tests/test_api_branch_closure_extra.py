@@ -418,6 +418,7 @@ def _seed_restore_and_clone_context(helpers):
     return client, admin_token, owner_token, restore_event, future_clone
 
 
+# pylint: disable-next=too-many-arguments,too-many-positional-arguments
 def _assert_restore_and_clone_paths(
     client, helpers, admin_token: str, owner_token: str, restore_event, future_clone
 ) -> None:

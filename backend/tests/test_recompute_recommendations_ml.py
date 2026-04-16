@@ -343,6 +343,7 @@ def _empty_user_features(
     )
 
 
+# pylint: disable-next=too-many-arguments
 def _basic_event_features(
     module,
     now: datetime,

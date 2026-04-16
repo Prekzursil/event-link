@@ -100,6 +100,7 @@ def _load_event_features(*, db, models, func):
     return events
 
 
+# pylint: disable-next=too-many-arguments,too-many-locals
 def _load_interest_tag_weights(
     *,
     db,

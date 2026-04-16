@@ -17,6 +17,7 @@ from .task_queue_guardrails import (  # noqa: F401
     evaluate_personalization_guardrails,
 )
 from .task_queue_shared import (
+    _apply_personalization_exclusions,
     _coerce_bool,
     _notification_exists,
     _preferred_lang,
@@ -94,12 +95,11 @@ def _weekly_digest_events(
     hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(
         db=db, user_id=user_id
     )
-    if blocked_organizer_ids:
-        query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
-    if hidden_tag_ids:
-        query = query.filter(
-            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
-        )
+    query = _apply_personalization_exclusions(
+        query,
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
+    )
     return query.limit(max(1, top_n)).all()
 
 

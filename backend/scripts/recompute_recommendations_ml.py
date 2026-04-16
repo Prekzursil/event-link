@@ -177,6 +177,7 @@ def _impression_negative_ids(
     return [event_id for event_id, _position in impression_candidates[:50]]
 
 
+# pylint: disable-next=too-many-arguments
 def _append_example(
     *, examples, user, event, now: datetime, label: int, weight: float
 ) -> None:
@@ -417,18 +418,11 @@ def _build_recommendation_rows(**kwargs):
     )
 
 
-def _train_model_state(
-    *,
-    db,
-    models,
-    args,
-    requested_model_version: str | None,
-    state: _PreparedState,
-    now: datetime,
-) -> tuple[str | None, list[float] | None, int | None]:
-    """Implements the train model state helper."""
-    model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
-    examples = _build_training_examples(
+def _gather_training_examples(
+    *, args, state: _PreparedState, now: datetime
+):
+    """Collects training examples from ``state``; handles the empty-data path."""
+    return _build_training_examples(
         args=args,
         positives_by_user=state.positives_by_user,
         users=state.users,
@@ -443,17 +437,12 @@ def _train_model_state(
         all_event_ids=state.all_event_ids,
         now=now,
     )
-    if not examples:
-        print(
-            "No training data found (no registrations/favorites/interactions); "
-            "nothing to do."
-        )
-        return None, None, 0
 
-    n_features, exit_code = _feature_length_is_valid(examples)
-    if exit_code is not None:
-        return None, None, exit_code
 
+def _train_and_evaluate(
+    *, args, state: _PreparedState, examples, n_features: int, now: datetime
+) -> tuple[list[float], float]:
+    """Runs SGD training + holdout hit-rate evaluation and logs the result."""
     weights = _train_log_regression_sgd(
         examples=examples,
         n_features=n_features,
@@ -474,6 +463,34 @@ def _train_model_state(
         seed=args.seed,
     )
     print(f"[eval] hitrate@10={hitrate:.3f} users={len(state.holdout)}")
+    return weights, hitrate
+
+
+# pylint: disable-next=too-many-arguments
+def _train_model_state(
+    *,
+    db,
+    models,
+    args,
+    requested_model_version: str | None,
+    state: _PreparedState,
+    now: datetime,
+) -> tuple[str | None, list[float] | None, int | None]:
+    """Implements the train model state helper."""
+    model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
+    examples = _gather_training_examples(args=args, state=state, now=now)
+    if not examples:
+        print(
+            "No training data found (no registrations/favorites/interactions); "
+            "nothing to do."
+        )
+        return None, None, 0
+    n_features, exit_code = _feature_length_is_valid(examples)
+    if exit_code is not None:
+        return None, None, exit_code
+    weights, hitrate = _train_and_evaluate(
+        args=args, state=state, examples=examples, n_features=n_features, now=now
+    )
     meta = _training_meta(args=args, now=now, examples=examples, hitrate=hitrate)
     if not args.dry_run:
         _persist_model_state(
@@ -486,6 +503,7 @@ def _train_model_state(
     return model_version, weights, None
 
 
+# pylint: disable-next=too-many-arguments
 def _resolve_model_state(
     *,
     db,
@@ -512,6 +530,7 @@ def _resolve_model_state(
     )
 
 
+# pylint: disable-next=too-many-arguments
 def _store_recommendations(
     *,
     db,

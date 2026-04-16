@@ -139,10 +139,8 @@ def _class_doc(name: str) -> str:
     return f"{human.title()} value object used in the surrounding module."
 
 
-def _module_doc(path: pathlib.Path) -> str:
-    """Returns a concise docstring for a Python module at ``path``."""
-    stem = path.stem
-    parent = path.parent.name
+def _match_stem_rule(stem: str, parent: str) -> str | None:
+    """Returns a docstring based on the file stem pattern, or ``None`` if no rule fits."""
     if stem == "__init__":
         return f"Package marker for the {parent} module."
     if stem.startswith("test_"):
@@ -151,10 +149,28 @@ def _module_doc(path: pathlib.Path) -> str:
         return "Shared pytest fixtures for this test scope."
     if "seed" in stem:
         return f"Seed-data helpers for {_humanize(stem)}."
+    return None
+
+
+def _match_parent_rule(stem: str, parent: str) -> str | None:
+    """Returns a docstring based on the directory name, or ``None`` if no rule fits."""
     if parent == "alembic":
         return "Alembic runtime configuration."
     if parent == "scripts":
         return f"Command-line helper: {_humanize(stem)}."
+    return None
+
+
+def _module_doc(path: pathlib.Path) -> str:
+    """Returns a concise docstring for a Python module at ``path``."""
+    stem = path.stem
+    parent = path.parent.name
+    by_stem = _match_stem_rule(stem, parent)
+    if by_stem is not None:
+        return by_stem
+    by_parent = _match_parent_rule(stem, parent)
+    if by_parent is not None:
+        return by_parent
     return f"Support module: {_humanize(stem)}."
 
 
