@@ -1,5 +1,8 @@
 """Focused sparse-path coverage for recommendation recomputation training."""
 
+# Deferred imports intentionally break cycles or avoid import-time side effects.
+# pylint: disable=import-outside-toplevel
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

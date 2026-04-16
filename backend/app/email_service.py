@@ -12,8 +12,9 @@ from .config import settings
 from .logging_utils import log_error, log_event, log_warning
 from .task_queue_shared import JOB_TYPE_SEND_EMAIL, enqueue_job
 
-emails_sent_ok = 0
-emails_send_failed = 0
+# Mutable counters — intentionally lowercase to signal they are not constants.
+emails_sent_ok = 0  # pylint: disable=invalid-name
+emails_send_failed = 0  # pylint: disable=invalid-name
 
 
 def _email_settings_ready(

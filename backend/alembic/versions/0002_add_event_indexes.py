@@ -5,6 +5,10 @@ Revises: 0001_add_cover_attended
 Create Date: 2025-11-26
 """
 
+# Alembic revision variables (revision, down_revision, branch_labels,
+# depends_on) are framework-mandated names.
+# pylint: disable=invalid-name
+
 from alembic import op
 
 # revision identifiers, used by Alembic.

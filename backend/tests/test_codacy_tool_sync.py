@@ -1,5 +1,8 @@
 """Tests for the codacy tool sync behavior."""
 
+# Tests access private helpers of modules-under-test intentionally.
+# pylint: disable=protected-access
+
 import importlib.util
 import sys
 from pathlib import Path

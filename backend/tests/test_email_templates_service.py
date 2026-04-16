@@ -1,5 +1,8 @@
 """Tests for the email templates service behavior."""
 
+# Tests access private helpers of modules-under-test intentionally.
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

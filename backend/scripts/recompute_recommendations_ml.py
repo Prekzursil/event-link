@@ -14,6 +14,8 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 if str(SCRIPT_DIR) not in sys.path:
     sys.path.insert(0, str(SCRIPT_DIR))
 
+# sys.path munging above is required before sibling imports resolve.
+# pylint: disable=wrong-import-position,import-outside-toplevel
 from recompute_ml_shared import (  # noqa: E402
     FEATURE_NAMES,
     _DeterministicRng,

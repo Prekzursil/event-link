@@ -14,6 +14,8 @@ if "DATABASE_URL" not in os.environ:
 os.environ.setdefault("SECRET_KEY", "test-signing-key-material-123456")
 os.environ.setdefault("EMAIL_ENABLED", "false")
 
+# Env setup above must happen before the app-module imports settings.
+# pylint: disable=wrong-import-position
 from app import api as api_module  # noqa: E402
 from app import auth, models  # noqa: E402
 from app.api import app  # noqa: E402

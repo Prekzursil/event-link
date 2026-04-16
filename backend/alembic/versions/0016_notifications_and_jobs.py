@@ -5,6 +5,10 @@ Revises: 0015_personalization_controls
 Create Date: 2025-12-18
 """
 
+# Alembic revision variables (revision, down_revision, branch_labels,
+# depends_on) are framework-mandated names.
+# pylint: disable=invalid-name
+
 from alembic import op
 import sqlalchemy as sa
 

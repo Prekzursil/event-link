@@ -1,5 +1,8 @@
 """Shared helpers for task queue unit tests."""
 
+# Test fixture classes commonly have a single public method by design.
+# pylint: disable=too-few-public-methods,import-outside-toplevel
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone

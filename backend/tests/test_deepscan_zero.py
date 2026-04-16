@@ -1,5 +1,8 @@
 """Tests for the deepscan zero behavior."""
 
+# Tests access private helpers of modules-under-test intentionally.
+# pylint: disable=protected-access
+
 from __future__ import annotations
 
 import importlib.util
