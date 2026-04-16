@@ -123,11 +123,11 @@ def main() -> int:
         stem = str(path).replace("\\", "/")
         if any(tok in stem for tok in SKIP_TOKENS):
             continue
-        n = _process(path)
-        if n:
+        replacements = _process(path)
+        if replacements:
             files += 1
-            total += n
-            print(f"{path}: {n} replacements")
+            total += replacements
+            print(f"{path}: {replacements} replacements")
     print(f"\nTotal: files={files} replacements={total}")
     return 0
 
