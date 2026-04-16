@@ -184,7 +184,8 @@ def _repository_analysis_request(
     branch_query = f"?branch={quote(branch, safe='')}" if branch else ""
     return _request_json(
         path=(
-            f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}{branch_query}"
+            f"api/v3/analysis/organizations/{provider}/{owner}"
+            f"/repositories/{repo}{branch_query}"
         ),
         token=token,
     )
@@ -565,7 +566,8 @@ def _evaluate_commit_analysis(
             "Codacy commit response did not include a parseable new issue count."
         ),
         nonzero_message=(
-            f"Codacy reports {_quality_new_issues(payload)} commit new issues (expected 0)."
+            f"Codacy reports {_quality_new_issues(payload)} "
+            "commit new issues (expected 0)."
         ),
     )
 
@@ -606,7 +608,8 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
         return status, open_issues, findings
 
     findings = [
-        f"Codacy API endpoint was not found for provider(s): {request.provider}, gh, github."
+        f"Codacy API endpoint was not found for "
+        f"provider(s): {request.provider}, gh, github."
     ]
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")

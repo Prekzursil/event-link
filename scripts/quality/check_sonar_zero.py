@@ -230,10 +230,8 @@ def _hotspot_total(
     *, api_base: str, auth: str, project_key: str, branch: str, pull_request: str
 ) -> int:
     """Implements the hotspot total helper."""
-    payload = _request_json(
-        f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}",
-        auth,
-    )
+    query = _hotspots_query(project_key, branch, pull_request)
+    payload = _request_json(f"{api_base}/api/hotspots/search?{query}", auth)
     return int((payload.get("paging") or {}).get("total") or 0)
 
 
@@ -322,17 +320,20 @@ def _legacy_summary(
     pull_request: str,
 ) -> tuple[int, str, int, str]:
     """Implements the legacy summary helper."""
-    issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
+    issues_query = _issues_query(project_key, branch, pull_request)
+    gate_query = _gate_query(project_key, branch, pull_request)
+    hotspots_query = _hotspots_query(project_key, branch, pull_request)
+    issues_url = f"{api_base}/api/issues/search?{issues_query}"
     issues_payload = _request_json(issues_url, auth)
     paging = issues_payload.get("paging") or {}
     open_issues = int(paging.get("total") or 0)
 
-    gate_url = f"{api_base}/api/qualitygates/project_status?{_gate_query(project_key, branch, pull_request)}"
+    gate_url = f"{api_base}/api/qualitygates/project_status?{gate_query}"
     gate_payload = _request_json(gate_url, auth)
     project_status = gate_payload.get("projectStatus") or {}
     quality_gate = str(project_status.get("status") or "UNKNOWN")
 
-    hotspots_url = f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}"
+    hotspots_url = f"{api_base}/api/hotspots/search?{hotspots_query}"
     hotspots_payload = _request_json(hotspots_url, auth)
     hotspots_paging = hotspots_payload.get("paging") or {}
     open_hotspots = int(hotspots_paging.get("total") or 0)
@@ -388,8 +389,10 @@ def _await_current_analysis(
         if not expected_commit or analyzed_commit == expected_commit:
             return open_issues, quality_gate, open_hotspots
         if time.time() > deadline:
+            latest = analyzed_commit or "unknown"
             raise RuntimeError(
-                f"Sonar has not analyzed commit {expected_commit}; latest analyzed commit is {analyzed_commit or 'unknown'}."
+                f"Sonar has not analyzed commit {expected_commit}; "
+                f"latest analyzed commit is {latest}."
             )
         time.sleep(max(poll_seconds, 1))
 
