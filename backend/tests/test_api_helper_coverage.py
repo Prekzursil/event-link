@@ -8,11 +8,11 @@
 
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
 import sys
+from datetime import datetime, timedelta, timezone
+from types import SimpleNamespace
 
 import pytest
-from types import SimpleNamespace
 from fastapi import HTTPException, Request
 
 from app import api, auth, models, schemas
@@ -567,5 +567,3 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
         )
     assert bulk_tags_exc.value.status_code == 400
     assert bulk_tags_exc.value.detail == "Nu ați selectat niciun eveniment."
-
-

@@ -465,15 +465,12 @@ def _wait_for_branch_analysis(
 
         if time.time() > deadline:
             expected_sha = request.commit_sha or state.branch_head_sha or "unknown"
-            return (
-                "fail",
-                None,
-                [
-                    "Codacy has not finished branch analysis for commit "
-                    f"{expected_sha}; latest analyzed head is "
-                    f"{state.analysed_sha or 'unknown'}."
-                ],
+            timeout_message = (
+                f"Codacy has not finished branch analysis for commit "
+                f"{expected_sha}; latest analyzed head is "
+                f"{state.analysed_sha or 'unknown'}."
             )
+            return "fail", None, [timeout_message]
         time.sleep(max(request.poll_seconds, 1))
 
 
@@ -532,15 +529,12 @@ def _wait_for_pr_analysis(request: CodacyRequest) -> tuple[str, int | None, list
             return result
 
         if time.time() > deadline:
-            return (
-                "fail",
-                None,
-                [
-                    "Codacy has not finished PR analysis for commit "
-                    f"{request.commit_sha}; latest analyzed head is "
-                    f"{state.analyzed_commit or 'unknown'}."
-                ],
+            pr_timeout_message = (
+                f"Codacy has not finished PR analysis for commit "
+                f"{request.commit_sha}; latest analyzed head is "
+                f"{state.analyzed_commit or 'unknown'}."
             )
+            return "fail", None, [pr_timeout_message]
         time.sleep(max(request.poll_seconds, 1))
 
 

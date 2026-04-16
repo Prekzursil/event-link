@@ -102,9 +102,11 @@ def test_parse_dashboard_url_ids_from_fragment() -> None:
     """Extract team, project, branch, and PR identifiers from dashboard fragments."""
     module = _load_module()
 
-    ids = module._parse_dashboard_url_ids(
-        "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139&bid=1008135&subview=pull-request&prid=2297171"
+    dashboard_url = (
+        "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139"
+        "&bid=1008135&subview=pull-request&prid=2297171"
     )
+    ids = module._parse_dashboard_url_ids(dashboard_url)
 
     assert ids == {
         "team_id": "29074",
@@ -250,13 +252,15 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
 
     def resolve_provider_findings(**_kwargs):
         """Return a provider failure payload with a single finding."""
-        return (
-            1,
-            "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
-            [
-                "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"
-            ],
+        run_url = (
+            "https://app.deepsource.com/gh/Prekzursil/event-link/run/"
+            "49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
         )
+        finding = (
+            "DeepSource: JavaScript: Analysis failed: "
+            "Blocking issues or failing metrics found"
+        )
+        return 1, run_url, [finding]
 
     status, open_issues, findings, source_url = module._evaluate_deepscan(
         token="",

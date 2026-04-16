@@ -151,9 +151,12 @@ def test_evaluate_sonar_fails_when_expected_commit_never_arrives(
     assert open_issues is None
     assert quality_gate is None
     assert open_hotspots is None
-    assert findings == [
-        "Sonar API request failed: Sonar has not analyzed commit 0123456789abcdef0123456789abcdef01234567; latest analyzed commit is feedfeedfeedfeedfeedfeedfeedfeedfeedfeed."
-    ]
+    expected_finding = (
+        "Sonar API request failed: Sonar has not analyzed commit "
+        "0123456789abcdef0123456789abcdef01234567; latest analyzed commit is "
+        "feedfeedfeedfeedfeedfeedfeedfeedfeedfeed."
+    )
+    assert findings == [expected_finding]
 
 
 def test_evaluate_sonar_fails_when_hotspots_exist(

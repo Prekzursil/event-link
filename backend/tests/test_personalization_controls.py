@@ -111,8 +111,9 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
     )
 
     student_token = helpers["register_student"]("student2@test.ro")
+    org2_id = _user_id_by_email(helpers["db"], "org2@test.ro")
     resp = client.post(
-        f"/api/me/personalization/blocked-organizers/{_user_id_by_email(helpers['db'], 'org2@test.ro')}",
+        f"/api/me/personalization/blocked-organizers/{org2_id}",
         headers=helpers["auth_header"](student_token),
     )
     assert resp.status_code == 201

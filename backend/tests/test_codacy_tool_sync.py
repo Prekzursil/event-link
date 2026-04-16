@@ -244,10 +244,12 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
         """Implements the fake configure tool helper."""
         calls.append(kwargs["payload"])
         if kwargs["payload"] == {"enabled": False, "useConfigurationFile": True}:
-            raise RuntimeError(
+            conflict_message = (
                 "Codacy tool patch failed for eslint-uuid: HTTP 409 "
-                '{"actions": [], "error": "Conflict", "message": "Cannot disable a tool that is enabled by a standard"}'
+                '{"actions": [], "error": "Conflict", '
+                '"message": "Cannot disable a tool that is enabled by a standard"}'
             )
+            raise RuntimeError(conflict_message)
         assert kwargs["payload"] == {"useConfigurationFile": True}
 
     setattr(module, "_configure_tool", fake_configure_tool)
@@ -321,10 +323,13 @@ def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None
 
     def fake_reanalyze_commit(**_kwargs):
         """Implements the fake reanalyze commit helper."""
-        raise RuntimeError(
-            "Codacy reanalyze failed for 0123456789abcdef0123456789abcdef01234567: "
-            'HTTP 403 {"actions": [], "error": "Forbidden", "message": "Operation is not authorized"}'
+        forbidden_message = (
+            "Codacy reanalyze failed for "
+            "0123456789abcdef0123456789abcdef01234567: "
+            'HTTP 403 {"actions": [], "error": "Forbidden", '
+            '"message": "Operation is not authorized"}'
         )
+        raise RuntimeError(forbidden_message)
 
     setattr(module, "_reanalyze_commit", fake_reanalyze_commit)
 
