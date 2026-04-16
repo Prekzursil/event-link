@@ -13,6 +13,16 @@ DEEPSCAN_PUBLIC_SHA = "f048fe7022acca4e5159015af0db0d6fef56137b"
 DEEPSOURCE_STATUS_SHA = "6d64df2d1be6d0d1225294b9ff979b98a5e712bf"
 DEEPSCAN_DASHBOARD_SHA = "2a1fcc315ff970968cb44f4be08ca270733c3c8f"
 
+_DS_API = "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136"
+DEEPSCAN_PUBLIC_API = f"{_DS_API}/analyses/3694745"
+_DS_DASHBOARD = "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139"
+DEEPSCAN_DASHBOARD_URL = (
+    f"{_DS_DASHBOARD}&bid=1008135&subview=pull-request&prid=2297171"
+)
+DEEPSCAN_DASHBOARD_SHORT = f"{_DS_DASHBOARD}&bid=1008135"
+DS_RUN_BASE = "https://app.deepsource.com/gh/Prekzursil/event-link/run"
+DS_RUN_URL_PRIMARY = f"{DS_RUN_BASE}/49f1d1ef-93f"
+
 
 def _load_module():
     """Import the DeepScan quality script directly from the repo checkout."""
