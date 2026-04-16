@@ -102,35 +102,22 @@ LOCATIONS = [
     "Online - Zoom/Teams",
 ]
 
+_UNSPLASH_BASE = "https://images.unsplash.com/photo-"
+_UNSPLASH_SUFFIX = "?w=800&h=400&fit=crop"
 COVER_IMAGES = [
-    (
-        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop"
-    ),
-    ("https://images.unsplash.com/photo-1559223607-a43c990c692c?w=800&h=400&fit=crop"),
-    (
-        "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1528901166007-3784c7dd3653?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=800&h=400&fit=crop"
-    ),
+    _UNSPLASH_BASE + slug + _UNSPLASH_SUFFIX
+    for slug in (
+        "1540575467063-178a50c2df87",
+        "1515187029135-18ee286d815b",
+        "1475721027785-f74eccf877e2",
+        "1559223607-a43c990c692c",
+        "1505373877841-8d25f7d46678",
+        "1591115765373-5207764f72e7",
+        "1528901166007-3784c7dd3653",
+        "1517048676732-d65bc937f952",
+        "1523580494863-6f3031224c94",
+        "1522158637959-30385a09e0da",
+    )
 ]
 
 SAMPLE_EVENTS = [
