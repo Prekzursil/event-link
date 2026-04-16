@@ -187,13 +187,17 @@ def _render_md(payload: dict[str, Any]) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _validated_runtime(args: argparse.Namespace) -> tuple[str, list[str], str, str, str]:
+def _validated_runtime(
+    args: argparse.Namespace,
+) -> tuple[str, list[str], str, str, str]:
     """Implements the validated runtime helper."""
     required = [item.strip() for item in args.required_context if item.strip()]
     if not required:
         raise ValueError("At least one --required-context is required")
 
-    token = (os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")).strip()
+    token = (
+        os.environ.get("GITHUB_TOKEN", "") or os.environ.get("GH_TOKEN", "")
+    ).strip()
     if not token:
         raise ValueError("GITHUB_TOKEN or GH_TOKEN is required")
 

@@ -54,7 +54,9 @@ def scan(root: pathlib.Path) -> tuple[dict, dict, dict]:
         for node in ast.walk(tree):
             if isinstance(node, ast.ClassDef) and _missing(node):
                 classes[stem] += 1
-            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _missing(node):
+            elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _missing(
+                node
+            ):
                 functions[stem] += 1
     return classes, functions, modules
 

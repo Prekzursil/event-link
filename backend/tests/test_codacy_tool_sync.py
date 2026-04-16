@@ -11,7 +11,9 @@ def _load_module():
     module_path = repo_root / "scripts" / "quality" / "sync_codacy_repo_tools.py"
     sys.path.insert(0, str(module_path.parent))
     try:
-        spec = importlib.util.spec_from_file_location("sync_codacy_repo_tools", module_path)
+        spec = importlib.util.spec_from_file_location(
+            "sync_codacy_repo_tools", module_path
+        )
         assert spec is not None and spec.loader is not None
         module = importlib.util.module_from_spec(spec)
         spec.loader.exec_module(module)
@@ -48,14 +50,20 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
 
     payload, notes = module._planned_tool_payload(
         "ESLint9",
-        {"isEnabled": True, "hasConfigurationFile": True, "usesConfigurationFile": False},
+        {
+            "isEnabled": True,
+            "hasConfigurationFile": True,
+            "usesConfigurationFile": False,
+        },
     )
 
     assert payload == {"useConfigurationFile": True}
     assert notes == []
 
 
-def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present() -> None:
+def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present() -> (
+    None
+):
     """Verifies planned tool payload enables legacy config when legacy tool is present
     behavior.
     """
@@ -63,7 +71,11 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
 
     payload, notes = module._planned_tool_payload(
         "ESLint",
-        {"isEnabled": True, "hasConfigurationFile": True, "usesConfigurationFile": False},
+        {
+            "isEnabled": True,
+            "hasConfigurationFile": True,
+            "usesConfigurationFile": False,
+        },
     )
 
     assert payload == {"enabled": False, "useConfigurationFile": True}
@@ -76,7 +88,11 @@ def test_planned_tool_payload_skips_missing_configuration_files():
 
     payload, notes = module._planned_tool_payload(
         "Stylelint",
-        {"isEnabled": True, "hasConfigurationFile": False, "usesConfigurationFile": False},
+        {
+            "isEnabled": True,
+            "hasConfigurationFile": False,
+            "usesConfigurationFile": False,
+        },
     )
 
     assert payload is None
@@ -85,7 +101,9 @@ def test_planned_tool_payload_skips_missing_configuration_files():
     ]
 
 
-def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> None:
+def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> (
+    None
+):
     """Verifies planned tool payload enables prospector configuration file when available
     behavior.
     """
@@ -93,7 +111,11 @@ def test_planned_tool_payload_enables_prospector_configuration_file_when_availab
 
     payload, notes = module._planned_tool_payload(
         "Prospector",
-        {"isEnabled": True, "hasConfigurationFile": True, "usesConfigurationFile": False},
+        {
+            "isEnabled": True,
+            "hasConfigurationFile": True,
+            "usesConfigurationFile": False,
+        },
     )
 
     assert payload == {"useConfigurationFile": True}
@@ -175,7 +197,9 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
     module._list_tools = fake_list_tools
     module._configure_tool = lambda **_kwargs: _kwargs
     module._disable_pattern = lambda **_kwargs: _kwargs
-    module._reanalyze_commit = lambda **_kwargs: reanalyze_calls.append(_kwargs["commit_sha"])
+    module._reanalyze_commit = lambda **_kwargs: reanalyze_calls.append(
+        _kwargs["commit_sha"]
+    )
 
     payload = module._run_sync(
         provider="gh",
@@ -190,7 +214,9 @@ def test_run_sync_collects_changes_in_dry_run_without_reanalysis():
     assert payload["tool_changes"] == [
         {"tool": "ESLint", "payload": {"enabled": False}},
     ]
-    assert payload["pattern_changes"] == [{"tool": "Pylint", "pattern_id": "PyLint_W1618"}]
+    assert payload["pattern_changes"] == [
+        {"tool": "Pylint", "pattern_id": "PyLint_W1618"}
+    ]
     assert payload["failures"] == []
     assert reanalyze_calls == []
 
@@ -278,7 +304,9 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_con
         dry_run=False,
     )
 
-    assert tool_changes == [{"tool": "JSHint (deprecated)", "payload": {"enabled": False}}]
+    assert tool_changes == [
+        {"tool": "JSHint (deprecated)", "payload": {"enabled": False}}
+    ]
     assert failures == []
     assert notes == [
         "JSHint (deprecated): managed by Codacy standard; skipping disable request"

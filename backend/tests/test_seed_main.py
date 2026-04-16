@@ -176,7 +176,9 @@ def test_seed_database_happy_path(monkeypatch):
 def test_seed_database_clears_existing_data_and_tolerates_missing_tables(monkeypatch):
     """seed_database should clear prior rows and ignore missing join tables."""
     seed_data = _prepare_seed(monkeypatch)
-    fake = _FakeSession(user_count=3, delete_fail_tables={"event_tags", "favorite_events"})
+    fake = _FakeSession(
+        user_count=3, delete_fail_tables={"event_tags", "favorite_events"}
+    )
 
     def _session_factory():
         """Return the seeded fake session for delete-coverage paths."""

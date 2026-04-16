@@ -22,7 +22,9 @@ def upgrade() -> None:
         "users",
         sa.Column("org_logo_url", sa.String(length=500), nullable=True),
     )
-    op.add_column("users", sa.Column("org_website", sa.String(length=255), nullable=True))
+    op.add_column(
+        "users", sa.Column("org_website", sa.String(length=255), nullable=True)
+    )
 
     op.add_column(
         "events",

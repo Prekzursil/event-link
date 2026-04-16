@@ -548,7 +548,9 @@ class AdminEvaluateGuardrailsRequest(BaseModel):
     min_impressions: Optional[int] = Field(default=None, ge=1, le=1000000)
     ctr_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
     conversion_drop_ratio: Optional[float] = Field(default=None, ge=0, le=1)
-    click_to_register_window_hours: Optional[int] = Field(default=None, ge=1, le=24 * 30)
+    click_to_register_window_hours: Optional[int] = Field(
+        default=None, ge=1, le=24 * 30
+    )
 
 
 class AdminActivatePersonalizationModelRequest(BaseModel):

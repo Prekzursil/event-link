@@ -22,7 +22,9 @@ def _make_user(**kwargs):
 def _load_script_module():
     """Loads the script module helper resource."""
     script_path = (
-        Path(__file__).resolve().parents[1] / "scripts" / "recompute_recommendations_ml.py"
+        Path(__file__).resolve().parents[1]
+        / "scripts"
+        / "recompute_recommendations_ml.py"
     )
     module_name = f"recompute_recommendations_ml_{uuid.uuid4().hex}"
     spec = importlib.util.spec_from_file_location(module_name, script_path)
@@ -136,7 +138,9 @@ def _build_seed_training_entities(now: datetime):
     return organizer, student, tag, events
 
 
-def _persist_seed_training_entities(db_session, organizer, student, tag, events) -> None:
+def _persist_seed_training_entities(
+    db_session, organizer, student, tag, events
+) -> None:
     """Persists the seed training entities fixture rows."""
     events["positive"].tags.append(tag)
     events["candidate"].tags.append(tag)
@@ -144,7 +148,11 @@ def _persist_seed_training_entities(db_session, organizer, student, tag, events)
     db_session.add_all([organizer, student, tag, *events.values()])
     db_session.commit()
     _refresh_all(
-        db_session, student, events["positive"], events["candidate"], events["filtered_full"]
+        db_session,
+        student,
+        events["positive"],
+        events["candidate"],
+        events["filtered_full"],
     )
 
 
@@ -155,9 +163,13 @@ def _build_seed_training_interactions(now: datetime, student, tag, events):
             user_id=int(student.id), event_id=int(events["positive"].id), attended=True
         ),
         models.Registration(
-            user_id=int(student.id), event_id=int(events["filtered_full"].id), attended=False
+            user_id=int(student.id),
+            event_id=int(events["filtered_full"].id),
+            attended=False,
         ),
-        models.FavoriteEvent(user_id=int(student.id), event_id=int(events["positive"].id)),
+        models.FavoriteEvent(
+            user_id=int(student.id), event_id=int(events["positive"].id)
+        ),
         models.UserImplicitInterestTag(
             user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now
         ),
@@ -222,7 +234,9 @@ def _seed_training_rows(db_session):
     return student, events["candidate"]
 
 
-def _warning_path_query_error(args: tuple[object, ...], state: dict[str, bool]) -> str | None:
+def _warning_path_query_error(
+    args: tuple[object, ...], state: dict[str, bool]
+) -> str | None:
     """Returns the warning for path query error."""
     for column, key, message in (
         (models.UserImplicitInterestCategory.user_id, "category", "category boom"),

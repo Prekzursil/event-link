@@ -43,7 +43,9 @@ def _seed_favorite_context(helpers):
     db = helpers["db"]
     helpers["make_organizer"]("favorite-org@test.ro", "organizer-fixture-A1")
     organizer = (
-        db.query(models.User).filter(models.User.email == "favorite-org@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "favorite-org@test.ro")
+        .first()
     )
     assert organizer is not None
     student_token = helpers["register_student"]("favorite-student@test.ro")
@@ -64,7 +66,11 @@ def _seed_favorite_context(helpers):
     db.refresh(tag)
     db.refresh(event)
     return SimpleNamespace(
-        client=client, organizer=organizer, student_token=student_token, tag=tag, event=event
+        client=client,
+        organizer=organizer,
+        student_token=student_token,
+        tag=tag,
+        event=event,
     )
 
 
@@ -126,7 +132,11 @@ def _record_interactions_payload(event_id: int) -> dict:
             {"interaction_type": "share", "event_id": event_id},
             {"interaction_type": "favorite", "event_id": event_id},
             {"interaction_type": "register", "event_id": event_id},
-            {"interaction_type": "dwell", "event_id": event_id, "meta": {"seconds": 20}},
+            {
+                "interaction_type": "dwell",
+                "event_id": event_id,
+                "meta": {"seconds": 20},
+            },
             {
                 "interaction_type": "search",
                 "meta": {
@@ -176,7 +186,9 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
     monkeypatch.setitem(
-        sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config)
+        sys.modules,
+        "alembic",
+        SimpleNamespace(command=fake_command, config=fake_config),
     )
 
 
@@ -185,7 +197,11 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     client = helpers["client"]
     db = helpers["db"]
     student_token = helpers["register_student"]("interactions@test.ro")
-    student = db.query(models.User).filter(models.User.email == "interactions@test.ro").first()
+    student = (
+        db.query(models.User)
+        .filter(models.User.email == "interactions@test.ro")
+        .first()
+    )
     assert student is not None
     organizer = models.User(
         email="interactions-org@test.ro",
@@ -264,7 +280,9 @@ def test_check_configuration_required_values_and_email_toggle(monkeypatch):
     with pytest.raises(RuntimeError):
         api._check_configuration()
 
-    monkeypatch.setattr(api.settings, "database_url", "sqlite:///./test.db", raising=False)
+    monkeypatch.setattr(
+        api.settings, "database_url", "sqlite:///./test.db", raising=False
+    )
     monkeypatch.setattr(api.settings, "secret_key", "", raising=False)
     with pytest.raises(RuntimeError):
         api._check_configuration()
@@ -336,7 +354,9 @@ def test_refresh_token_branches():
     assert exc_expired.value.status_code == 401
 
     with pytest.raises(HTTPException):
-        api.refresh_token(api.schemas.RefreshRequest(refresh_token=invalid_refresh_token))
+        api.refresh_token(
+            api.schemas.RefreshRequest(refresh_token=invalid_refresh_token)
+        )
 
     wrong_type = auth.create_access_token(
         {"sub": "1", "email": "x@test.ro", "role": models.UserRole.student.value},
@@ -376,7 +396,9 @@ def test_clone_event_branches_and_success(helpers):
     helpers["make_organizer"]("clone-owner@test.ro", "owner-fixture-A1")
     helpers["make_organizer"]("clone-other@test.ro", "other-fixture-A1")
 
-    owner = db.query(models.User).filter(models.User.email == "clone-owner@test.ro").first()
+    owner = (
+        db.query(models.User).filter(models.User.email == "clone-owner@test.ro").first()
+    )
     assert owner is not None
     other_token = helpers["login"]("clone-other@test.ro", "other-fixture-A1")
 
@@ -455,33 +477,21 @@ def test_hidden_tag_personalization_endpoints(helpers):
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     _response = context.client.delete(
-            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 404
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
     )
+    assert _response.status_code == 404
     _response = context.client.post(
-            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 201
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
     )
+    assert _response.status_code == 201
     _response = context.client.delete(
-            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 204
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
     )
+    assert _response.status_code == 204
     _response = context.client.delete(
-            f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 404
+        f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
     )
+    assert _response.status_code == 404
 
 
 def test_blocked_organizer_personalization_endpoints(helpers):
@@ -489,37 +499,25 @@ def test_blocked_organizer_personalization_endpoints(helpers):
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     _response = context.client.delete(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
-            headers=headers,
-        )
-    assert (
-        _response.status_code
-        == 404
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
     )
+    assert _response.status_code == 404
     _response = context.client.post(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
-            headers=headers,
-        )
-    assert (
-        _response.status_code
-        == 201
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
     )
+    assert _response.status_code == 201
     _response = context.client.delete(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
-            headers=headers,
-        )
-    assert (
-        _response.status_code
-        == 204
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
     )
+    assert _response.status_code == 204
     _response = context.client.delete(
-            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
-            headers=headers,
-        )
-    assert (
-        _response.status_code
-        == 404
+        f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
+        headers=headers,
     )
+    assert _response.status_code == 404
 
 
 def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
@@ -527,16 +525,11 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
     _response = context.client.post("/api/events/999999/favorite", headers=headers)
-    assert (
-        _response.status_code == 404
-    )
+    assert _response.status_code == 404
     _response = context.client.post(
-            f"/api/events/{int(context.event.id)}/favorite", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 201
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
     )
+    assert _response.status_code == 201
     favorite_exists = context.client.post(
         f"/api/events/{int(context.event.id)}/favorite", headers=headers
     )
@@ -546,19 +539,13 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     assert listed.status_code == 200
     assert listed.json()["items"]
     _response = context.client.delete(
-            f"/api/events/{int(context.event.id)}/favorite", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 204
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
     )
+    assert _response.status_code == 204
     _response = context.client.delete(
-            f"/api/events/{int(context.event.id)}/favorite", headers=headers
-        )
-    assert (
-        _response.status_code
-        == 404
+        f"/api/events/{int(context.event.id)}/favorite", headers=headers
     )
+    assert _response.status_code == 404
 
 
 def test_admin_activate_missing_personalization_model_returns_404(helpers):
@@ -574,7 +561,9 @@ def test_admin_activate_missing_personalization_model_returns_404(helpers):
     assert response.status_code == 404
 
 
-def test_admin_activate_model_paths_return_expected_recompute_payloads(monkeypatch, helpers):
+def test_admin_activate_model_paths_return_expected_recompute_payloads(
+    monkeypatch, helpers
+):
     """Admin activation should return both non-recompute and recompute payloads."""
     context = _seed_admin_context(helpers, monkeypatch)
     headers = helpers["auth_header"](context.admin_token)
@@ -689,7 +678,9 @@ def test_register_route_rejects_mismatched_confirmation(monkeypatch):
     """Registration should reject mismatched access-code confirmation fields."""
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     register_db = SimpleNamespace(query=lambda *_args, **_kwargs: _FirstQuery(None))
-    request = Request({"type": "http", "method": "POST", "path": "/register", "headers": []})
+    request = Request(
+        {"type": "http", "method": "POST", "path": "/register", "headers": []}
+    )
     register_payload = {
         "email": "mismatch@test.ro",
         _ACCESS_CODE_FIELD: _compose_access_code("Entry", "Code", "123A"),
@@ -742,7 +733,9 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
     current_user = SimpleNamespace(id=7, role=models.UserRole.organizator)
     with pytest.raises(HTTPException) as bulk_status_exc:
         api.organizer_bulk_update_status(
-            schemas.OrganizerBulkStatusUpdate.model_construct(event_ids=[], status="draft"),
+            schemas.OrganizerBulkStatusUpdate.model_construct(
+                event_ids=[], status="draft"
+            ),
             db=None,
             current_user=current_user,
         )

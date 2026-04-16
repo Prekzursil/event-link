@@ -74,7 +74,11 @@ def _admin_student_context(helpers):
     helpers["make_admin"]("admin-edge@test.ro", "admin-fixture-A1")
     admin_token = helpers["login"]("admin-edge@test.ro", "admin-fixture-A1")
     student_token = helpers["register_student"]("edge-student@test.ro")
-    student = db.query(models.User).filter(models.User.email == "edge-student@test.ro").first()
+    student = (
+        db.query(models.User)
+        .filter(models.User.email == "edge-student@test.ro")
+        .first()
+    )
     assert student is not None
     return client, db, admin_token, student_token, student
 
@@ -82,7 +86,9 @@ def _admin_student_context(helpers):
 def _blocked_organizer_context(helpers, db):
     """Implements the blocked organizer context helper."""
     helpers["make_organizer"]("blocked-org@test.ro", "organizer-fixture-A1")
-    org = db.query(models.User).filter(models.User.email == "blocked-org@test.ro").first()
+    org = (
+        db.query(models.User).filter(models.User.email == "blocked-org@test.ro").first()
+    )
     assert org is not None
     return org, helpers["login"]("blocked-org@test.ro", "organizer-fixture-A1")
 
@@ -101,7 +107,9 @@ def test_public_events_and_event_detail_branch_guards(helpers):
     token = helpers["login"]("public-org@test.ro", "organizer-fixture-A1")
     created = client.post(
         "/api/events",
-        json=_event_payload(start_time=helpers["future_time"](), tags=["music", "test"]),
+        json=_event_payload(
+            start_time=helpers["future_time"](), tags=["music", "test"]
+        ),
         headers=helpers["auth_header"](token),
     )
     assert created.status_code == 201
@@ -116,7 +124,9 @@ def test_public_events_and_event_detail_branch_guards(helpers):
             "city": "clu",
             "location": "hal",
             "start_date": datetime.now(timezone.utc).date().isoformat(),
-            "end_date": (datetime.now(timezone.utc).date() + timedelta(days=30)).isoformat(),
+            "end_date": (
+                datetime.now(timezone.utc).date() + timedelta(days=30)
+            ).isoformat(),
         },
     )
     assert q.status_code == 200
@@ -143,11 +153,13 @@ def test_event_create_validation_branches(helpers):
     client, owner_token, _other_token = _event_crud_context(helpers)
     invalid_payloads = [
         _event_payload(
-            start_time=helpers["future_time"](days=3), end_time=helpers["future_time"](days=2)
+            start_time=helpers["future_time"](days=3),
+            end_time=helpers["future_time"](days=2),
         ),
         _event_payload(start_time=helpers["future_time"](), max_seats=0),
         _event_payload(
-            start_time=helpers["future_time"](), cover_url="https://example.com/" + ("a" * 520)
+            start_time=helpers["future_time"](),
+            cover_url="https://example.com/" + ("a" * 520),
         ),
     ]
     for payload in invalid_payloads:
@@ -193,10 +205,22 @@ def test_bulk_validation_and_suggest_branches(helpers):
     db = helpers["db"]
     event_id = _create_owned_event(helpers, owner_token, tags=["dup", ""])
     bulk_requests = [
-        ("/api/organizer/events/bulk/status", {"event_ids": [], "status": "draft"}, 422),
-        ("/api/organizer/events/bulk/status", {"event_ids": [999999], "status": "draft"}, 404),
+        (
+            "/api/organizer/events/bulk/status",
+            {"event_ids": [], "status": "draft"},
+            422,
+        ),
+        (
+            "/api/organizer/events/bulk/status",
+            {"event_ids": [999999], "status": "draft"},
+            404,
+        ),
         ("/api/organizer/events/bulk/tags", {"event_ids": [], "tags": ["x"]}, 422),
-        ("/api/organizer/events/bulk/tags", {"event_ids": [999999], "tags": ["x"]}, 404),
+        (
+            "/api/organizer/events/bulk/tags",
+            {"event_ids": [999999], "tags": ["x"]},
+            404,
+        ),
         (
             "/api/organizer/events/bulk/tags",
             {"event_ids": [event_id], "tags": ["x" * 101]},
@@ -204,7 +228,9 @@ def test_bulk_validation_and_suggest_branches(helpers):
         ),
     ]
     for path, payload, status in bulk_requests:
-        response = client.post(path, json=payload, headers=helpers["auth_header"](owner_token))
+        response = client.post(
+            path, json=payload, headers=helpers["auth_header"](owner_token)
+        )
         assert response.status_code == status
     db.add(models.Tag(name=""))
     db.commit()
@@ -225,20 +251,14 @@ def test_personalization_hidden_and_blocked_branches(helpers):
     """Verifies personalization hidden and blocked branches behavior."""
     client, db, _admin_token, student_token, _student = _admin_student_context(helpers)
     _response = client.get(
-            "/api/me/profile", headers=helpers["auth_header"](student_token)
-        )
-    assert (
-        _response.status_code
-        == 200
+        "/api/me/profile", headers=helpers["auth_header"](student_token)
     )
+    assert _response.status_code == 200
     _response = client.post(
-            "/api/me/personalization/hidden-tags/999999",
-            headers=helpers["auth_header"](student_token),
-        )
-    assert (
-        _response.status_code
-        == 404
+        "/api/me/personalization/hidden-tags/999999",
+        headers=helpers["auth_header"](student_token),
     )
+    assert _response.status_code == 404
     tag = models.Tag(name="edge-tag")
     db.add(tag)
     db.commit()
@@ -255,13 +275,10 @@ def test_personalization_hidden_and_blocked_branches(helpers):
     assert second_hidden.status_code == 201
     assert second_hidden.json()["status"] == "exists"
     _response = client.post(
-            "/api/me/personalization/blocked-organizers/999999",
-            headers=helpers["auth_header"](student_token),
-        )
-    assert (
-        _response.status_code
-        == 404
+        "/api/me/personalization/blocked-organizers/999999",
+        headers=helpers["auth_header"](student_token),
     )
+    assert _response.status_code == 404
     org, _org_token = _blocked_organizer_context(helpers, db)
     first_block = client.post(
         f"/api/me/personalization/blocked-organizers/{int(org.id)}",
@@ -286,7 +303,13 @@ def test_registration_restore_and_metric_validation_branches(helpers):
         ("POST", "/api/events/999999/register", None, student_token, 404),
         ("POST", "/api/events/999999/register/resend", None, student_token, 404),
         ("DELETE", "/api/events/999999/register", None, student_token, 404),
-        ("POST", "/api/admin/events/1/registrations/1/restore", None, student_token, 403),
+        (
+            "POST",
+            "/api/admin/events/1/registrations/1/restore",
+            None,
+            student_token,
+            403,
+        ),
         ("POST", "/api/admin/events/1/registrations/1/restore", None, admin_token, 404),
     ]
     for method, path, params, token, status in requests:
@@ -302,7 +325,9 @@ def test_registration_restore_and_metric_validation_branches(helpers):
         ("/api/admin/stats", {"days": 7, "top_tags_limit": 0}),
         ("/api/admin/personalization/metrics", {"days": 0}),
     ]:
-        response = client.get(path, params=params, headers=helpers["auth_header"](admin_token))
+        response = client.get(
+            path, params=params, headers=helpers["auth_header"](admin_token)
+        )
         assert response.status_code == 400
 
 
@@ -321,7 +346,9 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
         ),
     ]
     for path, params, status in listing_requests:
-        response = client.get(path, params=params, headers=helpers["auth_header"](admin_token))
+        response = client.get(
+            path, params=params, headers=helpers["auth_header"](admin_token)
+        )
         assert response.status_code == status
     users_filtered = client.get(
         "/api/admin/users",
@@ -330,22 +357,16 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
     )
     assert users_filtered.status_code == 200
     _response = client.patch(
-            "/api/admin/users/999999",
-            json={"is_active": False},
-            headers=helpers["auth_header"](admin_token),
-        )
-    assert (
-        _response.status_code
-        == 404
+        "/api/admin/users/999999",
+        json={"is_active": False},
+        headers=helpers["auth_header"](admin_token),
     )
+    assert _response.status_code == 404
     _response = client.post(
-            "/api/admin/events/999999/moderation/review",
-            headers=helpers["auth_header"](admin_token),
-        )
-    assert (
-        _response.status_code
-        == 404
+        "/api/admin/events/999999/moderation/review",
+        headers=helpers["auth_header"](admin_token),
     )
+    assert _response.status_code == 404
     placeholder_access_code = "placeholder-code-A1"
     placeholder = models.User(
         email="deleted-organizer@eventlink.invalid",
@@ -420,10 +441,14 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
 def test_admin_update_user_row_missing_branch(monkeypatch, db_session):
     """Verifies admin update user row missing branch behavior."""
     current_user = models.User(
-        email="admin-detail@test.ro", role=models.UserRole.admin, **{_HASH_FIELD: "hash"}
+        email="admin-detail@test.ro",
+        role=models.UserRole.admin,
+        **{_HASH_FIELD: "hash"},
     )
     target_user = models.User(
-        email="user-detail@test.ro", role=models.UserRole.student, **{_HASH_FIELD: "hash"}
+        email="user-detail@test.ro",
+        role=models.UserRole.student,
+        **{_HASH_FIELD: "hash"},
     )
     db_session.add_all([current_user, target_user])
     db_session.commit()

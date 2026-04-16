@@ -55,7 +55,9 @@ def test_load_module_raises_when_import_spec_is_missing(
     monkeypatch.setattr(
         importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
     )
-    monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != original_parent])
+    monkeypatch.setattr(
+        sys, "path", [entry for entry in sys.path if entry != original_parent]
+    )
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
         _load_module()
@@ -86,7 +88,9 @@ def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(
             200,
             {
                 "isAnalysing": True,
-                "pullRequest": {"headCommitSha": "oldoldoldoldoldoldoldoldoldoldoldoldoldold"},
+                "pullRequest": {
+                    "headCommitSha": "oldoldoldoldoldoldoldoldoldoldoldoldoldold"
+                },
                 "quality": {"newIssues": 12},
             },
         ),
@@ -94,7 +98,9 @@ def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(
             200,
             {
                 "isAnalysing": False,
-                "pullRequest": {"headCommitSha": "0123456789abcdef0123456789abcdef01234567"},
+                "pullRequest": {
+                    "headCommitSha": "0123456789abcdef0123456789abcdef01234567"
+                },
                 "quality": {"newIssues": 0},
             },
         ),
@@ -119,7 +125,9 @@ def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(
     assert sleeps == [6]
 
 
-def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wait_for_pr_analysis_reports_pr_new_issues(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies wait for pr analysis reports pr new issues behavior."""
     module = _load_module()
 
@@ -130,7 +138,9 @@ def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPa
             200,
             {
                 "isAnalysing": False,
-                "pullRequest": {"headCommitSha": "0123456789abcdef0123456789abcdef01234567"},
+                "pullRequest": {
+                    "headCommitSha": "0123456789abcdef0123456789abcdef01234567"
+                },
                 "quality": {"newIssues": 43},
             },
         ),
@@ -176,7 +186,9 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(
                     "selectedBranch": {
                         "lastCommit": "0123456789abcdef0123456789abcdef01234567"
                     },
-                    "lastAnalysedCommit": {"sha": "0123456789abcdef0123456789abcdef01234567"},
+                    "lastAnalysedCommit": {
+                        "sha": "0123456789abcdef0123456789abcdef01234567"
+                    },
                     "issuesCount": 0,
                 }
             },
@@ -222,7 +234,9 @@ def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_rea
                     "selectedBranch": {
                         "lastCommit": "0123456789abcdef0123456789abcdef01234567"
                     },
-                    "lastAnalysedCommit": {"sha": "0123456789abcdef0123456789abcdef01234567"},
+                    "lastAnalysedCommit": {
+                        "sha": "0123456789abcdef0123456789abcdef01234567"
+                    },
                     "issuesCount": 4,
                 }
             },

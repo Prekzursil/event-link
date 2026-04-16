@@ -38,7 +38,9 @@ def _parse_args() -> argparse.Namespace:
         help="Project slug (repeatable, falls back to SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB env)",
     )
     parser.add_argument(
-        "--token", default="", help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)"
+        "--token",
+        default="",
+        help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)",
     )
     parser.add_argument(
         "--out-json", default="sentry-zero/sentry.json", help="Output JSON path"
@@ -96,7 +98,9 @@ def _render_md(payload: dict) -> str:
     for item in payload.get("projects", []):
         state = item.get("state")
         state_suffix = "" if not state or state == "ok" else f" state=`{state}`"
-        lines.append(f"- `{item['project']}` unresolved=`{item['unresolved']}`{state_suffix}")
+        lines.append(
+            f"- `{item['project']}` unresolved=`{item['unresolved']}`{state_suffix}"
+        )
 
     if not payload.get("projects"):
         lines.append("- None")
@@ -152,7 +156,9 @@ def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
     return safe_projects
 
 
-def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], str, list[str]]:
+def _validated_inputs(
+    args: argparse.Namespace,
+) -> tuple[str, str, list[str], str, list[str]]:
     """Implements the validated inputs helper."""
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org_input = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
@@ -163,7 +169,9 @@ def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], st
 
     org = _validated_org(org_input, findings)
     safe_projects = _validated_projects(_collect_projects(args), findings)
-    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={SENTRY_HOST}).rstrip("/")
+    api_base = normalize_https_url(SENTRY_API_BASE, allowed_hosts={SENTRY_HOST}).rstrip(
+        "/"
+    )
     return token, org, safe_projects, api_base, findings
 
 
@@ -224,7 +232,11 @@ def _evaluate_sentry(
                     {"project": project, "unresolved": 0, "state": "not_found"}
                 )
                 continue
-            return "fail", project_results, [*findings, f"Sentry API request failed: {exc}"]
+            return (
+                "fail",
+                project_results,
+                [*findings, f"Sentry API request failed: {exc}"],
+            )
         project_results.append({**result, "state": "ok"})
         findings.extend(project_findings)
 

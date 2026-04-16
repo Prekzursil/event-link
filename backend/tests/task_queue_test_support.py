@@ -56,7 +56,9 @@ def make_user(email: str, password: str, role: models.UserRole, **overrides):
     )
 
 
-def make_event(title: str, owner, *, when: datetime, max_seats: int | None, **overrides):
+def make_event(
+    title: str, owner, *, when: datetime, max_seats: int | None, **overrides
+):
     """Builds a event fixture."""
     return models.Event(
         title=title,
@@ -72,7 +74,9 @@ def make_event(title: str, owner, *, when: datetime, max_seats: int | None, **ov
     )
 
 
-def interaction(*, user_id: int, event_id: int, kind: str, occurred_at: datetime, meta=None):
+def interaction(
+    *, user_id: int, event_id: int, kind: str, occurred_at: datetime, meta=None
+):
     """Implements the interaction helper."""
     payload = {
         "user_id": user_id,
@@ -130,7 +134,9 @@ def seed_weekly_digest_fixture(db_session):
     """Implements the seed weekly digest fixture helper."""
     now = datetime.now(timezone.utc)
     users = {
-        name: make_user(email, "student-fixture-A1", models.UserRole.student, **overrides)
+        name: make_user(
+            email, "student-fixture-A1", models.UserRole.student, **overrides
+        )
         for name, email, overrides in [
             (
                 "active",
@@ -164,7 +170,9 @@ def seed_weekly_digest_fixture(db_session):
     organizer = make_user(
         "digest-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator
     )
-    event = make_event("Digest Event", organizer, when=now + timedelta(days=2), max_seats=20)
+    event = make_event(
+        "Digest Event", organizer, when=now + timedelta(days=2), max_seats=20
+    )
     db_session.add_all([*users.values(), organizer, event])
     db_session.commit()
     db_session.add(
@@ -190,7 +198,9 @@ def seed_filling_fast_branch_matrix(db_session):
     )
     hidden_tag = models.Tag(name="hidden-branch")
     events = {
-        name: make_event(title, organizer, when=now + timedelta(days=days), max_seats=seats)
+        name: make_event(
+            title, organizer, when=now + timedelta(days=days), max_seats=seats
+        )
         for name, title, seats, days in [
             ("limit_first", "limit-first", 4, 2),
             ("limit_second", "limit-second", 4, 3),
@@ -203,7 +213,9 @@ def seed_filling_fast_branch_matrix(db_session):
     }
     events["hidden"].tags.append(hidden_tag)
     users = {
-        name: make_user(email, "student-fixture-A1", models.UserRole.student, **overrides)
+        name: make_user(
+            email, "student-fixture-A1", models.UserRole.student, **overrides
+        )
         for name, email, overrides in [
             (
                 "inactive",
@@ -299,7 +311,9 @@ def seed_filling_fast_branch_matrix(db_session):
         for user_name, event_name in favorites
     )
     db_session.add(
-        models.Registration(user_id=int(users["full"].id), event_id=int(events["full"].id))
+        models.Registration(
+            user_id=int(users["full"].id), event_id=int(events["full"].id)
+        )
     )
     db_session.commit()
     return SimpleNamespace(
@@ -380,7 +394,9 @@ def seed_guardrail_window_rows(
     db_session.commit()
 
 
-def seed_guardrail_rollback_state(db_session, *, user_id: int, event_id: int, now: datetime):
+def seed_guardrail_rollback_state(
+    db_session, *, user_id: int, event_id: int, now: datetime
+):
     """Implements the seed guardrail rollback state helper."""
     add_balanced_guardrail_rows(db_session, user_id=user_id, event_id=event_id, now=now)
     db_session.add(

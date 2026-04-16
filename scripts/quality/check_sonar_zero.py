@@ -54,8 +54,12 @@ def _parse_args() -> argparse.Namespace:
         default=5,
         help="Polling interval while waiting for analysis",
     )
-    parser.add_argument("--out-json", default="sonar-zero/sonar.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="sonar-zero/sonar.md", help="Output markdown path")
+    parser.add_argument(
+        "--out-json", default="sonar-zero/sonar.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="sonar-zero/sonar.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
@@ -108,7 +112,9 @@ def _render_md(payload: dict) -> str:
     return "\n".join(lines) + "\n"
 
 
-def _validated_required_slug(raw_value: str, *, field_name: str, findings: list[str]) -> str:
+def _validated_required_slug(
+    raw_value: str, *, field_name: str, findings: list[str]
+) -> str:
     """Implements the validated required slug helper."""
     try:
         return validate_slug(raw_value, field_name=field_name)
@@ -117,7 +123,9 @@ def _validated_required_slug(raw_value: str, *, field_name: str, findings: list[
         return ""
 
 
-def _validated_optional_slug(raw_value: str, *, field_name: str, findings: list[str]) -> str:
+def _validated_optional_slug(
+    raw_value: str, *, field_name: str, findings: list[str]
+) -> str:
     """Implements the validated optional slug helper."""
     value = raw_value.strip()
     if not value:
@@ -142,9 +150,9 @@ def _validated_scope(args: argparse.Namespace) -> tuple[dict[str, str], list[str
     findings: list[str] = []
     runtime = {
         "token": (args.token or os.environ.get("SONAR_TOKEN", "")).strip(),
-        "api_base": normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip(
-            "/"
-        ),
+        "api_base": normalize_https_url(
+            SONAR_API_BASE, allowed_hosts={SONAR_HOST}
+        ).rstrip("/"),
         "project_key": _validated_required_slug(
             args.project_key, field_name="sonar project key", findings=findings
         ),
@@ -202,7 +210,9 @@ def _hotspots_query(project_key: str, branch: str, pull_request: str) -> str:
 
 def _status_issue_count(status: dict[str, Any]) -> int:
     """Implements the status issue count helper."""
-    return sum(int(status.get(key) or 0) for key in ("bugs", "vulnerabilities", "codeSmells"))
+    return sum(
+        int(status.get(key) or 0) for key in ("bugs", "vulnerabilities", "codeSmells")
+    )
 
 
 def _summary_from_entry(entry: dict[str, Any]) -> tuple[int, str, str]:
@@ -298,7 +308,9 @@ def _scoped_summary(
             project_key=project_key,
             branch=branch,
         )
-    raise RuntimeError("Sonar branch or pull-request scope is required for summary checks")
+    raise RuntimeError(
+        "Sonar branch or pull-request scope is required for summary checks"
+    )
 
 
 def _legacy_summary(
@@ -310,9 +322,7 @@ def _legacy_summary(
     pull_request: str,
 ) -> tuple[int, str, int, str]:
     """Implements the legacy summary helper."""
-    issues_url = (
-        f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
-    )
+    issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
     issues_payload = _request_json(issues_url, auth)
     paging = issues_payload.get("paging") or {}
     open_issues = int(paging.get("total") or 0)
@@ -322,9 +332,7 @@ def _legacy_summary(
     project_status = gate_payload.get("projectStatus") or {}
     quality_gate = str(project_status.get("status") or "UNKNOWN")
 
-    hotspots_url = (
-        f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}"
-    )
+    hotspots_url = f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}"
     hotspots_payload = _request_json(hotspots_url, auth)
     hotspots_paging = hotspots_payload.get("paging") or {}
     open_hotspots = int(hotspots_paging.get("total") or 0)
@@ -410,7 +418,9 @@ def _evaluate_sonar(
     if open_issues != 0:
         findings.append(f"Sonar reports {open_issues} open issues (expected 0).")
     if open_hotspots != 0:
-        findings.append(f"Sonar reports {open_hotspots} open security hotspots (expected 0).")
+        findings.append(
+            f"Sonar reports {open_hotspots} open security hotspots (expected 0)."
+        )
     if quality_gate != "OK":
         findings.append(f"Sonar quality gate status is {quality_gate} (expected OK).")
     status = "pass" if not findings else "fail"

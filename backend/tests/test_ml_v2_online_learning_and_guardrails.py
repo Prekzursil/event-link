@@ -51,7 +51,11 @@ def _guardrails_users_and_events():
             owner=org,
             status="published",
         )
-        for offset, title in ((1, "Time Event"), (2, "Time Event 2"), (3, "Recommended Event"))
+        for offset, title in (
+            (1, "Time Event"),
+            (2, "Time Event 2"),
+            (3, "Recommended Event"),
+        )
     ]
     return user, org, events
 
@@ -158,7 +162,9 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
 
     token = helpers["register_student"]("student-implicit@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == "student-implicit@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "student-implicit@test.ro")
+        .first()
     )
     assert student is not None
 

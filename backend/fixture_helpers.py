@@ -54,7 +54,9 @@ def build_test_helpers(
 
     def login(email: str, access_code: str) -> str:
         """Implements the login helper."""
-        response = client.post("/login", json={"email": email, SECRET_FIELD: access_code})
+        response = client.post(
+            "/login", json={"email": email, SECRET_FIELD: access_code}
+        )
         _require_success(action="login", response=response)
         return response.json()[ACCESS_FIELD]
 

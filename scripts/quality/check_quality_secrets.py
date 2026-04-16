@@ -126,11 +126,17 @@ def _render_md(payload: dict) -> str:
 def main() -> int:
     """Run the quality-secrets preflight check and write report artifacts."""
     args = _parse_args()
-    required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
+    required_secrets = _dedupe(
+        DEFAULT_REQUIRED_SECRETS + list(args.required_secret or [])
+    )
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))
 
     result = evaluate_env(required_secrets, required_vars)
-    status = "pass" if not result["missing_secrets"] and not result["missing_vars"] else "fail"
+    status = (
+        "pass"
+        if not result["missing_secrets"] and not result["missing_vars"]
+        else "fail"
+    )
     payload = {
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),

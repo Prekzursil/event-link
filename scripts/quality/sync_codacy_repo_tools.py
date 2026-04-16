@@ -67,10 +67,14 @@ def _parse_args() -> argparse.Namespace:
         "--dry-run", action="store_true", help="Report changes without mutating Codacy"
     )
     parser.add_argument(
-        "--out-json", default="codacy-tool-sync/codacy-sync.json", help="Output JSON path"
+        "--out-json",
+        default="codacy-tool-sync/codacy-sync.json",
+        help="Output JSON path",
     )
     parser.add_argument(
-        "--out-md", default="codacy-tool-sync/codacy-sync.md", help="Output markdown path"
+        "--out-md",
+        default="codacy-tool-sync/codacy-sync.md",
+        help="Output markdown path",
     )
     return parser.parse_args()
 
@@ -84,7 +88,9 @@ def _request_codacy(
 ) -> tuple[int, Any, str]:
     """Implements the request codacy helper."""
     url = build_https_url(host=CODACY_HOST, path=path)
-    payload_bytes = b"" if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    payload_bytes = (
+        b"" if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    )
     headers = {
         "Accept": "application/json",
         "User-Agent": "event-link-codacy-tool-sync",
@@ -101,11 +107,15 @@ def _request_codacy(
         timeout=30,
         allowed_hosts={CODACY_HOST},
     )
-    raw_text = "" if parsed_payload is None else json.dumps(parsed_payload, sort_keys=True)
+    raw_text = (
+        "" if parsed_payload is None else json.dumps(parsed_payload, sort_keys=True)
+    )
     return status, parsed_payload, raw_text
 
 
-def _list_tools(*, provider: str, owner: str, repo: str, token: str) -> list[dict[str, Any]]:
+def _list_tools(
+    *, provider: str, owner: str, repo: str, token: str
+) -> list[dict[str, Any]]:
     """Implements the list tools helper."""
     status, payload, raw = _request_codacy(
         method="GET",
@@ -266,7 +276,9 @@ def _retry_standard_managed_tool_with_config_only(
     """Implements the retry standard managed tool with config only helper."""
     config_payload = _config_only_payload(payload)
     if config_payload is None:
-        return [f"{tool_name}: managed by Codacy standard; skipping disable request"], []
+        return [
+            f"{tool_name}: managed by Codacy standard; skipping disable request"
+        ], []
 
     notes = [
         f"{tool_name}: managed by Codacy standard; retrying config-file mode "
@@ -337,7 +349,9 @@ def _sync_tool_settings(
     tool_changes: list[dict[str, Any]] = []
 
     for tool_name, tool in sorted(tools_by_name.items()):
-        settings = tool.get("settings") if isinstance(tool.get("settings"), dict) else {}
+        settings = (
+            tool.get("settings") if isinstance(tool.get("settings"), dict) else {}
+        )
         payload, tool_notes = _planned_tool_payload(tool_name, settings)
         notes.extend(tool_notes)
         if payload is None:
@@ -414,7 +428,11 @@ def _trigger_reanalysis(
         return [], []
     try:
         _reanalyze_commit(
-            provider=provider, owner=owner, repo=repo, token=token, commit_sha=commit_sha
+            provider=provider,
+            owner=owner,
+            repo=repo,
+            token=token,
+            commit_sha=commit_sha,
         )
     except Exception as exc:
         message = str(exc)
@@ -549,7 +567,11 @@ def _run_sync(
         failures=failures,
     )
     context = _sync_context(
-        provider=provider, owner=owner, repo=repo, commit_sha=commit_sha, dry_run=dry_run
+        provider=provider,
+        owner=owner,
+        repo=repo,
+        commit_sha=commit_sha,
+        dry_run=dry_run,
     )
     return _build_payload(
         context=context,
@@ -594,7 +616,9 @@ def _render_md(payload: dict[str, Any]) -> str:
     ]
     _append_markdown_section(lines, "Tool Changes", _tool_change_lines(payload))
     _append_markdown_section(lines, "Pattern Changes", _pattern_change_lines(payload))
-    _append_markdown_section(lines, "Notes", _prefixed_lines(list(payload.get("notes") or [])))
+    _append_markdown_section(
+        lines, "Notes", _prefixed_lines(list(payload.get("notes") or []))
+    )
     _append_markdown_section(
         lines, "Failures", _prefixed_lines(list(payload.get("failures") or []))
     )

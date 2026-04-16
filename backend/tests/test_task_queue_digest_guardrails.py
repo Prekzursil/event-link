@@ -43,7 +43,9 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
 
 def test_evaluate_personalization_guardrails_disabled(monkeypatch, db_session):
     """Verifies evaluate personalization guardrails disabled behavior."""
-    monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", False)
+    monkeypatch.setattr(
+        task_queue.settings, "personalization_guardrails_enabled", False
+    )
     result = task_queue._evaluate_personalization_guardrails(db=db_session, payload={})
     assert result == {"enabled": False}
 
@@ -98,7 +100,9 @@ def test_run_recompute_recommendations_ml_missing_script_path(monkeypatch, tmp_p
         task_queue._run_recompute_recommendations_ml(payload={})
 
 
-def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db_session):
+def test_send_weekly_digest_counts_eligible_users_when_no_events(
+    monkeypatch, db_session
+):
     """Verifies send weekly digest counts eligible users when no events behavior."""
     user = models.User(
         email="digest-no-events@test.ro",
@@ -153,7 +157,9 @@ def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(
     assert result == {"users": 1, "emails": 0}
 
 
-def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, db_session):
+def test_guardrails_low_volume_with_invalid_days_and_meta_variants(
+    monkeypatch, db_session
+):
     """Verifies guardrails low volume with invalid days and meta variants behavior."""
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -261,7 +267,9 @@ def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(
     assert result["action"] == "no_active_model"
 
 
-def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch, db_session):
+def test_guardrails_reports_no_previous_model_without_inactive_model(
+    monkeypatch, db_session
+):
     """Verifies guardrails reports no previous model without inactive model behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
@@ -300,7 +308,9 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch
     assert result["action"] == "no_previous_model"
 
 
-def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(monkeypatch, db_session):
+def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(
+    monkeypatch, db_session
+):
     """Verifies send filling fast alerts branch matrix counts and exclusions behavior."""
     setup = seed_filling_fast_branch_matrix(db_session)
     enqueued = []
@@ -328,7 +338,8 @@ def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(
         payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
     )
     assert any(
-        email == "system@test.ro" and lang == "ro" for email, lang, _available, _title in langs
+        email == "system@test.ro" and lang == "ro"
+        for email, lang, _available, _title in langs
     )
 
 
@@ -341,10 +352,14 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
         language_preference="en",
         email="user@test.ro",
     )
-    event = SimpleNamespace(id=21, owner_id=31, tags=[], max_seats=None, title="No seats")
+    event = SimpleNamespace(
+        id=21, owner_id=31, tags=[], max_seats=None, title="No seats"
+    )
     fake_db = FakeFillingFastDb(
         ChainQuery(
-            subquery_result=SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))
+            subquery_result=SimpleNamespace(
+                c=SimpleNamespace(seats_taken=0, event_id=0)
+            )
         ),
         ChainQuery(rows=[(user, event, 0)]),
         ChainQuery(first_result=None),
@@ -371,7 +386,9 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
     assert fake_db.query().filter().first() is None
 
 
-def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch, db_session):
+def test_guardrails_days_fallback_click_source_skip_and_window_skip(
+    monkeypatch, db_session
+):
     """Verifies guardrails days fallback click source skip and window skip behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
@@ -452,7 +469,9 @@ def test_guardrails_rollback_reactivates_previous_model(monkeypatch, db_session)
     enqueued = []
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     monkeypatch.setattr(
-        task_queue, "enqueue_job", lambda *args, **kwargs: enqueued.append((args, kwargs))
+        task_queue,
+        "enqueue_job",
+        lambda *args, **kwargs: enqueued.append((args, kwargs)),
     )
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,

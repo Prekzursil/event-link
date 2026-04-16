@@ -85,7 +85,9 @@ def install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     monkeypatch.setitem(sys.modules, "alembic.command", fake_command)
     monkeypatch.setitem(sys.modules, "alembic.config", fake_config)
     monkeypatch.setitem(
-        sys.modules, "alembic", SimpleNamespace(command=fake_command, config=fake_config)
+        sys.modules,
+        "alembic",
+        SimpleNamespace(command=fake_command, config=fake_config),
     )
 
 
@@ -94,12 +96,18 @@ def cached_recommendation_context(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("events-owner@test.ro", "owner-fixture-A1")
-    owner = db.query(models.User).filter(models.User.email == "events-owner@test.ro").first()
+    owner = (
+        db.query(models.User)
+        .filter(models.User.email == "events-owner@test.ro")
+        .first()
+    )
     if owner is None:
         raise ValueError("owner fixture not found")
     student_token = helpers["register_student"]("events-student@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == "events-student@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "events-student@test.ro")
+        .first()
     )
     if student is None:
         raise ValueError("student fixture not found")
@@ -198,24 +206,37 @@ def admin_registration_context(helpers):
     student_token = helpers["register_student"]("student@test.ro")
     student2_token = helpers["register_student"]("student2@test.ro")
     owner = db.query(models.User).filter(models.User.email == ADMIN_OWNER_EMAIL).first()
-    student = db.query(models.User).filter(models.User.email == "student@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "student@test.ro").first()
+    )
     if owner is None or student is None:
         raise ValueError("owner or student fixture not found")
     student.city = "Cluj"
     events = {
         "future": make_event(
-            title="Future", owner_id=int(owner.id), start_time=future_dt(days=5), max_seats=2
+            title="Future",
+            owner_id=int(owner.id),
+            start_time=future_dt(days=5),
+            max_seats=2,
         ),
         "draft": make_event(
-            title="Draft", owner_id=int(owner.id), start_time=future_dt(days=6), status="draft"
+            title="Draft",
+            owner_id=int(owner.id),
+            start_time=future_dt(days=6),
+            status="draft",
         ),
         "past": make_event(
             title="Past", owner_id=int(owner.id), start_time=future_dt(days=-1)
         ),
         "full": make_event(
-            title="Full", owner_id=int(owner.id), start_time=future_dt(days=2), max_seats=1
+            title="Full",
+            owner_id=int(owner.id),
+            start_time=future_dt(days=2),
+            max_seats=1,
         ),
-        "open": make_event(title="Open", owner_id=int(owner.id), start_time=future_dt(days=3)),
+        "open": make_event(
+            title="Open", owner_id=int(owner.id), start_time=future_dt(days=3)
+        ),
     }
     db.add(student)
     db.add_all(list(events.values()))
@@ -224,9 +245,15 @@ def admin_registration_context(helpers):
         db.refresh(event)
     db.add_all(
         [
-            models.Registration(user_id=int(student.id), event_id=int(events["future"].id)),
-            models.Registration(user_id=int(student.id), event_id=int(events["full"].id)),
-            models.FavoriteEvent(user_id=int(student.id), event_id=int(events["future"].id)),
+            models.Registration(
+                user_id=int(student.id), event_id=int(events["future"].id)
+            ),
+            models.Registration(
+                user_id=int(student.id), event_id=int(events["full"].id)
+            ),
+            models.FavoriteEvent(
+                user_id=int(student.id), event_id=int(events["future"].id)
+            ),
         ]
     )
     db.commit()
@@ -248,7 +275,9 @@ def interaction_context(helpers):
     db = helpers["db"]
     student_token = helpers["register_student"]("interactions-extra@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == "interactions-extra@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "interactions-extra@test.ro")
+        .first()
     )
     if student is None:
         raise ValueError("interaction student fixture not found")
@@ -290,4 +319,6 @@ def interaction_context(helpers):
         ]
     )
     db.commit()
-    return SimpleNamespace(client=helpers["client"], event=event, student_token=student_token)
+    return SimpleNamespace(
+        client=helpers["client"], event=event, student_token=student_token
+    )

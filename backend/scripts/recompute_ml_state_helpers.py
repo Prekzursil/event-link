@@ -95,10 +95,14 @@ def _selected_model_row(*, db, models, requested_model_version: str | None):
     return model_query.order_by(models.RecommenderModel.id.desc()).first()
 
 
-def _validated_persisted_model(model_row) -> tuple[str | None, list[float] | None, int | None]:
+def _validated_persisted_model(
+    model_row,
+) -> tuple[str | None, list[float] | None, int | None]:
     """Implements the validated persisted model helper."""
     if model_row is None:
-        print("[warn] no persisted recommender model found; run the retraining job first")
+        print(
+            "[warn] no persisted recommender model found; run the retraining job first"
+        )
         return None, None, 0
     feature_names = list(model_row.feature_names or [])
     weights = [float(weight) for weight in (model_row.weights or [])]
@@ -254,7 +258,11 @@ def _student_event_state(*, db, models, func, args):
 
 
 def _training_meta(
-    *, args, now: datetime, examples: list[tuple[list[float], int, float]], hitrate: float
+    *,
+    args,
+    now: datetime,
+    examples: list[tuple[list[float], int, float]],
+    hitrate: float,
 ) -> dict[str, float | int | str]:
     """Implements the training meta helper."""
     return {

@@ -79,7 +79,9 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
         api.settings, "recommendations_online_learning_enabled", False, raising=False
     )
     monkeypatch.setattr(api.settings, "task_queue_enabled", True, raising=False)
-    monkeypatch.setattr(api.settings, "recommendations_use_ml_cache", True, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_use_ml_cache", True, raising=False
+    )
     monkeypatch.setattr(
         api.settings, "recommendations_realtime_refresh_enabled", True, raising=False
     )
@@ -102,7 +104,9 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
     )
 
     db = _RefreshDb()
-    api.record_interactions(payload=payload, request=request, db=db, current_user=current_user)
+    api.record_interactions(
+        payload=payload, request=request, db=db, current_user=current_user
+    )
 
     assert len(db.interactions) == 1
     assert captured_jobs == [
@@ -159,7 +163,9 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
     db = helpers["db"]
     token = helpers["register_student"]("aware-implicit@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == "aware-implicit@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "aware-implicit@test.ro")
+        .first()
     )
     assert student is not None
 
@@ -178,10 +184,16 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
                 last_seen_at=future_seen,
             ),
             models.UserImplicitInterestCategory(
-                user_id=int(student.id), category="tech", score=1.0, last_seen_at=future_seen
+                user_id=int(student.id),
+                category="tech",
+                score=1.0,
+                last_seen_at=future_seen,
             ),
             models.UserImplicitInterestCity(
-                user_id=int(student.id), city="cluj", score=1.0, last_seen_at=future_seen
+                user_id=int(student.id),
+                city="cluj",
+                score=1.0,
+                last_seen_at=future_seen,
             ),
         ]
     )
@@ -245,7 +257,9 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
 
     helpers["register_student"]("no-refresh-student@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == "no-refresh-student@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "no-refresh-student@test.ro")
+        .first()
     )
     assert student is not None
     jobs: list[tuple[str, dict, str | None]] = []
@@ -256,12 +270,17 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
         api.settings, "recommendations_online_learning_enabled", True, raising=False
     )
     monkeypatch.setattr(api.settings, "task_queue_enabled", True, raising=False)
-    monkeypatch.setattr(api.settings, "recommendations_use_ml_cache", True, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_use_ml_cache", True, raising=False
+    )
     monkeypatch.setattr(
         api.settings, "recommendations_realtime_refresh_enabled", True, raising=False
     )
     monkeypatch.setattr(
-        api.settings, "recommendations_realtime_refresh_min_interval_seconds", 0, raising=False
+        api.settings,
+        "recommendations_realtime_refresh_min_interval_seconds",
+        0,
+        raising=False,
     )
     monkeypatch.setattr(
         task_queue_module,
@@ -298,7 +317,9 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
         ]
     )
 
-    api.record_interactions(payload=payload, request=request, db=db, current_user=student)
+    api.record_interactions(
+        payload=payload, request=request, db=db, current_user=student
+    )
     assert jobs == []
 
 
@@ -329,8 +350,16 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
             self._queries = [
                 _Query([(1, "aware-tag")]),
                 _Query([SimpleNamespace(tag_id=1, last_seen_at=aware_seen, score=1.0)]),
-                _Query([SimpleNamespace(category="tech", last_seen_at=aware_seen, score=1.0)]),
-                _Query([SimpleNamespace(city="cluj", last_seen_at=aware_seen, score=1.0)]),
+                _Query(
+                    [
+                        SimpleNamespace(
+                            category="tech", last_seen_at=aware_seen, score=1.0
+                        )
+                    ]
+                ),
+                _Query(
+                    [SimpleNamespace(city="cluj", last_seen_at=aware_seen, score=1.0)]
+                ),
             ]
             self.interactions = []
             self.added = []
@@ -403,7 +432,9 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
             """Implements the query helper."""
             raise AssertionError("query should not run")
 
-    assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
+    assert (
+        api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
+    )
     assert api._event_learning_delta(
         interaction_type="dwell", meta={"seconds": "slow"}
     ) == pytest.approx(0.0)
@@ -447,7 +478,9 @@ def test_online_learning_and_realtime_refresh_guard_returns(monkeypatch):
     )
 
     monkeypatch.setattr(api.settings, "task_queue_enabled", True, raising=False)
-    monkeypatch.setattr(api.settings, "recommendations_use_ml_cache", True, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_use_ml_cache", True, raising=False
+    )
     monkeypatch.setattr(
         api.settings, "recommendations_realtime_refresh_enabled", False, raising=False
     )

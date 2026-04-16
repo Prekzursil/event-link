@@ -95,7 +95,9 @@ def test_request_id_middleware_uses_incoming_header() -> None:
     start_msg = next(
         (msg for msg in messages if msg.get("type") == "http.response.start"), None
     )
-    assert start_msg is not None, "expected an http.response.start message to be captured"
+    assert start_msg is not None, (
+        "expected an http.response.start message to be captured"
+    )
     assert (b"x-request-id", b"req-123") in start_msg.get("headers", [])
 
 

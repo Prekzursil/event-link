@@ -40,7 +40,8 @@ def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
             or settings.personalization_guardrails_min_impressions
         ),
         ctr_drop_ratio=float(
-            payload.get("ctr_drop_ratio") or settings.personalization_guardrails_ctr_drop_ratio
+            payload.get("ctr_drop_ratio")
+            or settings.personalization_guardrails_ctr_drop_ratio
         ),
         conversion_drop_ratio=float(
             payload.get("conversion_drop_ratio")
@@ -196,7 +197,9 @@ def _guardrail_threshold_status(
     time_ctr = result["ctr"]["time"]
     recommended_conv = result["conversion"]["recommended"]
     time_conv = result["conversion"]["time"]
-    ctr_ok = time_ctr == 0 or recommended_ctr >= time_ctr * (1.0 - config.ctr_drop_ratio)
+    ctr_ok = time_ctr == 0 or recommended_ctr >= time_ctr * (
+        1.0 - config.ctr_drop_ratio
+    )
     conv_ok = time_conv == 0 or recommended_conv >= time_conv * (
         1.0 - config.conversion_drop_ratio
     )
@@ -248,7 +251,10 @@ def _rollback_guardrail_model(
     enqueue_job_fn(
         db,
         recompute_job_type,
-        {"top_n": int(settings.recommendations_realtime_refresh_top_n), "skip_training": True},
+        {
+            "top_n": int(settings.recommendations_realtime_refresh_top_n),
+            "skip_training": True,
+        },
         dedupe_key="global",
     )
     result["action"] = "rollback"

@@ -80,6 +80,8 @@ def test_event_moderation_flags_are_exposed_in_admin_events(client, helpers):
     assert resp.status_code == 200
 
     resp = client.get("/api/admin/events?include_deleted=true", headers=admin_headers)
-    reviewed = next((item for item in resp.json()["items"] if item["id"] == event_id), None)
+    reviewed = next(
+        (item for item in resp.json()["items"] if item["id"] == event_id), None
+    )
     assert reviewed is not None
     assert reviewed["moderation_status"] == "reviewed"

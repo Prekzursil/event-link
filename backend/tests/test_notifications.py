@@ -54,7 +54,11 @@ def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers
 
     helpers["register_student"]("student-digest@test.ro")
     db = helpers["db"]
-    user = db.query(models.User).filter(models.User.email == "student-digest@test.ro").first()
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == "student-digest@test.ro")
+        .first()
+    )
     assert user is not None
     user.email_digest_enabled = True
     user.language_preference = "en"

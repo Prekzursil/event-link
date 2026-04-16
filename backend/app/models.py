@@ -42,7 +42,9 @@ class User(Base):
     email = Column(String(255), unique=True, nullable=False)
     password_hash = Column(String(255), nullable=False)
     role = Column(Enum(UserRole), nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
     last_seen_at = Column(TIMESTAMP(timezone=True), nullable=True)
     is_active = Column(Boolean, nullable=False, server_default="true")
     full_name = Column(String(255))
@@ -68,7 +70,9 @@ class User(Base):
         Boolean, nullable=False, server_default="false", default=False
     )
 
-    events = relationship("Event", back_populates="owner", foreign_keys="Event.owner_id")
+    events = relationship(
+        "Event", back_populates="owner", foreign_keys="Event.owner_id"
+    )
     registrations = relationship(
         "Registration",
         back_populates="user",
@@ -117,7 +121,9 @@ class Event(Base):
         String(20), nullable=False, server_default="clean", default="clean"
     )
     moderation_reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    moderation_reviewed_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
+    moderation_reviewed_by_user_id = Column(
+        Integer, ForeignKey(USER_ID_FK), nullable=True
+    )
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
     deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
 
@@ -158,12 +164,16 @@ class FavoriteEvent(Base):
     """User bookmark of an event."""
 
     __tablename__ = "favorite_events"
-    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_favorite_event"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "event_id", name="uq_favorite_event"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
     event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
 
     user = relationship("User", back_populates="favorites")
     event = relationship("Event", back_populates="favorites")
@@ -179,7 +189,9 @@ class PasswordResetToken(Base):
     token = Column(String(255), unique=True, nullable=False)
     expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
     used = Column(Boolean, server_default="false", nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
 
     user = relationship("User")
 
@@ -208,7 +220,9 @@ class BackgroundJob(Base):
     locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
     locked_by = Column(String(100), nullable=True)
     last_error = Column(Text, nullable=True)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
     finished_at = Column(TIMESTAMP(timezone=True), nullable=True)
 
 
@@ -225,7 +239,9 @@ class NotificationDelivery(Base):
     notification_type = Column(String(50), nullable=False, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
     event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
-    sent_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    sent_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
     meta = Column(JSON, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
@@ -242,7 +258,9 @@ class AuditLog(Base):
     entity_id = Column(Integer, nullable=False, index=True)
     action = Column(String(50), nullable=False, index=True)
     actor_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
     meta = Column(JSON, nullable=True)
 
     actor = relationship("User", foreign_keys=[actor_user_id])
@@ -252,7 +270,9 @@ class UserRecommendation(Base):
     """Stored recommendation scored for a user-event pair."""
 
     __tablename__ = "user_recommendations"
-    __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
@@ -260,7 +280,9 @@ class UserRecommendation(Base):
     score = Column(Float, nullable=False)
     rank = Column(Integer, nullable=False)
     model_version = Column(String(50), nullable=True)
-    generated_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    generated_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
     reason = Column(Text, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
@@ -281,7 +303,9 @@ class RecommenderModel(Base):
     weights = Column(JSON, nullable=False)
     meta = Column(JSON, nullable=True)
     is_active = Column(Boolean, nullable=False, server_default="false")
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now(), nullable=False)
+    created_at = Column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
+    )
 
 
 class EventInteraction(Base):
@@ -333,7 +357,9 @@ class UserImplicitInterestCategory(Base):
 
     __tablename__ = "user_implicit_interest_categories"
     __table_args__ = (
-        UniqueConstraint("user_id", "category", name="uq_user_implicit_interest_category"),
+        UniqueConstraint(
+            "user_id", "category", name="uq_user_implicit_interest_category"
+        ),
     )
 
     id = Column(Integer, primary_key=True, index=True)

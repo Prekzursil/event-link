@@ -162,14 +162,14 @@ def _digest_copy(
     if lang == "en":
         subject = "Your weekly EventLink digest"
         intro = f"Hi {name},\n\nHere are some events you might like this week:\n"
-        html_intro = f"<p>Hi {name},</p><p>Here are some events you might like this week:</p>"
+        html_intro = (
+            f"<p>Hi {name},</p><p>Here are some events you might like this week:</p>"
+        )
         outro = "\n\nYou can update notification preferences in your profile."
         html_outro = "<p>You can update notification preferences in your profile.</p>"
     else:
         subject = "Rezumat săptămânal EventLink"
-        intro = (
-            f"Salut {name},\n\nIată câteva evenimente recomandate pentru săptămâna aceasta:\n"
-        )
+        intro = f"Salut {name},\n\nIată câteva evenimente recomandate pentru săptămâna aceasta:\n"
         html_intro = (
             f"<p>Salut {name},</p>"
             "<p>Iată câteva evenimente recomandate pentru săptămâna aceasta:</p>"
@@ -200,7 +200,9 @@ def _seats_line(lang: str, available_seats: int | None) -> str:
     if available_seats is None:
         return "Limited seats" if lang == "en" else "Locuri limitate"
     return (
-        f"{available_seats} seats left" if lang == "en" else f"{available_seats} locuri rămase"
+        f"{available_seats} seats left"
+        if lang == "en"
+        else f"{available_seats} locuri rămase"
     )
 
 

@@ -39,9 +39,9 @@ def _weekly_digest_window(now: datetime) -> tuple[datetime, datetime, str]:
     iso = now.isocalendar()
     week_key = f"{iso.year}-W{iso.week:02d}"
     weekday = now.isoweekday()
-    week_start = datetime(now.year, now.month, now.day, tzinfo=timezone.utc) - timedelta(
-        days=weekday - 1
-    )
+    week_start = datetime(
+        now.year, now.month, now.day, tzinfo=timezone.utc
+    ) - timedelta(days=weekday - 1)
     week_end = week_start + timedelta(days=7)
     return week_start, week_end, week_key
 
@@ -69,7 +69,10 @@ def _weekly_digest_events(
     """Implements the weekly digest events helper."""
     query = (
         db.query(models.Event)
-        .join(models.UserRecommendation, models.UserRecommendation.event_id == models.Event.id)
+        .join(
+            models.UserRecommendation,
+            models.UserRecommendation.event_id == models.Event.id,
+        )
         .filter(
             models.UserRecommendation.user_id == user_id,
             models.Event.deleted_at.is_(None),
@@ -89,7 +92,9 @@ def _weekly_digest_events(
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
-        query = query.filter(~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids))))
+        query = query.filter(
+            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
+        )
     return query.limit(max(1, top_n)).all()
 
 
@@ -233,7 +238,9 @@ def _passes_filling_fast_personalization(
     """Implements the passes filling fast personalization helper."""
     if blocked_organizer_ids and int(event.owner_id) in blocked_organizer_ids:
         return False
-    if hidden_tag_ids and any(int(tag.id) in hidden_tag_ids for tag in (event.tags or [])):
+    if hidden_tag_ids and any(
+        int(tag.id) in hidden_tag_ids for tag in (event.tags or [])
+    ):
         return False
     return True
 
@@ -294,7 +301,11 @@ def _enqueue_filling_fast_email(
             subject=subject,
             body_text=body_text,
             body_html=body_html,
-            context={"notification": "filling_fast", "user_id": user_id, "event_id": event_id},
+            context={
+                "notification": "filling_fast",
+                "user_id": user_id,
+                "event_id": event_id,
+            },
         ),
     )
 

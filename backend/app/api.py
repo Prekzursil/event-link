@@ -71,7 +71,9 @@ def _check_configuration():
     if not settings.secret_key:
         raise RuntimeError("SECRET_KEY is required")
     if settings.email_enabled and (not settings.smtp_host or not settings.smtp_sender):
-        logging.warning("Email enabled but SMTP host/sender missing; disabling email sending")
+        logging.warning(
+            "Email enabled but SMTP host/sender missing; disabling email sending"
+        )
         settings.email_enabled = False
 
 
@@ -130,7 +132,10 @@ _IS_ACTIVE_ATTR = "".join(("is_", "active"))
 
 def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
     """Build a FastAPI response description map from shared error metadata."""
-    return {code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]} for code in status_codes}
+    return {
+        code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]}
+        for code in status_codes
+    }
 
 
 def _is_active_value(obj: object):
@@ -200,7 +205,9 @@ def _compute_moderation(
         weight=0.3,
     )
     score += _moderation_signal(
-        condition=any(any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls),
+        condition=any(
+            any(domain in url for domain in _SHORTENER_DOMAINS) for url in urls
+        ),
         flag="shortener_link",
         flags=flags,
         weight=0.4,
@@ -535,7 +542,9 @@ def _preferred_lang(
     """Resolve the effective language from the user profile or request headers."""
     lang = user.language_preference if user is not None else None
     if not lang or lang == "system":
-        header_value = request.headers.get("accept-language") if request is not None else None
+        header_value = (
+            request.headers.get("accept-language") if request is not None else None
+        )
         lang = header_value or default
     return (lang or default).split(",")[0][:2].lower()
 
@@ -553,7 +562,9 @@ def _append_local_reason(
     lang: str,
 ) -> str | None:
     """Append a local-city hint when the event city matches the user's city."""
-    is_local = bool(user_city and event_city and event_city.strip().lower() == user_city)
+    is_local = bool(
+        user_city and event_city and event_city.strip().lower() == user_city
+    )
     if not is_local:
         return reason
     prefix = "Near you" if lang == "en" else "În apropiere"
@@ -604,11 +615,15 @@ def _apply_event_attribute_filters(
         query = query.filter(func.lower(models.Event.category) == category.lower())
     if tag_filters:
         lowered = [tag.lower() for tag in tag_filters]
-        query = query.filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered)))
+        query = query.filter(
+            models.Event.tags.any(func.lower(models.Tag.name).in_(lowered))
+        )
     if city:
         query = query.filter(func.lower(models.Event.city).like(f"%{city.lower()}%"))
     if location:
-        query = query.filter(func.lower(models.Event.location).like(f"%{location.lower()}%"))
+        query = query.filter(
+            func.lower(models.Event.location).like(f"%{location.lower()}%")
+        )
     return query
 
 
@@ -695,7 +710,9 @@ def _apply_personalization_exclusions(
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
-        query = query.filter(~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids))))
+        query = query.filter(
+            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
+        )
     return query
 
 
@@ -802,7 +819,9 @@ def _rank_cached_recommendation_rows(
             rec=rec,
         ):
             continue
-        ranked.append((int(rec.rank), ev, int(seats or 0), rec.reason or default_reason))
+        ranked.append(
+            (int(rec.rank), ev, int(seats or 0), rec.reason or default_reason)
+        )
     return ranked
 
 
@@ -928,7 +947,9 @@ def _serialize_public_event(
     """Build the public event payload returned by the catalog endpoints."""
     organizer_name = None
     if event.owner:
-        organizer_name = event.owner.org_name or event.owner.full_name or event.owner.email
+        organizer_name = (
+            event.owner.org_name or event.owner.full_name or event.owner.email
+        )
     return schemas.PublicEventResponse(
         id=event.id,
         title=event.title,
@@ -968,7 +989,9 @@ def _event_is_visible_to_user(
     current_user: models.User | None,
 ) -> bool:
     """Return whether the current user is allowed to see the event detail."""
-    if event.status == "published" and (not event.publish_at or event.publish_at <= now):
+    if event.status == "published" and (
+        not event.publish_at or event.publish_at <= now
+    ):
         return True
     return bool(
         current_user and (current_user.id == event.owner_id or _is_admin(current_user))
@@ -1043,7 +1066,9 @@ def _serialize_event_detail(
     recommendation_reason: str | None,
 ) -> schemas.EventDetailResponse:
     """Serialize the event detail payload including viewer-specific flags."""
-    available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
+    available_seats = (
+        event.max_seats - seats_taken if event.max_seats is not None else None
+    )
     owner_name = event.owner.full_name or event.owner.email if event.owner else None
     return schemas.EventDetailResponse(
         id=event.id,
@@ -1412,7 +1437,11 @@ def login(user_credentials: schemas.UserLogin, request: Request, db: DbSession):
         request=request,
         identifier=user_credentials.email.lower(),
     )
-    user = db.query(models.User).filter(models.User.email == user_credentials.email).first()
+    user = (
+        db.query(models.User)
+        .filter(models.User.email == user_credentials.email)
+        .first()
+    )
     if not user or not auth.verify_password(
         user_credentials.password,
         user.password_hash,
@@ -1640,7 +1669,9 @@ def _ensure_registrations_enabled() -> None:
     if getattr(settings, "maintenance_mode_registrations_disabled", False):
         raise HTTPException(
             status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
-            detail=("Înscrierile sunt temporar dezactivate. Încearcă din nou mai târziu."),
+            detail=(
+                "Înscrierile sunt temporar dezactivate. Încearcă din nou mai târziu."
+            ),
         )
 
 
@@ -1904,12 +1935,16 @@ def _load_existing_interaction_event_ids(
     payload: schemas.InteractionBatchIn,
 ) -> set[int]:
     """Return the subset of payload event IDs that currently exist in the database."""
-    event_ids = {event.event_id for event in payload.events if event.event_id is not None}
+    event_ids = {
+        event.event_id for event in payload.events if event.event_id is not None
+    }
     if not event_ids:
         return set()
     return {
         row[0]
-        for row in (db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all())
+        for row in (
+            db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all()
+        )
     }
 
 
@@ -1990,7 +2025,9 @@ def _collect_online_learning_deltas(
                     float(delta),
                 )
 
-        if event.interaction_type in {"search", "filter"} and isinstance(event.meta, dict):
+        if event.interaction_type in {"search", "filter"} and isinstance(
+            event.meta, dict
+        ):
             _collect_search_filter_deltas(
                 meta=event.meta,
                 tag_name_deltas=tag_name_deltas,
@@ -2050,9 +2087,9 @@ def _merge_event_signal_deltas(
     for event_id, delta in event_deltas.items():
         category_key = event_category_by_id.get(event_id)
         if category_key:
-            category_deltas[category_key] = category_deltas.get(category_key, 0.0) + float(
-                delta
-            )
+            category_deltas[category_key] = category_deltas.get(
+                category_key, 0.0
+            ) + float(delta)
 
         city_key = event_city_by_id.get(event_id)
         if city_key:
@@ -2231,8 +2268,8 @@ def _apply_online_learning(
     )
     tag_delta_by_id: dict[int, float] = {}
     event_ids = sorted(event_deltas.keys())
-    event_category_by_id, event_city_by_id, tag_ids_by_event = _load_event_delta_context(
-        db=db, event_ids=event_ids
+    event_category_by_id, event_city_by_id, tag_ids_by_event = (
+        _load_event_delta_context(db=db, event_ids=event_ids)
     )
     _merge_event_signal_deltas(
         event_deltas=event_deltas,
@@ -2334,7 +2371,9 @@ def _interaction_should_refresh(event: schemas.InteractionEventIn) -> bool:
     return isinstance(seconds, (int, float)) and float(seconds) >= 10.0
 
 
-def _refresh_recommendations_too_soon(*, db: Session, user_id: int, now: datetime) -> bool:
+def _refresh_recommendations_too_soon(
+    *, db: Session, user_id: int, now: datetime
+) -> bool:
     """Return whether the last refresh is still inside the cooldown window."""
     latest_generated_at = (
         db.query(func.max(models.UserRecommendation.generated_at))
@@ -2345,7 +2384,9 @@ def _refresh_recommendations_too_soon(*, db: Session, user_id: int, now: datetim
         return False
     latest_generated_at = _coerce_utc_datetime(latest_generated_at, fallback=now)
     age_seconds = (now - latest_generated_at).total_seconds()
-    return age_seconds < float(settings.recommendations_realtime_refresh_min_interval_seconds)
+    return age_seconds < float(
+        settings.recommendations_realtime_refresh_min_interval_seconds
+    )
 
 
 def _maybe_enqueue_realtime_recommendation_refresh(
@@ -2532,7 +2573,9 @@ def get_public_event(event_id: int, request: Request, db: DbSession):
     now = datetime.now(timezone.utc)
     if event.status != "published" or (event.publish_at and event.publish_at > now):
         raise HTTPException(status_code=404, detail=_EVENT_NOT_FOUND_DETAIL)
-    available_seats = event.max_seats - seats_taken if event.max_seats is not None else None
+    available_seats = (
+        event.max_seats - seats_taken if event.max_seats is not None else None
+    )
     base = _serialize_public_event(event, seats_taken)
     return schemas.PublicEventDetailResponse(
         **base.model_dump(),
@@ -2642,7 +2685,9 @@ def _new_event_from_payload(
     status_code=status.HTTP_201_CREATED,
     responses=_responses(403, 404),
 )
-def create_event(event: schemas.EventCreate, db: DbSession, current_user: OrganizerUser):
+def create_event(
+    event: schemas.EventCreate, db: DbSession, current_user: OrganizerUser
+):
     """Create a new organizer event."""
     start_time = _normalize_dt(event.start_time)
     end_time = _normalize_dt(event.end_time)
@@ -2688,7 +2733,9 @@ def update_event(
     db_event = _load_event_for_owner_update(
         db=db, event_id=event_id, current_user=current_user
     )
-    content_changed = _apply_event_update_fields(db=db, db_event=db_event, update=update)
+    content_changed = _apply_event_update_fields(
+        db=db, db_event=db_event, update=update
+    )
     if content_changed:
         score, flags, moderation_status = _compute_moderation(
             title=db_event.title,
@@ -2971,7 +3018,9 @@ def organizer_bulk_update_status(
     )
     if len(events) != len(set(event_ids)):
         raise HTTPException(status_code=404, detail="Unele evenimente nu există.")
-    if not _is_admin(current_user) and any(ev.owner_id != current_user.id for ev in events):
+    if not _is_admin(current_user) and any(
+        ev.owner_id != current_user.id for ev in events
+    ):
         raise HTTPException(
             status_code=403,
             detail="Nu aveți dreptul să modificați toate evenimentele selectate.",
@@ -3015,7 +3064,9 @@ def _organizer_bulk_events(
     )
     if len(events) != len(set(event_ids)):
         raise HTTPException(status_code=404, detail="Unele evenimente nu există.")
-    if not _is_admin(current_user) and any(ev.owner_id != current_user.id for ev in events):
+    if not _is_admin(current_user) and any(
+        ev.owner_id != current_user.id for ev in events
+    ):
         raise HTTPException(
             status_code=403,
             detail="Nu aveți dreptul să modificați toate evenimentele selectate.",
@@ -3044,7 +3095,9 @@ def organizer_bulk_update_tags(
     if not event_ids:
         raise HTTPException(status_code=400, detail="Nu ați selectat niciun eveniment.")
 
-    events = _organizer_bulk_events(db=db, event_ids=event_ids, current_user=current_user)
+    events = _organizer_bulk_events(
+        db=db, event_ids=event_ids, current_user=current_user
+    )
     _validate_bulk_tag_names(payload.tags)
 
     for ev in events:
@@ -3169,7 +3222,9 @@ def email_event_participants(
         limit=5,
         window_seconds=60,
     )
-    event = _load_owned_event_for_email(db=db, event_id=event_id, current_user=current_user)
+    event = _load_owned_event_for_email(
+        db=db, event_id=event_id, current_user=current_user
+    )
     recipient_emails = _participant_email_addresses(db=db, event_id=event_id)
     for email in recipient_emails:
         send_email_async(
@@ -3201,7 +3256,9 @@ def email_event_participants(
     return {"recipients": len(recipient_emails)}
 
 
-def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfileResponse:
+def _serialize_profile(
+    user: models.User, db: Session
+) -> schemas.OrganizerProfileResponse:
     """Serialize a public organizer profile and its published events."""
     base_query = db.query(models.Event).filter(
         models.Event.owner_id == user.id, models.Event.deleted_at.is_(None)
@@ -3332,7 +3389,9 @@ def _apply_student_profile_payload(
             continue
         setattr(current_user, attr, transformer(value) if transformer else value)
     if payload.university is not None:
-        current_user.university = ro_universities.normalize_university_name(payload.university)
+        current_user.university = ro_universities.normalize_university_name(
+            payload.university
+        )
 
 
 def _validate_student_study_year(current_user: models.User) -> None:
@@ -3400,7 +3459,9 @@ def get_personalization_settings(
     """Return the current student's personalization settings."""
     hidden_tags = (
         db.query(models.Tag)
-        .join(models.user_hidden_tags, models.user_hidden_tags.c.tag_id == models.Tag.id)
+        .join(
+            models.user_hidden_tags, models.user_hidden_tags.c.tag_id == models.Tag.id
+        )
         .filter(models.user_hidden_tags.c.user_id == current_user.id)
         .order_by(models.Tag.name)
         .all()
@@ -3444,7 +3505,9 @@ def add_hidden_tag(
     if existing:
         return {"status": "exists"}
 
-    db.execute(models.user_hidden_tags.insert().values(user_id=current_user.id, tag_id=tag_id))
+    db.execute(
+        models.user_hidden_tags.insert().values(user_id=current_user.id, tag_id=tag_id)
+    )
     _audit_log(
         db,
         entity_type="user",
@@ -3566,7 +3629,9 @@ def remove_blocked_organizer(
 # ===================== NOTIFICATION PREFERENCES =====================
 
 
-@app.get("/api/me/notifications", response_model=schemas.NotificationPreferencesResponse)
+@app.get(
+    "/api/me/notifications", response_model=schemas.NotificationPreferencesResponse
+)
 def get_notification_preferences(
     _db: DbSession,
     current_user: StudentUser,
@@ -3578,7 +3643,9 @@ def get_notification_preferences(
     }
 
 
-@app.put("/api/me/notifications", response_model=schemas.NotificationPreferencesResponse)
+@app.put(
+    "/api/me/notifications", response_model=schemas.NotificationPreferencesResponse
+)
 def update_notification_preferences(
     payload: schemas.NotificationPreferencesUpdate,
     db: DbSession,
@@ -3590,7 +3657,9 @@ def update_notification_preferences(
         current_user.email_digest_enabled = bool(payload.email_digest_enabled)
         updates["email_digest_enabled"] = bool(payload.email_digest_enabled)
     if payload.email_filling_fast_enabled is not None:
-        current_user.email_filling_fast_enabled = bool(payload.email_filling_fast_enabled)
+        current_user.email_filling_fast_enabled = bool(
+            payload.email_filling_fast_enabled
+        )
         updates["email_filling_fast_enabled"] = bool(payload.email_filling_fast_enabled)
 
     db.add(current_user)
@@ -3801,9 +3870,9 @@ def _delete_user_relations(*, db: Session, user_id: int) -> None:
     db.query(models.Registration).filter(models.Registration.user_id == user_id).delete(
         synchronize_session=False
     )
-    db.query(models.FavoriteEvent).filter(models.FavoriteEvent.user_id == user_id).delete(
-        synchronize_session=False
-    )
+    db.query(models.FavoriteEvent).filter(
+        models.FavoriteEvent.user_id == user_id
+    ).delete(synchronize_session=False)
     db.execute(
         models.user_interest_tags.delete().where(
             models.user_interest_tags.c.user_id == user_id
@@ -3896,7 +3965,9 @@ def event_participants(
         )
 
     sort_column = _participant_sort_column(sort_by)
-    order_clause = sort_column.asc() if sort_dir.lower() != "desc" else sort_column.desc()
+    order_clause = (
+        sort_column.asc() if sort_dir.lower() != "desc" else sort_column.desc()
+    )
 
     base_query = (
         db.query(
@@ -3914,7 +3985,10 @@ def event_participants(
     page = max(page, 1)
     page_size = max(1, min(page_size, 200))
     participants = (
-        base_query.order_by(order_clause).offset((page - 1) * page_size).limit(page_size).all()
+        base_query.order_by(order_clause)
+        .offset((page - 1) * page_size)
+        .limit(page_size)
+        .all()
     )
     participant_list = _participant_response_items(participants)
     seats_taken = total
@@ -4055,12 +4129,16 @@ def resend_registration_email(
         .first()
     )
     if not registration:
-        raise HTTPException(status_code=400, detail="Nu ești înscris la acest eveniment.")
+        raise HTTPException(
+            status_code=400, detail="Nu ești înscris la acest eveniment."
+        )
 
     lang = current_user.language_preference
     if not lang or lang == "system":
         lang = request.headers.get("accept-language") or "ro"
-    subject, body_text, body_html = render_registration_email(event, current_user, lang=lang)
+    subject, body_text, body_html = render_registration_email(
+        event, current_user, lang=lang
+    )
     send_email_async(
         background_tasks,
         db,
@@ -4114,7 +4192,9 @@ def unregister_from_event(
         .first()
     )
     if not registration:
-        raise HTTPException(status_code=400, detail="Nu ești înscris la acest eveniment.")
+        raise HTTPException(
+            status_code=400, detail="Nu ești înscris la acest eveniment."
+        )
 
     registration.deleted_at = datetime.now(timezone.utc)
     registration.deleted_by_user_id = current_user.id
@@ -4180,7 +4260,9 @@ def admin_restore_registration(
 def _validate_admin_days(days: int) -> None:
     """Validate the admin stats day window."""
     if days < 1 or days > 365:
-        raise HTTPException(status_code=400, detail="`days` trebuie să fie între 1 și 365.")
+        raise HTTPException(
+            status_code=400, detail="`days` trebuie să fie între 1 și 365."
+        )
 
 
 def _validate_top_tags_limit(top_tags_limit: int) -> None:
@@ -4216,7 +4298,9 @@ def _registration_stats_by_day(
     ]
 
 
-def _top_tag_stats(*, db: Session, top_tags_limit: int) -> list[schemas.TagPopularityStat]:
+def _top_tag_stats(
+    *, db: Session, top_tags_limit: int
+) -> list[schemas.TagPopularityStat]:
     """Return top tag popularity metrics for the admin dashboard."""
     rows = (
         db.query(
@@ -4303,7 +4387,9 @@ def _personalization_metric_counts_by_day(
         )
         .filter(models.EventInteraction.occurred_at >= start)
         .filter(
-            models.EventInteraction.interaction_type.in_(["impression", "click", "register"])
+            models.EventInteraction.interaction_type.in_(
+                ["impression", "click", "register"]
+            )
         )
         .group_by("day", "type")
         .order_by("day")
@@ -4311,7 +4397,9 @@ def _personalization_metric_counts_by_day(
     )
     by_day: dict[str, dict[str, int]] = {}
     for day, interaction_type, count in rows:
-        bucket = by_day.setdefault(str(day), {"impression": 0, "click": 0, "register": 0})
+        bucket = by_day.setdefault(
+            str(day), {"impression": 0, "click": 0, "register": 0}
+        )
         bucket[str(interaction_type)] = int(count or 0)
     return by_day
 
@@ -4450,7 +4538,9 @@ def admin_activate_personalization_model(
     if not model:
         raise HTTPException(status_code=404, detail="Modelul nu există.")
 
-    db.query(models.RecommenderModel).update({"is_active": False}, synchronize_session=False)
+    db.query(models.RecommenderModel).update(
+        {"is_active": False}, synchronize_session=False
+    )
     setattr(model, "is_active", True)
     db.add(model)
     db.commit()
@@ -4642,7 +4732,9 @@ def _admin_user_rows_query(
     return (
         db.query(
             models.User,
-            func.coalesce(reg_counts.c.registrations_count, 0).label("registrations_count"),
+            func.coalesce(reg_counts.c.registrations_count, 0).label(
+                "registrations_count"
+            ),
             func.coalesce(reg_counts.c.attended_count, 0).label("attended_count"),
             func.coalesce(events_counts.c.events_created_count, 0).label(
                 "events_created_count"
@@ -4675,7 +4767,9 @@ def admin_list_users(
     total = db.query(func.count(models.User.id)).filter(*filters).scalar() or 0
     reg_counts, events_counts = _admin_user_count_subqueries(db)
     rows = (
-        _admin_user_rows_query(db=db, reg_counts=reg_counts, events_counts=events_counts)
+        _admin_user_rows_query(
+            db=db, reg_counts=reg_counts, events_counts=events_counts
+        )
         .filter(*filters)
         .order_by(models.User.created_at.desc(), models.User.id.desc())
         .offset((page - 1) * page_size)
@@ -4687,7 +4781,9 @@ def admin_list_users(
     return {"items": items, "total": int(total), "page": page, "page_size": page_size}
 
 
-def _apply_admin_user_patch(*, user: models.User, payload: schemas.AdminUserUpdate) -> bool:
+def _apply_admin_user_patch(
+    *, user: models.User, payload: schemas.AdminUserUpdate
+) -> bool:
     """Apply admin-managed user field updates and report whether anything changed."""
     changed = False
     if payload.role is not None:
@@ -4733,7 +4829,9 @@ def admin_update_user(
 
     reg_counts, events_counts = _admin_user_count_subqueries(db)
     row = (
-        _admin_user_rows_query(db=db, reg_counts=reg_counts, events_counts=events_counts)
+        _admin_user_rows_query(
+            db=db, reg_counts=reg_counts, events_counts=events_counts
+        )
         .filter(models.User.id == user_id)
         .first()
     )
@@ -4834,7 +4932,11 @@ def admin_list_events(
 
     query = query.order_by(models.Event.start_time.desc(), models.Event.id.desc())
     query, _ = _events_with_counts_query(db, query)
-    rows = query.offset((filters.page - 1) * filters.page_size).limit(filters.page_size).all()
+    rows = (
+        query.offset((filters.page - 1) * filters.page_size)
+        .limit(filters.page_size)
+        .all()
+    )
 
     items = [_serialize_admin_event(event, seats_taken) for event, seats_taken in rows]
     return {
@@ -4867,7 +4969,9 @@ def admin_review_event_moderation(
         entity_id=event.id,
         action="moderation_reviewed",
         actor_user_id=current_user.id,
-        meta={"moderation_score": float(getattr(event, "moderation_score", 0.0) or 0.0)},
+        meta={
+            "moderation_score": float(getattr(event, "moderation_score", 0.0) or 0.0)
+        },
     )
     db.commit()
     return {"status": "reviewed"}
@@ -5075,12 +5179,16 @@ def _tag_recommendation_context(kwargs: dict[str, object]) -> dict[str, object] 
     }
 
 
-def _tag_recommendation_base_query(*, db: Session, match_tag_names: list[str], now: datetime):
+def _tag_recommendation_base_query(
+    *, db: Session, match_tag_names: list[str], now: datetime
+):
     """Build the base query for tag-driven event recommendations."""
     lowered_match_tags = [name.lower() for name in match_tag_names]
     return (
         db.query(models.Event)
-        .filter(models.Event.tags.any(func.lower(models.Tag.name).in_(lowered_match_tags)))
+        .filter(
+            models.Event.tags.any(func.lower(models.Tag.name).in_(lowered_match_tags))
+        )
         .filter(models.Event.deleted_at.is_(None))
         .filter(models.Event.start_time >= now)
         .filter(models.Event.status == "published")
@@ -5113,7 +5221,9 @@ def _popular_recommendations(
     )
     query, seats_subquery = _events_with_counts_query(db, base_query)
     fallback_reason = (
-        "Popular / upcoming events" if lang == "en" else "Evenimente populare / viitoare"
+        "Popular / upcoming events"
+        if lang == "en"
+        else "Evenimente populare / viitoare"
     )
     return [
         (event, seats, fallback_reason)
@@ -5137,7 +5247,9 @@ def _fallback_recommendations(
     blocked_organizer_ids: set[int],
 ) -> list[tuple[models.Event, int, Optional[str]]]:
     """Return either tag-matched or popularity-based fallback recommendations."""
-    history_tag_names = _recommendation_history_tag_names(db=db, user_id=int(current_user.id))
+    history_tag_names = _recommendation_history_tag_names(
+        db=db, user_id=int(current_user.id)
+    )
     profile_tag_names = [tag.name for tag in current_user.interest_tags]
     match_tag_names = list(dict.fromkeys([*history_tag_names, *profile_tag_names]))
     events = _tag_based_recommendations(
@@ -5176,7 +5288,9 @@ def _serialize_recommendations(
             continue
         localized.append(
             (
-                bool(user_city and event.city and event.city.strip().lower() == user_city),
+                bool(
+                    user_city and event.city and event.city.strip().lower() == user_city
+                ),
                 _serialize_event(
                     event,
                     seats,
@@ -5324,7 +5438,9 @@ def password_forgot(
         db.add(reset)
         db.commit()
         frontend_hint = settings.allowed_origins[0] if settings.allowed_origins else ""
-        link = f"{frontend_hint}/reset-password?token={token}" if frontend_hint else token
+        link = (
+            f"{frontend_hint}/reset-password?token={token}" if frontend_hint else token
+        )
         lang = user.language_preference
         if not lang or lang == "system":
             lang = (request.headers.get("accept-language") if request else None) or "ro"
@@ -5342,7 +5458,9 @@ def password_forgot(
 
 
 @app.post("/password/reset", responses=_responses(400))
-def password_reset(payload: schemas.PasswordResetConfirm, request: Request, db: DbSession):
+def password_reset(
+    payload: schemas.PasswordResetConfirm, request: Request, db: DbSession
+):
     """Complete the password reset flow."""
     _enforce_rate_limit("password_reset", request=request, limit=10, window_seconds=300)
     token_row = (

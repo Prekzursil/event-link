@@ -137,11 +137,15 @@ def test_settings_parsers_support_csv_json_and_invalid() -> None:
         "https://a.test",
         "https://b.test",
     ]
-    assert config.Settings.parse_allowed_origins('["https://a.test","https://b.test"]') == [
+    assert config.Settings.parse_allowed_origins(
+        '["https://a.test","https://b.test"]'
+    ) == [
         "https://a.test",
         "https://b.test",
     ]
-    assert config.Settings.parse_allowed_origins('["https://a.test",""]') == ["https://a.test"]
+    assert config.Settings.parse_allowed_origins('["https://a.test",""]') == [
+        "https://a.test"
+    ]
     assert config.Settings.parse_allowed_origins("123") == ["123"]
     assert config.Settings.parse_admin_emails("") == []
     assert config.Settings.parse_admin_emails("A@T.RO,b@t.ro") == ["a@t.ro", "b@t.ro"]
@@ -195,7 +199,11 @@ def test_get_current_user_rejects_missing_role_in_token(db_session) -> None:
 def test_get_current_user_rejects_expired_token(db_session) -> None:
     """Expired access tokens should surface the translated auth error."""
     token = auth.create_access_token(
-        {"sub": "99", "email": "expired@test.ro", "role": models.UserRole.student.value},
+        {
+            "sub": "99",
+            "email": "expired@test.ro",
+            "role": models.UserRole.student.value,
+        },
         expires_delta=timedelta(seconds=-1),
     )
     with pytest.raises(HTTPException) as exc_info:

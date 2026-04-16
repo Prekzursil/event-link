@@ -72,7 +72,9 @@ class PrAnalysisState(NamedTuple):
 
 def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the Codacy zero gate."""
-    parser = argparse.ArgumentParser(description="Assert Codacy has zero total open issues.")
+    parser = argparse.ArgumentParser(
+        description="Assert Codacy has zero total open issues."
+    )
     parser.add_argument(
         "--provider",
         default="gh",
@@ -126,7 +128,9 @@ def _request_json(
 ) -> tuple[int, dict[str, Any]]:
     """Request JSON from the Codacy API and validate the top-level payload."""
     url = build_https_url(host="api.codacy.com", path=path)
-    payload_bytes = None if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    payload_bytes = (
+        None if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
+    )
     payload, _headers, status = request_https_json(
         url,
         headers={
@@ -475,7 +479,9 @@ def _wait_for_branch_analysis(
 def _pr_analysis_state(payload: dict[str, Any]) -> PrAnalysisState:
     """Extract pull-request analysis state from a Codacy response."""
     pull_request = (
-        payload.get("pullRequest") if isinstance(payload.get("pullRequest"), dict) else {}
+        payload.get("pullRequest")
+        if isinstance(payload.get("pullRequest"), dict)
+        else {}
     )
     return PrAnalysisState(
         str(pull_request.get("headCommitSha") or ""),
@@ -493,8 +499,12 @@ def _pr_analysis_result(
         return None
     return _issues_result(
         open_issues=state.open_issues,
-        missing_message=("Codacy PR response did not include a parseable new issue count."),
-        nonzero_message=(f"Codacy reports {state.open_issues} PR new issues (expected 0)."),
+        missing_message=(
+            "Codacy PR response did not include a parseable new issue count."
+        ),
+        nonzero_message=(
+            f"Codacy reports {state.open_issues} PR new issues (expected 0)."
+        ),
     )
 
 

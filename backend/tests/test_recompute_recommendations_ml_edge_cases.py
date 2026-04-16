@@ -20,8 +20,12 @@ from recompute_ml_test_helpers import (
 def _build_edge_training_entities(now: datetime):
     """Builds the edge training entities fixture data."""
     organizer = _make_user(email="org-edge@test.ro", role=models.UserRole.organizator)
-    student = _make_user(email="student-edge@test.ro", role=models.UserRole.student, city=None)
-    shadow_org = _make_user(email="shadow-org@test.ro", role=models.UserRole.organizator)
+    student = _make_user(
+        email="student-edge@test.ro", role=models.UserRole.student, city=None
+    )
+    shadow_org = _make_user(
+        email="shadow-org@test.ro", role=models.UserRole.organizator
+    )
     tag_good = models.Tag(name="Python")
     tag_blank = models.Tag(name="   ")
     events = {
@@ -175,13 +179,15 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
             user_id=int(fixture["student"].id), event_id=int(fixture["train"].id)
         ),
         models.FavoriteEvent(
-            user_id=int(fixture["student"].id), event_id=int(fixture["deleted_positive"].id)
+            user_id=int(fixture["student"].id),
+            event_id=int(fixture["deleted_positive"].id),
         ),
         models.FavoriteEvent(
             user_id=int(fixture["shadow_org"].id), event_id=int(fixture["train"].id)
         ),
         models.FavoriteEvent(
-            user_id=int(fixture["shadow_org"].id), event_id=int(fixture["weak_category"].id)
+            user_id=int(fixture["shadow_org"].id),
+            event_id=int(fixture["weak_category"].id),
         ),
         models.UserImplicitInterestTag(
             user_id=int(fixture["student"].id),
@@ -196,10 +202,16 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
             last_seen_at=now,
         ),
         models.UserImplicitInterestCategory(
-            user_id=int(fixture["student"].id), category="   ", score=0.4, last_seen_at=now
+            user_id=int(fixture["student"].id),
+            category="   ",
+            score=0.4,
+            last_seen_at=now,
         ),
         models.UserImplicitInterestCategory(
-            user_id=int(fixture["student"].id), category="Seminar", score=0.0, last_seen_at=now
+            user_id=int(fixture["student"].id),
+            category="Seminar",
+            score=0.0,
+            last_seen_at=now,
         ),
         models.UserImplicitInterestCity(
             user_id=int(fixture["student"].id), city="   ", score=0.4, last_seen_at=now
@@ -353,13 +365,17 @@ def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(
         == 0
     )
     assert "stored" in capsys.readouterr().out
-    _assert_edge_training_results(db_session, module, fixture, existing_model, previous_model)
+    _assert_edge_training_results(
+        db_session, module, fixture, existing_model, previous_model
+    )
 
 
 def _seed_weak_city_fixture(db_session, now: datetime):
     """Seeds the weak city fixture fixture rows."""
     organizer = _make_user(email="org-city@test.ro", role=models.UserRole.organizator)
-    student = _make_user(email="student-city@test.ro", role=models.UserRole.student, city=None)
+    student = _make_user(
+        email="student-city@test.ro", role=models.UserRole.student, city=None
+    )
     event_positive = _make_event(
         owner=organizer, title="Positive City", now=now, days=2, location="Hall H"
     )
@@ -421,7 +437,9 @@ def test_main_training_weak_city_match_branch(monkeypatch, db_session) -> None:
     )
 
 
-def test_patch_rng_choices_falls_back_when_requested_choice_is_missing(monkeypatch) -> None:
+def test_patch_rng_choices_falls_back_when_requested_choice_is_missing(
+    monkeypatch,
+) -> None:
     """Exercises patch rng choices falls back when requested choice is missing."""
     module = _load_script_module()
     _patch_rng_for_choices(monkeypatch, module, [999])

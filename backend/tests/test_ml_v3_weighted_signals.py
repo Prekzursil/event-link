@@ -68,7 +68,9 @@ def _post_weighted_learning_interaction(helpers):
 
     token = helpers["register_student"]("student-weighted@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == "student-weighted@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "student-weighted@test.ro")
+        .first()
     )
     assert student is not None
     tag, event = _weighted_learning_entities(db)

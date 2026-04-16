@@ -33,7 +33,9 @@ def test_load_module_raises_when_import_spec_is_missing(
     monkeypatch.setattr(
         importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
     )
-    monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != original_parent])
+    monkeypatch.setattr(
+        sys, "path", [entry for entry in sys.path if entry != original_parent]
+    )
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
         _load_module()
@@ -80,7 +82,9 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
     assert commit_sha == "abc123abc123abc123abc123abc123abc123abcd"
 
 
-def test_evaluate_sonar_waits_for_expected_commit(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_sonar_waits_for_expected_commit(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies evaluate sonar waits for expected commit behavior."""
     module = _load_module()
     summaries = [
@@ -149,7 +153,9 @@ def test_evaluate_sonar_fails_when_expected_commit_never_arrives(
     ]
 
 
-def test_evaluate_sonar_fails_when_hotspots_exist(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_evaluate_sonar_fails_when_hotspots_exist(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies evaluate sonar fails when hotspots exist behavior."""
     module = _load_module()
 

@@ -240,7 +240,9 @@ def test_events_filter_branches_return_cached_reason(monkeypatch, helpers):
     )
 
 
-def test_cached_recommendations_handle_disabled_cache_and_empty_user(monkeypatch, helpers):
+def test_cached_recommendations_handle_disabled_cache_and_empty_user(
+    monkeypatch, helpers
+):
     """Exercises cached recommendations handle disabled cache and empty user."""
     ctx = cached_recommendation_context(helpers)
     now = datetime.now(timezone.utc)
@@ -363,49 +365,31 @@ def test_event_mutation_branches_cover_get_update_and_delete(helpers):
     )
     assert update_ok.status_code == 200
     _response = ctx.client.put(
-            f"/api/events/{ctx.event_id}",
-            json={"status": "invalid"},
-            headers=auth_header(ctx.owner_token),
-        )
-    assert (
-        _response.status_code
-        == 422
+        f"/api/events/{ctx.event_id}",
+        json={"status": "invalid"},
+        headers=auth_header(ctx.owner_token),
     )
+    assert _response.status_code == 422
     _response = ctx.client.delete(
-            "/api/events/999999", headers=auth_header(ctx.owner_token)
-        )
-    assert (
-        _response.status_code
-        == 404
+        "/api/events/999999", headers=auth_header(ctx.owner_token)
     )
+    assert _response.status_code == 404
     _response = ctx.client.delete(
-            f"/api/events/{ctx.event_id}", headers=auth_header(ctx.other_token)
-        )
-    assert (
-        _response.status_code
-        == 403
+        f"/api/events/{ctx.event_id}", headers=auth_header(ctx.other_token)
     )
+    assert _response.status_code == 403
     _response = ctx.client.post(
-            "/api/events/999999/restore", headers=auth_header(ctx.owner_token)
-        )
-    assert (
-        _response.status_code
-        == 404
+        "/api/events/999999/restore", headers=auth_header(ctx.owner_token)
     )
+    assert _response.status_code == 404
     _response = ctx.client.delete(
-            f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)
-        )
-    assert (
-        _response.status_code
-        == 204
+        f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)
     )
+    assert _response.status_code == 204
     _response = ctx.client.post(
-            f"/api/events/{ctx.event_id}/restore", headers=auth_header(ctx.student_token)
-        )
-    assert (
-        _response.status_code
-        == 403
+        f"/api/events/{ctx.event_id}/restore", headers=auth_header(ctx.student_token)
     )
+    assert _response.status_code == 403
 
 
 def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
@@ -423,14 +407,15 @@ def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
     )
     assert same_status_early.status_code == 200
     _response = ctx.client.delete(
-            f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)
-        )
-    assert (
-        _response.status_code
-        == 204
+        f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)
     )
+    assert _response.status_code == 204
     bulk_requests = [
-        ("/api/organizer/events/bulk/status", {"event_ids": [], "status": "draft"}, 422),
+        (
+            "/api/organizer/events/bulk/status",
+            {"event_ids": [], "status": "draft"},
+            422,
+        ),
         (
             "/api/organizer/events/bulk/status",
             {"event_ids": [ctx.event_id], "status": "draft"},
@@ -439,7 +424,9 @@ def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
         ("/api/organizer/events/bulk/tags", {"event_ids": [], "tags": ["x"]}, 422),
     ]
     for path, payload, status in bulk_requests:
-        response = ctx.client.post(path, json=payload, headers=auth_header(ctx.owner_token))
+        response = ctx.client.post(
+            path, json=payload, headers=auth_header(ctx.owner_token)
+        )
         assert response.status_code == status
 
 
@@ -509,7 +496,9 @@ def test_admin_registration_and_participant_branches(helpers):
         ),
     ]
     for method, path, params, token, status in requests:
-        response = ctx.client.request(method, path, params=params, headers=auth_header(token))
+        response = ctx.client.request(
+            method, path, params=params, headers=auth_header(token)
+        )
         assert response.status_code == status
 
 
@@ -554,12 +543,9 @@ def test_export_and_recommendation_branches(monkeypatch, helpers):
     assert "organized_events" in export.json()
     set_settings(monkeypatch, recommendations_use_ml_cache=False)
     _response = ctx.client.get(
-            "/api/recommendations", headers=auth_header(ctx.student_token)
-        )
-    assert (
-        _response.status_code
-        == 200
+        "/api/recommendations", headers=auth_header(ctx.student_token)
     )
+    assert _response.status_code == 200
 
     def _cached_recommendations(**_kwargs):
         """Returns cached recommendations that include a full and open event."""
@@ -667,4 +653,6 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
         headers=auth_header(ctx.student_token),
     )
     assert refresh_resp.status_code == 204
-    assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
+    assert any(
+        job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs
+    )

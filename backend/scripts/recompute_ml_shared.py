@@ -172,11 +172,15 @@ def _coerce_utc(value: datetime | None) -> datetime | None:
     return value
 
 
-def _tag_overlap_ratios(*, user: _UserFeatures, event: _EventFeatures) -> tuple[float, float]:
+def _tag_overlap_ratios(
+    *, user: _UserFeatures, event: _EventFeatures
+) -> tuple[float, float]:
     """Implements the tag overlap ratios helper."""
     tags = event.tags
     tag_count = max(1, len(tags))
-    overlap_interest = sum(float(user.interest_tag_weights.get(tag, 0.0)) for tag in tags)
+    overlap_interest = sum(
+        float(user.interest_tag_weights.get(tag, 0.0)) for tag in tags
+    )
     overlap_history = len(user.history_tags & tags)
     return overlap_interest / tag_count, overlap_history / tag_count
 
@@ -211,7 +215,9 @@ def _build_feature_vector(
     *, user: _UserFeatures, event: _EventFeatures, now: datetime
 ) -> list[float]:
     """Constructs a feature vector structure."""
-    overlap_interest_ratio, overlap_history_ratio = _tag_overlap_ratios(user=user, event=event)
+    overlap_interest_ratio, overlap_history_ratio = _tag_overlap_ratios(
+        user=user, event=event
+    )
     same_city = _same_city_score(user=user, event=event)
     category_match = _category_match_score(user=user, event=event)
     organizer_match = 1.0 if event.owner_id in user.history_organizer_ids else 0.0
@@ -285,7 +291,9 @@ def _train_log_regression_sgd(
         for x, y, w in examples:
             z = _dot(weights, x)
             p = _sigmoid(z)
-            total_loss += w * (-(y * math.log(p + eps) + (1 - y) * math.log(1 - p + eps)))
+            total_loss += w * (
+                -(y * math.log(p + eps) + (1 - y) * math.log(1 - p + eps))
+            )
 
             err = (p - y) * w
             for index, xi in enumerate(x):

@@ -40,7 +40,8 @@ def test_postgres_end_to_end_flow(helpers):
 
     student_token = helpers["register_student"]("student@test.ro")
     registered = client.post(
-        f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event_id}/register",
+        headers=helpers["auth_header"](student_token),
     )
     _require(
         registered.status_code == 201,

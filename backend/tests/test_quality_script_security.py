@@ -94,7 +94,11 @@ def test_build_github_commit_urls_use_fixed_host() -> None:
 def test_collect_contexts_captures_check_runs_and_statuses() -> None:
     """Verifies collect contexts captures check runs and statuses behavior."""
     contexts = check_required_checks._collect_contexts(
-        {"check_runs": [{"name": "backend", "status": "completed", "conclusion": "success"}]},
+        {
+            "check_runs": [
+                {"name": "backend", "status": "completed", "conclusion": "success"}
+            ]
+        },
         {"statuses": [{"context": "codecov/patch", "state": "success"}]},
     )
 
@@ -110,7 +114,9 @@ def test_collect_contexts_captures_check_runs_and_statuses() -> None:
     }
 
 
-def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_api_get_retries_retryable_http_statuses(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies api get retries retryable http statuses behavior."""
     responses = [
         ({"message": "slow down"}, {}, 429),
@@ -126,14 +132,17 @@ def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch
     monkeypatch.setattr(check_required_checks.time, "sleep", sleeps.append)
 
     payload = check_required_checks._api_get(
-        "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs", "token"
+        "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs",
+        "token",
     )
 
     assert payload == {"check_runs": []}
     assert sleeps == [2]
 
 
-def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_request_https_json_uses_urllib_request(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies request https json uses urllib request behavior."""
     calls: dict[str, object] = {}
 

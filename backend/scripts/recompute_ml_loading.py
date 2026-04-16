@@ -45,8 +45,12 @@ def _maybe_filter_user(query, *, user_id: int | None, column):
 
 def _load_students(*, db, models, user_id: int | None):
     """Loads the students resource."""
-    students_query = db.query(models.User).filter(models.User.role == models.UserRole.student)
-    students_query = _maybe_filter_user(students_query, user_id=user_id, column=models.User.id)
+    students_query = db.query(models.User).filter(
+        models.User.role == models.UserRole.student
+    )
+    students_query = _maybe_filter_user(
+        students_query, user_id=user_id, column=models.User.id
+    )
     return students_query.all()
 
 
@@ -97,12 +101,18 @@ def _load_event_features(*, db, models, func):
 
 
 def _load_interest_tag_weights(
-    *, db, models, user_id: int | None, now: datetime, decay_lambda: float, max_score: float
+    *,
+    db,
+    models,
+    user_id: int | None,
+    now: datetime,
+    decay_lambda: float,
+    max_score: float,
 ):
     """Loads the interest tag weights resource."""
-    interest_tag_query = db.query(models.user_interest_tags.c.user_id, models.Tag.name).join(
-        models.Tag, models.Tag.id == models.user_interest_tags.c.tag_id
-    )
+    interest_tag_query = db.query(
+        models.user_interest_tags.c.user_id, models.Tag.name
+    ).join(models.Tag, models.Tag.id == models.user_interest_tags.c.tag_id)
     interest_tag_query = _maybe_filter_user(
         interest_tag_query, user_id=user_id, column=models.user_interest_tags.c.user_id
     )
@@ -120,7 +130,9 @@ def _load_interest_tag_weights(
         models.UserImplicitInterestTag.last_seen_at,
     ).join(models.Tag, models.Tag.id == models.UserImplicitInterestTag.tag_id)
     implicit_tag_query = _maybe_filter_user(
-        implicit_tag_query, user_id=user_id, column=models.UserImplicitInterestTag.user_id
+        implicit_tag_query,
+        user_id=user_id,
+        column=models.UserImplicitInterestTag.user_id,
     )
     for raw_user_id, tag_name, score, last_seen_at in implicit_tag_query.all():
         normalized = _normalize_tag(str(tag_name))
@@ -174,7 +186,9 @@ def _load_optional_implicit_weights(**kwargs) -> dict[int, dict[str, float]]:
 def _load_registration_and_favorite_rows(*, db, models, user_id: int | None):
     """Loads the registration and favorite rows resource."""
     reg_query = db.query(
-        models.Registration.user_id, models.Registration.event_id, models.Registration.attended
+        models.Registration.user_id,
+        models.Registration.event_id,
+        models.Registration.attended,
     ).filter(models.Registration.deleted_at.is_(None))
     reg_query = _maybe_filter_user(
         reg_query, user_id=user_id, column=models.Registration.user_id
@@ -190,11 +204,15 @@ def _build_registered_event_ids_by_user(registration_rows) -> dict[int, set[int]
     """Constructs a registered event ids by user structure."""
     registered_event_ids_by_user: dict[int, set[int]] = {}
     for raw_user_id, event_id, _attended in registration_rows:
-        registered_event_ids_by_user.setdefault(int(raw_user_id), set()).add(int(event_id))
+        registered_event_ids_by_user.setdefault(int(raw_user_id), set()).add(
+            int(event_id)
+        )
     return registered_event_ids_by_user
 
 
-def _build_positive_weights(registration_rows, favorite_rows) -> dict[tuple[int, int], float]:
+def _build_positive_weights(
+    registration_rows, favorite_rows
+) -> dict[tuple[int, int], float]:
     """Constructs a positive weights structure."""
     positive_weights: dict[tuple[int, int], float] = {}
     for raw_user_id, event_id, attended in registration_rows:

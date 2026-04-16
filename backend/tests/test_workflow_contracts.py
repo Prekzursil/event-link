@@ -25,7 +25,9 @@ def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
     analytics = (WORKFLOWS_DIR / "codecov-analytics.yml").read_text(encoding="utf-8")
 
     assert "name: Quality Zero Platform" in quality_platform
-    _assert_uses_pinned_platform_workflow(quality_platform, "reusable-scanner-matrix.yml")
+    _assert_uses_pinned_platform_workflow(
+        quality_platform, "reusable-scanner-matrix.yml"
+    )
     assert "platform_repository: Prekzursil/quality-zero-platform" in quality_platform
     assert "platform_ref: main" in quality_platform
     assert "SONAR_TOKEN: ${{ secrets.SONAR_TOKEN }}" in quality_platform
@@ -35,7 +37,9 @@ def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
     assert "CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}" in quality_platform
 
     assert "name: Quality Zero Gate" in quality_gate
-    _assert_uses_pinned_platform_workflow(quality_gate, "reusable-quality-zero-gate.yml")
+    _assert_uses_pinned_platform_workflow(
+        quality_gate, "reusable-quality-zero-gate.yml"
+    )
     assert "platform_repository: Prekzursil/quality-zero-platform" in quality_gate
     assert "platform_ref: main" in quality_gate
     assert "secrets: inherit" not in quality_gate
@@ -50,7 +54,9 @@ def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
 def test_quality_zero_mutation_wrappers_are_present_and_scoped() -> None:
     """Validate that mutation wrappers are present and limited to quality lanes."""
     backlog = (WORKFLOWS_DIR / "quality-zero-backlog.yml").read_text(encoding="utf-8")
-    remediation = (WORKFLOWS_DIR / "quality-zero-remediation.yml").read_text(encoding="utf-8")
+    remediation = (WORKFLOWS_DIR / "quality-zero-remediation.yml").read_text(
+        encoding="utf-8"
+    )
 
     _assert_uses_pinned_platform_workflow(backlog, "reusable-backlog-sweep.yml")
     assert "lane: quality" in backlog
@@ -131,7 +137,8 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
     assert "version = 1" in deepsource
     assert "test_patterns" in deepsource
     assert (
-        'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]' in deepsource
+        'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]'
+        in deepsource
     )
     for skip_marker in (
         "skip_doc_coverage = [",
@@ -151,7 +158,9 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
 def test_e2e_default_access_code_matches_seed_default() -> None:
     """Ensure the seeded default access code stays aligned with E2E helpers."""
     seed_content = (REPO_ROOT / "backend" / "seed_data.py").read_text(encoding="utf-8")
-    e2e_utils_content = (REPO_ROOT / "ui" / "e2e" / "utils.ts").read_text(encoding="utf-8")
+    e2e_utils_content = (REPO_ROOT / "ui" / "e2e" / "utils.ts").read_text(
+        encoding="utf-8"
+    )
 
     assert "seed-access-A1" in seed_content
     assert "seed-access-A1" in e2e_utils_content

@@ -22,7 +22,9 @@ def _parse_args() -> argparse.Namespace:
     """Implements the parse args helper."""
     parser = argparse.ArgumentParser(description="Enqueue scheduled background jobs.")
     parser.add_argument(
-        "--retrain-ml", action="store_true", help="Enqueue ML recommendations retraining job."
+        "--retrain-ml",
+        action="store_true",
+        help="Enqueue ML recommendations retraining job.",
     )
     parser.add_argument(
         "--guardrails",
@@ -30,10 +32,14 @@ def _parse_args() -> argparse.Namespace:
         help="Enqueue personalization guardrails evaluation job (CTR/conversion checks + auto-rollback).",
     )
     parser.add_argument(
-        "--weekly-digest", action="store_true", help="Enqueue weekly digest notification job."
+        "--weekly-digest",
+        action="store_true",
+        help="Enqueue weekly digest notification job.",
     )
     parser.add_argument(
-        "--filling-fast", action="store_true", help="Enqueue filling-fast notification job."
+        "--filling-fast",
+        action="store_true",
+        help="Enqueue filling-fast notification job.",
     )
     parser.add_argument(
         "--all",
@@ -91,7 +97,9 @@ def _job_payloads(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
     }
 
 
-def _enqueue_once(db, enqueue_job, *, job_type: str, payload: dict[str, Any]) -> int | None:
+def _enqueue_once(
+    db, enqueue_job, *, job_type: str, payload: dict[str, Any]
+) -> int | None:
     """Implements the enqueue once helper."""
     job = enqueue_job(db, job_type, payload, dedupe_key="global")
     if getattr(job, "_deduped", False):
@@ -107,7 +115,9 @@ def _enqueue_requested_jobs(
     for key, job_type in _job_constants().items():
         if not wanted[key]:
             continue
-        job_id = _enqueue_once(db, enqueue_job, job_type=job_type, payload=payloads[key])
+        job_id = _enqueue_once(
+            db, enqueue_job, job_type=job_type, payload=payloads[key]
+        )
         if job_id is not None:
             created.append((job_type, job_id))
     return created

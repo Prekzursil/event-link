@@ -56,11 +56,15 @@ def _build_users_and_holdout(
         ) = _history_from_positive_events(
             positive_event_ids=positive_event_ids,
             events=kwargs["events"],
-            implicit_categories=kwargs["implicit_categories_by_user"].get(user_id, set()),
+            implicit_categories=kwargs["implicit_categories_by_user"].get(
+                user_id, set()
+            ),
         )
         users[user_id] = _UserFeatures(
             city=city,
-            interest_tag_weights=kwargs["interest_tag_weights_by_user"].get(user_id, {}),
+            interest_tag_weights=kwargs["interest_tag_weights_by_user"].get(
+                user_id, {}
+            ),
             history_tags=history_tags,
             history_categories=history_categories,
             history_organizer_ids=history_organizers,

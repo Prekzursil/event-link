@@ -24,12 +24,20 @@ def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = No
     }
     earlier = client.post(
         "/api/events",
-        json={**payload, "title": "Earlier", "start_time": helpers["future_time"](days=2)},
+        json={
+            **payload,
+            "title": "Earlier",
+            "start_time": helpers["future_time"](days=2),
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     later = client.post(
         "/api/events",
-        json={**payload, "title": "Later", "start_time": helpers["future_time"](days=3)},
+        json={
+            **payload,
+            "title": "Later",
+            "start_time": helpers["future_time"](days=3),
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     student_token = helpers["register_student"](email)
@@ -211,10 +219,12 @@ def test_my_events_and_registration_state(helpers):
 
     student_token = helpers["register_student"]("stud@test.ro")
     client.post(
-        f"/api/events/{e2['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{e2['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     client.post(
-        f"/api/events/{e1['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{e1['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
 
     my_events = client.get(
@@ -335,9 +345,11 @@ def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
 
 def test_recommendations_use_ml_cache_when_present(helpers):
     """Verifies recommendations use ml cache when present behavior."""
-    client, db, student_token, student, earlier, later, _generated_at = _ml_cache_context(
-        helpers,
-        email="mlcache@test.ro",
+    client, db, student_token, student, earlier, later, _generated_at = (
+        _ml_cache_context(
+            helpers,
+            email="mlcache@test.ro",
+        )
     )
     _store_ml_cache(
         db=db,
@@ -359,10 +371,12 @@ def test_recommendations_use_ml_cache_when_present(helpers):
 def test_recommendations_ignore_stale_ml_cache(helpers):
     """Verifies recommendations ignore stale ml cache behavior."""
     old = datetime.now(timezone.utc) - timedelta(days=2)
-    client, db, student_token, student, earlier, later, _generated_at = _ml_cache_context(
-        helpers,
-        email="mlstale@test.ro",
-        generated_at=old,
+    client, db, student_token, student, earlier, later, _generated_at = (
+        _ml_cache_context(
+            helpers,
+            email="mlstale@test.ro",
+            generated_at=old,
+        )
     )
     db.add(
         models.UserRecommendation(
@@ -441,10 +455,12 @@ def test_analytics_interactions_recorded(helpers):
 
 def test_events_list_sort_recommended_uses_ml_cache(helpers):
     """Verifies events list sort recommended uses ml cache behavior."""
-    client, db, student_token, student, earlier, later, _generated_at = _ml_cache_context(
-        helpers,
-        email="mlsort@test.ro",
-        generated_at=datetime.now(timezone.utc),
+    client, db, student_token, student, earlier, later, _generated_at = (
+        _ml_cache_context(
+            helpers,
+            email="mlsort@test.ro",
+            generated_at=datetime.now(timezone.utc),
+        )
     )
     _store_ml_cache(
         db=db,

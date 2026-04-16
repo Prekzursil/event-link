@@ -19,7 +19,9 @@ oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login", auto_error=False)
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """Implements the verify password helper."""
     try:
-        return bcrypt.checkpw(plain_password.encode("utf-8"), hashed_password.encode("utf-8"))
+        return bcrypt.checkpw(
+            plain_password.encode("utf-8"), hashed_password.encode("utf-8")
+        )
     except ValueError:
         return False
 
@@ -60,7 +62,9 @@ def get_current_user(
     if not token:
         raise credentials_exception
     try:
-        payload = jwt.decode(token, settings.secret_key, algorithms=[settings.algorithm])
+        payload = jwt.decode(
+            token, settings.secret_key, algorithms=[settings.algorithm]
+        )
         user_id = payload.get("sub")
         email: str = payload.get("email")
         role = payload.get("role")
@@ -79,7 +83,9 @@ def get_current_user(
     if user is None:
         raise credentials_exception
     if getattr(user, "is_active", True) is False:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat.")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN, detail="Cont dezactivat."
+        )
     return user
 
 
@@ -108,7 +114,8 @@ def require_organizer(user: models.User = Depends(get_current_user)):
     """Implements the require organizer helper."""
     if user.role not in {models.UserRole.organizator, models.UserRole.admin}:
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru organizatori."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acces doar pentru organizatori.",
         )
     return user
 
@@ -126,6 +133,7 @@ def require_admin(user: models.User = Depends(get_current_user)):
     """Implements the require admin helper."""
     if not is_admin(user):
         raise HTTPException(
-            status_code=status.HTTP_403_FORBIDDEN, detail="Acces doar pentru administratori."
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Acces doar pentru administratori.",
         )
     return user

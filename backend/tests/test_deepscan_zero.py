@@ -33,7 +33,9 @@ def _status_payload(*statuses: dict[str, object]) -> dict[str, list[dict[str, ob
     return {"statuses": list(statuses)}
 
 
-def _deepsource_status(*, state: str, target_url: str, description: str) -> dict[str, str]:
+def _deepsource_status(
+    *, state: str, target_url: str, description: str
+) -> dict[str, str]:
     """Create a DeepSource-flavored commit-status payload."""
     return {
         "context": "DeepSource: JavaScript",
@@ -55,7 +57,9 @@ def _public_pr_responses() -> dict[str, dict[str, dict[str, int]]]:
     }
 
 
-def test_load_module_inserts_parent_when_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_module_inserts_parent_when_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Ensure the helper prepends the script directory before importing."""
     module_path = REPO_ROOT / "scripts" / "quality" / "check_deepscan_zero.py"
     parent = str(module_path.parent)
@@ -69,7 +73,9 @@ def test_load_module_inserts_parent_when_missing(monkeypatch: pytest.MonkeyPatch
     assert sys.path[0] == parent
 
 
-def test_load_module_raises_when_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_module_raises_when_spec_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Fail loudly when the target module cannot be resolved from disk."""
     monkeypatch.setattr(
         importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
@@ -95,12 +101,16 @@ def test_parse_dashboard_url_ids_from_fragment() -> None:
     }
 
 
-def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_resolve_open_issues_uses_public_pr_analysis(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Resolve open issues from the public PR analysis endpoints when available."""
     module = _load_module()
     requested: list[str] = []
 
-    def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+    def fake_github_status_payload(
+        *, owner: str, repo: str, sha: str, github_token: str
+    ):
         """Return a deterministic public DeepScan commit-status payload."""
         assert owner == "Prekzursil"
         assert repo == "event-link"
@@ -125,9 +135,7 @@ def test_resolve_open_issues_uses_public_pr_analysis(monkeypatch: pytest.MonkeyP
 
     monkeypatch.setattr(module, "_github_status_payload", fake_github_status_payload)
     monkeypatch.setattr(module, "_request_json", fake_request_json)
-    expected_source_url = (
-        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
-    )
+    expected_source_url = "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
 
     open_issues, source_url = module._resolve_open_issues(
         token="",
@@ -185,7 +193,9 @@ def test_resolve_open_issues_falls_back_to_deepsource_statuses(
         "run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
     )
 
-    def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+    def fake_github_status_payload(
+        *, owner: str, repo: str, sha: str, github_token: str
+    ):
         """Return a failing DeepSource status payload for the requested commit."""
         assert owner == "Prekzursil"
         assert repo == "event-link"
@@ -212,7 +222,9 @@ def test_resolve_open_issues_falls_back_to_deepsource_statuses(
     assert resolved == (
         1,
         target_url,
-        ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
+        [
+            "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"
+        ],
     )
 
 
@@ -256,7 +268,9 @@ def test_resolve_open_issues_waits_for_deepsource_pending_statuses(
 ) -> None:
     """Poll until pending provider statuses settle into a terminal state."""
     module = _load_module()
-    success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/ready/javascript/"
+    success_url = (
+        "https://app.deepsource.com/gh/Prekzursil/event-link/run/ready/javascript/"
+    )
     payloads = [
         _status_payload(
             _deepsource_status(
@@ -397,7 +411,9 @@ def test_wait_for_deepscan_dashboard_url_retries_until_status_is_present(
     ]
     sleeps: list[float] = []
 
-    def fake_github_status_payload(*, owner: str, repo: str, sha: str, github_token: str):
+    def fake_github_status_payload(
+        *, owner: str, repo: str, sha: str, github_token: str
+    ):
         """Return the next DeepScan dashboard commit-status payload."""
         assert owner == "Prekzursil"
         assert repo == "event-link"

@@ -8,6 +8,7 @@ the pure comparison.
 
 This is a libcst-based transformer so formatting and comments survive.
 """
+
 from __future__ import annotations
 
 import pathlib
@@ -40,9 +41,13 @@ class _AssertRewriter(cst.CSTTransformer):
         self,
         original_node: cst.SimpleStatementLine,
         updated_node: cst.SimpleStatementLine,
-    ) -> cst.BaseStatement | cst.FlattenSentinel[cst.BaseStatement] | cst.RemovalSentinel:
+    ) -> (
+        cst.BaseStatement | cst.FlattenSentinel[cst.BaseStatement] | cst.RemovalSentinel
+    ):
         """Replaces a single-statement ``assert call.status_code == N`` node."""
-        if len(updated_node.body) != 1 or not isinstance(updated_node.body[0], cst.Assert):
+        if len(updated_node.body) != 1 or not isinstance(
+            updated_node.body[0], cst.Assert
+        ):
             return updated_node
         assert_node: cst.Assert = updated_node.body[0]
         test = assert_node.test

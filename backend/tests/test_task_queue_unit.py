@@ -143,7 +143,9 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
     failed = []
 
     monkeypatch.setattr(
-        task_queue, "mark_job_succeeded", lambda _db, job: succeeded.append(job.job_type)
+        task_queue,
+        "mark_job_succeeded",
+        lambda _db, job: succeeded.append(job.job_type),
     )
     monkeypatch.setattr(
         task_queue,
@@ -155,15 +157,21 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
     import app.email_service as email_service_module
 
     monkeypatch.setattr(email_service_module, "send_email_now", lambda **_kwargs: None)
-    monkeypatch.setattr(task_queue, "_run_recompute_recommendations_ml", lambda payload: None)
+    monkeypatch.setattr(
+        task_queue, "_run_recompute_recommendations_ml", lambda payload: None
+    )
     monkeypatch.setattr(
         task_queue, "_send_weekly_digest", lambda **_kwargs: {"users": 1, "emails": 1}
     )
     monkeypatch.setattr(
-        task_queue, "_send_filling_fast_alerts", lambda **_kwargs: {"pairs": 2, "emails": 1}
+        task_queue,
+        "_send_filling_fast_alerts",
+        lambda **_kwargs: {"pairs": 2, "emails": 1},
     )
     monkeypatch.setattr(
-        task_queue, "_evaluate_personalization_guardrails", lambda **_kwargs: {"action": "ok"}
+        task_queue,
+        "_evaluate_personalization_guardrails",
+        lambda **_kwargs: {"action": "ok"},
     )
 
     payload = {
@@ -219,7 +227,9 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
         run_at=datetime.now(timezone.utc),
     )
     task_queue.process_job(db_session, failing_job)
-    assert any(name == task_queue.JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML for name, _ in failed)
+    assert any(
+        name == task_queue.JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML for name, _ in failed
+    )
 
 
 def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
@@ -257,7 +267,9 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
     db_session.add_all([fav, reg])
     db_session.commit()
 
-    monkeypatch.setattr(task_queue, "enqueue_job", lambda db, job_type, payload: db.commit())
+    monkeypatch.setattr(
+        task_queue, "enqueue_job", lambda db, job_type, payload: db.commit()
+    )
     monkeypatch.setattr(
         task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
     )
@@ -265,7 +277,9 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
     import app.email_templates as tpl
 
     monkeypatch.setattr(
-        tpl, "render_filling_fast_email", lambda *_args, **_kwargs: ("sub", "txt", "html")
+        tpl,
+        "render_filling_fast_email",
+        lambda *_args, **_kwargs: ("sub", "txt", "html"),
     )
 
     result_first = task_queue._send_filling_fast_alerts(

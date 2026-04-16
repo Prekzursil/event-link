@@ -136,7 +136,9 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
         },
     )()
 
-    monkeypatch.setattr(task_queue.multiprocessing, "get_context", lambda _mode: context)
+    monkeypatch.setattr(
+        task_queue.multiprocessing, "get_context", lambda _mode: context
+    )
     script_path = tmp_path / "noop_timeout.py"
     script_path.write_text("print('noop')\n", encoding="utf-8")
 
@@ -175,7 +177,9 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
         },
     )()
 
-    monkeypatch.setattr(task_queue.multiprocessing, "get_context", lambda _mode: context)
+    monkeypatch.setattr(
+        task_queue.multiprocessing, "get_context", lambda _mode: context
+    )
     script_path = tmp_path / "noop.py"
     script_path.write_text("print('noop')\n", encoding="utf-8")
 
@@ -239,7 +243,9 @@ def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
     db_session.refresh(tag)
 
     db_session.execute(
-        models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id))
+        models.user_hidden_tags.insert().values(
+            user_id=int(user.id), tag_id=int(tag.id)
+        )
     )
     db_session.execute(
         models.user_blocked_organizers.insert().values(

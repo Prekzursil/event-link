@@ -120,7 +120,13 @@ def _execute_python_script(
     result_queue = ctx.Queue()
     process = ctx.Process(
         target=_run_python_entrypoint_worker,
-        args=(str(script_path), list(argv), str(cwd), dict(env_overrides), result_queue),
+        args=(
+            str(script_path),
+            list(argv),
+            str(cwd),
+            dict(env_overrides),
+            result_queue,
+        ),
     )
     process.start()
     process.join(timeout_seconds)
@@ -224,7 +230,9 @@ def claim_next_job(db: Session, *, worker_id: str) -> models.BackgroundJob | Non
     now = _now_utc()
     query = (
         db.query(models.BackgroundJob)
-        .filter(models.BackgroundJob.status == "queued", models.BackgroundJob.run_at <= now)
+        .filter(
+            models.BackgroundJob.status == "queued", models.BackgroundJob.run_at <= now
+        )
         .order_by(models.BackgroundJob.id.asc())
     )
     if db.bind and db.bind.dialect.name == "postgresql":
@@ -248,7 +256,9 @@ def mark_job_succeeded(db: Session, job: models.BackgroundJob) -> None:
     job.dedupe_key = None
     db.add(job)
     db.commit()
-    log_event("job_succeeded", job_id=job.id, job_type=job.job_type, attempts=job.attempts)
+    log_event(
+        "job_succeeded", job_id=job.id, job_type=job.job_type, attempts=job.attempts
+    )
 
 
 def mark_job_failed(db: Session, job: models.BackgroundJob, error: str) -> None:
@@ -302,7 +312,9 @@ def _apply_personalization_exclusions(
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
-        query = query.filter(~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids))))
+        query = query.filter(
+            ~models.Event.tags.any(models.Tag.id.in_(sorted(hidden_tag_ids)))
+        )
     return query
 
 
@@ -365,7 +377,9 @@ def _send_weekly_digest(payload: dict[str, Any], *, db: Session) -> dict[str, in
     )
 
 
-def _send_filling_fast_alerts(payload: dict[str, Any], *, db: Session) -> dict[str, int]:
+def _send_filling_fast_alerts(
+    payload: dict[str, Any], *, db: Session
+) -> dict[str, int]:
     """Implements the send filling fast alerts helper."""
     return _send_filling_fast_alerts_impl(
         db=db,
@@ -405,8 +419,14 @@ def _job_handlers(db: Session) -> dict[str, tuple[Any, str | None]]:
     """Implements the job handlers helper."""
     return {
         JOB_TYPE_SEND_EMAIL: (_send_email_job, None),
-        JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML: (_run_recompute_recommendations_ml, None),
-        JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML: (_run_recompute_recommendations_ml, None),
+        JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML: (
+            _run_recompute_recommendations_ml,
+            None,
+        ),
+        JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML: (
+            _run_recompute_recommendations_ml,
+            None,
+        ),
         JOB_TYPE_SEND_WEEKLY_DIGEST: (
             functools.partial(_send_weekly_digest, db=db),
             "weekly_digest_enqueued",

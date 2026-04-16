@@ -126,21 +126,26 @@ def test_reregister_after_unregister_restores_registration(helpers):
     student_token = helpers["register_student"]("rereg-stud@test.ro")
 
     first = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert first.status_code == 201
     unregister = client.delete(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert unregister.status_code == 204
 
     second = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert second.status_code == 201
 
     regs = (
-        db.query(models.Registration).filter(models.Registration.event_id == event["id"]).all()
+        db.query(models.Registration)
+        .filter(models.Registration.event_id == event["id"])
+        .all()
     )
     assert len(regs) == 1
     assert regs[0].deleted_at is None
@@ -201,12 +206,14 @@ def test_events_list_filters_and_order(helpers):
     assert category["items"][0]["title"] == "Party Night"
 
     start_filter = client.get(
-        "/api/events", params={"start_date": datetime.now(timezone.utc).date().isoformat()}
+        "/api/events",
+        params={"start_date": datetime.now(timezone.utc).date().isoformat()},
     ).json()
     assert len(start_filter["items"]) >= 2
 
     end_filter = client.get(
-        "/api/events", params={"end_date": datetime.now(timezone.utc).date().isoformat()}
+        "/api/events",
+        params={"end_date": datetime.now(timezone.utc).date().isoformat()},
     ).json()
     assert end_filter["total"] == 0
 
@@ -438,11 +445,13 @@ def test_duplicate_registration_blocked(helpers):
     ).json()
     student_token = helpers["register_student"]("stud@test.ro")
     first = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert first.status_code == 201
     second = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert second.status_code == 400
     assert "înscris" in second.json().get("detail", "").lower()
@@ -475,7 +484,8 @@ def test_resend_registration_email_requires_registration(helpers):
     assert not_registered.status_code == 400
 
     client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     ok = client.post(
         f"/api/events/{event['id']}/register/resend",
@@ -505,18 +515,21 @@ def test_unregister_restores_spot(helpers):
     ).json()
     student_token = helpers["register_student"]("stud@test.ro")
     reg = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert reg.status_code == 201
 
     unregister = client.delete(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert unregister.status_code == 204
 
     other_token = helpers["register_student"]("stud2@test.ro")
     reg2 = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](other_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](other_token),
     )
     assert reg2.status_code == 201
 
@@ -544,7 +557,8 @@ def test_mark_attendance_requires_owner(helpers):
     ).json()
     student_token = helpers["register_student"]("stud@test.ro")
     client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
 
     forbidden = client.put(
@@ -555,7 +569,10 @@ def test_mark_attendance_requires_owner(helpers):
     assert forbidden.status_code == 403
 
     student = (
-        helpers["db"].query(models.User).filter(models.User.email == "stud@test.ro").first()
+        helpers["db"]
+        .query(models.User)
+        .filter(models.User.email == "stud@test.ro")
+        .first()
     )
     student_id = student.id  # type: ignore
     ok = client.put(

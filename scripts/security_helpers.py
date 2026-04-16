@@ -78,7 +78,8 @@ def _is_forbidden_ip(ip_value: ipaddress._BaseAddress | None) -> bool:
     if ip_value is None:
         return False
     return any(
-        bool(getattr(ip_value, attribute, False)) for attribute in _FORBIDDEN_IP_ATTRIBUTES
+        bool(getattr(ip_value, attribute, False))
+        for attribute in _FORBIDDEN_IP_ATTRIBUTES
     )
 
 
@@ -148,12 +149,16 @@ def validate_commit_sha(value: str) -> str:
     return sha
 
 
-def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None) -> str:
+def build_https_url(
+    *, host: str, path: str, query: dict[str, str] | None = None
+) -> str:
     """Build and validate a normalized HTTPS URL from host, path, and query."""
     safe_host = (host or "").strip().lower().strip(".")
     if not _HOST_RE.fullmatch(safe_host):
         raise ValueError(f"Invalid host: {host!r}")
-    normalized_path = "/" + "/".join(segment for segment in (path or "").split("/") if segment)
+    normalized_path = "/" + "/".join(
+        segment for segment in (path or "").split("/") if segment
+    )
     encoded_query = urlencode(query or {})
     return normalize_https_url(
         urlunparse(("https", safe_host, normalized_path, "", encoded_query, "")),

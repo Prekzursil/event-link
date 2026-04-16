@@ -56,7 +56,9 @@ def test_personalization_hide_tag_excludes_events(client, helpers):
 
     student_token = helpers["register_student"]("student@test.ro")
     tags = client.get("/api/tags").json()["items"]
-    rock_tag_id = next((tag["id"] for tag in tags if tag["name"].lower() == "rock"), None)
+    rock_tag_id = next(
+        (tag["id"] for tag in tags if tag["name"].lower() == "rock"), None
+    )
     assert rock_tag_id is not None, "expected a 'rock' tag in /api/tags"
 
     resp = client.post(
@@ -148,7 +150,9 @@ def test_personalization_settings_endpoint_lists_hidden_and_blocked(client, help
 
     student_token = helpers["register_student"]("student3@test.ro")
     tags = client.get("/api/tags").json()["items"]
-    tech_tag_id = next((tag["id"] for tag in tags if tag["name"].lower() == "tech"), None)
+    tech_tag_id = next(
+        (tag["id"] for tag in tags if tag["name"].lower() == "tech"), None
+    )
     assert tech_tag_id is not None, "expected a 'tech' tag in /api/tags"
 
     resp = client.post(
@@ -166,7 +170,9 @@ def test_personalization_settings_endpoint_lists_hidden_and_blocked(client, help
     )
     assert resp.status_code == 201
 
-    resp = client.get("/api/me/personalization", headers=helpers["auth_header"](student_token))
+    resp = client.get(
+        "/api/me/personalization", headers=helpers["auth_header"](student_token)
+    )
     assert resp.status_code == 200
     data = resp.json()
     assert any(tag["name"].lower() == "tech" for tag in data["hidden_tags"])
@@ -195,7 +201,9 @@ def test_event_detail_includes_recommendation_reason_for_student(client, helpers
 
     student_token = helpers["register_student"]("student4@test.ro")
     db = helpers["db"]
-    student = db.query(models.User).filter(models.User.email == "student4@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "student4@test.ro").first()
+    )
     assert student is not None
     student.city = "Cluj"
     db.add(student)
@@ -235,13 +243,19 @@ def test_admin_personalization_metrics_uses_interactions(client, helpers):
     db.add_all(
         [
             models.EventInteraction(
-                interaction_type="impression", occurred_at=now, meta={"source": "events_list"}
+                interaction_type="impression",
+                occurred_at=now,
+                meta={"source": "events_list"},
             ),
             models.EventInteraction(
-                interaction_type="click", occurred_at=now, meta={"source": "events_list"}
+                interaction_type="click",
+                occurred_at=now,
+                meta={"source": "events_list"},
             ),
             models.EventInteraction(
-                interaction_type="register", occurred_at=now, meta={"source": "event_detail"}
+                interaction_type="register",
+                occurred_at=now,
+                meta={"source": "event_detail"},
             ),
         ]
     )

@@ -90,7 +90,10 @@ def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
     )
 
     original = _set_email_settings(
-        monkeypatch, email_enabled=False, smtp_host="smtp.test", smtp_sender="sender@test.ro"
+        monkeypatch,
+        email_enabled=False,
+        smtp_host="smtp.test",
+        smtp_sender="sender@test.ro",
     )
     try:
         email_service.send_email_now("to@test.ro", "Sub", "Body")
@@ -140,7 +143,9 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
         smtp_username="u",
     )
     original[smtp_secret_field] = getattr(email_service.settings, smtp_secret_field)
-    monkeypatch.setattr(email_service.settings, smtp_secret_field, "smtp-login-marker-A1")
+    monkeypatch.setattr(
+        email_service.settings, smtp_secret_field, "smtp-login-marker-A1"
+    )
     monkeypatch.setattr(email_service.smtplib, "SMTP", _FakeSmtpSuccess)
     email_service.emails_sent_ok = 0
     email_service.emails_send_failed = 0
@@ -254,19 +259,29 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
 
     assert email_templates._format_dt(None) == ""
 
-    sub_en, body_en, html_en = email_templates.render_registration_email(event, user, "en-US")
-    sub_ro, body_ro, html_ro = email_templates.render_registration_email(event, user, "ro")
+    sub_en, body_en, html_en = email_templates.render_registration_email(
+        event, user, "en-US"
+    )
+    sub_ro, body_ro, html_ro = email_templates.render_registration_email(
+        event, user, "ro"
+    )
     assert "Registration confirmed" in sub_en
     assert "Confirmare înscriere" in sub_ro
     assert "Template Event" in body_en and "Template Event" in body_ro
     assert "<p>" in html_en and "<p>" in html_ro
 
-    reset_en = email_templates.render_password_reset_email(user, "https://example/reset", "en")
-    reset_ro = email_templates.render_password_reset_email(user, "https://example/reset", "ro")
+    reset_en = email_templates.render_password_reset_email(
+        user, "https://example/reset", "en"
+    )
+    reset_ro = email_templates.render_password_reset_email(
+        user, "https://example/reset", "ro"
+    )
     assert "Reset your EventLink" in reset_en[0]
     assert "Resetare parolă" in reset_ro[0]
 
-    monkeypatch.setattr(email_templates.settings, "allowed_origins", ["https://frontend.test"])
+    monkeypatch.setattr(
+        email_templates.settings, "allowed_origins", ["https://frontend.test"]
+    )
     digest_en = email_templates.render_weekly_digest_email(user, [event], lang="en")
     digest_ro = email_templates.render_weekly_digest_email(user, [], lang="ro")
     assert "weekly EventLink digest" in digest_en[0]

@@ -36,7 +36,9 @@ def upgrade() -> None:
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.UniqueConstraint("model_version", name="uq_recommender_models_model_version"),
+        sa.UniqueConstraint(
+            "model_version", name="uq_recommender_models_model_version"
+        ),
     )
 
     op.create_index(
@@ -56,5 +58,7 @@ def upgrade() -> None:
 def downgrade() -> None:
     """Revert recommender-model metadata tables and columns."""
     op.drop_index("ix_recommender_models_is_active", table_name="recommender_models")
-    op.drop_index("ix_recommender_models_model_version", table_name="recommender_models")
+    op.drop_index(
+        "ix_recommender_models_model_version", table_name="recommender_models"
+    )
     op.drop_table("recommender_models")

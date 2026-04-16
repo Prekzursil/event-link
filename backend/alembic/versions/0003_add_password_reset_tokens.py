@@ -47,5 +47,7 @@ def upgrade():
 
 def downgrade():
     """Revert the password-reset token migration."""
-    op.drop_index(op.f("ix_password_reset_tokens_id"), table_name="password_reset_tokens")
+    op.drop_index(
+        op.f("ix_password_reset_tokens_id"), table_name="password_reset_tokens"
+    )
     op.drop_table("password_reset_tokens")

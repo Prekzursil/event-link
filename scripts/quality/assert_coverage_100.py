@@ -145,7 +145,9 @@ def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
         except ValueError:
             continue
 
-    for _percent_raw, covered_raw, total_raw in _XML_CONDITION_COVERAGE_RE.findall(text):
+    for _percent_raw, covered_raw, total_raw in _XML_CONDITION_COVERAGE_RE.findall(
+        text
+    ):
         branch_covered += int(covered_raw)
         branch_total += int(total_raw)
 
@@ -370,7 +372,9 @@ def main() -> int:
     stats = _load_stats(args)
 
     if not stats:
-        raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
+        raise SystemExit(
+            "No coverage files were provided; pass --xml and/or --lcov inputs."
+        )
 
     status, findings = evaluate(stats)
     payload = _coverage_payload(status=status, findings=findings, stats=stats)

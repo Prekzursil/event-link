@@ -16,7 +16,9 @@ emails_sent_ok = 0
 emails_send_failed = 0
 
 
-def _email_settings_ready(*, to_email: str, subject: str, context: dict[str, Any]) -> bool:
+def _email_settings_ready(
+    *, to_email: str, subject: str, context: dict[str, Any]
+) -> bool:
     """Return whether SMTP delivery is configured and enabled."""
     if not settings.email_enabled:
         log_warning("email_disabled", to=to_email, subject=subject, **context)
@@ -47,7 +49,9 @@ def _build_message(
 
 def _deliver_message(message: EmailMessage) -> None:
     """Send a prepared message through the configured SMTP transport."""
-    with smtplib.SMTP(settings.smtp_host, settings.smtp_port or 25, timeout=10) as server:
+    with smtplib.SMTP(
+        settings.smtp_host, settings.smtp_port or 25, timeout=10
+    ) as server:
         if settings.smtp_use_tls:
             server.starttls()
         if settings.smtp_username:
@@ -172,7 +176,9 @@ def send_email_async(
     # Otherwise fall back to a FastAPI background task.
     if getattr(settings, "task_queue_enabled", False):
         if db is None:
-            raise RuntimeError("task_queue_enabled is true but no DB session was provided")
+            raise RuntimeError(
+                "task_queue_enabled is true but no DB session was provided"
+            )
         enqueue_job(
             db,
             JOB_TYPE_SEND_EMAIL,

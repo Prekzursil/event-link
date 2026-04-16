@@ -140,7 +140,9 @@ class Settings(BaseSettings):
         try:
             return _parse_list_setting(value, lower=True)
         except ValueError as exc:
-            raise ValueError("admin_emails must be a list or comma-separated string") from exc
+            raise ValueError(
+                "admin_emails must be a list or comma-separated string"
+            ) from exc
 
 
 settings = Settings()

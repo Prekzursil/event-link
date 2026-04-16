@@ -2,7 +2,7 @@
 # Align Flake8 with the project's Black / Ruff / DeepSource line-length (100).
 # Without this, Flake8 and DeepSource's FLK-E501 fire at the default 79 chars,
 # which is tighter than the formatter enforces and produces spurious noise.
-max-line-length = 100
+max-line-length = 88
 extend-ignore =
     # Allow line breaks before binary operators (PEP 8 preferred style since 2016).
     W503

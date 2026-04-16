@@ -79,7 +79,9 @@ def upgrade() -> None:
         ["entity_type"],
         unique=False,
     )
-    op.create_index("ix_audit_logs_entity_id", "audit_logs", ["entity_id"], unique=False)
+    op.create_index(
+        "ix_audit_logs_entity_id", "audit_logs", ["entity_id"], unique=False
+    )
     op.create_index("ix_audit_logs_action", "audit_logs", ["action"], unique=False)
     op.create_index(
         "ix_audit_logs_actor_user_id",

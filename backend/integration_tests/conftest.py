@@ -15,7 +15,9 @@ if os.environ.get("RUN_INTEGRATION_TESTS") != "1":
     )
 
 if not os.environ.get("DATABASE_URL"):
-    pytest.skip("DATABASE_URL must be set for integration tests.", allow_module_level=True)
+    pytest.skip(
+        "DATABASE_URL must be set for integration tests.", allow_module_level=True
+    )
 
 os.environ.setdefault("SECRET_KEY", "integration-signing-key-material-123456")
 os.environ.setdefault("EMAIL_ENABLED", "false")

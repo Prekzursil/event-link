@@ -19,7 +19,9 @@ def _create_realtime_fixture(helpers, *, slug: str, title: str):
 
     token = helpers["register_student"](f"student-{slug}@test.ro")
     student = (
-        db.query(models.User).filter(models.User.email == f"student-{slug}@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == f"student-{slug}@test.ro")
+        .first()
     )
     assert student is not None
 
@@ -65,8 +67,12 @@ def test_interactions_enqueues_refresh_job_when_enabled_and_dedupes(helpers):
         originals["recommendations_realtime_refresh_enabled"] = _set_setting(
             api_module.settings, "recommendations_realtime_refresh_enabled", True
         )
-        originals["recommendations_realtime_refresh_min_interval_seconds"] = _set_setting(
-            api_module.settings, "recommendations_realtime_refresh_min_interval_seconds", 0
+        originals["recommendations_realtime_refresh_min_interval_seconds"] = (
+            _set_setting(
+                api_module.settings,
+                "recommendations_realtime_refresh_min_interval_seconds",
+                0,
+            )
         )
 
         resp = client.post(
@@ -123,8 +129,12 @@ def test_interactions_respects_realtime_refresh_min_interval(helpers):
         originals["recommendations_realtime_refresh_enabled"] = _set_setting(
             api_module.settings, "recommendations_realtime_refresh_enabled", True
         )
-        originals["recommendations_realtime_refresh_min_interval_seconds"] = _set_setting(
-            api_module.settings, "recommendations_realtime_refresh_min_interval_seconds", 3600
+        originals["recommendations_realtime_refresh_min_interval_seconds"] = (
+            _set_setting(
+                api_module.settings,
+                "recommendations_realtime_refresh_min_interval_seconds",
+                3600,
+            )
         )
 
         resp = client.post(

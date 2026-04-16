@@ -87,7 +87,10 @@ def test_build_test_helpers_login_and_register_raise_on_non_200() -> None:
     """Verifies build test helpers login and register raise on non 200 behavior."""
     helpers = build_test_helpers(
         client=_FakeClient(
-            [_FakeResponse(400, text="bad register"), _FakeResponse(401, text="bad login")]
+            [
+                _FakeResponse(400, text="bad register"),
+                _FakeResponse(401, text="bad login"),
+            ]
         ),
         db_session=_FakeDb(),
         auth_module=_FakeAuth(),

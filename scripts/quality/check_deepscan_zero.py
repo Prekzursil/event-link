@@ -45,7 +45,9 @@ PROVIDER_STATUS_RETRY_DELAY_SECONDS = 10.0
 
 def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for the DeepScan gate."""
-    parser = argparse.ArgumentParser(description="Assert DeepScan has zero total open issues.")
+    parser = argparse.ArgumentParser(
+        description="Assert DeepScan has zero total open issues."
+    )
     parser.add_argument(
         "--token",
         default="",
@@ -186,7 +188,9 @@ def _deepscan_dashboard_url(status_payload: dict[str, Any]) -> str:
     for status in status_payload.get("statuses") or []:
         if str(status.get("context") or "").strip() != "DeepScan":
             continue
-        target_url = str(status.get("target_url") or status.get("targetUrl") or "").strip()
+        target_url = str(
+            status.get("target_url") or status.get("targetUrl") or ""
+        ).strip()
         if target_url:
             normalize_https_url(target_url, allowed_host_suffixes={DEEPSCAN_HOST})
             return target_url
@@ -270,7 +274,9 @@ def _resolve_analysis_url_from_dashboard(dashboard_url: str, token: str) -> str:
     owner_bid = str(data.get("ownerBid") or "").strip()
     head_aid = str(data.get("headAid") or "").strip()
     if not owner_bid.isdigit() or not head_aid.isdigit():
-        raise RuntimeError("DeepScan pull payload did not include valid analysis identifiers.")
+        raise RuntimeError(
+            "DeepScan pull payload did not include valid analysis identifiers."
+        )
     return _analysis_api_url(ids, owner_bid=owner_bid, head_aid=head_aid)
 
 
@@ -280,7 +286,9 @@ def _is_dashboard_url(raw_url: str) -> bool:
     return parsed.path.rstrip("/") == "/dashboard" and "prid=" in parsed.fragment
 
 
-def _matching_statuses(status_payload: dict[str, Any], *, prefix: str) -> list[dict[str, Any]]:
+def _matching_statuses(
+    status_payload: dict[str, Any], *, prefix: str
+) -> list[dict[str, Any]]:
     """Return commit statuses whose contexts start with the requested prefix."""
     return [
         status
@@ -302,7 +310,9 @@ def _pending_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
 def _failed_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return statuses that are neither pending nor successful."""
     return [
-        status for status in statuses if _status_state(status) not in {"pending", "success"}
+        status
+        for status in statuses
+        if _status_state(status) not in {"pending", "success"}
     ]
 
 
@@ -311,7 +321,9 @@ def _first_status_target_url(
 ) -> str | None:
     """Return the first valid target URL found in a status list."""
     for status in statuses:
-        target_url = str(status.get("target_url") or status.get("targetUrl") or "").strip()
+        target_url = str(
+            status.get("target_url") or status.get("targetUrl") or ""
+        ).strip()
         if target_url:
             return normalize_https_url(
                 target_url,
@@ -323,7 +335,9 @@ def _first_status_target_url(
 def _status_finding(status: dict[str, Any]) -> str:
     """Format a failing status as a human-readable finding."""
     context = str(status.get("context") or "").strip()
-    description = str(status.get("description") or "").strip() or "status not successful"
+    description = (
+        str(status.get("description") or "").strip() or "status not successful"
+    )
     return f"{context}: {description}"
 
 
@@ -433,7 +447,9 @@ def _resolve_open_issues(
     analysis_payload = _request_json(analysis_url, token)
     open_issues = extract_total_open(analysis_payload)
     if open_issues is None:
-        raise RuntimeError("DeepScan response did not include a parseable total issue count.")
+        raise RuntimeError(
+            "DeepScan response did not include a parseable total issue count."
+        )
     return open_issues, analysis_url
 
 
@@ -482,7 +498,9 @@ def _validated_open_issues_url(raw_url: str, findings: list[str]) -> str | None:
         return None
 
 
-def _github_status_fallback_configured(*, repo: str, sha: str, github_token: str) -> bool:
+def _github_status_fallback_configured(
+    *, repo: str, sha: str, github_token: str
+) -> bool:
     """Return ``True`` when the GitHub fallback inputs are fully available."""
     return all((repo, sha, github_token))
 

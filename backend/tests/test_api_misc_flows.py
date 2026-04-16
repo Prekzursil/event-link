@@ -59,7 +59,9 @@ def test_event_ics_and_calendar_feed(helpers):
     )
     assert registered.status_code == 201
 
-    feed_resp = client.get("/api/me/calendar", headers=helpers["auth_header"](student_token))
+    feed_resp = client.get(
+        "/api/me/calendar", headers=helpers["auth_header"](student_token)
+    )
     assert feed_resp.status_code == 200
     assert "ICS Event" in feed_resp.text
 
@@ -71,7 +73,9 @@ def test_access_code_reset_flow(helpers):
     req = client.post(f"{PASSCODE_ROUTE}/forgot", json={"email": "reset@test.ro"})
     assert req.status_code == 200
 
-    reset_row = helpers["db"].query(RESET_RECORD).filter(RESET_RECORD.used.is_(False)).first()
+    reset_row = (
+        helpers["db"].query(RESET_RECORD).filter(RESET_RECORD.used.is_(False)).first()
+    )
     reset_key = getattr(reset_row, RESET_KEY_FIELD)  # type: ignore[name-defined]
 
     reset = client.post(
@@ -84,7 +88,9 @@ def test_access_code_reset_flow(helpers):
     )
     assert reset.status_code == 200
 
-    login_ok = client.post("/login", json={"email": "reset@test.ro", SECRET_FIELD: RESET_CODE})
+    login_ok = client.post(
+        "/login", json={"email": "reset@test.ro", SECRET_FIELD: RESET_CODE}
+    )
     assert login_ok.status_code == 200
 
 
@@ -157,7 +163,9 @@ def test_account_export_and_deletion_student(helpers):
     )
     assert reg.status_code == 201
 
-    export_resp = client.get("/api/me/export", headers=helpers["auth_header"](student_token))
+    export_resp = client.get(
+        "/api/me/export", headers=helpers["auth_header"](student_token)
+    )
     assert export_resp.status_code == 200
     payload = export_resp.json()
     assert payload["user"]["email"] == "export@test.ro"

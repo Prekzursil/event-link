@@ -26,7 +26,9 @@ def _prepare_worker(monkeypatch):
     db_instances = []
 
     monkeypatch.setattr(worker, "configure_logging", lambda: None)
-    monkeypatch.setattr(worker, "log_event", lambda event, **kw: events.append((event, kw)))
+    monkeypatch.setattr(
+        worker, "log_event", lambda event, **kw: events.append((event, kw))
+    )
     monkeypatch.setattr(
         worker, "log_warning", lambda event, **kw: warnings.append((event, kw))
     )

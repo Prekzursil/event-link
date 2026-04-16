@@ -88,11 +88,17 @@ def _class_doc(name: str) -> str:
     lower = name.lower()
     human = _humanize(name)
     if lower.startswith("_fake") or lower.startswith("fake"):
-        return f"Test double standing in for a real {human[4:].strip() or 'collaborator'}."
+        return (
+            f"Test double standing in for a real {human[4:].strip() or 'collaborator'}."
+        )
     if lower.startswith("_mock") or lower.startswith("mock"):
-        return f"Mock implementation of {human[4:].strip() or 'a collaborator'} for tests."
+        return (
+            f"Mock implementation of {human[4:].strip() or 'a collaborator'} for tests."
+        )
     if lower.startswith("_stub") or lower.startswith("stub"):
-        return f"Stub implementation of {human[4:].strip() or 'a collaborator'} for tests."
+        return (
+            f"Stub implementation of {human[4:].strip() or 'a collaborator'} for tests."
+        )
     if lower.startswith("_query") or lower == "_query":
         return "Query stub that counts how many filter() calls it received."
     if "error" in lower or "exception" in lower:
@@ -159,7 +165,9 @@ class _Injector(cst.CSTTransformer):
         self.added_functions = 0
         self.added_module = False
 
-    def leave_Module(self, original_node: cst.Module, updated_node: cst.Module) -> cst.Module:
+    def leave_Module(
+        self, original_node: cst.Module, updated_node: cst.Module
+    ) -> cst.Module:
         """Inserts a module docstring as the very first top-level statement when missing."""
         if self._module_doc is None:
             return updated_node
@@ -271,7 +279,9 @@ def main() -> int:
             total_m += int(added_m)
             if added_c or added_f or added_m:
                 files_touched += 1
-                print(f"{target}: classes+={added_c} funcs+={added_f} module+={int(added_m)}")
+                print(
+                    f"{target}: classes+={added_c} funcs+={added_f} module+={int(added_m)}"
+                )
     print(
         f"\nTotal: files={files_touched} classes={total_c} functions={total_f} modules={total_m}"
     )

@@ -140,7 +140,8 @@ def test_organizer_email_participants(helpers):
 
     student_token = helpers["register_student"]("s1@test.ro")
     register = client.post(
-        f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
     assert register.status_code == 201
 

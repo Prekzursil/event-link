@@ -46,7 +46,9 @@ def test_ensure_schema_teardown_skips_missing_temp_db(monkeypatch, tmp_path):
     _sentinel = object()
     generator = module._ensure_schema.__wrapped__()
     first = next(generator, _sentinel)
-    assert first is not _sentinel, "_ensure_schema generator must yield once before teardown"
+    assert first is not _sentinel, (
+        "_ensure_schema generator must yield once before teardown"
+    )
     exhausted = next(generator, _sentinel)
     assert exhausted is _sentinel, (
         "_ensure_schema generator should be exhausted after one yield"

@@ -104,9 +104,13 @@ def _seed_sparse_positive_rows(db_session, *, now: datetime):
     return student, candidate, no_category_positive
 
 
-def _refresh_sparse_interest_rows(db_session, *, student_id: int, now: datetime) -> datetime:
+def _refresh_sparse_interest_rows(
+    db_session, *, student_id: int, now: datetime
+) -> datetime:
     """Refreshes the implicit-interest rows so the non-decayed branch is exercised."""
-    python_tag = db_session.query(models.Tag).filter(models.Tag.name == "Python").first()
+    python_tag = (
+        db_session.query(models.Tag).filter(models.Tag.name == "Python").first()
+    )
     assert python_tag is not None
     future_seen = now + timedelta(hours=2)
     rows = (
@@ -141,7 +145,9 @@ def _add_sparse_interactions(
     """Adds sparse search and dwell rows that exercise the guarded training paths."""
     db_session.add_all(
         [
-            models.Registration(user_id=student_id, event_id=positive_id, attended=True),
+            models.Registration(
+                user_id=student_id, event_id=positive_id, attended=True
+            ),
             models.EventInteraction(
                 user_id=student_id,
                 event_id=None,
@@ -197,11 +203,15 @@ def test_main_training_covers_sparse_meta_and_nondecayed_paths(
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
     _install_session_local(monkeypatch, db_session)
-    student, candidate, no_category_positive = _seed_sparse_positive_rows(db_session, now=now)
+    student, candidate, no_category_positive = _seed_sparse_positive_rows(
+        db_session, now=now
+    )
     future_seen = _refresh_sparse_interest_rows(
         db_session, student_id=int(student.id), now=now
     )
-    _install_sparse_query_interceptor(monkeypatch, db_session, int(student.id), future_seen)
+    _install_sparse_query_interceptor(
+        monkeypatch, db_session, int(student.id), future_seen
+    )
     _add_sparse_interactions(
         db_session,
         student_id=int(student.id),

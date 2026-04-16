@@ -71,7 +71,9 @@ def normalize_university_name(name: str | None) -> str | None:
     trimmed = name.strip()
     if not trimmed:
         return None
-    canonical_name = _UNIVERSITY_KEY_TO_CANONICAL.get(_normalize_university_key(trimmed))
+    canonical_name = _UNIVERSITY_KEY_TO_CANONICAL.get(
+        _normalize_university_key(trimmed)
+    )
     return canonical_name or trimmed
 
 

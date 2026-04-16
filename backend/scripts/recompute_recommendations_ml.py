@@ -77,7 +77,10 @@ def _parse_args() -> argparse.Namespace:
         description="Offline ML v1: train and cache recommendations to user_recommendations."
     )
     parser.add_argument(
-        "--top-n", type=int, default=50, help="How many recommendations to store per user."
+        "--top-n",
+        type=int,
+        default=50,
+        help="How many recommendations to store per user.",
     )
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.35)
@@ -212,11 +215,16 @@ def _append_positive_examples(**kwargs) -> None:
         )
         neg_added = 0
         max_attempts = len(kwargs["all_event_ids"])
-        while neg_added < int(kwargs["negatives_per_positive"]) and neg_added < max_attempts:
+        while (
+            neg_added < int(kwargs["negatives_per_positive"])
+            and neg_added < max_attempts
+        ):
             neg_event_id, neg_weight = _sample_negative_example(
                 rng=kwargs["rng"],
                 impression_negatives=kwargs["impression_negatives"],
-                impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+                impression_position_by_user_event=kwargs[
+                    "impression_position_by_user_event"
+                ],
                 user_id=int(kwargs["user_id"]),
                 all_event_ids=kwargs["all_event_ids"],
             )
@@ -341,7 +349,9 @@ def _append_user_training_examples(*, kwargs, examples, rng) -> None:
             user_id=user_id,
             user_positive_ids=user_positive_ids,
             seen_by_user=kwargs["seen_by_user"],
-            impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+            impression_position_by_user_event=kwargs[
+                "impression_position_by_user_event"
+            ],
             events=kwargs["events"],
         )
         _append_positive_examples(
@@ -353,7 +363,9 @@ def _append_user_training_examples(*, kwargs, examples, rng) -> None:
             events=kwargs["events"],
             all_event_ids=kwargs["all_event_ids"],
             impression_negatives=impression_negatives,
-            impression_position_by_user_event=kwargs["impression_position_by_user_event"],
+            impression_position_by_user_event=kwargs[
+                "impression_position_by_user_event"
+            ],
             negatives_per_positive=kwargs["args"].negatives_per_positive,
             now=kwargs["now"],
             rng=rng,
@@ -459,7 +471,11 @@ def _train_model_state(
     meta = _training_meta(args=args, now=now, examples=examples, hitrate=hitrate)
     if not args.dry_run:
         _persist_model_state(
-            db=db, models=models, model_version=model_version, weights=weights, meta=meta
+            db=db,
+            models=models,
+            model_version=model_version,
+            weights=weights,
+            meta=meta,
         )
     return model_version, weights, None
 
@@ -526,7 +542,9 @@ def _store_recommendations(
     )
     db.add_all(inserts)
     db.commit()
-    print(f"[write] stored {len(inserts)} recommendations (model_version={model_version})")
+    print(
+        f"[write] stored {len(inserts)} recommendations (model_version={model_version})"
+    )
     return None
 
 

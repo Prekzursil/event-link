@@ -103,16 +103,34 @@ LOCATIONS = [
 ]
 
 COVER_IMAGES = [
-    ("https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop"),
+    (
+        "https://images.unsplash.com/photo-1540575467063-178a50c2df87?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1515187029135-18ee286d815b?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1475721027785-f74eccf877e2?w=800&h=400&fit=crop"
+    ),
     ("https://images.unsplash.com/photo-1559223607-a43c990c692c?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1528901166007-3784c7dd3653?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&h=400&fit=crop"),
-    ("https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=800&h=400&fit=crop"),
+    (
+        "https://images.unsplash.com/photo-1505373877841-8d25f7d46678?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1591115765373-5207764f72e7?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1528901166007-3784c7dd3653?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1517048676732-d65bc937f952?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1523580494863-6f3031224c94?w=800&h=400&fit=crop"
+    ),
+    (
+        "https://images.unsplash.com/photo-1522158637959-30385a09e0da?w=800&h=400&fit=crop"
+    ),
 ]
 
 SAMPLE_EVENTS = [
@@ -519,9 +537,13 @@ def _build_seed_event(
     """Build one seeded event instance for a specific organizer."""
     is_past_event = index < 3
     if is_past_event:
-        start_time = now - timedelta(days=_rng.randint(5, 30), hours=_rng.randint(10, 18))
+        start_time = now - timedelta(
+            days=_rng.randint(5, 30), hours=_rng.randint(10, 18)
+        )
     else:
-        start_time = now + timedelta(days=_rng.randint(3, 60), hours=_rng.randint(10, 18))
+        start_time = now + timedelta(
+            days=_rng.randint(3, 60), hours=_rng.randint(10, 18)
+        )
     start_time = start_time.replace(minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=_rng.randint(2, 4))
     return Event(
@@ -545,7 +567,9 @@ def _create_events(session, organizer_objects):  # noqa: ANN001
     now = datetime.now(timezone.utc)
     for index, event_data in enumerate(SAMPLE_EVENTS):
         organizer = _rng.choice(organizer_objects)
-        event = _build_seed_event(event_data, organizer_id=organizer.id, now=now, index=index)
+        event = _build_seed_event(
+            event_data, organizer_id=organizer.id, now=now, index=index
+        )
         session.add(event)
         event_objects.append((event, event_data["tags"]))
     session.flush()
@@ -567,7 +591,9 @@ def _create_registrations(  # noqa: ANN001
     print("📝 Creating registrations...")
     registration_count = 0
     for event, _ in event_objects:
-        num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
+        num_registrations = _rng.randint(
+            0, min(len(student_objects), event.max_seats // 2)
+        )
         for student in _rng.sample(student_objects, num_registrations):
             registration = Registration(
                 user_id=student.id,
@@ -587,7 +613,9 @@ def _create_favorites(session, event_objects, student_objects) -> int:  # noqa: 
     created_events = [event for event, _ in event_objects]
     for student in student_objects:
         num_favorites = _rng.randint(2, 5)
-        favorite_events = _rng.sample(created_events, min(num_favorites, len(created_events)))
+        favorite_events = _rng.sample(
+            created_events, min(num_favorites, len(created_events))
+        )
         for event in favorite_events:
             session.add(FavoriteEvent(user_id=student.id, event_id=event.id))
             favorite_count += 1
@@ -648,7 +676,9 @@ def seed_database():
         )
         print(f"   Created {len(ORGANIZERS)} organizers")
 
-        _create_users(session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins...")
+        _create_users(
+            session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins..."
+        )
         print(f"   Created {len(ADMINS)} admins")
 
         event_objects, now = _create_events(session, organizer_objects)
