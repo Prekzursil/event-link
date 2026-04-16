@@ -36,51 +36,60 @@ def _humanize(name: str) -> str:
     return " ".join(words)
 
 
+_FUNCTION_DUNDERS: dict[str, str] = {
+    "__init__": "Initializes the instance state.",
+    "__repr__": "Returns the debug representation of the instance.",
+    "__str__": "Returns the string representation of the instance.",
+    "__enter__": "Enters the context manager.",
+    "__exit__": "Leaves the context manager and releases any held state.",
+    "__call__": "Makes the instance callable.",
+}
+
+_FIXTURE_ALIASES: dict[str, str] = {
+    "setup": "Prepares fixture state for the test scope.",
+    "setup_method": "Prepares fixture state for the test scope.",
+    "setup_class": "Prepares fixture state for the test scope.",
+    "setup_module": "Prepares fixture state for the test scope.",
+    "teardown": "Tears down fixture state for the test scope.",
+    "teardown_method": "Tears down fixture state for the test scope.",
+    "teardown_class": "Tears down fixture state for the test scope.",
+    "teardown_module": "Tears down fixture state for the test scope.",
+}
+
+# (prefix_with_underscore, suffix_start_index, template). Evaluated in order;
+# templates receive the humanised remainder of the name.
+_FUNCTION_PREFIX_RULES: tuple[tuple[str, int, str], ...] = (
+    ("make_", 5, "Builds a {tail} fixture."),
+    ("build_", 6, "Constructs a {tail} structure."),
+    ("get_", 4, "Returns the {tail} value."),
+    ("set_", 4, "Sets the {tail} value."),
+    ("load_", 5, "Loads the {tail} resource."),
+    ("run_", 4, "Runs the {tail} helper path."),
+    ("ensure_", 7, "Ensures {tail} is satisfied."),
+    ("apply_", 6, "Applies {tail} to the target."),
+    ("assert_", 7, "Asserts that {tail} holds."),
+    ("with_", 5, "Returns an instance wrapped with {tail}.",),
+)
+
+
 def _function_doc(name: str) -> str:
     """Returns a concise docstring for the named function/method."""
-    n = name
-    lower = n.lower()
-    human = _humanize(n)
+    lower = name.lower()
+    human = _humanize(name)
+    if lower in _FUNCTION_DUNDERS:
+        return _FUNCTION_DUNDERS[lower]
+    if lower in _FIXTURE_ALIASES:
+        return _FIXTURE_ALIASES[lower]
     if lower.startswith("test_"):
-        return f"Verifies {human[5:].strip() or n} behavior."
-    if lower in {"setup", "setup_method", "setup_class", "setup_module"}:
-        return "Prepares fixture state for the test scope."
-    if lower in {"teardown", "teardown_method", "teardown_class", "teardown_module"}:
-        return "Tears down fixture state for the test scope."
-    if lower.startswith("_make_") or lower.startswith("make_"):
-        target = human[5:].strip() if "_" in n[1:] else human
-        return f"Builds a {target or 'test'} fixture."
-    if lower.startswith("_build_") or lower.startswith("build_"):
-        return f"Constructs a {human[6:].strip() or n} structure."
-    if lower.startswith("_get_") or lower.startswith("get_"):
-        return f"Returns the {human[4:].strip() or n} value."
-    if lower.startswith("_set_") or lower.startswith("set_"):
-        return f"Sets the {human[4:].strip() or n} value."
-    if lower.startswith("_load_") or lower.startswith("load_"):
-        return f"Loads the {human[5:].strip() or n} resource."
-    if lower.startswith("_run_") or lower.startswith("run_"):
-        return f"Runs the {human[4:].strip() or n} helper path."
-    if lower.startswith("_ensure_") or lower.startswith("ensure_"):
-        return f"Ensures {human[7:].strip() or n} is satisfied."
-    if lower.startswith("_apply_") or lower.startswith("apply_"):
-        return f"Applies {human[6:].strip() or n} to the target."
-    if lower.startswith("_assert_") or lower.startswith("assert_"):
-        return f"Asserts that {human[7:].strip() or n} holds."
-    if lower.startswith("_with_") or lower.startswith("with_"):
-        return f"Returns an instance wrapped with {human[5:].strip() or n}."
-    if lower == "__init__":
-        return "Initializes the instance state."
-    if lower == "__repr__":
-        return "Returns the debug representation of the instance."
-    if lower == "__str__":
-        return "Returns the string representation of the instance."
-    if lower == "__enter__":
-        return "Enters the context manager."
-    if lower == "__exit__":
-        return "Leaves the context manager and releases any held state."
-    if lower == "__call__":
-        return "Makes the instance callable."
-    return f"Implements the {human or n} helper."
+        return f"Verifies {human[5:].strip() or name} behavior."
+    for prefix, length, template in _FUNCTION_PREFIX_RULES:
+        if lower.startswith(prefix) or lower.startswith("_" + prefix):
+            tail = human[length:].strip() or name
+            if prefix == "make_":
+                # preserve earlier special-case that emits "test" when humanised tail is empty
+                tail = tail or "test"
+            return template.format(tail=tail)
+    return f"Implements the {human or name} helper."
 
 
 def _class_doc(name: str) -> str:
