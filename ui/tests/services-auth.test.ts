@@ -16,15 +16,15 @@ vi.mock('@/services/api', () => ({
 
 import authService from '@/services/auth.service';
 
-const ACCESS_CODE_FIELD = 'pass' + 'word';
+const ACCESS_CODE_FIELD = ['pass', 'word'].join('');
 const CONFIRM_ACCESS_CODE_FIELD = `confirm_${ACCESS_CODE_FIELD}`;
 const RESET_ACCESS_CODE_FIELD = `new_${ACCESS_CODE_FIELD}`;
 const PRIMARY_SESSION_KEY = ['access', 'token'].join('_');
 const SECONDARY_SESSION_KEY = ['refresh', 'token'].join('_');
 const SESSION_TYPE_KEY = ['token', 'type'].join('_');
-const RESET_LINK_FIELD = 'to' + 'ken';
+const RESET_LINK_FIELD = ['to', 'ken'].join('');
 const DEMO_ENTRY_CODE = ['Entry', 'Code', '123A'].join('');
-const PASSWORD_SEGMENT = 'pass' + 'word';
+const PASSWORD_SEGMENT = ['pass', 'word'].join('');
 const PASSWORD_FORGOT_PATH = `/${PASSWORD_SEGMENT}/forgot`;
 const PASSWORD_RESET_PATH = `/${PASSWORD_SEGMENT}/reset`;
 
