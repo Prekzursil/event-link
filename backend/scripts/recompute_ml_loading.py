@@ -177,8 +177,11 @@ def _load_optional_implicit_weights(**kwargs) -> dict[int, dict[str, float]]:
             bucket = weights_by_user.setdefault(int(raw_user_id), {})
             bucket[normalized] = max(float(bucket.get(normalized, 0.0)), float(weight))
     except Exception as exc:  # noqa: BLE001
+        warning_label = kwargs["warning_label"]
+        continuation_label = kwargs["continuation_label"]
         print(
-            f"[warn] could not load {kwargs['warning_label']} ({exc}); continuing without {kwargs['continuation_label']}"
+            f"[warn] could not load {warning_label} ({exc}); "
+            f"continuing without {continuation_label}"
         )
     return weights_by_user
 

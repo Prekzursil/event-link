@@ -295,7 +295,8 @@ def _load_interaction_signals(
         )
     except Exception as exc:  # noqa: BLE001
         print(
-            f"[warn] could not load event_interactions ({exc}); continuing without interaction signals"
+            f"[warn] could not load event_interactions ({exc}); "
+            "continuing without interaction signals"
         )
 
     return (

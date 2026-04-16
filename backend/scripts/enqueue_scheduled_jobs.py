@@ -29,7 +29,10 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--guardrails",
         action="store_true",
-        help="Enqueue personalization guardrails evaluation job (CTR/conversion checks + auto-rollback).",
+        help=(
+            "Enqueue personalization guardrails evaluation job "
+            "(CTR/conversion checks + auto-rollback)."
+        ),
     )
     parser.add_argument(
         "--weekly-digest",

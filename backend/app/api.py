@@ -590,7 +590,9 @@ def _merged_tag_filters(*, tags: list[str] | None, tags_csv: str | None) -> list
     return tag_filters
 
 
-def _apply_event_visibility_filters(query, *, now: datetime, include_past: bool):  # noqa: ANN001
+def _apply_event_visibility_filters(  # noqa: ANN001
+    query, *, now: datetime, include_past: bool
+):
     """Apply publication and past-event visibility filters to event list queries."""
     if not include_past:
         query = query.filter(models.Event.start_time >= now)

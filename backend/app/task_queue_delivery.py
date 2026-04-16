@@ -10,7 +10,12 @@ from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from . import models
-from .task_queue_guardrails import evaluate_personalization_guardrails  # noqa: F401 re-exported
+# Re-exported for external modules that historically imported the
+# evaluator via app.task_queue_delivery; keep the alias here to avoid
+# churn downstream.
+from .task_queue_guardrails import (  # noqa: F401
+    evaluate_personalization_guardrails,
+)
 from .task_queue_shared import (
     _coerce_bool,
     _notification_exists,
