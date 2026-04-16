@@ -4,7 +4,6 @@ import { format } from 'date-fns';
 import type { EventFilters } from '@/types';
 import type { Locale } from 'date-fns';
 import { useAuth } from '@/contexts/AuthContext';
-import { useI18n } from '@/contexts/LanguageContext';
 
 const ALL_CATEGORIES_VALUE = '__all__';
 export const EVENTS_PAGE_RECOMMENDATIONS_ENABLED =
