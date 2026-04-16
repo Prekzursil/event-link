@@ -24,4 +24,10 @@ engines:
       - backend/tests/**
       - backend/integration_tests/**
       - ui/tests/**
+      # Quality-gate tooling and CLI scripts. The file-size / long-method
+      # flags land here because the tools are long imperative pipelines
+      # (fetch → parse → compare → write) — they are not hot production code.
+      - scripts/quality/**
+      - backend/scripts/**
+      - backend/seed_data.py
 
