@@ -41,12 +41,8 @@ def upgrade() -> None:
         sa.Column("id", sa.Integer(), primary_key=True),
         sa.Column("dedupe_key", sa.String(length=200), nullable=False),
         sa.Column("notification_type", sa.String(length=50), nullable=False),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
-        sa.Column(
-            "event_id", sa.Integer(), sa.ForeignKey("events.id"), nullable=True
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column("event_id", sa.Integer(), sa.ForeignKey("events.id"), nullable=True),
         sa.Column(
             "sent_at",
             sa.TIMESTAMP(timezone=True),
@@ -54,9 +50,7 @@ def upgrade() -> None:
             server_default=sa.func.now(),
         ),
         sa.Column("meta", sa.JSON(), nullable=True),
-        sa.UniqueConstraint(
-            "dedupe_key", name="uq_notification_delivery_dedupe_key"
-        ),
+        sa.UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),
     )
 
     op.create_index(

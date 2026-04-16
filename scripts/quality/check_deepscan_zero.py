@@ -45,9 +45,7 @@ PROVIDER_STATUS_RETRY_DELAY_SECONDS = 10.0
 
 def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for the DeepScan gate."""
-    parser = argparse.ArgumentParser(
-        description="Assert DeepScan has zero total open issues."
-    )
+    parser = argparse.ArgumentParser(description="Assert DeepScan has zero total open issues.")
     parser.add_argument(
         "--token",
         default="",
@@ -135,9 +133,7 @@ def _request_json(url: str, token: str) -> dict[str, Any]:
     return payload
 
 
-def _github_status_payload(
-    *, owner: str, repo: str, sha: str, github_token: str
-) -> dict[str, Any]:
+def _github_status_payload(*, owner: str, repo: str, sha: str, github_token: str) -> dict[str, Any]:
     """Fetch the GitHub commit-status payload for a repository SHA."""
     payload, _headers, status = request_https_json(
         build_github_commit_status_url(
@@ -188,18 +184,14 @@ def _deepscan_dashboard_url(status_payload: dict[str, Any]) -> str:
     for status in status_payload.get("statuses") or []:
         if str(status.get("context") or "").strip() != "DeepScan":
             continue
-        target_url = str(
-            status.get("target_url") or status.get("targetUrl") or ""
-        ).strip()
+        target_url = str(status.get("target_url") or status.get("targetUrl") or "").strip()
         if target_url:
             normalize_https_url(target_url, allowed_host_suffixes={DEEPSCAN_HOST})
             return target_url
     raise RuntimeError("DeepScan commit status did not include a provider target URL.")
 
 
-def _wait_for_deepscan_dashboard_url(
-    *, owner: str, repo: str, sha: str, github_token: str
-) -> str:
+def _wait_for_deepscan_dashboard_url(*, owner: str, repo: str, sha: str, github_token: str) -> str:
     """Retry GitHub status discovery until a DeepScan dashboard URL appears."""
     last_error: RuntimeError | None = None
     for attempt in range(STATUS_RETRY_ATTEMPTS):
@@ -217,14 +209,10 @@ def _wait_for_deepscan_dashboard_url(
             if attempt == STATUS_RETRY_ATTEMPTS - 1:
                 break
             time.sleep(STATUS_RETRY_DELAY_SECONDS)
-    raise last_error or RuntimeError(
-        "DeepScan commit status did not include a provider target URL."
-    )
+    raise last_error or RuntimeError("DeepScan commit status did not include a provider target URL.")
 
 
-def _wait_for_provider_status_payload(
-    *, owner: str, repo: str, sha: str, github_token: str
-) -> dict[str, Any]:
+def _wait_for_provider_status_payload(*, owner: str, repo: str, sha: str, github_token: str) -> dict[str, Any]:
     """Retry GitHub status discovery until DeepSource or DeepScan statuses appear."""
     last_payload: dict[str, Any] = {"statuses": []}
     for attempt in range(PROVIDER_STATUS_RETRY_ATTEMPTS):
@@ -250,10 +238,7 @@ def _analysis_api_url(ids: dict[str, str], *, owner_bid: str, head_aid: str) -> 
     """Build the DeepScan analysis API URL for the resolved identifiers."""
     return build_https_url(
         host=DEEPSCAN_HOST,
-        path=(
-            f"api/teams/{ids['team_id']}/projects/{ids['project_id']}"
-            f"/branches/{owner_bid}/analyses/{head_aid}"
-        ),
+        path=(f"api/teams/{ids['team_id']}/projects/{ids['project_id']}" f"/branches/{owner_bid}/analyses/{head_aid}"),
     )
 
 
@@ -262,10 +247,7 @@ def _resolve_analysis_url_from_dashboard(dashboard_url: str, token: str) -> str:
     ids = _parse_dashboard_url_ids(dashboard_url)
     pull_url = build_https_url(
         host=DEEPSCAN_HOST,
-        path=(
-            f"api/teams/{ids['team_id']}/projects/{ids['project_id']}"
-            f"/pulls/{ids['pull_request_id']}"
-        ),
+        path=(f"api/teams/{ids['team_id']}/projects/{ids['project_id']}" f"/pulls/{ids['pull_request_id']}"),
     )
     pull_payload = _request_json(pull_url, token)
     data = pull_payload.get("data") if isinstance(pull_payload, dict) else None
@@ -274,9 +256,7 @@ def _resolve_analysis_url_from_dashboard(dashboard_url: str, token: str) -> str:
     owner_bid = str(data.get("ownerBid") or "").strip()
     head_aid = str(data.get("headAid") or "").strip()
     if not owner_bid.isdigit() or not head_aid.isdigit():
-        raise RuntimeError(
-            "DeepScan pull payload did not include valid analysis identifiers."
-        )
+        raise RuntimeError("DeepScan pull payload did not include valid analysis identifiers.")
     return _analysis_api_url(ids, owner_bid=owner_bid, head_aid=head_aid)
 
 
@@ -286,9 +266,7 @@ def _is_dashboard_url(raw_url: str) -> bool:
     return parsed.path.rstrip("/") == "/dashboard" and "prid=" in parsed.fragment
 
 
-def _matching_statuses(
-    status_payload: dict[str, Any], *, prefix: str
-) -> list[dict[str, Any]]:
+def _matching_statuses(status_payload: dict[str, Any], *, prefix: str) -> list[dict[str, Any]]:
     """Return commit statuses whose contexts start with the requested prefix."""
     return [
         status
@@ -309,21 +287,13 @@ def _pending_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _failed_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return statuses that are neither pending nor successful."""
-    return [
-        status
-        for status in statuses
-        if _status_state(status) not in {"pending", "success"}
-    ]
+    return [status for status in statuses if _status_state(status) not in {"pending", "success"}]
 
 
-def _first_status_target_url(
-    statuses: list[dict[str, Any]], *, allowed_host_suffixes: set[str]
-) -> str | None:
+def _first_status_target_url(statuses: list[dict[str, Any]], *, allowed_host_suffixes: set[str]) -> str | None:
     """Return the first valid target URL found in a status list."""
     for status in statuses:
-        target_url = str(
-            status.get("target_url") or status.get("targetUrl") or ""
-        ).strip()
+        target_url = str(status.get("target_url") or status.get("targetUrl") or "").strip()
         if target_url:
             return normalize_https_url(
                 target_url,
@@ -335,9 +305,7 @@ def _first_status_target_url(
 def _status_finding(status: dict[str, Any]) -> str:
     """Format a failing status as a human-readable finding."""
     context = str(status.get("context") or "").strip()
-    description = (
-        str(status.get("description") or "").strip() or "status not successful"
-    )
+    description = str(status.get("description") or "").strip() or "status not successful"
     return f"{context}: {description}"
 
 
@@ -447,9 +415,7 @@ def _resolve_open_issues(
     analysis_payload = _request_json(analysis_url, token)
     open_issues = extract_total_open(analysis_payload)
     if open_issues is None:
-        raise RuntimeError(
-            "DeepScan response did not include a parseable total issue count."
-        )
+        raise RuntimeError("DeepScan response did not include a parseable total issue count.")
     return open_issues, analysis_url
 
 
@@ -498,9 +464,7 @@ def _validated_open_issues_url(raw_url: str, findings: list[str]) -> str | None:
         return None
 
 
-def _github_status_fallback_configured(
-    *, repo: str, sha: str, github_token: str
-) -> bool:
+def _github_status_fallback_configured(*, repo: str, sha: str, github_token: str) -> bool:
     """Return ``True`` when the GitHub fallback inputs are fully available."""
     return all((repo, sha, github_token))
 
@@ -522,12 +486,7 @@ def _validated_inputs(
         sha=sha,
         github_token=github_token,
     ):
-        findings.append(
-            (
-                "DeepScan open-issues URL is missing and GitHub status fallback "
-                "is not fully configured."
-            )
-        )
+        findings.append(("DeepScan open-issues URL is missing and GitHub status fallback " "is not fully configured."))
 
     return token, safe_url, repo, sha, github_token, findings
 
@@ -570,9 +529,7 @@ def _evaluate_deepscan(
     if resolver_findings:
         return "fail", open_issues, [*findings, *resolver_findings], source_url
     if open_issues != 0:
-        issue_findings = resolver_findings or [
-            f"DeepScan reports {open_issues} open issues (expected 0)."
-        ]
+        issue_findings = resolver_findings or [f"DeepScan reports {open_issues} open issues (expected 0)."]
         return "fail", open_issues, [*findings, *issue_findings], source_url
     return "pass", open_issues, findings, source_url
 

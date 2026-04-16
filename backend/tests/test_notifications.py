@@ -85,5 +85,3 @@ def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers
 
     queued_emails2 = db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == JOB_TYPE_SEND_EMAIL).all()
     assert len(queued_emails2) == 1
-
-

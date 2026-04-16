@@ -1,4 +1,5 @@
 """Shared constants for API endpoint tests."""
+
 from __future__ import annotations
 
 from app import models

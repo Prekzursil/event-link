@@ -48,9 +48,7 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
             }
         assert "hotspots/search" in url
         assert auth_header == "auth"
-        return {
-            "paging": {"total": 2}
-        }
+        return {"paging": {"total": 2}}
 
     module._request_json = fake_request_json
 

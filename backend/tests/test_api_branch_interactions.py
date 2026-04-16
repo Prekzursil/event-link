@@ -68,7 +68,9 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
     api.record_interactions(payload=payload, request=request, db=db, current_user=current_user)
 
     assert len(db.interactions) == 1
-    assert captured_jobs == [("refresh_user_recommendations_ml", {"user_id": 5, "top_n": 9, "skip_training": True}, "5")]
+    assert captured_jobs == [
+        ("refresh_user_recommendations_ml", {"user_id": 5, "top_n": 9, "skip_training": True}, "5")
+    ]
 
 
 def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_learning_updates(helpers, monkeypatch):
@@ -107,8 +109,12 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
     future_seen = datetime.now(timezone.utc) + timedelta(hours=1)
     db.add_all(
         [
-            models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(tag.id), score=1.0, last_seen_at=future_seen),
-            models.UserImplicitInterestCategory(user_id=int(student.id), category="tech", score=1.0, last_seen_at=future_seen),
+            models.UserImplicitInterestTag(
+                user_id=int(student.id), tag_id=int(tag.id), score=1.0, last_seen_at=future_seen
+            ),
+            models.UserImplicitInterestCategory(
+                user_id=int(student.id), category="tech", score=1.0, last_seen_at=future_seen
+            ),
             models.UserImplicitInterestCity(user_id=int(student.id), city="cluj", score=1.0, last_seen_at=future_seen),
         ]
     )
@@ -120,14 +126,30 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
 
     resp = client.post(
         "/api/analytics/interactions",
-        json={"events": [{"interaction_type": "search", "meta": {"tags": ["aware-tag"], "category": "Tech", "city": "Cluj"}}]},
+        json={
+            "events": [
+                {"interaction_type": "search", "meta": {"tags": ["aware-tag"], "category": "Tech", "city": "Cluj"}}
+            ]
+        },
         headers=auth_header(token),
     )
 
     assert resp.status_code == 204
-    tag_row = db.query(models.UserImplicitInterestTag).filter(models.UserImplicitInterestTag.user_id == int(student.id)).first()
-    category_row = db.query(models.UserImplicitInterestCategory).filter(models.UserImplicitInterestCategory.user_id == int(student.id)).first()
-    city_row = db.query(models.UserImplicitInterestCity).filter(models.UserImplicitInterestCity.user_id == int(student.id)).first()
+    tag_row = (
+        db.query(models.UserImplicitInterestTag)
+        .filter(models.UserImplicitInterestTag.user_id == int(student.id))
+        .first()
+    )
+    category_row = (
+        db.query(models.UserImplicitInterestCategory)
+        .filter(models.UserImplicitInterestCategory.user_id == int(student.id))
+        .first()
+    )
+    city_row = (
+        db.query(models.UserImplicitInterestCity)
+        .filter(models.UserImplicitInterestCity.user_id == int(student.id))
+        .first()
+    )
     assert tag_row is not None and float(tag_row.score or 0.0) >= 1.0
     assert category_row is not None and float(category_row.score or 0.0) >= 1.0
     assert city_row is not None and float(city_row.score or 0.0) >= 1.0
@@ -225,7 +247,11 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
 
     request = Request({"type": "http", "method": "POST", "path": "/api/analytics/interactions", "headers": []})
     payload = schemas.InteractionBatchIn.model_validate(
-        {"events": [{"interaction_type": "search", "meta": {"tags": ["aware-tag"], "category": "Tech", "city": "Cluj"}}]}
+        {
+            "events": [
+                {"interaction_type": "search", "meta": {"tags": ["aware-tag"], "category": "Tech", "city": "Cluj"}}
+            ]
+        }
     )
     current_user = SimpleNamespace(id=1, role=models.UserRole.student)
     fake_db = _FakeDb()
@@ -263,9 +289,7 @@ def test_online_learning_and_realtime_refresh_guard_returns(monkeypatch):
         def commit():
             raise AssertionError("commit should not run")
 
-    payload = schemas.InteractionBatchIn.model_validate(
-        {"events": [{"interaction_type": "click", "event_id": 1}]}
-    )
+    payload = schemas.InteractionBatchIn.model_validate({"events": [{"interaction_type": "click", "event_id": 1}]})
     now = datetime.now(timezone.utc)
     guard_db = _GuardDb()
 

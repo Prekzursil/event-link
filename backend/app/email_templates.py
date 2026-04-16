@@ -75,7 +75,7 @@ def render_password_reset_email(user: User, reset_link: str, lang: str = "ro") -
         )
         html = (
             f"<p>You requested a password reset for <strong>{user.email}</strong>.</p>"
-            f"<p><a href=\"{reset_link}\">Reset password</a> (valid for 1 hour)</p>"
+            f'<p><a href="{reset_link}">Reset password</a> (valid for 1 hour)</p>'
             "<p>If you did not request this, you can ignore this email.</p>"
         )
     else:
@@ -87,7 +87,7 @@ def render_password_reset_email(user: User, reset_link: str, lang: str = "ro") -
         )
         html = (
             f"<p>Ai cerut resetarea parolei pentru <strong>{user.email}</strong>.</p>"
-            f"<p><a href=\"{reset_link}\">Resetează parola</a> (valabil 1 oră)</p>"
+            f'<p><a href="{reset_link}">Resetează parola</a> (valabil 1 oră)</p>'
             "<p>Dacă nu ai cerut tu această resetare, poți ignora acest email.</p>"
         )
     return subject, body, html

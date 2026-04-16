@@ -187,7 +187,11 @@ def requeue_stale_jobs(db: Session, *, stale_after_seconds: int | None = None) -
     cutoff = _now_utc() - timedelta(seconds=stale_after_seconds)
     count = (
         db.query(models.BackgroundJob)
-        .filter(models.BackgroundJob.status == "running", models.BackgroundJob.locked_at != None, models.BackgroundJob.locked_at < cutoff)  # noqa: E711
+        .filter(
+            models.BackgroundJob.status == "running",
+            models.BackgroundJob.locked_at != None,
+            models.BackgroundJob.locked_at < cutoff,
+        )  # noqa: E711
         .update(
             {
                 "status": "queued",
@@ -275,7 +279,9 @@ def _backend_root() -> Path:
     return Path(__file__).resolve().parents[1]
 
 
-def _apply_personalization_exclusions(query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]):  # noqa: ANN001
+def _apply_personalization_exclusions(
+    query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
+):  # noqa: ANN001
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:

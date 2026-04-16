@@ -41,4 +41,3 @@ def test_password_reset_confirm_requires_matching_values() -> None:
     }
     with pytest.raises(ValidationError):
         schemas.PasswordResetConfirm(**kwargs)
-

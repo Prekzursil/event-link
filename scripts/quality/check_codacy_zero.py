@@ -72,9 +72,7 @@ class PrAnalysisState(NamedTuple):
 
 def _parse_args() -> argparse.Namespace:
     """Parse command-line arguments for the Codacy zero gate."""
-    parser = argparse.ArgumentParser(
-        description="Assert Codacy has zero total open issues."
-    )
+    parser = argparse.ArgumentParser(description="Assert Codacy has zero total open issues.")
     parser.add_argument(
         "--provider",
         default="gh",
@@ -128,11 +126,7 @@ def _request_json(
 ) -> tuple[int, dict[str, Any]]:
     """Request JSON from the Codacy API and validate the top-level payload."""
     url = build_https_url(host="api.codacy.com", path=path)
-    payload_bytes = (
-        None
-        if body is None
-        else json.dumps(body, sort_keys=True).encode("utf-8")
-    )
+    payload_bytes = None if body is None else json.dumps(body, sort_keys=True).encode("utf-8")
     payload, _headers, status = request_https_json(
         url,
         headers={
@@ -164,10 +158,7 @@ def _issues_search_request(
     if branch:
         body["branchName"] = branch
     return _request_json(
-        path=(
-            f"api/v3/analysis/organizations/{provider}/{owner}/repositories/"
-            f"{repo}/issues/search?limit=1"
-        ),
+        path=(f"api/v3/analysis/organizations/{provider}/{owner}/repositories/" f"{repo}/issues/search?limit=1"),
         token=token,
         method="POST",
         body=body,
@@ -185,10 +176,7 @@ def _repository_analysis_request(
     """Fetch repository-level Codacy analysis metadata for a branch or default scope."""
     branch_query = f"?branch={quote(branch, safe='')}" if branch else ""
     return _request_json(
-        path=(
-            f"api/v3/analysis/organizations/{provider}/{owner}/repositories/"
-            f"{repo}{branch_query}"
-        ),
+        path=(f"api/v3/analysis/organizations/{provider}/{owner}/repositories/" f"{repo}{branch_query}"),
         token=token,
     )
 
@@ -386,9 +374,7 @@ def _repository_analysis_state(payload: dict[str, Any]) -> BranchAnalysisState:
     branch_info = data.get("branch")
     analysed_sha = str((last_analysed_commit or {}).get("sha") or "").strip()
     branch_head_sha = str(
-        (selected_branch or {}).get("lastCommit")
-        or (branch_info or {}).get("lastCommit")
-        or ""
+        (selected_branch or {}).get("lastCommit") or (branch_info or {}).get("lastCommit") or ""
     ).strip()
     return BranchAnalysisState(
         analysed_sha,
@@ -434,10 +420,7 @@ def _branch_analysis_result(
         return None
     return _issues_result(
         open_issues=state.open_issues,
-        missing_message=(
-            "Codacy repository response did not include a parseable "
-            "total issue count."
-        ),
+        missing_message=("Codacy repository response did not include a parseable " "total issue count."),
         nonzero_message=f"Codacy reports {state.open_issues} open issues (expected 0).",
     )
 
@@ -482,11 +465,7 @@ def _wait_for_branch_analysis(
 
 def _pr_analysis_state(payload: dict[str, Any]) -> PrAnalysisState:
     """Extract pull-request analysis state from a Codacy response."""
-    pull_request = (
-        payload.get("pullRequest")
-        if isinstance(payload.get("pullRequest"), dict)
-        else {}
-    )
+    pull_request = payload.get("pullRequest") if isinstance(payload.get("pullRequest"), dict) else {}
     return PrAnalysisState(
         str(pull_request.get("headCommitSha") or ""),
         bool(payload.get("isAnalysing")),
@@ -503,12 +482,8 @@ def _pr_analysis_result(
         return None
     return _issues_result(
         open_issues=state.open_issues,
-        missing_message=(
-            "Codacy PR response did not include a parseable new issue count."
-        ),
-        nonzero_message=(
-            f"Codacy reports {state.open_issues} PR new issues (expected 0)."
-        ),
+        missing_message=("Codacy PR response did not include a parseable new issue count."),
+        nonzero_message=(f"Codacy reports {state.open_issues} PR new issues (expected 0)."),
     )
 
 
@@ -565,13 +540,8 @@ def _evaluate_commit_analysis(
 
     return _issues_result(
         open_issues=_quality_new_issues(payload),
-        missing_message=(
-            "Codacy commit response did not include a parseable new issue count."
-        ),
-        nonzero_message=(
-            "Codacy reports "
-            f"{_quality_new_issues(payload)} commit new issues (expected 0)."
-        ),
+        missing_message=("Codacy commit response did not include a parseable new issue count."),
+        nonzero_message=("Codacy reports " f"{_quality_new_issues(payload)} commit new issues (expected 0)."),
     )
 
 
@@ -600,9 +570,7 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
     last_exc: Exception | None = None
     for candidate in _provider_candidates(request.provider):
         try:
-            status, open_issues, findings = _evaluate_candidate(
-                request.with_provider(candidate)
-            )
+            status, open_issues, findings = _evaluate_candidate(request.with_provider(candidate))
         except Exception as exc:  # pragma: no cover - network/runtime surface
             last_exc = exc
             return "fail", None, [f"Codacy API request failed: {exc}"]
@@ -610,10 +578,7 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
             continue
         return status, open_issues, findings
 
-    findings = [
-        "Codacy API endpoint was not found for provider(s): "
-        f"{request.provider}, gh, github."
-    ]
+    findings = ["Codacy API endpoint was not found for provider(s): " f"{request.provider}, gh, github."]
     if last_exc is not None:
         findings.append(f"Last Codacy API error: {last_exc}")
     return "fail", None, findings

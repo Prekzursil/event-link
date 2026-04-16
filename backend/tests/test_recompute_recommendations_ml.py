@@ -1,4 +1,5 @@
 """Coverage-closure tests for recommendation recomputation edge paths."""
+
 from __future__ import annotations
 
 import runpy
@@ -189,7 +190,9 @@ def test_main_skip_training_paths(monkeypatch, db_session, capsys) -> None:
     monkeypatch.delenv("RECOMMENDER_MODEL_VERSION", raising=False)
     assert _run_main(module, monkeypatch, "--skip-training", "--user-id", str(student.id)) == 0
     capsys.readouterr()
-    recommendations = db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+    recommendations = (
+        db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+    )
     assert recommendations
     assert any(rec.event_id == int(event_candidate.id) for rec in recommendations)
 
@@ -209,9 +212,7 @@ def test_main_skip_training_returns_zero_when_loader_yields_empty_state(monkeypa
     assert _run_main(module, monkeypatch, "--skip-training", "--user-id", str(student.id)) == 0
 
     recommendations = (
-        db_session.query(models.UserRecommendation)
-        .filter(models.UserRecommendation.user_id == int(student.id))
-        .all()
+        db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
     )
     assert recommendations == []
 
@@ -264,12 +265,17 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(monkeypatch, db
     assert _run_main(module, monkeypatch, "--user-id", str(student.id), "--top-n", "2") == 0
     write_output = capsys.readouterr().out
     assert "stored" in write_output
-    model = db_session.query(models.RecommenderModel).filter(models.RecommenderModel.model_version == "requested-v1").first()
+    model = (
+        db_session.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.model_version == "requested-v1")
+        .first()
+    )
     assert model is not None and model.is_active is True
-    recommendations = db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+    recommendations = (
+        db_session.query(models.UserRecommendation).filter(models.UserRecommendation.user_id == int(student.id)).all()
+    )
     assert recommendations
     assert any(rec.event_id == int(event_candidate.id) for rec in recommendations)
-
 
 
 def _empty_user_features(module, *, city: str | None = None, city_weights: dict[str, float] | None = None):
@@ -346,6 +352,7 @@ def test_main_training_warning_paths_continue_on_query_failures(monkeypatch, db_
 
     class _SessionContext:
         """Test double for SessionContext."""
+
         def __init__(self, session):
             """Initializes the test double."""
             self._session = session
@@ -388,6 +395,7 @@ def test_main_training_detects_feature_length_mismatch(monkeypatch, db_session, 
     module = _load_script_module()
     student, _event_candidate = _seed_training_rows(db_session)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
+
     def _single_feature_vector(**_kwargs):
         """Returns a one-feature vector for mismatch validation."""
         return [1.0]

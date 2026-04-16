@@ -38,7 +38,13 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
     monkeypatch.setattr(api, "_attach_tags", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(api, "_compute_moderation", lambda **_kwargs: (0.0, [], "clean"))
     monkeypatch.setattr(api, "log_event", lambda *_args, **_kwargs: None)
-    monkeypatch.setattr(api, "_serialize_event", lambda event, seats_taken=0, recommendation_reason=None: SimpleNamespace(id=event.id, start_time=event.start_time))
+    monkeypatch.setattr(
+        api,
+        "_serialize_event",
+        lambda event, seats_taken=0, recommendation_reason=None: SimpleNamespace(
+            id=event.id, start_time=event.start_time
+        ),
+    )
 
     class _CreateDb:
         @staticmethod
@@ -233,7 +239,9 @@ def _assert_explicit_language_reads_cached_reason(client, student_token: str, ev
     assert recommendations_resp.status_code == 200
 
 
-def _assert_registration_email_uses_profile_language(client, student_token: str, event_id: int, langs: list[str]) -> None:
+def _assert_registration_email_uses_profile_language(
+    client, student_token: str, event_id: int, langs: list[str]
+) -> None:
     register_resp = client.post(
         f"/api/events/{event_id}/register",
         headers={**auth_header(student_token), "Accept-Language": "ro"},
@@ -349,8 +357,12 @@ def _seed_restore_and_clone_context(helpers):
     return client, admin_token, owner_token, restore_event, future_clone
 
 
-def _assert_restore_and_clone_paths(client, helpers, admin_token: str, owner_token: str, restore_event, future_clone) -> None:
-    restore_resp = client.post(f"/api/events/{int(restore_event.id)}/restore", headers=helpers["auth_header"](admin_token))
+def _assert_restore_and_clone_paths(
+    client, helpers, admin_token: str, owner_token: str, restore_event, future_clone
+) -> None:
+    restore_resp = client.post(
+        f"/api/events/{int(restore_event.id)}/restore", headers=helpers["auth_header"](admin_token)
+    )
     assert restore_resp.status_code == 200
     assert restore_resp.json()["restored_registrations"] == 0
 
@@ -457,6 +469,8 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
     )
 
     assert result.suggested_city == "Cluj"
+
+
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
     class _NoQueryDb:
         @staticmethod

@@ -1,4 +1,5 @@
 """Shared helpers for recommendation recomputation tests."""
+
 from __future__ import annotations
 
 import importlib.util
@@ -76,12 +77,30 @@ def _build_seed_training_entities(now: datetime):
     )
     tag = models.Tag(name="Python")
     events = {
-        "positive": _make_event(owner=organizer, title="Positive Event", now=now, days=5, location="Hall A", end_hours=2),
-        "candidate": _make_event(owner=organizer, title="Candidate Event", now=now, days=8, location="Hall B", max_seats=15, end_hours=2),
-        "filtered_status": _make_event(owner=organizer, title="Draft Event", now=now, days=9, location="Hall C", max_seats=12, status="draft"),
-        "filtered_publish": _make_event(owner=organizer, title="Future Publish", now=now, days=10, location="Hall D", max_seats=12, publish_at=now + timedelta(days=1)),
-        "filtered_past": _make_event(owner=organizer, title="Past Event", now=now, days=-1, location="Hall E", max_seats=12),
-        "filtered_full": _make_event(owner=organizer, title="Full Event", now=now, days=12, location="Hall F", max_seats=1),
+        "positive": _make_event(
+            owner=organizer, title="Positive Event", now=now, days=5, location="Hall A", end_hours=2
+        ),
+        "candidate": _make_event(
+            owner=organizer, title="Candidate Event", now=now, days=8, location="Hall B", max_seats=15, end_hours=2
+        ),
+        "filtered_status": _make_event(
+            owner=organizer, title="Draft Event", now=now, days=9, location="Hall C", max_seats=12, status="draft"
+        ),
+        "filtered_publish": _make_event(
+            owner=organizer,
+            title="Future Publish",
+            now=now,
+            days=10,
+            location="Hall D",
+            max_seats=12,
+            publish_at=now + timedelta(days=1),
+        ),
+        "filtered_past": _make_event(
+            owner=organizer, title="Past Event", now=now, days=-1, location="Hall E", max_seats=12
+        ),
+        "filtered_full": _make_event(
+            owner=organizer, title="Full Event", now=now, days=12, location="Hall F", max_seats=1
+        ),
     }
     return organizer, student, tag, events
 
@@ -105,13 +124,36 @@ def _build_seed_training_interactions(now: datetime, student, tag, events):
         models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(tag.id), score=0.9, last_seen_at=now),
         models.UserImplicitInterestCategory(user_id=int(student.id), category="Workshop", score=0.8, last_seen_at=now),
         models.UserImplicitInterestCity(user_id=int(student.id), city="Cluj", score=0.7, last_seen_at=now),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="impression", meta={"position": 1}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="click", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="dwell", meta={"seconds": 30}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="share", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="register", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=int(events["positive"].id), interaction_type="unregister", meta={}),
-        models.EventInteraction(user_id=int(student.id), event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"}),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="impression",
+            meta={"position": 1},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="click", meta={}
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=int(events["candidate"].id),
+            interaction_type="dwell",
+            meta={"seconds": 30},
+        ),
+        models.EventInteraction(
+            user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="share", meta={}
+        ),
+        models.EventInteraction(
+            user_id=int(student.id), event_id=int(events["candidate"].id), interaction_type="register", meta={}
+        ),
+        models.EventInteraction(
+            user_id=int(student.id), event_id=int(events["positive"].id), interaction_type="unregister", meta={}
+        ),
+        models.EventInteraction(
+            user_id=int(student.id),
+            event_id=None,
+            interaction_type="search",
+            meta={"tags": ["Python"], "category": "Workshop", "city": "Cluj"},
+        ),
     ]
 
 

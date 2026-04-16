@@ -49,7 +49,9 @@ def _holdout_positive_event_ids(*, user_id: int, positives, holdout, rng) -> lis
     return positive_event_ids
 
 
-def _history_from_positive_events(*, positive_event_ids: list[int], events, implicit_categories: set[str]) -> tuple[set[str], set[str], set[int]]:
+def _history_from_positive_events(
+    *, positive_event_ids: list[int], events, implicit_categories: set[str]
+) -> tuple[set[str], set[str], set[int]]:
     history_tags: set[str] = set()
     history_categories: set[str] = set()
     history_organizers: set[int] = set()
@@ -97,7 +99,9 @@ def _validated_persisted_model(model_row) -> tuple[str | None, list[float] | Non
     return str(model_row.model_version), weights, None
 
 
-def _load_persisted_model_state(*, db, models, requested_model_version: str | None) -> tuple[str | None, list[float] | None, int | None]:
+def _load_persisted_model_state(
+    *, db, models, requested_model_version: str | None
+) -> tuple[str | None, list[float] | None, int | None]:
     model_row = _selected_model_row(db=db, models=models, requested_model_version=requested_model_version)
     model_version, weights, exit_code = _validated_persisted_model(model_row)
     if exit_code is not None:
@@ -221,7 +225,9 @@ def _student_event_state(*, db, models, func, args):
     return students, events, all_event_ids
 
 
-def _training_meta(*, args, now: datetime, examples: list[tuple[list[float], int, float]], hitrate: float) -> dict[str, float | int | str]:
+def _training_meta(
+    *, args, now: datetime, examples: list[tuple[list[float], int, float]], hitrate: float
+) -> dict[str, float | int | str]:
     return {
         "hitrate_at_10": float(hitrate),
         "trained_at": now.isoformat(),
@@ -243,9 +249,7 @@ def _feature_length_is_valid(examples: list[tuple[list[float], int, float]]) -> 
 
 def _persist_model_state(*, db, models, model_version: str, weights: list[float], meta: dict) -> None:
     existing_model = (
-        db.query(models.RecommenderModel)
-        .filter(models.RecommenderModel.model_version == model_version)
-        .first()
+        db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version == model_version).first()
     )
     if existing_model is None:
         existing_model = models.RecommenderModel(

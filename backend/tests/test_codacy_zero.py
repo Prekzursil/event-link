@@ -48,12 +48,15 @@ def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.Monk
 def test_quality_new_issues_prefers_quality_section() -> None:
     module = _load_module()
 
-    assert module._quality_new_issues(
-        {
-            "newIssues": 99,
-            "quality": {"newIssues": 4},
-        }
-    ) == 4
+    assert (
+        module._quality_new_issues(
+            {
+                "newIssues": 99,
+                "quality": {"newIssues": 4},
+            }
+        )
+        == 4
+    )
 
 
 def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -169,7 +172,9 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
     assert sleeps == [6]
 
 
-def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_ready(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_ready(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     module = _load_module()
 
     monkeypatch.setattr(

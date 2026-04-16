@@ -1,5 +1,3 @@
-
-
 def test_organizer_suggest_endpoint_returns_duplicates_and_category(client, helpers):
     helpers["make_organizer"]("org@test.ro")
     org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
@@ -78,5 +76,3 @@ def test_event_moderation_flags_are_exposed_in_admin_events(client, helpers):
     reviewed = next((item for item in resp.json()["items"] if item["id"] == event_id), None)
     assert reviewed is not None
     assert reviewed["moderation_status"] == "reviewed"
-
-

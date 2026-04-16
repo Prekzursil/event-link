@@ -14,7 +14,7 @@ from sqlalchemy import (
 )
 
 # add app path
-sys.path.append(os.path.dirname(os.path.abspath(__file__)) + '/../')
+sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 
 from app import models  # noqa: E402
 from app.config import settings  # noqa: E402
@@ -39,8 +39,7 @@ target_metadata = models.Base.metadata
 
 ALEMBIC_VERSION_NUM_LENGTH = 255
 ALTER_VERSION_NUM_SQL = (
-    'ALTER TABLE alembic_version '
-    f'ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})'
+    "ALTER TABLE alembic_version " f"ALTER COLUMN version_num TYPE VARCHAR({ALEMBIC_VERSION_NUM_LENGTH})"
 )
 
 

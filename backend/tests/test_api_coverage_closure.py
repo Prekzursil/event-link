@@ -1,4 +1,5 @@
 """Coverage-closure tests for API helper and endpoint edge paths."""
+
 from __future__ import annotations
 
 import asyncio
@@ -55,7 +56,9 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
     assert api._in_experiment_treatment("exp", 50, "identity") is (bucket < 50)
 
     assert api._is_admin(None) is False
-    user = models.User(email="ADMIN@Test.ro", password_hash=auth.get_password_hash("fixture-access-A1"), role=models.UserRole.student)
+    user = models.User(
+        email="ADMIN@Test.ro", password_hash=auth.get_password_hash("fixture-access-A1"), role=models.UserRole.student
+    )
     set_settings(monkeypatch, admin_emails=["admin@test.ro"])
     assert api._is_admin(user) is True
 
@@ -123,7 +126,11 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
     assert unhandled.status_code == 500
     mismatch = client.post(
         "/register",
-        json={"email": "mismatch@test.ro", ACCESS_CODE_FIELD: "fixture-access-A1", CONFIRM_ACCESS_CODE_FIELD: "fixture-access-B1"},
+        json={
+            "email": "mismatch@test.ro",
+            ACCESS_CODE_FIELD: "fixture-access-A1",
+            CONFIRM_ACCESS_CODE_FIELD: "fixture-access-B1",
+        },
     )
     assert mismatch.status_code == 422
 
@@ -197,7 +204,12 @@ def test_events_filter_branches_return_cached_reason(monkeypatch, helpers):
     ctx = cached_recommendation_context(helpers)
     assert ctx.client.get("/api/events", params={"page": 0}).status_code == 400
     assert ctx.client.get("/api/events", params={"page_size": 0}).status_code == 400
-    set_settings(monkeypatch, recommendations_use_ml_cache=True, recommendations_cache_max_age_seconds=3600, experiments_personalization_ml_percent=100)
+    set_settings(
+        monkeypatch,
+        recommendations_use_ml_cache=True,
+        recommendations_cache_max_age_seconds=3600,
+        experiments_personalization_ml_percent=100,
+    )
     resp = ctx.client.get(
         "/api/events",
         params={"sort": "invalid", "tags_csv": "alpha", "location": "hall"},
@@ -214,7 +226,10 @@ def test_cached_recommendations_handle_disabled_cache_and_empty_user(monkeypatch
     ctx = cached_recommendation_context(helpers)
     now = datetime.now(timezone.utc)
     set_settings(monkeypatch, recommendations_use_ml_cache=False)
-    assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
+    assert (
+        api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en")
+        is None
+    )
     set_settings(monkeypatch, recommendations_use_ml_cache=True)
 
     def _always_fresh(**_kwargs):
@@ -229,7 +244,11 @@ def test_cached_recommendations_handle_disabled_cache_and_empty_user(monkeypatch
     )
     ctx.db.add(fresh_user)
     ctx.db.commit()
-    assert api._load_cached_recommendations(db=ctx.db, user=fresh_user, now=now, registered_event_ids=[], lang="en") is None
+    assert (
+        api._load_cached_recommendations(db=ctx.db, user=fresh_user, now=now, registered_event_ids=[], lang="en")
+        is None
+    )
+
 
 def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, helpers):
     """Exercises cached recommendations skip registered and full events."""
@@ -242,10 +261,16 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
         return True
 
     monkeypatch.setattr(api, "_recommendations_cache_is_fresh", _always_fresh)
-    assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[int(ctx.event.id)], lang="en") is None
+    assert (
+        api._load_cached_recommendations(
+            db=ctx.db, user=ctx.student, now=now, registered_event_ids=[int(ctx.event.id)], lang="en"
+        )
+        is None
+    )
 
     def _rows(*items):
         """Builds the rows helper used by the test."""
+
         def _all():
             """Returns the intercepted cached recommendation rows."""
             return list(items)
@@ -265,13 +290,19 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
         "_events_with_counts_query",
         _unmatched_events_with_counts_query,
     )
-    assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
+    assert (
+        api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en")
+        is None
+    )
     monkeypatch.setattr(
         api,
         "_events_with_counts_query",
         _full_events_with_counts_query,
     )
-    assert api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en") is None
+    assert (
+        api._load_cached_recommendations(db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en")
+        is None
+    )
 
 
 def test_event_mutation_branches_cover_get_update_and_delete(helpers):
@@ -296,12 +327,20 @@ def test_event_mutation_branches_cover_get_update_and_delete(helpers):
         headers=auth_header(ctx.owner_token),
     )
     assert update_ok.status_code == 200
-    assert ctx.client.put(f"/api/events/{ctx.event_id}", json={"status": "invalid"}, headers=auth_header(ctx.owner_token)).status_code == 422
+    assert (
+        ctx.client.put(
+            f"/api/events/{ctx.event_id}", json={"status": "invalid"}, headers=auth_header(ctx.owner_token)
+        ).status_code
+        == 422
+    )
     assert ctx.client.delete("/api/events/999999", headers=auth_header(ctx.owner_token)).status_code == 404
     assert ctx.client.delete(f"/api/events/{ctx.event_id}", headers=auth_header(ctx.other_token)).status_code == 403
     assert ctx.client.post("/api/events/999999/restore", headers=auth_header(ctx.owner_token)).status_code == 404
     assert ctx.client.delete(f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)).status_code == 204
-    assert ctx.client.post(f"/api/events/{ctx.event_id}/restore", headers=auth_header(ctx.student_token)).status_code == 403
+    assert (
+        ctx.client.post(f"/api/events/{ctx.event_id}/restore", headers=auth_header(ctx.student_token)).status_code
+        == 403
+    )
 
 
 def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
@@ -336,7 +375,12 @@ def test_suggest_branches_infer_city_after_blank_tag_seed(helpers):
     ctx.db.commit()
     suggest = ctx.client.post(
         "/api/organizer/events/suggest",
-        json={"title": "Cluj-Napoca meetup", "description": "", "location": "Cluj-Napoca center", "start_time": helpers["future_time"](days=10)},
+        json={
+            "title": "Cluj-Napoca meetup",
+            "description": "",
+            "location": "Cluj-Napoca center",
+            "start_time": helpers["future_time"](days=10),
+        },
         headers=auth_header(ctx.owner_token),
     )
     assert suggest.status_code == 200
@@ -353,7 +397,13 @@ def test_admin_registration_and_participant_branches(helpers):
     )
     assert participants_name.status_code == 200
     requests = [
-        ("PUT", f"/api/organizer/events/{int(ctx.events['future'].id)}/participants/999999", {"attended": True}, ctx.owner_token, 404),
+        (
+            "PUT",
+            f"/api/organizer/events/{int(ctx.events['future'].id)}/participants/999999",
+            {"attended": True},
+            ctx.owner_token,
+            404,
+        ),
         ("POST", f"/api/events/{int(ctx.events['draft'].id)}/register", None, ctx.student_token, 400),
         ("POST", f"/api/events/{int(ctx.events['past'].id)}/register", None, ctx.student_token, 400),
         ("DELETE", f"/api/events/{int(ctx.events['past'].id)}/register", None, ctx.student_token, 400),
@@ -444,7 +494,9 @@ def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
             {"interaction_type": "search", "meta": {"tags": ["hidden-delta"], "category": "Tech", "city": "Cluj"}},
         ]
     }
-    learning_resp = ctx.client.post("/api/analytics/interactions", json=learning_payload, headers=auth_header(ctx.student_token))
+    learning_resp = ctx.client.post(
+        "/api/analytics/interactions", json=learning_payload, headers=auth_header(ctx.student_token)
+    )
     assert learning_resp.status_code == 204
 
 
@@ -471,11 +523,11 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
         return SimpleNamespace(id=501, job_type=job_type, status="queued")
 
     monkeypatch.setattr(tq, "enqueue_job", _enqueue)
-    refresh_payload = {"events": [{"interaction_type": "dwell", "event_id": int(ctx.event.id), "meta": {"seconds": 11}}]}
-    refresh_resp = ctx.client.post("/api/analytics/interactions", json=refresh_payload, headers=auth_header(ctx.student_token))
+    refresh_payload = {
+        "events": [{"interaction_type": "dwell", "event_id": int(ctx.event.id), "meta": {"seconds": 11}}]
+    }
+    refresh_resp = ctx.client.post(
+        "/api/analytics/interactions", json=refresh_payload, headers=auth_header(ctx.student_token)
+    )
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)
-
-
-
-

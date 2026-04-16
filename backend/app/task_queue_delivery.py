@@ -191,9 +191,8 @@ def _filling_fast_rows(db: Session, now: datetime) -> list[tuple[models.User, mo
 
 
 def _skip_filling_fast_user(user: models.User) -> bool:
-    return (
-        not _coerce_bool(getattr(user, "is_active", True))
-        or not _coerce_bool(getattr(user, "email_filling_fast_enabled", False))
+    return not _coerce_bool(getattr(user, "is_active", True)) or not _coerce_bool(
+        getattr(user, "email_filling_fast_enabled", False)
     )
 
 

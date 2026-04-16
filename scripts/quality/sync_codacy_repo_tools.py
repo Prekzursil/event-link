@@ -48,7 +48,9 @@ DISABLED_PATTERNS_BY_TOOL = {
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Sync Codacy repository tool settings to the repo's intended analyzer profile.")
+    parser = argparse.ArgumentParser(
+        description="Sync Codacy repository tool settings to the repo's intended analyzer profile."
+    )
     parser.add_argument("--provider", default="gh", help="Codacy provider slug, for example gh")
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
@@ -515,6 +517,7 @@ def _render_md(payload: dict[str, Any]) -> str:
     _append_markdown_section(lines, "Failures", _prefixed_lines(list(payload.get("failures") or [])))
     return "\n".join(lines) + "\n"
 
+
 def _resolve_token(cli_token: str) -> str:
     return (cli_token or os.environ.get("CODACY_API_TOKEN", "")).strip()
 
@@ -546,7 +549,9 @@ def main() -> int:
 
     try:
         write_workspace_json(raw_path=args.out_json, fallback="codacy-tool-sync/codacy-sync.json", payload=payload)
-        md_path = write_workspace_text(raw_path=args.out_md, fallback="codacy-tool-sync/codacy-sync.md", text=_render_md(payload))
+        md_path = write_workspace_text(
+            raw_path=args.out_md, fallback="codacy-tool-sync/codacy-sync.md", text=_render_md(payload)
+        )
     except ValueError as exc:
         print(str(exc), file=sys.stderr)
         return 1

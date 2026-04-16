@@ -85,12 +85,15 @@ def _load_event_features(*, db, models, func):
     return events
 
 
-def _load_interest_tag_weights(*, db, models, user_id: int | None, now: datetime, decay_lambda: float, max_score: float):
-    interest_tag_query = (
-        db.query(models.user_interest_tags.c.user_id, models.Tag.name)
-        .join(models.Tag, models.Tag.id == models.user_interest_tags.c.tag_id)
+def _load_interest_tag_weights(
+    *, db, models, user_id: int | None, now: datetime, decay_lambda: float, max_score: float
+):
+    interest_tag_query = db.query(models.user_interest_tags.c.user_id, models.Tag.name).join(
+        models.Tag, models.Tag.id == models.user_interest_tags.c.tag_id
     )
-    interest_tag_query = _maybe_filter_user(interest_tag_query, user_id=user_id, column=models.user_interest_tags.c.user_id)
+    interest_tag_query = _maybe_filter_user(
+        interest_tag_query, user_id=user_id, column=models.user_interest_tags.c.user_id
+    )
     interest_tag_weights_by_user: dict[int, dict[str, float]] = {}
     for raw_user_id, tag_name in interest_tag_query.all():
         normalized = _normalize_tag(str(tag_name))
@@ -98,16 +101,15 @@ def _load_interest_tag_weights(*, db, models, user_id: int | None, now: datetime
             continue
         interest_tag_weights_by_user.setdefault(int(raw_user_id), {})[normalized] = 1.0
 
-    implicit_tag_query = (
-        db.query(
-            models.UserImplicitInterestTag.user_id,
-            models.Tag.name,
-            models.UserImplicitInterestTag.score,
-            models.UserImplicitInterestTag.last_seen_at,
-        )
-        .join(models.Tag, models.Tag.id == models.UserImplicitInterestTag.tag_id)
+    implicit_tag_query = db.query(
+        models.UserImplicitInterestTag.user_id,
+        models.Tag.name,
+        models.UserImplicitInterestTag.score,
+        models.UserImplicitInterestTag.last_seen_at,
+    ).join(models.Tag, models.Tag.id == models.UserImplicitInterestTag.tag_id)
+    implicit_tag_query = _maybe_filter_user(
+        implicit_tag_query, user_id=user_id, column=models.UserImplicitInterestTag.user_id
     )
-    implicit_tag_query = _maybe_filter_user(implicit_tag_query, user_id=user_id, column=models.UserImplicitInterestTag.user_id)
     for raw_user_id, tag_name, score, last_seen_at in implicit_tag_query.all():
         normalized = _normalize_tag(str(tag_name))
         if not normalized:
@@ -155,10 +157,9 @@ def _load_optional_implicit_weights(**kwargs) -> dict[int, dict[str, float]]:
 
 
 def _load_registration_and_favorite_rows(*, db, models, user_id: int | None):
-    reg_query = (
-        db.query(models.Registration.user_id, models.Registration.event_id, models.Registration.attended)
-        .filter(models.Registration.deleted_at.is_(None))
-    )
+    reg_query = db.query(
+        models.Registration.user_id, models.Registration.event_id, models.Registration.attended
+    ).filter(models.Registration.deleted_at.is_(None))
     reg_query = _maybe_filter_user(reg_query, user_id=user_id, column=models.Registration.user_id)
     fav_query = db.query(models.FavoriteEvent.user_id, models.FavoriteEvent.event_id)
     fav_query = _maybe_filter_user(fav_query, user_id=user_id, column=models.FavoriteEvent.user_id)

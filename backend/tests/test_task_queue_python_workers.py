@@ -58,7 +58,9 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
     os.environ["EVENT_LINK_QUEUE_FLAG"] = "parent-flag"
     original_flag = os.environ.get("EVENT_LINK_QUEUE_FLAG")
     script_ok = tmp_path / "ok_worker.py"
-    script_ok.write_text("import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n", encoding="utf-8")
+    script_ok.write_text(
+        "import os\nprint(os.environ['EVENT_LINK_QUEUE_FLAG'])\nraise SystemExit(0)\n", encoding="utf-8"
+    )
     queue_ok = _Queue()
     with pytest.raises(SystemExit) as excinfo:
         task_queue._run_python_entrypoint_worker(
@@ -210,9 +212,7 @@ def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
     db_session.refresh(organizer)
     db_session.refresh(tag)
 
-    db_session.execute(
-        models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id))
-    )
+    db_session.execute(models.user_hidden_tags.insert().values(user_id=int(user.id), tag_id=int(tag.id)))
     db_session.execute(
         models.user_blocked_organizers.insert().values(
             user_id=int(user.id),

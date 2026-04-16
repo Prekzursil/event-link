@@ -1,4 +1,5 @@
 """Shared helpers for task queue unit tests."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -81,7 +82,13 @@ def add_balanced_guardrail_rows(db_session, *, user_id: int, event_id: int, now:
     for sort in ("recommended", "time"):
         rows.extend(
             [
-                interaction(user_id=user_id, event_id=event_id, kind="impression", occurred_at=now, meta={"source": "events_list", "sort": sort}),
+                interaction(
+                    user_id=user_id,
+                    event_id=event_id,
+                    kind="impression",
+                    occurred_at=now,
+                    meta={"source": "events_list", "sort": sort},
+                ),
                 interaction(
                     user_id=user_id,
                     event_id=event_id,
@@ -89,7 +96,9 @@ def add_balanced_guardrail_rows(db_session, *, user_id: int, event_id: int, now:
                     occurred_at=now + timedelta(minutes=1),
                     meta={"source": "events_list", "sort": sort},
                 ),
-                interaction(user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(minutes=5)),
+                interaction(
+                    user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(minutes=5)
+                ),
             ]
         )
     db_session.add_all(rows)
@@ -101,9 +110,21 @@ def seed_weekly_digest_fixture(db_session):
     users = {
         name: make_user(email, "student-fixture-A1", models.UserRole.student, **overrides)
         for name, email, overrides in [
-            ("active", "digest-active@test.ro", {"is_active": True, "email_digest_enabled": True, "language_preference": "system"}),
-            ("inactive", "digest-inactive@test.ro", {"is_active": False, "email_digest_enabled": True, "language_preference": "system"}),
-            ("disabled", "digest-disabled@test.ro", {"is_active": True, "email_digest_enabled": False, "language_preference": "system"}),
+            (
+                "active",
+                "digest-active@test.ro",
+                {"is_active": True, "email_digest_enabled": True, "language_preference": "system"},
+            ),
+            (
+                "inactive",
+                "digest-inactive@test.ro",
+                {"is_active": False, "email_digest_enabled": True, "language_preference": "system"},
+            ),
+            (
+                "disabled",
+                "digest-disabled@test.ro",
+                {"is_active": True, "email_digest_enabled": False, "language_preference": "system"},
+            ),
         ]
     }
     organizer = make_user("digest-org@test.ro", "organizer-fixture-A1", models.UserRole.organizator)
@@ -145,14 +166,46 @@ def seed_filling_fast_branch_matrix(db_session):
     users = {
         name: make_user(email, "student-fixture-A1", models.UserRole.student, **overrides)
         for name, email, overrides in [
-            ("inactive", "inactive@test.ro", {"is_active": False, "email_filling_fast_enabled": True, "language_preference": "en"}),
-            ("disabled", "disabled@test.ro", {"is_active": True, "email_filling_fast_enabled": False, "language_preference": "en"}),
-            ("limited", "limited@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
-            ("blocked", "blocked@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
-            ("hidden", "hidden@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
-            ("full", "full@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
-            ("abundant", "abundant@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"}),
-            ("system", "system@test.ro", {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "system"}),
+            (
+                "inactive",
+                "inactive@test.ro",
+                {"is_active": False, "email_filling_fast_enabled": True, "language_preference": "en"},
+            ),
+            (
+                "disabled",
+                "disabled@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": False, "language_preference": "en"},
+            ),
+            (
+                "limited",
+                "limited@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+            ),
+            (
+                "blocked",
+                "blocked@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+            ),
+            (
+                "hidden",
+                "hidden@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+            ),
+            (
+                "full",
+                "full@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+            ),
+            (
+                "abundant",
+                "abundant@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "en"},
+            ),
+            (
+                "system",
+                "system@test.ro",
+                {"is_active": True, "email_filling_fast_enabled": True, "language_preference": "system"},
+            ),
         ]
     }
     db_session.add_all([organizer, hidden_tag, *events.values(), *users.values()])
@@ -193,17 +246,42 @@ def patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
     monkeypatch.setattr(
         tpl,
         "render_filling_fast_email",
-        lambda user, event, *, available_seats, lang: langs.append((user.email, lang, available_seats, event.title)) or ("sub", "txt", "html"),
+        lambda user, event, *, available_seats, lang: langs.append((user.email, lang, available_seats, event.title))
+        or ("sub", "txt", "html"),
     )
 
 
 def seed_guardrail_window_rows(db_session, *, user_id: int, event_id: int, now: datetime) -> None:
     db_session.add_all(
         [
-            interaction(user_id=user_id, event_id=event_id, kind="impression", occurred_at=now, meta={"source": "events_list", "sort": "recommended"}),
-            interaction(user_id=user_id, event_id=event_id, kind="impression", occurred_at=now, meta={"source": "events_list", "sort": "time"}),
-            interaction(user_id=user_id, event_id=event_id, kind="click", occurred_at=now + timedelta(minutes=1), meta={"source": "other", "sort": "recommended"}),
-            interaction(user_id=user_id, event_id=event_id, kind="click", occurred_at=now + timedelta(minutes=2), meta={"source": "events_list", "sort": "recommended"}),
+            interaction(
+                user_id=user_id,
+                event_id=event_id,
+                kind="impression",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": "recommended"},
+            ),
+            interaction(
+                user_id=user_id,
+                event_id=event_id,
+                kind="impression",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": "time"},
+            ),
+            interaction(
+                user_id=user_id,
+                event_id=event_id,
+                kind="click",
+                occurred_at=now + timedelta(minutes=1),
+                meta={"source": "other", "sort": "recommended"},
+            ),
+            interaction(
+                user_id=user_id,
+                event_id=event_id,
+                kind="click",
+                occurred_at=now + timedelta(minutes=2),
+                meta={"source": "events_list", "sort": "recommended"},
+            ),
             interaction(user_id=user_id, event_id=event_id, kind="register", occurred_at=now + timedelta(hours=5)),
         ]
     )
@@ -221,8 +299,12 @@ def seed_guardrail_rollback_state(db_session, *, user_id: int, event_id: int, no
             meta={"source": "events_list", "sort": "recommended"},
         )
     )
-    previous = models.RecommenderModel(model_version="model-prev", feature_names=["bias"], weights=[0.0], meta={}, is_active=False)
-    active = models.RecommenderModel(model_version="model-active", feature_names=["bias"], weights=[0.1], meta={}, is_active=True)
+    previous = models.RecommenderModel(
+        model_version="model-prev", feature_names=["bias"], weights=[0.0], meta={}, is_active=False
+    )
+    active = models.RecommenderModel(
+        model_version="model-active", feature_names=["bias"], weights=[0.1], meta={}, is_active=True
+    )
     db_session.add_all([previous, active])
     db_session.commit()
     return previous, active

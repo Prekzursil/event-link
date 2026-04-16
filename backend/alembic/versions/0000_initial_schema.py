@@ -21,9 +21,7 @@ def upgrade() -> None:
     bind = op.get_bind()
 
     if bind.dialect.name == "postgresql":
-        user_role_enum = postgresql.ENUM(
-            "student", "organizator", name="userrole", create_type=False
-        )
+        user_role_enum = postgresql.ENUM("student", "organizator", name="userrole", create_type=False)
         user_role_enum.create(bind, checkfirst=True)
     else:
         user_role_enum = sa.Enum("student", "organizator", name="userrole")
@@ -55,9 +53,7 @@ def upgrade() -> None:
         sa.Column("end_time", sa.TIMESTAMP(timezone=True), nullable=True),
         sa.Column("location", sa.String(length=255), nullable=True),
         sa.Column("max_seats", sa.Integer(), nullable=True),
-        sa.Column(
-            "owner_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("owner_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -69,9 +65,7 @@ def upgrade() -> None:
     op.create_table(
         "registrations",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
         sa.Column(
             "event_id",
             sa.Integer(),
@@ -95,9 +89,7 @@ def upgrade() -> None:
             sa.ForeignKey("events.id"),
             primary_key=True,
         ),
-        sa.Column(
-            "tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True
-        ),
+        sa.Column("tag_id", sa.Integer(), sa.ForeignKey("tags.id"), primary_key=True),
     )
 
 
@@ -111,7 +103,5 @@ def downgrade() -> None:
 
     bind = op.get_bind()
     if bind.dialect.name == "postgresql":
-        user_role_enum = postgresql.ENUM(
-            "student", "organizator", name="userrole"
-        )
+        user_role_enum = postgresql.ENUM("student", "organizator", name="userrole")
         user_role_enum.drop(bind, checkfirst=True)

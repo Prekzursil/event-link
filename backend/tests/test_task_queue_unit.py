@@ -14,10 +14,11 @@ from task_queue_test_support import (
 
 
 def test_unexpected_enqueue_guard_raises() -> None:
-    with pytest.raises(AssertionError, match='enqueue_job should not run'):
+    with pytest.raises(AssertionError, match="enqueue_job should not run"):
         unexpected_enqueue()
-    with pytest.raises(AssertionError, match='timeout path'):
-        raise_assertion('timeout path')
+    with pytest.raises(AssertionError, match="timeout path"):
+        raise_assertion("timeout path")
+
 
 def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool(True) is True
@@ -28,11 +29,11 @@ def test_coerce_bool_variants() -> None:
     assert task_queue._coerce_bool("off") is False
     assert task_queue._coerce_bool(None) is False
 
+
 def test_backend_root_points_to_backend_directory() -> None:
     backend_root = task_queue._backend_root()
     assert backend_root.name == "backend"
     assert (backend_root / "app" / "task_queue.py").exists()
-
 
 
 def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
@@ -153,10 +154,14 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
         (task_queue.JOB_TYPE_SEND_FILLING_FAST_ALERTS, {}),
         (task_queue.JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS, {}),
     ]:
-        job = models.BackgroundJob(job_type=jt, payload=pl, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc))
+        job = models.BackgroundJob(
+            job_type=jt, payload=pl, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc)
+        )
         task_queue.process_job(db_session, job)
 
-    unknown = models.BackgroundJob(job_type="unknown", payload={}, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc))
+    unknown = models.BackgroundJob(
+        job_type="unknown", payload={}, status="queued", attempts=0, max_attempts=3, run_at=datetime.now(timezone.utc)
+    )
     task_queue.process_job(db_session, unknown)
 
     assert task_queue.JOB_TYPE_SEND_EMAIL in succeeded
@@ -186,7 +191,11 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
         email_filling_fast_enabled=True,
         language_preference="en",
     )
-    org = models.User(email="fill-org@test.ro", password_hash=auth.get_password_hash("organizer-fixture-A1"), role=models.UserRole.organizator)
+    org = models.User(
+        email="fill-org@test.ro",
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
+        role=models.UserRole.organizator,
+    )
     event = models.Event(
         title="Filling Event",
         description="desc",
@@ -212,6 +221,7 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
 
     import app.email_templates as tpl
+
     monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: ("sub", "txt", "html"))
 
     result_first = task_queue._send_filling_fast_alerts(

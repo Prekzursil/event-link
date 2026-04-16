@@ -21,7 +21,9 @@ write_workspace_text = _security_helpers.write_workspace_text
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Wait for required GitHub check contexts and assert they are successful.")
+    parser = argparse.ArgumentParser(
+        description="Wait for required GitHub check contexts and assert they are successful."
+    )
     parser.add_argument("--repo", required=True, help="owner/repo")
     parser.add_argument("--sha", required=True, help="commit SHA")
     parser.add_argument("--required-context", action="append", default=[], help="Required context name")
@@ -216,11 +218,7 @@ def _fetch_contexts(*, owner: str, repo: str, sha: str, token: str) -> dict[str,
 
 
 def _has_in_progress_check_runs(contexts: dict[str, dict[str, str]]) -> bool:
-    return any(
-        value.get("state") != "completed"
-        for value in contexts.values()
-        if value.get("source") == "check_run"
-    )
+    return any(value.get("state") != "completed" for value in contexts.values() if value.get("source") == "check_run")
 
 
 def _poll_required_contexts(

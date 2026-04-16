@@ -23,9 +23,7 @@ def upgrade():
         sa.Column("user_id", sa.Integer(), nullable=False),
         sa.Column("token", sa.String(length=255), nullable=False),
         sa.Column("expires_at", sa.TIMESTAMP(timezone=True), nullable=False),
-        sa.Column(
-            "used", sa.Boolean(), server_default="false", nullable=False
-        ),
+        sa.Column("used", sa.Boolean(), server_default="false", nullable=False),
         sa.Column(
             "created_at",
             sa.TIMESTAMP(timezone=True),
@@ -49,7 +47,5 @@ def upgrade():
 
 def downgrade():
     """Revert the password-reset token migration."""
-    op.drop_index(
-        op.f("ix_password_reset_tokens_id"), table_name="password_reset_tokens"
-    )
+    op.drop_index(op.f("ix_password_reset_tokens_id"), table_name="password_reset_tokens")
     op.drop_table("password_reset_tokens")

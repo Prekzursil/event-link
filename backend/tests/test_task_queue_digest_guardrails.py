@@ -111,9 +111,7 @@ def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(db_sessio
     db_session.commit()
     db_session.refresh(hidden_tag)
 
-    db_session.execute(
-        models.user_hidden_tags.insert().values(user_id=int(active_user.id), tag_id=int(hidden_tag.id))
-    )
+    db_session.execute(models.user_hidden_tags.insert().values(user_id=int(active_user.id), tag_id=int(hidden_tag.id)))
     db_session.execute(
         models.user_blocked_organizers.insert().values(
             user_id=int(active_user.id),
@@ -133,11 +131,33 @@ def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, 
     now = datetime.now(timezone.utc)
     db_session.add_all(
         [
-            interaction(user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta="not-a-dict"),
-            interaction(user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta={"source": "events_list"}),
-            interaction(user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta={"source": "other", "sort": "time"}),
-            interaction(user_id=int(user.id), event_id=int(event.id), kind="click", occurred_at=now, meta={"source": "events_list", "sort": "unknown"}),
-            interaction(user_id=int(user.id), event_id=int(event.id), kind="register", occurred_at=now + timedelta(hours=5)),
+            interaction(
+                user_id=int(user.id), event_id=int(event.id), kind="impression", occurred_at=now, meta="not-a-dict"
+            ),
+            interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="impression",
+                occurred_at=now,
+                meta={"source": "events_list"},
+            ),
+            interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="impression",
+                occurred_at=now,
+                meta={"source": "other", "sort": "time"},
+            ),
+            interaction(
+                user_id=int(user.id),
+                event_id=int(event.id),
+                kind="click",
+                occurred_at=now,
+                meta={"source": "events_list", "sort": "unknown"},
+            ),
+            interaction(
+                user_id=int(user.id), event_id=int(event.id), kind="register", occurred_at=now + timedelta(hours=5)
+            ),
         ]
     )
     db_session.commit()
@@ -202,7 +222,9 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch
             meta={"source": "events_list", "sort": "recommended"},
         )
     )
-    active_model = models.RecommenderModel(model_version="active-only", feature_names=["bias"], weights=[0.0], meta={}, is_active=True)
+    active_model = models.RecommenderModel(
+        model_version="active-only", feature_names=["bias"], weights=[0.0], meta={}, is_active=True
+    )
     db_session.add(active_model)
     db_session.commit()
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
@@ -240,7 +262,9 @@ def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(monkeyp
 
 
 def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
-    user = SimpleNamespace(id=11, is_active=True, email_filling_fast_enabled=True, language_preference="en", email="user@test.ro")
+    user = SimpleNamespace(
+        id=11, is_active=True, email_filling_fast_enabled=True, language_preference="en", email="user@test.ro"
+    )
     event = SimpleNamespace(id=21, owner_id=31, tags=[], max_seats=None, title="No seats")
     fake_db = FakeFillingFastDb(
         ChainQuery(subquery_result=SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))),
@@ -252,6 +276,7 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
     monkeypatch.setattr(task_queue, "enqueue_job", unexpected_enqueue)
     import app.email_templates as tpl
+
     monkeypatch.setattr(tpl, "render_filling_fast_email", lambda *_args, **_kwargs: render_calls.append("rendered"))
     result = task_queue._send_filling_fast_alerts(
         db=fake_db,

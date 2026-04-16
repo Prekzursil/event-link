@@ -36,9 +36,7 @@ def _create_realtime_fixture(helpers, *, slug: str, title: str):
 
 def _refresh_jobs(db):
     return (
-        db.query(models.BackgroundJob)
-        .filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml")
-        .all()
+        db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "refresh_user_recommendations_ml").all()
     )
 
 

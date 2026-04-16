@@ -60,8 +60,6 @@ def test_worker_main_graceful_shutdown(monkeypatch):
     assert db_instances and all(db.closed for db in db_instances)
 
 
-
-
 def test_default_worker_id_contains_separator() -> None:
     value = worker._default_worker_id()
     assert ":" in value
@@ -93,6 +91,7 @@ def test_worker_main_logs_loop_errors(monkeypatch):
     assert any(evt == "worker_loop_error" for evt, _ in warnings)
     assert db_instances and all(db.closed for db in db_instances)
 
+
 def test_worker_module_entrypoint_runs_main(monkeypatch):
     calls = []
     monkeypatch.setattr(worker, "main", lambda: calls.append("ran"))
@@ -101,4 +100,3 @@ def test_worker_module_entrypoint_runs_main(monkeypatch):
     worker._maybe_run_main("app.worker")
 
     assert calls == ["ran"]
-

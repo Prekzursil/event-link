@@ -69,8 +69,12 @@ def _seed_admin_context(helpers, monkeypatch):
     admin_token = helpers["login"]("admin-queues@test.ro", "admin-fixture-A1")
     db.add_all(
         [
-            models.RecommenderModel(model_version="old-model", feature_names=["bias"], weights=[0.0], meta={}, is_active=True),
-            models.RecommenderModel(model_version="new-model", feature_names=["bias"], weights=[1.0], meta={}, is_active=False),
+            models.RecommenderModel(
+                model_version="old-model", feature_names=["bias"], weights=[0.0], meta={}, is_active=True
+            ),
+            models.RecommenderModel(
+                model_version="new-model", feature_names=["bias"], weights=[1.0], meta={}, is_active=False
+            ),
         ]
     )
     db.commit()
@@ -108,9 +112,19 @@ def _record_interactions_payload(event_id: int) -> dict:
             {"interaction_type": "favorite", "event_id": event_id},
             {"interaction_type": "register", "event_id": event_id},
             {"interaction_type": "dwell", "event_id": event_id, "meta": {"seconds": 20}},
-            {"interaction_type": "search", "meta": {"tags": ["analytics-visible", "", None], "category": "Tech", "city": "Bucuresti"}},
-            {"interaction_type": "filter", "meta": {"tags": ["analytics-visible"], "category": "Tech", "city": "Bucuresti"}},
-            {"interaction_type": "click", "event_id": event_id, "occurred_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S")},
+            {
+                "interaction_type": "search",
+                "meta": {"tags": ["analytics-visible", "", None], "category": "Tech", "city": "Bucuresti"},
+            },
+            {
+                "interaction_type": "filter",
+                "meta": {"tags": ["analytics-visible"], "category": "Tech", "city": "Bucuresti"},
+            },
+            {
+                "interaction_type": "click",
+                "event_id": event_id,
+                "occurred_at": datetime.now().strftime("%Y-%m-%dT%H:%M:%S"),
+            },
         ]
     }
 
@@ -147,18 +161,47 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     student_token = helpers["register_student"]("interactions@test.ro")
     student = db.query(models.User).filter(models.User.email == "interactions@test.ro").first()
     assert student is not None
-    organizer = models.User(email="interactions-org@test.ro", password_hash=auth.get_password_hash("organizer-fixture-A1"), role=models.UserRole.organizator)
+    organizer = models.User(
+        email="interactions-org@test.ro",
+        password_hash=auth.get_password_hash("organizer-fixture-A1"),
+        role=models.UserRole.organizator,
+    )
     visible_tag = models.Tag(name="analytics-visible")
     hidden_tag = models.Tag(name="analytics-hidden")
-    event = models.Event(title="Interaction Event", description="desc", category="Tech", start_time=datetime.now(timezone.utc) + timedelta(days=2), city="Bucuresti", location="Hall", max_seats=20, owner=organizer, status="published")
+    event = models.Event(
+        title="Interaction Event",
+        description="desc",
+        category="Tech",
+        start_time=datetime.now(timezone.utc) + timedelta(days=2),
+        city="Bucuresti",
+        location="Hall",
+        max_seats=20,
+        owner=organizer,
+        status="published",
+    )
     event.tags.extend([visible_tag, hidden_tag])
     db.add_all([organizer, visible_tag, hidden_tag, event])
     db.commit()
     db.execute(models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id)))
     for model in (
-        models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(visible_tag.id), score=1.0, last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None)),
-        models.UserImplicitInterestCategory(user_id=int(student.id), category="tech", score=1.0, last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None)),
-        models.UserImplicitInterestCity(user_id=int(student.id), city="bucuresti", score=1.0, last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None)),
+        models.UserImplicitInterestTag(
+            user_id=int(student.id),
+            tag_id=int(visible_tag.id),
+            score=1.0,
+            last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        ),
+        models.UserImplicitInterestCategory(
+            user_id=int(student.id),
+            category="tech",
+            score=1.0,
+            last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        ),
+        models.UserImplicitInterestCity(
+            user_id=int(student.id),
+            city="bucuresti",
+            score=1.0,
+            last_seen_at=datetime.now(timezone.utc).replace(tzinfo=None),
+        ),
     ):
         db.add(model)
     db.commit()
@@ -172,7 +215,17 @@ def _seed_record_interactions_context(helpers, monkeypatch):
         return SimpleNamespace(id=77, job_type=job_type, status="queued")
 
     monkeypatch.setattr(tq, "enqueue_job", _capture_enqueue_job)
-    return SimpleNamespace(client=client, db=db, student=student, student_token=student_token, visible_tag=visible_tag, hidden_tag=hidden_tag, event=event, payload=_record_interactions_payload(int(event.id)), captured_jobs=captured_jobs)
+    return SimpleNamespace(
+        client=client,
+        db=db,
+        student=student,
+        student_token=student_token,
+        visible_tag=visible_tag,
+        hidden_tag=hidden_tag,
+        event=event,
+        payload=_record_interactions_payload(int(event.id)),
+        captured_jobs=captured_jobs,
+    )
 
 
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
@@ -204,6 +257,7 @@ def test_run_migrations_handles_missing_ini_and_exceptions(tmp_path, monkeypatch
 
     warnings = []
     monkeypatch.setattr(api, "__file__", str(fake_api_path), raising=False)
+
     def _record_warning(msg):
         """Capture warning messages emitted by the migration helper."""
         warnings.append(msg)
@@ -280,7 +334,6 @@ def test_experiment_treatment_boundary_values():
     """Experiment bucketing should honor zero and full rollout boundaries."""
     assert api._in_experiment_treatment("exp", 0, "1") is False
     assert api._in_experiment_treatment("exp", 100, "1") is True
-
 
 
 def test_clone_event_branches_and_success(helpers):
@@ -363,20 +416,52 @@ def test_hidden_tag_personalization_endpoints(helpers):
     """Hidden-tag endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 404
-    assert context.client.post(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 201
-    assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 204
-    assert context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code == 404
+    assert (
+        context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        == 404
+    )
+    assert (
+        context.client.post(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        == 201
+    )
+    assert (
+        context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        == 204
+    )
+    assert (
+        context.client.delete(f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers).status_code
+        == 404
+    )
 
 
 def test_blocked_organizer_personalization_endpoints(helpers):
     """Blocked-organizer endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 404
-    assert context.client.post(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 201
-    assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 204
-    assert context.client.delete(f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers).status_code == 404
+    assert (
+        context.client.delete(
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+        ).status_code
+        == 404
+    )
+    assert (
+        context.client.post(
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+        ).status_code
+        == 201
+    )
+    assert (
+        context.client.delete(
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+        ).status_code
+        == 204
+    )
+    assert (
+        context.client.delete(
+            f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}", headers=headers
+        ).status_code
+        == 404
+    )
 
 
 def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
@@ -470,19 +555,33 @@ def test_record_interactions_updates_scores_and_skips_hidden_tags(monkeypatch, h
     assert response.status_code == 204
     refreshed_tag = (
         context.db.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == int(context.student.id), models.UserImplicitInterestTag.tag_id == int(context.visible_tag.id))
+        .filter(
+            models.UserImplicitInterestTag.user_id == int(context.student.id),
+            models.UserImplicitInterestTag.tag_id == int(context.visible_tag.id),
+        )
         .first()
     )
     assert refreshed_tag is not None
     assert float(refreshed_tag.score or 0.0) > 1.0
     hidden_row = (
         context.db.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == int(context.student.id), models.UserImplicitInterestTag.tag_id == int(context.hidden_tag.id))
+        .filter(
+            models.UserImplicitInterestTag.user_id == int(context.student.id),
+            models.UserImplicitInterestTag.tag_id == int(context.hidden_tag.id),
+        )
         .first()
     )
     assert hidden_row is None
-    cat_row = context.db.query(models.UserImplicitInterestCategory).filter(models.UserImplicitInterestCategory.user_id == int(context.student.id)).first()
-    city_row = context.db.query(models.UserImplicitInterestCity).filter(models.UserImplicitInterestCity.user_id == int(context.student.id)).first()
+    cat_row = (
+        context.db.query(models.UserImplicitInterestCategory)
+        .filter(models.UserImplicitInterestCategory.user_id == int(context.student.id))
+        .first()
+    )
+    city_row = (
+        context.db.query(models.UserImplicitInterestCity)
+        .filter(models.UserImplicitInterestCity.user_id == int(context.student.id))
+        .first()
+    )
     assert cat_row is not None and float(cat_row.score or 0.0) > 1.0
     assert city_row is not None and float(city_row.score or 0.0) > 1.0
 

@@ -21,13 +21,7 @@ class UniversityCatalogItem(TypedDict, total=False):
 def _normalize_university_key(value: str) -> str:
     """Normalize a university name into a stable lookup key."""
     value = value.strip().casefold()
-    value = (
-        value.replace("“", '"')
-        .replace("”", '"')
-        .replace("’", "'")
-        .replace("–", "-")
-        .replace("—", "-")
-    )
+    value = value.replace("“", '"').replace("”", '"').replace("’", "'").replace("–", "-").replace("—", "-")
     value = unicodedata.normalize("NFKD", value)
     value = "".join(ch for ch in value if not unicodedata.combining(ch))
     value = re.sub(r"[^a-z0-9]+", " ", value)
@@ -59,13 +53,9 @@ _UNIVERSITY_CATALOG = _load_catalog()
 _UNIVERSITY_KEY_TO_CANONICAL: dict[str, str] = {}
 for item in _UNIVERSITY_CATALOG:
     canonical = item["name"]
-    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = (
-        canonical
-    )
+    _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(canonical)] = canonical
     for alias in item.get("aliases", []):
-        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = (
-            canonical
-        )
+        _UNIVERSITY_KEY_TO_CANONICAL[_normalize_university_key(alias)] = canonical
 
 
 def normalize_university_name(name: str | None) -> str | None:
@@ -75,9 +65,7 @@ def normalize_university_name(name: str | None) -> str | None:
     trimmed = name.strip()
     if not trimmed:
         return None
-    canonical_name = _UNIVERSITY_KEY_TO_CANONICAL.get(
-        _normalize_university_key(trimmed)
-    )
+    canonical_name = _UNIVERSITY_KEY_TO_CANONICAL.get(_normalize_university_key(trimmed))
     return canonical_name or trimmed
 
 

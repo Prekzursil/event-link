@@ -109,7 +109,9 @@ def test_personalization_blocked_organizer_excludes_events(client, helpers):
     )
     assert resp.status_code == 201
 
-    ids = [item["id"] for item in client.get("/api/events", headers=helpers["auth_header"](student_token)).json()["items"]]
+    ids = [
+        item["id"] for item in client.get("/api/events", headers=helpers["auth_header"](student_token)).json()["items"]
+    ]
     assert org2_event_id not in ids
     assert org1_event_id in ids
 

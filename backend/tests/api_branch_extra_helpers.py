@@ -1,4 +1,5 @@
 """Shared helpers for API branch-closure edge tests."""
+
 from __future__ import annotations
 
 from app import api, models, schemas

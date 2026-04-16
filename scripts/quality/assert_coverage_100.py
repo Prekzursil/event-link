@@ -53,9 +53,7 @@ _XML_CONDITION_COVERAGE_RE = re.compile(r'condition-coverage="(\d+)% \((\d+)/(\d
 
 def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for the coverage gate."""
-    parser = argparse.ArgumentParser(
-        description="Assert 100% coverage for all declared components."
-    )
+    parser = argparse.ArgumentParser(description="Assert 100% coverage for all declared components.")
     parser.add_argument(
         "--xml",
         action="append",
@@ -109,12 +107,7 @@ def _metric_stats_from_xml_attributes(
     branches_covered_match: re.Match[str] | None,
 ) -> CoverageStats | None:
     """Build coverage stats directly from XML summary attributes."""
-    if not (
-        lines_valid_match
-        and lines_covered_match
-        and branches_valid_match
-        and branches_covered_match
-    ):
+    if not (lines_valid_match and lines_covered_match and branches_valid_match and branches_covered_match):
         return None
     return CoverageStats(
         name="",
@@ -145,9 +138,7 @@ def _metric_stats_from_xml_lines(text: str) -> tuple[MetricStats, MetricStats]:
         except ValueError:
             continue
 
-    for _percent_raw, covered_raw, total_raw in (
-        _XML_CONDITION_COVERAGE_RE.findall(text)
-    ):
+    for _percent_raw, covered_raw, total_raw in _XML_CONDITION_COVERAGE_RE.findall(text):
         branch_covered += int(covered_raw)
         branch_total += int(total_raw)
 
@@ -224,8 +215,7 @@ def _metric_finding(
     if stats.percent >= 100.0:
         return None
     return (
-        f"{component_name} {metric_name} coverage below 100%: "
-        f"{stats.percent:.2f}% ({stats.covered}/{stats.total})"
+        f"{component_name} {metric_name} coverage below 100%: " f"{stats.percent:.2f}% ({stats.covered}/{stats.total})"
     )
 
 
@@ -372,9 +362,7 @@ def main() -> int:
     stats = _load_stats(args)
 
     if not stats:
-        raise SystemExit(
-            "No coverage files were provided; pass --xml and/or --lcov inputs."
-        )
+        raise SystemExit("No coverage files were provided; pass --xml and/or --lcov inputs.")
 
     status, findings = evaluate(stats)
     payload = _coverage_payload(status=status, findings=findings, stats=stats)

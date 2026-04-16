@@ -59,10 +59,7 @@ def _validate_host_allowlists(
         raise ValueError(f"URL host is not in allowlist: {hostname}")
 
     suffixes = _normalized_set(allowed_host_suffixes)
-    if suffixes and not any(
-        hostname == suffix or hostname.endswith(f".{suffix}")
-        for suffix in suffixes
-    ):
+    if suffixes and not any(hostname == suffix or hostname.endswith(f".{suffix}") for suffix in suffixes):
         raise ValueError(f"URL host is not in suffix allowlist: {hostname}")
 
 
@@ -78,10 +75,7 @@ def _is_forbidden_ip(ip_value: ipaddress._BaseAddress | None) -> bool:
     """Return whether an IP address points to a non-public target."""
     if ip_value is None:
         return False
-    return any(
-        bool(getattr(ip_value, attribute, False))
-        for attribute in _FORBIDDEN_IP_ATTRIBUTES
-    )
+    return any(bool(getattr(ip_value, attribute, False)) for attribute in _FORBIDDEN_IP_ATTRIBUTES)
 
 
 def _reject_local_target(hostname: str) -> None:
@@ -150,16 +144,12 @@ def validate_commit_sha(value: str) -> str:
     return sha
 
 
-def build_https_url(
-    *, host: str, path: str, query: dict[str, str] | None = None
-) -> str:
+def build_https_url(*, host: str, path: str, query: dict[str, str] | None = None) -> str:
     """Build and validate a normalized HTTPS URL from host, path, and query."""
     safe_host = (host or "").strip().lower().strip(".")
     if not _HOST_RE.fullmatch(safe_host):
         raise ValueError(f"Invalid host: {host!r}")
-    normalized_path = "/" + "/".join(
-        segment for segment in (path or "").split("/") if segment
-    )
+    normalized_path = "/" + "/".join(segment for segment in (path or "").split("/") if segment)
     encoded_query = urlencode(query or {})
     return normalize_https_url(
         urlunparse(("https", safe_host, normalized_path, "", encoded_query, "")),
@@ -307,9 +297,7 @@ def build_github_api_url(
     )
 
 
-def build_github_commit_checks_url(
-    *, owner: str, repo: str, sha: str, per_page: int = 100
-) -> str:
+def build_github_commit_checks_url(*, owner: str, repo: str, sha: str, per_page: int = 100) -> str:
     """Build the GitHub commit check-runs API URL for a commit."""
     safe_sha = validate_commit_sha(sha)
     return build_github_api_url(

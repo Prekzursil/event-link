@@ -68,7 +68,9 @@ def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
     warnings = []
     monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
 
-    original = _set_email_settings(monkeypatch, email_enabled=False, smtp_host="smtp.test", smtp_sender="sender@test.ro")
+    original = _set_email_settings(
+        monkeypatch, email_enabled=False, smtp_host="smtp.test", smtp_sender="sender@test.ro"
+    )
     try:
         email_service.send_email_now("to@test.ro", "Sub", "Body")
     finally:
@@ -146,7 +148,9 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
 
 def test_send_email_async_branches(monkeypatch, db_session):
     recorded = []
-    monkeypatch.setattr(email_service, "enqueue_job", lambda db, job_type, payload: recorded.append((db, job_type, payload)))
+    monkeypatch.setattr(
+        email_service, "enqueue_job", lambda db, job_type, payload: recorded.append((db, job_type, payload))
+    )
 
     # task queue enabled but no DB
     monkeypatch.setattr(email_service.settings, "task_queue_enabled", True)
@@ -230,7 +234,6 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
     fill_ro = email_templates.render_filling_fast_email(user, event, available_seats=None, lang="ro")
     assert "Filling fast" in fill_en[0]
     assert "Se ocupă rapid" in fill_ro[0]
-
 
 
 def test_frontend_hint_and_ro_digest_with_events(monkeypatch, db_session):

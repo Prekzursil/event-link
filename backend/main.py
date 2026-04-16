@@ -26,10 +26,7 @@ def _resolve_host() -> str:
     """Resolve and validate the host used by the development entrypoint."""
     host = os.environ.get("APP_HOST", _DEFAULT_HOST).strip() or _DEFAULT_HOST
     if _is_unspecified_host(host):
-        raise RuntimeError(
-            "APP_HOST must not bind to all network interfaces in this"
-            " entrypoint."
-        )
+        raise RuntimeError("APP_HOST must not bind to all network interfaces in this" " entrypoint.")
     return host
 
 

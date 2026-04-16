@@ -26,9 +26,7 @@ def upgrade() -> None:
             server_default=sa.text("0"),
         ),
     )
-    op.add_column(
-        "events", sa.Column("moderation_flags", sa.JSON(), nullable=True)
-    )
+    op.add_column("events", sa.Column("moderation_flags", sa.JSON(), nullable=True))
     op.add_column(
         "events",
         sa.Column(

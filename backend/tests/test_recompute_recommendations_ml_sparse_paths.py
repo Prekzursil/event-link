@@ -1,4 +1,5 @@
 """Focused sparse-path coverage for recommendation recomputation training."""
+
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -108,10 +109,16 @@ def _refresh_sparse_interest_rows(db_session, *, student_id: int, now: datetime)
     future_seen = now + timedelta(hours=2)
     rows = (
         db_session.query(models.UserImplicitInterestTag)
-        .filter(models.UserImplicitInterestTag.user_id == student_id, models.UserImplicitInterestTag.tag_id == int(python_tag.id))
+        .filter(
+            models.UserImplicitInterestTag.user_id == student_id,
+            models.UserImplicitInterestTag.tag_id == int(python_tag.id),
+        )
         .first(),
         db_session.query(models.UserImplicitInterestCategory)
-        .filter(models.UserImplicitInterestCategory.user_id == student_id, models.UserImplicitInterestCategory.category == "Workshop")
+        .filter(
+            models.UserImplicitInterestCategory.user_id == student_id,
+            models.UserImplicitInterestCategory.category == "Workshop",
+        )
         .first(),
         db_session.query(models.UserImplicitInterestCity)
         .filter(models.UserImplicitInterestCity.user_id == student_id, models.UserImplicitInterestCity.city == "Cluj")
@@ -128,13 +135,30 @@ def _add_sparse_interactions(db_session, *, student_id: int, candidate_id: int, 
     db_session.add_all(
         [
             models.Registration(user_id=student_id, event_id=positive_id, attended=True),
-            models.EventInteraction(user_id=student_id, event_id=None, interaction_type="search", meta={"tags": ["Python"], "category": "   ", "city": "   "}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta="bad-meta"),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": "x"}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 1}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 2}),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta="bad-meta"),
-            models.EventInteraction(user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta={"seconds": 0}),
+            models.EventInteraction(
+                user_id=student_id,
+                event_id=None,
+                interaction_type="search",
+                meta={"tags": ["Python"], "category": "   ", "city": "   "},
+            ),
+            models.EventInteraction(
+                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta="bad-meta"
+            ),
+            models.EventInteraction(
+                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": "x"}
+            ),
+            models.EventInteraction(
+                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 1}
+            ),
+            models.EventInteraction(
+                user_id=student_id, event_id=candidate_id, interaction_type="impression", meta={"position": 2}
+            ),
+            models.EventInteraction(
+                user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta="bad-meta"
+            ),
+            models.EventInteraction(
+                user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta={"seconds": 0}
+            ),
         ]
     )
     db_session.commit()

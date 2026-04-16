@@ -34,9 +34,7 @@ def main() -> None:
         """Request a graceful shutdown after receiving a process signal."""
         nonlocal shutdown_requested
         shutdown_requested = True
-        log_warning(
-            "worker_shutdown_requested", worker_id=worker_id, signal=signum
-        )
+        log_warning("worker_shutdown_requested", worker_id=worker_id, signal=signum)
 
     signal.signal(signal.SIGTERM, _handle_signal)
     signal.signal(signal.SIGINT, _handle_signal)
@@ -52,9 +50,7 @@ def main() -> None:
         db = SessionLocal()
         try:
             now = time.time()
-            if now - last_requeue_ts > max(
-                30, settings.task_queue_stale_after_seconds
-            ):
+            if now - last_requeue_ts > max(30, settings.task_queue_stale_after_seconds):
                 requeue_stale_jobs(db)
                 last_requeue_ts = now
 
@@ -64,9 +60,7 @@ def main() -> None:
                 continue
             process_job(db, job)
         except Exception as exc:  # noqa: BLE001
-            log_warning(
-                "worker_loop_error", worker_id=worker_id, error=str(exc)
-            )
+            log_warning("worker_loop_error", worker_id=worker_id, error=str(exc))
             idle_sleep()
         finally:
             db.close()

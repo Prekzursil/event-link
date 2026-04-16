@@ -28,7 +28,9 @@ def _merge_search_filter_city(*, user_id: int, meta: dict[object, object], impli
             implicit_city_by_user[user_id] = normalized_city
 
 
-def _apply_search_filter_preferences(*, search_filter_rows, implicit_interest_tags_by_user, implicit_categories_by_user, implicit_city_by_user):
+def _apply_search_filter_preferences(
+    *, search_filter_rows, implicit_interest_tags_by_user, implicit_categories_by_user, implicit_city_by_user
+):
     for raw_user_id, _interaction_type, meta in search_filter_rows:
         if not isinstance(meta, dict):
             continue
@@ -59,7 +61,9 @@ def _impression_position(meta: object) -> int | None:
     return int(position_value)
 
 
-def _record_impression_feedback(*, user_id: int, event_id: int, meta: object, seen_by_user, impression_position_by_user_event) -> None:
+def _record_impression_feedback(
+    *, user_id: int, event_id: int, meta: object, seen_by_user, impression_position_by_user_event
+) -> None:
     seen_by_user.setdefault(user_id, set()).add(event_id)
     position = _impression_position(meta)
     if position is None:
@@ -96,7 +100,9 @@ def _record_negative_feedback(*, user_id: int, event_id: int, negative_weights) 
     negative_weights[key] = max(negative_weights.get(key, 0.0), 2.0)
 
 
-def _record_positive_feedback(*, user_id: int, event_id: int, normalized_type: str, meta: object, positive_weights) -> None:
+def _record_positive_feedback(
+    *, user_id: int, event_id: int, normalized_type: str, meta: object, positive_weights
+) -> None:
     key = (user_id, event_id)
     weight = _positive_interaction_weight(normalized_type=normalized_type, meta=meta)
     positive_weights[key] = max(positive_weights.get(key, 0.0), weight)
@@ -206,7 +212,14 @@ def _load_interaction_signals(
     models,
     user_id: int | None,
     positive_weights,
-) -> tuple[dict[tuple[int, int], float], dict[int, set[int]], dict[tuple[int, int], int], dict[int, set[str]], dict[int, set[str]], dict[int, str]]:
+) -> tuple[
+    dict[tuple[int, int], float],
+    dict[int, set[int]],
+    dict[tuple[int, int], int],
+    dict[int, set[str]],
+    dict[int, set[str]],
+    dict[int, str],
+]:
     negative_weights: dict[tuple[int, int], float] = {}
     seen_by_user: dict[int, set[int]] = {}
     impression_position_by_user_event: dict[tuple[int, int], int] = {}

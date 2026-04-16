@@ -149,7 +149,12 @@ def test_events_list_filters_and_order(helpers):
     ).json()
     e2 = client.post(
         "/api/events",
-        json={**base_payload, "title": "Party Night", "category": "Social", "start_time": helpers["future_time"](days=3)},
+        json={
+            **base_payload,
+            "title": "Party Night",
+            "category": "Social",
+            "start_time": helpers["future_time"](days=3),
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     client.post(
@@ -175,9 +180,7 @@ def test_events_list_filters_and_order(helpers):
     ).json()
     assert len(start_filter["items"]) >= 2
 
-    end_filter = client.get(
-        "/api/events", params={"end_date": datetime.now(timezone.utc).date().isoformat()}
-    ).json()
+    end_filter = client.get("/api/events", params={"end_date": datetime.now(timezone.utc).date().isoformat()}).json()
     assert end_filter["total"] == 0
 
     paging = client.get("/api/events", params={"page_size": 1, "page": 1}).json()

@@ -28,11 +28,7 @@ DEFAULT_REQUIRED_VARS = [
 
 def _parse_args() -> argparse.Namespace:
     """Parse CLI arguments for the quality-secrets preflight."""
-    parser = argparse.ArgumentParser(
-        description=(
-            "Validate required quality-gate secrets/variables are configured."
-        )
-    )
+    parser = argparse.ArgumentParser(description=("Validate required quality-gate secrets/variables are configured."))
     parser.add_argument(
         "--required-secret",
         action="append",
@@ -85,9 +81,7 @@ def _partition_present_and_missing(names: list[str]) -> tuple[list[str], list[st
     return missing, present
 
 
-def evaluate_env(
-    required_secrets: list[str], required_vars: list[str]
-) -> dict[str, list[str]]:
+def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
     """Return which required secrets and variables are present or missing."""
     missing_secrets, present_secrets = _partition_present_and_missing(required_secrets)
     missing_vars, present_vars = _partition_present_and_missing(required_vars)
@@ -128,17 +122,11 @@ def _render_md(payload: dict) -> str:
 def main() -> int:
     """Run the quality-secrets preflight check and write report artifacts."""
     args = _parse_args()
-    required_secrets = _dedupe(
-        DEFAULT_REQUIRED_SECRETS + list(args.required_secret or [])
-    )
+    required_secrets = _dedupe(DEFAULT_REQUIRED_SECRETS + list(args.required_secret or []))
     required_vars = _dedupe(DEFAULT_REQUIRED_VARS + list(args.required_var or []))
 
     result = evaluate_env(required_secrets, required_vars)
-    status = (
-        "pass"
-        if not result["missing_secrets"] and not result["missing_vars"]
-        else "fail"
-    )
+    status = "pass" if not result["missing_secrets"] and not result["missing_vars"] else "fail"
     payload = {
         "status": status,
         "timestamp_utc": datetime.now(timezone.utc).isoformat(),

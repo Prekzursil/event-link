@@ -42,19 +42,9 @@ def _dedupe_join_table(
     """Retarget duplicate join-table rows to the canonical tag id."""
     owner_column = join_table.c[owner_col]
     tag_column = join_table.c.tag_id
-    canonical_owners = sa.select(owner_column).where(
-        tag_column == canonical_id
-    )
-    conn.execute(
-        sa.delete(join_table)
-        .where(tag_column == dup_id)
-        .where(owner_column.in_(canonical_owners))
-    )
-    conn.execute(
-        sa.update(join_table)
-        .where(tag_column == dup_id)
-        .values(tag_id=canonical_id)
-    )
+    canonical_owners = sa.select(owner_column).where(tag_column == canonical_id)
+    conn.execute(sa.delete(join_table).where(tag_column == dup_id).where(owner_column.in_(canonical_owners)))
+    conn.execute(sa.update(join_table).where(tag_column == dup_id).values(tag_id=canonical_id))
 
 
 def _trim_expression(conn) -> sa.Function:
@@ -70,16 +60,9 @@ def upgrade() -> None:
     trimmed_cover_url = _trim_expression(conn)
 
     conn.execute(
-        sa.update(_EVENTS)
-        .where(_EVENTS.c.cover_url.is_not(None))
-        .where(trimmed_cover_url == "")
-        .values(cover_url=None)
+        sa.update(_EVENTS).where(_EVENTS.c.cover_url.is_not(None)).where(trimmed_cover_url == "").values(cover_url=None)
     )
-    conn.execute(
-        sa.update(_EVENTS)
-        .where(_EVENTS.c.cover_url.is_not(None))
-        .values(cover_url=trimmed_cover_url)
-    )
+    conn.execute(sa.update(_EVENTS).where(_EVENTS.c.cover_url.is_not(None)).values(cover_url=trimmed_cover_url))
 
     rows = conn.execute(sa.select(_TAGS.c.id, _TAGS.c.name)).fetchall()
     groups: dict[str, list[tuple[int, str, str]]] = {}
@@ -90,19 +73,11 @@ def upgrade() -> None:
         if not trimmed:
             empty_tag_ids.append(int(tag_id))
             continue
-        groups.setdefault(trimmed.lower(), []).append(
-            (int(tag_id), trimmed, raw)
-        )
+        groups.setdefault(trimmed.lower(), []).append((int(tag_id), trimmed, raw))
 
     for tag_id in empty_tag_ids:
-        conn.execute(
-            sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id)
-        )
-        conn.execute(
-            sa.delete(_USER_INTEREST_TAGS).where(
-                _USER_INTEREST_TAGS.c.tag_id == tag_id
-            )
-        )
+        conn.execute(sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id))
+        conn.execute(sa.delete(_USER_INTEREST_TAGS).where(_USER_INTEREST_TAGS.c.tag_id == tag_id))
         conn.execute(sa.delete(_TAGS).where(_TAGS.c.id == tag_id))
 
     for _normalized, entries in groups.items():
@@ -110,19 +85,11 @@ def upgrade() -> None:
         canonical_id, canonical_trimmed, canonical_raw = entries[0]
 
         if canonical_raw != canonical_trimmed:
-            conn.execute(
-                sa.update(_TAGS)
-                .where(_TAGS.c.id == canonical_id)
-                .values(name=canonical_trimmed)
-            )
+            conn.execute(sa.update(_TAGS).where(_TAGS.c.id == canonical_id).values(name=canonical_trimmed))
 
         for dup_id, _dup_trimmed, _dup_raw in entries[1:]:
-            _dedupe_join_table(
-                conn, _EVENT_TAGS, "event_id", canonical_id, dup_id
-            )
-            _dedupe_join_table(
-                conn, _USER_INTEREST_TAGS, "user_id", canonical_id, dup_id
-            )
+            _dedupe_join_table(conn, _EVENT_TAGS, "event_id", canonical_id, dup_id)
+            _dedupe_join_table(conn, _USER_INTEREST_TAGS, "user_id", canonical_id, dup_id)
             conn.execute(sa.delete(_TAGS).where(_TAGS.c.id == dup_id))
 
 

@@ -25,7 +25,8 @@ def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
     if days < 1 or days > 365:
         days = int(settings.personalization_guardrails_days)
     click_to_register_hours = int(
-        payload.get("click_to_register_window_hours") or settings.personalization_guardrails_click_to_register_window_hours
+        payload.get("click_to_register_window_hours")
+        or settings.personalization_guardrails_click_to_register_window_hours
     )
     return _GuardrailConfig(
         days=days,

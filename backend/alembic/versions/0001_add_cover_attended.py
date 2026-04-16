@@ -17,9 +17,7 @@ depends_on = None
 
 def upgrade() -> None:
     """Apply the event cover and attendance migration."""
-    op.add_column(
-        "events", sa.Column("cover_url", sa.String(length=500), nullable=True)
-    )
+    op.add_column("events", sa.Column("cover_url", sa.String(length=500), nullable=True))
     op.add_column(
         "registrations",
         sa.Column(

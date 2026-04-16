@@ -174,7 +174,9 @@ def _summary_from_entry(entry: dict[str, Any]) -> tuple[int, str, str]:
 
 
 def _hotspot_total(*, api_base: str, auth: str, project_key: str, branch: str, pull_request: str) -> int:
-    payload = _request_json(f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}", auth)
+    payload = _request_json(
+        f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}", auth
+    )
     return int((payload.get("paging") or {}).get("total") or 0)
 
 

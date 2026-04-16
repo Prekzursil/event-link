@@ -29,7 +29,6 @@ check_required_checks = _load_module(
 )
 
 
-
 def test_load_module_rejects_missing_loader(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
 
@@ -56,7 +55,7 @@ def test_write_workspace_json_creates_parent_and_file(tmp_path: Path) -> None:
     )
 
     assert target == tmp_path / "reports" / "output.json"
-    assert target.read_text(encoding="utf-8") == "{\n  \"status\": \"pass\"\n}\n"
+    assert target.read_text(encoding="utf-8") == '{\n  "status": "pass"\n}\n'
 
 
 def test_build_github_commit_urls_use_fixed_host() -> None:
@@ -72,9 +71,7 @@ def test_build_github_commit_urls_use_fixed_host() -> None:
         sha="abcdef1",
     )
 
-    assert checks_url == (
-        "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/check-runs?per_page=50"
-    )
+    assert checks_url == ("https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/check-runs?per_page=50")
     assert status_url == "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/status"
 
 
@@ -110,11 +107,12 @@ def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch
     )
     monkeypatch.setattr(check_required_checks.time, "sleep", sleeps.append)
 
-    payload = check_required_checks._api_get("https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs", "token")
+    payload = check_required_checks._api_get(
+        "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs", "token"
+    )
 
     assert payload == {"check_runs": []}
     assert sleeps == [2]
-
 
 
 def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch) -> None:

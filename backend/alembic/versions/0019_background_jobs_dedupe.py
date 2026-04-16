@@ -36,10 +36,6 @@ def upgrade() -> None:
 
 def downgrade() -> None:
     """Revert background-job dedupe columns and indexes."""
-    op.drop_constraint(
-        "uq_background_job_dedupe_key", "background_jobs", type_="unique"
-    )
-    op.drop_index(
-        "ix_background_jobs_dedupe_key", table_name="background_jobs"
-    )
+    op.drop_constraint("uq_background_job_dedupe_key", "background_jobs", type_="unique")
+    op.drop_index("ix_background_jobs_dedupe_key", table_name="background_jobs")
     op.drop_column("background_jobs", "dedupe_key")

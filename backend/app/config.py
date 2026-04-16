@@ -29,9 +29,7 @@ def _json_list(value: str) -> list[object] | None:
     return parsed if isinstance(parsed, list) else None
 
 
-def _string_items(
-    values: list[object] | tuple[object, ...], *, lower: bool = False
-) -> list[str]:
+def _string_items(values: list[object] | tuple[object, ...], *, lower: bool = False) -> list[str]:
     """Normalize an iterable of raw items into trimmed strings."""
     items: list[str] = []
     for raw in values:
@@ -127,9 +125,7 @@ class Settings(BaseSettings):
         try:
             return _parse_list_setting(value)
         except ValueError as exc:
-            raise ValueError(
-                "allowed_origins must be a list or comma-separated string"
-            ) from exc
+            raise ValueError("allowed_origins must be a list or comma-separated string") from exc
 
     @field_validator("admin_emails", mode="before")
     @classmethod
@@ -140,9 +136,7 @@ class Settings(BaseSettings):
         try:
             return _parse_list_setting(value, lower=True)
         except ValueError as exc:
-            raise ValueError(
-                "admin_emails must be a list or comma-separated string"
-            ) from exc
+            raise ValueError("admin_emails must be a list or comma-separated string") from exc
 
 
 settings = Settings()

@@ -20,4 +20,3 @@ def test_openapi_contract_snapshot_is_up_to_date():
         "OpenAPI contract snapshot is out of date. "
         "Update it with: backend/.venv/bin/python backend/scripts/generate_openapi.py"
     )
-

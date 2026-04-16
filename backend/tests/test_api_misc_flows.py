@@ -201,7 +201,9 @@ def test_organizer_account_deletion_reassigns_events(helpers):
     )
     assert delete_resp.status_code == 200
 
-    placeholder = helpers["db"].query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
+    placeholder = (
+        helpers["db"].query(models.User).filter(models.User.email == "deleted-organizer@eventlink.invalid").first()
+    )
     assert placeholder is not None
     event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
     assert event_row is not None

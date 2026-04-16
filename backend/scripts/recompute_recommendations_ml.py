@@ -70,7 +70,9 @@ __all__ = (
 
 
 def _parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description="Offline ML v1: train and cache recommendations to user_recommendations.")
+    parser = argparse.ArgumentParser(
+        description="Offline ML v1: train and cache recommendations to user_recommendations."
+    )
     parser.add_argument("--top-n", type=int, default=50, help="How many recommendations to store per user.")
     parser.add_argument("--epochs", type=int, default=6)
     parser.add_argument("--lr", type=float, default=0.35)
@@ -78,7 +80,9 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument("--negatives-per-positive", type=int, default=3)
     parser.add_argument("--eval-negatives", type=int, default=50)
     parser.add_argument("--seed", type=int, default=1337)
-    parser.add_argument("--user-id", type=int, default=None, help="Only recompute recommendations for a single student user.")
+    parser.add_argument(
+        "--user-id", type=int, default=None, help="Only recompute recommendations for a single student user."
+    )
     parser.add_argument(
         "--skip-training",
         action="store_true",
@@ -118,7 +122,9 @@ def _evaluate_hitrate_at_k(**kwargs) -> float:
     )
 
 
-def _load_persisted_model_state(*, db, models, requested_model_version: str | None) -> tuple[str | None, list[float] | None, int | None]:
+def _load_persisted_model_state(
+    *, db, models, requested_model_version: str | None
+) -> tuple[str | None, list[float] | None, int | None]:
     return _load_persisted_model_state_impl(
         db=db,
         models=models,
@@ -130,7 +136,9 @@ def _user_positive_ids(*, user_id: int, positives, holdout) -> set[int]:
     return set(positives.keys()) | ({holdout[user_id]} if user_id in holdout else set())
 
 
-def _impression_negative_ids(*, user_id: int, user_positive_ids: set[int], seen_by_user, impression_position_by_user_event, events) -> list[int]:
+def _impression_negative_ids(
+    *, user_id: int, user_positive_ids: set[int], seen_by_user, impression_position_by_user_event, events
+) -> list[int]:
     impression_candidates = [
         (event_id, impression_position_by_user_event.get((user_id, event_id), 999))
         for event_id in (seen_by_user.get(user_id, set()) - user_positive_ids)
@@ -144,7 +152,9 @@ def _append_example(*, examples, user, event, now: datetime, label: int, weight:
     examples.append((_build_feature_vector(user=user, event=event, now=now), label, float(weight)))
 
 
-def _sample_negative_example(*, rng, impression_negatives: list[int], impression_position_by_user_event, user_id: int, all_event_ids: list[int]) -> tuple[int, float]:
+def _sample_negative_example(
+    *, rng, impression_negatives: list[int], impression_position_by_user_event, user_id: int, all_event_ids: list[int]
+) -> tuple[int, float]:
     if impression_negatives:
         neg_event_id = rng.choice(impression_negatives)
         neg_weight = _impression_negative_weight(impression_position_by_user_event.get((user_id, neg_event_id)))
@@ -188,7 +198,9 @@ def _append_positive_examples(**kwargs) -> None:
             neg_added += 1
 
 
-def _matches_weak_signal(*, candidate_event: _EventFeatures, weak_tags: set[str], weak_categories: set[str], weak_city: str | None) -> bool:
+def _matches_weak_signal(
+    *, candidate_event: _EventFeatures, weak_tags: set[str], weak_categories: set[str], weak_city: str | None
+) -> bool:
     matches_city = bool(weak_city and candidate_event.city and _normalize_city(candidate_event.city) == weak_city)
     matches_category = bool(candidate_event.category and candidate_event.category in weak_categories)
     matches_tags = bool(weak_tags and (candidate_event.tags & weak_tags))
@@ -323,7 +335,9 @@ def _build_recommendation_rows(**kwargs):
     )
 
 
-def _train_model_state(*, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime) -> tuple[str | None, list[float] | None, int | None]:
+def _train_model_state(
+    *, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime
+) -> tuple[str | None, list[float] | None, int | None]:
     model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
     examples = _build_training_examples(
         args=args,
@@ -374,7 +388,9 @@ def _train_model_state(*, db, models, args, requested_model_version: str | None,
     return model_version, weights, None
 
 
-def _resolve_model_state(*, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime) -> tuple[str | None, list[float] | None, int | None]:
+def _resolve_model_state(
+    *, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime
+) -> tuple[str | None, list[float] | None, int | None]:
     if args.skip_training:
         return _load_persisted_model_state(
             db=db,
@@ -391,7 +407,9 @@ def _resolve_model_state(*, db, models, args, requested_model_version: str | Non
     )
 
 
-def _store_recommendations(*, db, models, args, state: _PreparedState, model_version: str | None, weights: list[float] | None, now: datetime) -> int | None:
+def _store_recommendations(
+    *, db, models, args, state: _PreparedState, model_version: str | None, weights: list[float] | None, now: datetime
+) -> int | None:
     if args.dry_run:
         print("[write] dry-run enabled; skipping DB writes.")
         return 0
@@ -426,7 +444,9 @@ def main() -> int:
     repo_root = _bootstrap_script_environment()
     database_url = os.environ.get("DATABASE_URL")
     if not database_url:
-        print("Missing DATABASE_URL. Example:\n  DATABASE_URL=postgresql://... python backend/scripts/recompute_recommendations_ml.py")
+        print(
+            "Missing DATABASE_URL. Example:\n  DATABASE_URL=postgresql://... python backend/scripts/recompute_recommendations_ml.py"
+        )
         return 2
 
     models, settings, session_local_factory, func = _load_runtime_objects()

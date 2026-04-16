@@ -22,9 +22,7 @@ def _coerce_bool(value: object) -> bool:
 def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
     hidden_tag_ids = {
         int(row[0])
-        for row in db.query(models.user_hidden_tags.c.tag_id)
-        .filter(models.user_hidden_tags.c.user_id == user_id)
-        .all()
+        for row in db.query(models.user_hidden_tags.c.tag_id).filter(models.user_hidden_tags.c.user_id == user_id).all()
     }
     blocked_organizer_ids = {
         int(row[0])
@@ -41,9 +39,7 @@ def _preferred_lang(value: str | None) -> str:
 
 def _notification_exists(*, db: Session, dedupe_key: str) -> bool:
     return (
-        db.query(models.NotificationDelivery.id)
-        .filter(models.NotificationDelivery.dedupe_key == dedupe_key)
-        .first()
+        db.query(models.NotificationDelivery.id).filter(models.NotificationDelivery.dedupe_key == dedupe_key).first()
         is not None
     )
 

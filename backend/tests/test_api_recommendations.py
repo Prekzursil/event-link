@@ -35,7 +35,9 @@ def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = No
     return client, db, student_token, student, earlier, later, generated_at
 
 
-def _store_ml_cache(*, db, student, earlier, later, first_reason: str, second_reason: str, generated_at: datetime | None = None) -> None:
+def _store_ml_cache(
+    *, db, student, earlier, later, first_reason: str, second_reason: str, generated_at: datetime | None = None
+) -> None:
     rows = [
         models.UserRecommendation(
             user_id=student.id,

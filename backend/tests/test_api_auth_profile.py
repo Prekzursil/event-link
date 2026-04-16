@@ -7,11 +7,19 @@ def test_student_registration_and_duplicate_email(helpers):
     client = helpers["client"]
     client.post(
         "/register",
-        json={"email": "student@test.ro", SECRET_FIELD: DEFAULT_STUDENT_CODE, CONFIRM_SECRET_FIELD: DEFAULT_STUDENT_CODE},
+        json={
+            "email": "student@test.ro",
+            SECRET_FIELD: DEFAULT_STUDENT_CODE,
+            CONFIRM_SECRET_FIELD: DEFAULT_STUDENT_CODE,
+        },
     )
     duplicate = client.post(
         "/register",
-        json={"email": "student@test.ro", SECRET_FIELD: DEFAULT_STUDENT_CODE, CONFIRM_SECRET_FIELD: DEFAULT_STUDENT_CODE},
+        json={
+            "email": "student@test.ro",
+            SECRET_FIELD: DEFAULT_STUDENT_CODE,
+            CONFIRM_SECRET_FIELD: DEFAULT_STUDENT_CODE,
+        },
     )
     assert duplicate.status_code == 400
     assert "deja folosit" in duplicate.json().get("detail", "")

@@ -175,9 +175,7 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
         assert resp.status_code == 204
 
         implicit = (
-            db.query(models.UserImplicitInterestTag)
-            .filter(models.UserImplicitInterestTag.user_id == student.id)
-            .all()
+            db.query(models.UserImplicitInterestTag).filter(models.UserImplicitInterestTag.user_id == student.id).all()
         )
         assert len(implicit) == 1
         assert implicit[0].tag_id == tag.id
@@ -196,9 +194,7 @@ def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
     assert active_models[0].model_version == "old"
 
     recompute_jobs = (
-        db.query(models.BackgroundJob)
-        .filter(models.BackgroundJob.job_type == "recompute_recommendations_ml")
-        .all()
+        db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "recompute_recommendations_ml").all()
     )
     assert len(recompute_jobs) == 1
     assert recompute_jobs[0].payload.get("skip_training") is True

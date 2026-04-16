@@ -103,46 +103,16 @@ LOCATIONS = [
 ]
 
 COVER_IMAGES = [
-    (
-        "https://images.unsplash.com/photo-1540575467063-178a50c2df87"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1515187029135-18ee286d815b"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1475721027785-f74eccf877e2"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1559223607-a43c990c692c"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1505373877841-8d25f7d46678"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1591115765373-5207764f72e7"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1528901166007-3784c7dd3653"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1517048676732-d65bc937f952"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1523580494863-6f3031224c94"
-        "?w=800&h=400&fit=crop"
-    ),
-    (
-        "https://images.unsplash.com/photo-1522158637959-30385a09e0da"
-        "?w=800&h=400&fit=crop"
-    ),
+    ("https://images.unsplash.com/photo-1540575467063-178a50c2df87" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1515187029135-18ee286d815b" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1475721027785-f74eccf877e2" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1559223607-a43c990c692c" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1505373877841-8d25f7d46678" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1591115765373-5207764f72e7" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1528901166007-3784c7dd3653" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1517048676732-d65bc937f952" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1523580494863-6f3031224c94" "?w=800&h=400&fit=crop"),
+    ("https://images.unsplash.com/photo-1522158637959-30385a09e0da" "?w=800&h=400&fit=crop"),
 ]
 
 SAMPLE_EVENTS = [
@@ -425,10 +395,7 @@ ORGANIZERS = [
             "conecta studenții cu industria IT."
         ),
         "org_website": "https://ligait.ro",
-        "org_logo_url": (
-            "https://api.dicebear.com/7.x/initials/svg"
-            "?seed=LSIT&backgroundColor=3b82f6"
-        ),
+        "org_logo_url": ("https://api.dicebear.com/7.x/initials/svg" "?seed=LSIT&backgroundColor=3b82f6"),
     },
     {
         "email": "career@uni.ro",
@@ -441,10 +408,7 @@ ORGANIZERS = [
             "de mentorat."
         ),
         "org_website": "https://cariere.uni.ro",
-        "org_logo_url": (
-            "https://api.dicebear.com/7.x/initials/svg"
-            "?seed=CC&backgroundColor=10b981"
-        ),
+        "org_logo_url": ("https://api.dicebear.com/7.x/initials/svg" "?seed=CC&backgroundColor=10b981"),
     },
     {
         "email": "sport@uni.ro",
@@ -456,10 +420,7 @@ ORGANIZERS = [
             "Evenimente sportive, competiții și activități outdoor."
         ),
         "org_website": "https://sport.uni.ro",
-        "org_logo_url": (
-            "https://api.dicebear.com/7.x/initials/svg"
-            "?seed=CSU&backgroundColor=ef4444"
-        ),
+        "org_logo_url": ("https://api.dicebear.com/7.x/initials/svg" "?seed=CSU&backgroundColor=ef4444"),
     },
 ]
 
@@ -534,9 +495,7 @@ def _create_users(
     return created_users
 
 
-def _assign_student_interest_tags(
-    student_objects, tag_objects: dict[str, Tag]
-) -> None:
+def _assign_student_interest_tags(student_objects, tag_objects: dict[str, Tag]) -> None:
     """Assign a deterministic sample of interest tags to each student."""
     print("🏷️  Assigning interest tags to students...")
     available_tags = list(tag_objects.values())
@@ -554,13 +513,9 @@ def _build_seed_event(
     """Build one seeded event instance for a specific organizer."""
     is_past_event = index < 3
     if is_past_event:
-        start_time = now - timedelta(
-            days=_rng.randint(5, 30), hours=_rng.randint(10, 18)
-        )
+        start_time = now - timedelta(days=_rng.randint(5, 30), hours=_rng.randint(10, 18))
     else:
-        start_time = now + timedelta(
-            days=_rng.randint(3, 60), hours=_rng.randint(10, 18)
-        )
+        start_time = now + timedelta(days=_rng.randint(3, 60), hours=_rng.randint(10, 18))
     start_time = start_time.replace(minute=0, second=0, microsecond=0)
     end_time = start_time + timedelta(hours=_rng.randint(2, 4))
     return Event(
@@ -584,9 +539,7 @@ def _create_events(session, organizer_objects):  # noqa: ANN001
     now = datetime.now(timezone.utc)
     for index, event_data in enumerate(SAMPLE_EVENTS):
         organizer = _rng.choice(organizer_objects)
-        event = _build_seed_event(
-            event_data, organizer_id=organizer.id, now=now, index=index
-        )
+        event = _build_seed_event(event_data, organizer_id=organizer.id, now=now, index=index)
         session.add(event)
         event_objects.append((event, event_data["tags"]))
     session.flush()
@@ -601,16 +554,12 @@ def _attach_event_tags(event_objects, tag_objects: dict[str, Tag]) -> None:
                 event.tags.append(tag_objects[tag_name])
 
 
-def _create_registrations(
-    session, event_objects, student_objects, *, now: datetime
-) -> int:  # noqa: ANN001
+def _create_registrations(session, event_objects, student_objects, *, now: datetime) -> int:  # noqa: ANN001
     """Create seeded registrations linking students to sample events."""
     print("📝 Creating registrations...")
     registration_count = 0
     for event, _ in event_objects:
-        num_registrations = _rng.randint(
-            0, min(len(student_objects), event.max_seats // 2)
-        )
+        num_registrations = _rng.randint(0, min(len(student_objects), event.max_seats // 2))
         for student in _rng.sample(student_objects, num_registrations):
             registration = Registration(
                 user_id=student.id,
@@ -623,18 +572,14 @@ def _create_registrations(
     return registration_count
 
 
-def _create_favorites(
-    session, event_objects, student_objects
-) -> int:  # noqa: ANN001
+def _create_favorites(session, event_objects, student_objects) -> int:  # noqa: ANN001
     """Create seeded favorite-event rows for sample students."""
     print("❤️  Creating favorites...")
     favorite_count = 0
     created_events = [event for event, _ in event_objects]
     for student in student_objects:
         num_favorites = _rng.randint(2, 5)
-        favorite_events = _rng.sample(
-            created_events, min(num_favorites, len(created_events))
-        )
+        favorite_events = _rng.sample(created_events, min(num_favorites, len(created_events)))
         for event in favorite_events:
             session.add(FavoriteEvent(user_id=student.id, event_id=event.id))
             favorite_count += 1
@@ -665,9 +610,7 @@ def seed_database():
     session = SessionLocal()
     try:
         # Check if data already exists
-        user_count = (
-            session.scalar(select(func.count()).select_from(User)) or 0
-        )
+        user_count = session.scalar(select(func.count()).select_from(User)) or 0
 
         if user_count > 0:
             _clear_existing_data(session)
@@ -697,9 +640,7 @@ def seed_database():
         )
         print(f"   Created {len(ORGANIZERS)} organizers")
 
-        _create_users(
-            session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins..."
-        )
+        _create_users(session, ADMINS, role=UserRole.admin, label="🛡️ Creating admins...")
         print(f"   Created {len(ADMINS)} admins")
 
         event_objects, now = _create_events(session, organizer_objects)
@@ -707,14 +648,10 @@ def seed_database():
         session.flush()
         print(f"   Created {len(SAMPLE_EVENTS)} events")
 
-        registration_count = _create_registrations(
-            session, event_objects, student_objects, now=now
-        )
+        registration_count = _create_registrations(session, event_objects, student_objects, now=now)
         print(f"   Created {registration_count} registrations")
 
-        favorite_count = _create_favorites(
-            session, event_objects, student_objects
-        )
+        favorite_count = _create_favorites(session, event_objects, student_objects)
         print(f"   Created {favorite_count} favorites")
 
         session.commit()

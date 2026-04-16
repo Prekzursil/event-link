@@ -83,7 +83,9 @@ def _enqueue_once(db, enqueue_job, *, job_type: str, payload: dict[str, Any]) ->
     return int(job.id)
 
 
-def _enqueue_requested_jobs(db, enqueue_job, *, wanted: dict[str, bool], payloads: dict[str, dict[str, Any]]) -> list[tuple[str, int]]:
+def _enqueue_requested_jobs(
+    db, enqueue_job, *, wanted: dict[str, bool], payloads: dict[str, dict[str, Any]]
+) -> list[tuple[str, int]]:
     created: list[tuple[str, int]] = []
     for key, job_type in _job_constants().items():
         if not wanted[key]:

@@ -20,12 +20,8 @@ def upgrade() -> None:
     op.create_table(
         "event_interactions",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True
-        ),
-        sa.Column(
-            "event_id", sa.Integer(), sa.ForeignKey("events.id"), nullable=True
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=True),
+        sa.Column("event_id", sa.Integer(), sa.ForeignKey("events.id"), nullable=True),
         sa.Column("interaction_type", sa.String(length=50), nullable=False),
         sa.Column(
             "occurred_at",
@@ -74,17 +70,11 @@ def downgrade() -> None:
         "ix_event_interactions_user_id_occurred_at",
         table_name="event_interactions",
     )
-    op.drop_index(
-        "ix_event_interactions_occurred_at", table_name="event_interactions"
-    )
+    op.drop_index("ix_event_interactions_occurred_at", table_name="event_interactions")
     op.drop_index(
         "ix_event_interactions_interaction_type",
         table_name="event_interactions",
     )
-    op.drop_index(
-        "ix_event_interactions_event_id", table_name="event_interactions"
-    )
-    op.drop_index(
-        "ix_event_interactions_user_id", table_name="event_interactions"
-    )
+    op.drop_index("ix_event_interactions_event_id", table_name="event_interactions")
+    op.drop_index("ix_event_interactions_user_id", table_name="event_interactions")
     op.drop_table("event_interactions")

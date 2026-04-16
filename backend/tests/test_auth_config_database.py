@@ -26,8 +26,12 @@ def test_verify_password_handles_invalid_hash() -> None:
 
 def test_create_access_and_refresh_token_include_expected_type() -> None:
     """Access and refresh tokens should encode their token type."""
-    access = auth.create_access_token({"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=5))
-    refresh = auth.create_refresh_token({"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=10))
+    access = auth.create_access_token(
+        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=5)
+    )
+    refresh = auth.create_refresh_token(
+        {"sub": "1", "email": "u@test.ro", "role": models.UserRole.student.value}, timedelta(minutes=10)
+    )
 
     access_payload = auth.jwt.decode(access, config.settings.secret_key, algorithms=[config.settings.algorithm])
     refresh_payload = auth.jwt.decode(refresh, config.settings.secret_key, algorithms=[config.settings.algorithm])
@@ -70,9 +74,19 @@ def test_get_optional_user_returns_none_for_invalid_token(db_session) -> None:
 
 def test_role_guards_and_is_admin_paths() -> None:
     """Role guard helpers should accept only the matching user role."""
-    student = models.User(email="student-role@test.ro", password_hash=auth.get_password_hash("student-marker-A1"), role=models.UserRole.student)
-    organizer = models.User(email="org-role@test.ro", password_hash=auth.get_password_hash("organizer-marker-A1"), role=models.UserRole.organizator)
-    admin = models.User(email="admin-role@test.ro", password_hash=auth.get_password_hash("admin-marker-A1"), role=models.UserRole.admin)
+    student = models.User(
+        email="student-role@test.ro",
+        password_hash=auth.get_password_hash("student-marker-A1"),
+        role=models.UserRole.student,
+    )
+    organizer = models.User(
+        email="org-role@test.ro",
+        password_hash=auth.get_password_hash("organizer-marker-A1"),
+        role=models.UserRole.organizator,
+    )
+    admin = models.User(
+        email="admin-role@test.ro", password_hash=auth.get_password_hash("admin-marker-A1"), role=models.UserRole.admin
+    )
 
     assert auth.require_student(student) is student
     assert auth.require_organizer(organizer) is organizer
@@ -88,7 +102,11 @@ def test_role_guards_and_is_admin_paths() -> None:
 
 def test_is_admin_accepts_whitelisted_email(monkeypatch) -> None:
     """Configured admin e-mail allowlists should elevate matching users."""
-    user = models.User(email="special-admin@test.ro", password_hash=auth.get_password_hash("student-marker-A1"), role=models.UserRole.student)
+    user = models.User(
+        email="special-admin@test.ro",
+        password_hash=auth.get_password_hash("student-marker-A1"),
+        role=models.UserRole.student,
+    )
     old = list(config.settings.admin_emails)
     monkeypatch.setattr(config.settings, "admin_emails", ["special-admin@test.ro", "other@test.ro"])
     try:
@@ -100,8 +118,14 @@ def test_is_admin_accepts_whitelisted_email(monkeypatch) -> None:
 def test_settings_parsers_support_csv_json_and_invalid() -> None:
     """Settings parsers should normalize CSV and JSON string inputs."""
     assert config.Settings.parse_allowed_origins("") == config.DEFAULT_ALLOWED_ORIGINS
-    assert config.Settings.parse_allowed_origins("https://a.test, https://b.test") == ["https://a.test", "https://b.test"]
-    assert config.Settings.parse_allowed_origins('["https://a.test","https://b.test"]') == ["https://a.test", "https://b.test"]
+    assert config.Settings.parse_allowed_origins("https://a.test, https://b.test") == [
+        "https://a.test",
+        "https://b.test",
+    ]
+    assert config.Settings.parse_allowed_origins('["https://a.test","https://b.test"]') == [
+        "https://a.test",
+        "https://b.test",
+    ]
     assert config.Settings.parse_allowed_origins('["https://a.test",""]') == ["https://a.test"]
     assert config.Settings.parse_allowed_origins("123") == ["123"]
     assert config.Settings.parse_admin_emails("") == []

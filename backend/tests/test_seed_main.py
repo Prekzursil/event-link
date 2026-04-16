@@ -225,7 +225,6 @@ def test_backend_main_entrypoint_invokes_uvicorn(monkeypatch):
     assert calls[0][2] == 9001
 
 
-
 def test_backend_main_entrypoint_rejects_wildcard_host(monkeypatch):
     """The backend entrypoint must reject IPv4 wildcard hosts."""
     monkeypatch.setenv("APP_HOST", "0.0.0.0")
@@ -282,6 +281,7 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
 
     monkeypatch.setattr(db_module, "SessionLocal", _session_factory)
     monkeypatch.setattr(secrets, "SystemRandom", _rng_factory)
+
     def _silent_print(*_args, **_kwargs):
         """Suppress console output while exercising the __main__ guard."""
         return None
@@ -354,6 +354,7 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     student_access_code = "student" + "-pass"
     organizer_access_code = "organizer" + "-pass"
     admin_access_code = "admin" + "-pass"
+
     def _session_factory():
         """Return the seeded fake session for missing-tag coverage."""
         return fake
@@ -400,7 +401,15 @@ def test_seed_database_skips_missing_event_tags(monkeypatch):
     monkeypatch.setattr(
         seed_data,
         "SAMPLE_EVENTS",
-        [{"title": "Tagged Event", "description": "desc", "category": "Workshop", "tags": ["Programare", "Missing"], "max_seats": 10}],
+        [
+            {
+                "title": "Tagged Event",
+                "description": "desc",
+                "category": "Workshop",
+                "tags": ["Programare", "Missing"],
+                "max_seats": 10,
+            }
+        ],
     )
 
     seed_data.seed_database()

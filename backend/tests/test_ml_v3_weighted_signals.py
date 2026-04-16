@@ -94,7 +94,10 @@ def test_online_learning_updates_weighted_tag_category_city_with_decay(helpers):
 
     category_row = (
         db.query(models.UserImplicitInterestCategory)
-        .filter(models.UserImplicitInterestCategory.user_id == student.id, models.UserImplicitInterestCategory.category == "music")
+        .filter(
+            models.UserImplicitInterestCategory.user_id == student.id,
+            models.UserImplicitInterestCategory.category == "music",
+        )
         .one()
     )
     assert category_row.score == pytest.approx(1.0, abs=0.01)

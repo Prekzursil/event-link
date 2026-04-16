@@ -1,4 +1,5 @@
 """Shared helpers for API coverage-closure tests."""
+
 from __future__ import annotations
 
 import sys
@@ -30,7 +31,15 @@ def set_settings(monkeypatch, **overrides) -> None:
         monkeypatch.setattr(api.settings, name, value, raising=False)
 
 
-def make_event(*, title: str, owner_id: int | None = None, owner=None, start_time: datetime | None = None, end_time: datetime | None = None, **overrides):
+def make_event(
+    *,
+    title: str,
+    owner_id: int | None = None,
+    owner=None,
+    start_time: datetime | None = None,
+    end_time: datetime | None = None,
+    **overrides,
+):
     """Creates the event fixture value."""
     payload = {
         "title": title,
@@ -92,12 +101,24 @@ def cached_recommendation_context(helpers):
         raise ValueError("student fixture not found")
     student.city = "Cluj"
     tag = models.Tag(name="alpha")
-    event = make_event(title="Recommended", owner_id=int(owner.id), start_time=future_dt(days=3), location="Main Hall", max_seats=30)
+    event = make_event(
+        title="Recommended", owner_id=int(owner.id), start_time=future_dt(days=3), location="Main Hall", max_seats=30
+    )
     event.tags.append(tag)
     db.add_all([student, tag, event])
     db.commit()
     db.refresh(event)
-    db.add(models.UserRecommendation(user_id=int(student.id), event_id=int(event.id), rank=1, score=0.9, reason="Top match", model_version="v1", generated_at=datetime.now(timezone.utc)))
+    db.add(
+        models.UserRecommendation(
+            user_id=int(student.id),
+            event_id=int(event.id),
+            rank=1,
+            score=0.9,
+            reason="Top match",
+            model_version="v1",
+            generated_at=datetime.now(timezone.utc),
+        )
+    )
     db.commit()
     return SimpleNamespace(client=client, db=db, event=event, student=student, student_token=student_token)
 
@@ -114,7 +135,15 @@ def mutation_context(helpers):
     owner_user = db.query(models.User).filter(models.User.email == MUTATION_OWNER_EMAIL).first()
     if owner_user is None:
         raise ValueError("mutation owner fixture not found")
-    db.add(make_event(title="Totally unrelated title", owner_id=int(owner_user.id), start_time=future_dt(days=11), location="Side Hall", max_seats=40))
+    db.add(
+        make_event(
+            title="Totally unrelated title",
+            owner_id=int(owner_user.id),
+            start_time=future_dt(days=11),
+            location="Side Hall",
+            max_seats=40,
+        )
+    )
     db.commit()
     created = client.post(
         "/api/events",
@@ -201,17 +230,27 @@ def interaction_context(helpers):
     student = db.query(models.User).filter(models.User.email == "interactions-extra@test.ro").first()
     if student is None:
         raise ValueError("interaction student fixture not found")
-    organizer = models.User(email="ix-owner@test.ro", password_hash=auth.get_password_hash("fixture-access-A1"), role=models.UserRole.organizator)
+    organizer = models.User(
+        email="ix-owner@test.ro",
+        password_hash=auth.get_password_hash("fixture-access-A1"),
+        role=models.UserRole.organizator,
+    )
     hidden_tag = models.Tag(name="hidden-delta")
-    event = make_event(title="Interaction", owner=organizer, start_time=future_dt(days=2), category="Tech", max_seats=20)
+    event = make_event(
+        title="Interaction", owner=organizer, start_time=future_dt(days=2), category="Tech", max_seats=20
+    )
     event.tags.append(hidden_tag)
     db.add_all([organizer, hidden_tag, event])
     db.commit()
     db.execute(models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id)))
     db.add_all(
         [
-            models.UserImplicitInterestTag(user_id=int(student.id), tag_id=int(hidden_tag.id), score=2.0, last_seen_at=future_dt(hours=1)),
-            models.UserImplicitInterestCategory(user_id=int(student.id), category="tech", score=1.5, last_seen_at=future_dt(hours=1)),
+            models.UserImplicitInterestTag(
+                user_id=int(student.id), tag_id=int(hidden_tag.id), score=2.0, last_seen_at=future_dt(hours=1)
+            ),
+            models.UserImplicitInterestCategory(
+                user_id=int(student.id), category="tech", score=1.5, last_seen_at=future_dt(hours=1)
+            ),
         ]
     )
     db.commit()

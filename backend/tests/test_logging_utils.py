@@ -37,7 +37,6 @@ def test_log_warning_does_not_emit_sensitive_kwargs(caplog):
     assert not hasattr(record, _AUTH_CONTEXT_FIELD)
 
 
-
 def test_json_formatter_adds_exc_info_field() -> None:
     formatter = logging_utils.JsonFormatter()
     record = logging.LogRecord(
@@ -94,4 +93,3 @@ def test_log_error_sanitizes_message(caplog):
         logging_utils.log_error("danger\nline")
 
     assert caplog.records[-1].getMessage() == "event=dangerline"
-

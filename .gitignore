@@ -193,3 +193,5 @@ tmp/
 !.env.*.example
 startup.bat
 event-link-database.txt
+.claude/ralph-loop.local.md
+.claude/scheduled_tasks.lock

@@ -20,21 +20,15 @@ def upgrade() -> None:
     op.create_table(
         "user_implicit_interest_tags",
         sa.Column("id", sa.Integer(), primary_key=True),
-        sa.Column(
-            "user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False
-        ),
-        sa.Column(
-            "tag_id", sa.Integer(), sa.ForeignKey("tags.id"), nullable=False
-        ),
+        sa.Column("user_id", sa.Integer(), sa.ForeignKey("users.id"), nullable=False),
+        sa.Column("tag_id", sa.Integer(), sa.ForeignKey("tags.id"), nullable=False),
         sa.Column(
             "last_seen_at",
             sa.TIMESTAMP(timezone=True),
             nullable=False,
             server_default=sa.func.now(),
         ),
-        sa.UniqueConstraint(
-            "user_id", "tag_id", name="uq_user_implicit_interest_tag"
-        ),
+        sa.UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),
     )
 
     op.create_index(

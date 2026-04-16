@@ -173,7 +173,12 @@ def test_bulk_validation_and_suggest_branches(helpers):
     db.commit()
     suggest = client.post(
         "/api/organizer/events/suggest",
-        json={"title": "Branch Event Cluj", "description": "music", "location": "Hall", "start_time": helpers["future_time"]()},
+        json={
+            "title": "Branch Event Cluj",
+            "description": "music",
+            "location": "Hall",
+            "start_time": helpers["future_time"](),
+        },
         headers=helpers["auth_header"](owner_token),
     )
     assert suggest.status_code == 200
@@ -182,20 +187,38 @@ def test_bulk_validation_and_suggest_branches(helpers):
 def test_personalization_hidden_and_blocked_branches(helpers):
     client, db, _admin_token, student_token, _student = _admin_student_context(helpers)
     assert client.get("/api/me/profile", headers=helpers["auth_header"](student_token)).status_code == 200
-    assert client.post("/api/me/personalization/hidden-tags/999999", headers=helpers["auth_header"](student_token)).status_code == 404
+    assert (
+        client.post(
+            "/api/me/personalization/hidden-tags/999999", headers=helpers["auth_header"](student_token)
+        ).status_code
+        == 404
+    )
     tag = models.Tag(name="edge-tag")
     db.add(tag)
     db.commit()
     db.refresh(tag)
-    first_hidden = client.post(f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token))
-    second_hidden = client.post(f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token))
+    first_hidden = client.post(
+        f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token)
+    )
+    second_hidden = client.post(
+        f"/api/me/personalization/hidden-tags/{int(tag.id)}", headers=helpers["auth_header"](student_token)
+    )
     assert first_hidden.status_code == 201
     assert second_hidden.status_code == 201
     assert second_hidden.json()["status"] == "exists"
-    assert client.post("/api/me/personalization/blocked-organizers/999999", headers=helpers["auth_header"](student_token)).status_code == 404
+    assert (
+        client.post(
+            "/api/me/personalization/blocked-organizers/999999", headers=helpers["auth_header"](student_token)
+        ).status_code
+        == 404
+    )
     org, _org_token = _blocked_organizer_context(helpers, db)
-    first_block = client.post(f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token))
-    second_block = client.post(f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token))
+    first_block = client.post(
+        f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token)
+    )
+    second_block = client.post(
+        f"/api/me/personalization/blocked-organizers/{int(org.id)}", headers=helpers["auth_header"](student_token)
+    )
     assert first_block.status_code == 201
     assert second_block.status_code == 201
     assert second_block.json()["status"] == "exists"
@@ -214,7 +237,12 @@ def test_registration_restore_and_metric_validation_branches(helpers):
         ("POST", "/api/admin/events/1/registrations/1/restore", None, admin_token, 404),
     ]
     for method, path, params, token, status in requests:
-        response = client.request(method, path, params={"attended": True} if method == "PUT" else params, headers=helpers["auth_header"](token))
+        response = client.request(
+            method,
+            path,
+            params={"attended": True} if method == "PUT" else params,
+            headers=helpers["auth_header"](token),
+        )
         assert response.status_code == status
     for path, params in [
         ("/api/admin/stats", {"days": 0}),
@@ -243,8 +271,18 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
         headers=helpers["auth_header"](admin_token),
     )
     assert users_filtered.status_code == 200
-    assert client.patch("/api/admin/users/999999", json={"is_active": False}, headers=helpers["auth_header"](admin_token)).status_code == 404
-    assert client.post("/api/admin/events/999999/moderation/review", headers=helpers["auth_header"](admin_token)).status_code == 404
+    assert (
+        client.patch(
+            "/api/admin/users/999999", json={"is_active": False}, headers=helpers["auth_header"](admin_token)
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            "/api/admin/events/999999/moderation/review", headers=helpers["auth_header"](admin_token)
+        ).status_code
+        == 404
+    )
     placeholder_access_code = "placeholder-code-A1"
     placeholder = models.User(
         email="deleted-organizer@eventlink.invalid",
@@ -253,7 +291,9 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
     )
     db.add(placeholder)
     db.commit()
-    placeholder_token = auth.create_access_token({"sub": str(placeholder.id), "email": placeholder.email, "role": placeholder.role.value})
+    placeholder_token = auth.create_access_token(
+        {"sub": str(placeholder.id), "email": placeholder.email, "role": placeholder.role.value}
+    )
     blocked_delete = client.request(
         "DELETE",
         "/api/me",
@@ -307,12 +347,6 @@ def test_health_ics_and_password_reset_error_paths(monkeypatch, helpers):
         },
     )
     assert missing_user.status_code == 400
-
-
-
-
-
-
 
 
 def test_admin_update_user_row_missing_branch(monkeypatch, db_session):

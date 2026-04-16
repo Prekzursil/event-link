@@ -76,10 +76,12 @@ def test_build_test_helpers_login_and_register_raise_on_non_200() -> None:
 
 def test_build_test_helpers_return_access_tokens_on_success() -> None:
     helpers = build_test_helpers(
-        client=_FakeClient([
-            _FakeResponse(200, {ACCESS_FIELD: "register-token"}),
-            _FakeResponse(200, {ACCESS_FIELD: "login-token"}),
-        ]),
+        client=_FakeClient(
+            [
+                _FakeResponse(200, {ACCESS_FIELD: "register-token"}),
+                _FakeResponse(200, {ACCESS_FIELD: "login-token"}),
+            ]
+        ),
         db_session=_FakeDb(),
         auth_module=_FakeAuth(),
         models_module=_FakeModels(),
