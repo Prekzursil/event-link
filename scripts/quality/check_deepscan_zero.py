@@ -133,7 +133,9 @@ def _request_json(url: str, token: str) -> dict[str, Any]:
     return payload
 
 
-def _github_status_payload(*, owner: str, repo: str, sha: str, github_token: str) -> dict[str, Any]:
+def _github_status_payload(
+    *, owner: str, repo: str, sha: str, github_token: str
+) -> dict[str, Any]:
     """Fetch the GitHub commit-status payload for a repository SHA."""
     payload, _headers, status = request_https_json(
         build_github_commit_status_url(
@@ -191,7 +193,9 @@ def _deepscan_dashboard_url(status_payload: dict[str, Any]) -> str:
     raise RuntimeError("DeepScan commit status did not include a provider target URL.")
 
 
-def _wait_for_deepscan_dashboard_url(*, owner: str, repo: str, sha: str, github_token: str) -> str:
+def _wait_for_deepscan_dashboard_url(
+    *, owner: str, repo: str, sha: str, github_token: str
+) -> str:
     """Retry GitHub status discovery until a DeepScan dashboard URL appears."""
     last_error: RuntimeError | None = None
     for attempt in range(STATUS_RETRY_ATTEMPTS):
@@ -297,7 +301,9 @@ def _pending_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
 
 def _failed_statuses(statuses: list[dict[str, Any]]) -> list[dict[str, Any]]:
     """Return statuses that are neither pending nor successful."""
-    return [status for status in statuses if _status_state(status) not in {"pending", "success"}]
+    return [
+        status for status in statuses if _status_state(status) not in {"pending", "success"}
+    ]
 
 
 def _first_status_target_url(

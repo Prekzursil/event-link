@@ -224,7 +224,9 @@ def _payload_from_contexts(
     }
 
 
-def _fetch_contexts(*, owner: str, repo: str, sha: str, token: str) -> dict[str, dict[str, str]]:
+def _fetch_contexts(
+    *, owner: str, repo: str, sha: str, token: str
+) -> dict[str, dict[str, str]]:
     """Implements the fetch contexts helper."""
     check_runs = _api_get(
         build_github_commit_checks_url(owner=owner, repo=repo, sha=sha, per_page=100),

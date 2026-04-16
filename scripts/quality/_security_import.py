@@ -10,7 +10,9 @@ from types import ModuleType
 def load_security_helpers(caller_file: str) -> ModuleType:
     """Loads the security helpers resource."""
     script_dir = Path(caller_file).resolve().parent
-    helper_root = script_dir if (script_dir / "security_helpers.py").exists() else script_dir.parent
+    helper_root = (
+        script_dir if (script_dir / "security_helpers.py").exists() else script_dir.parent
+    )
     helper_path = helper_root / "security_helpers.py"
     if not helper_path.exists():
         raise RuntimeError(f"Unable to locate security_helpers.py from {caller_file}")

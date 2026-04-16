@@ -18,7 +18,9 @@ def _assert_uses_pinned_platform_workflow(content: str, workflow_name: str) -> N
 
 def test_quality_zero_repo_uses_platform_wrapper_workflows() -> None:
     """Validate that wrapper workflows point at the shared platform templates."""
-    quality_platform = (WORKFLOWS_DIR / "quality-zero-platform.yml").read_text(encoding="utf-8")
+    quality_platform = (WORKFLOWS_DIR / "quality-zero-platform.yml").read_text(
+        encoding="utf-8"
+    )
     quality_gate = (WORKFLOWS_DIR / "quality-zero-gate.yml").read_text(encoding="utf-8")
     analytics = (WORKFLOWS_DIR / "codecov-analytics.yml").read_text(encoding="utf-8")
 
@@ -128,7 +130,9 @@ def test_repo_contract_files_exist_for_platform_governance() -> None:
 
     assert "version = 1" in deepsource
     assert "test_patterns" in deepsource
-    assert 'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]' in deepsource
+    assert (
+        'skip_doc_coverage = ["module", "magic", "init", "class", "nonpublic"]' in deepsource
+    )
     for skip_marker in (
         "skip_doc_coverage = [",
         '"arrow-function-expression"',

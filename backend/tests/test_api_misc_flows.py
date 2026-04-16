@@ -220,6 +220,8 @@ def test_organizer_account_deletion_reassigns_events(helpers):
         .first()
     )
     assert placeholder is not None
-    event_row = helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
+    event_row = (
+        helpers["db"].query(models.Event).filter(models.Event.id == event["id"]).first()
+    )
     assert event_row is not None
     assert event_row.owner_id == placeholder.id

@@ -78,7 +78,10 @@ def _run_python_entrypoint_worker(
             previous_env[key] = os.environ.get(key)
             os.environ[key] = value
         sys.argv = list(argv)
-        with contextlib.redirect_stdout(stdout_buffer), contextlib.redirect_stderr(stderr_buffer):
+        with (
+            contextlib.redirect_stdout(stdout_buffer),
+            contextlib.redirect_stderr(stderr_buffer),
+        ):
             runpy.run_path(script_path, run_name="__main__")
     except SystemExit as exc:  # pragma: no cover - exercised via parent result handling
         code = exc.code
@@ -319,7 +322,9 @@ def _run_recompute_recommendations_ml(*, payload: dict[str, Any]) -> None:
     )
     if proc.returncode != 0:
         combined = "\n".join([proc.stdout.strip(), proc.stderr.strip()]).strip()
-        raise RuntimeError(f"trainer_failed exit_code={proc.returncode} output={combined[-4000:]}")
+        raise RuntimeError(
+            f"trainer_failed exit_code={proc.returncode} output={combined[-4000:]}"
+        )
 
 
 def _trainer_argv(*, script_path: Path, payload: dict[str, Any]) -> list[str]:
@@ -371,7 +376,9 @@ def _send_filling_fast_alerts(payload: dict[str, Any], *, db: Session) -> dict[s
     )
 
 
-def _evaluate_personalization_guardrails(payload: dict[str, Any], *, db: Session) -> dict[str, Any]:
+def _evaluate_personalization_guardrails(
+    payload: dict[str, Any], *, db: Session
+) -> dict[str, Any]:
     """Implements the evaluate personalization guardrails helper."""
     return _evaluate_personalization_guardrails_impl(
         db=db,

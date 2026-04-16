@@ -133,7 +133,9 @@ def test_helper_train_and_eval_hitrate_smoke() -> None:
     assert 0.0 <= hitrate <= 1.0
 
 
-def test_main_handles_missing_database_and_empty_inputs(monkeypatch, db_session, capsys) -> None:
+def test_main_handles_missing_database_and_empty_inputs(
+    monkeypatch, db_session, capsys
+) -> None:
     """Exercises main handles missing database and empty inputs."""
     module = _load_script_module()
 
@@ -185,7 +187,9 @@ def test_main_skip_training_paths(monkeypatch, db_session, capsys) -> None:
     db_session.add(bad_model)
     db_session.commit()
     assert (
-        _run_main(module, monkeypatch, "--skip-training", "--dry-run", "--user-id", str(student.id))
+        _run_main(
+            module, monkeypatch, "--skip-training", "--dry-run", "--user-id", str(student.id)
+        )
         == 0
     )
     assert "using persisted model_version=bad-features" in capsys.readouterr().out
@@ -268,7 +272,9 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(
     student, event_candidate = _seed_training_rows(db_session)
 
     assert (
-        _run_main(module, monkeypatch, "--dry-run", "--user-id", str(student.id), "--top-n", "2")
+        _run_main(
+            module, monkeypatch, "--dry-run", "--user-id", str(student.id), "--top-n", "2"
+        )
         == 0
     )
     dry_run_output = capsys.readouterr().out
@@ -336,7 +342,9 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
     same_city_event = _basic_event_features(module, now, city="cluj", owner_id=1, days=2)
     weighted_city_event = _basic_event_features(module, now, city="iasi", owner_id=2, days=3)
     generic_event = _basic_event_features(module, now, city="timisoara", owner_id=3, days=4)
-    assert module._reason_for(user=same_city_user, event=same_city_event, lang="en") == "Near you"
+    assert (
+        module._reason_for(user=same_city_user, event=same_city_event, lang="en") == "Near you"
+    )
     assert (
         module._reason_for(user=weighted_city_user, event=weighted_city_event, lang="en")
         == "Near you"
@@ -418,7 +426,9 @@ def test_main_training_warning_paths_continue_on_query_failures(
     assert "could not load event_interactions (interaction boom)" in output
 
 
-def test_main_training_detects_feature_length_mismatch(monkeypatch, db_session, capsys) -> None:
+def test_main_training_detects_feature_length_mismatch(
+    monkeypatch, db_session, capsys
+) -> None:
     """Exercises main training detects feature length mismatch."""
     module = _load_script_module()
     student, _event_candidate = _seed_training_rows(db_session)

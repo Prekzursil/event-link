@@ -117,11 +117,15 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
     warnings = []
     errors = []
 
-    monkeypatch.setattr(email_service, "log_event", lambda event, **kw: events.append((event, kw)))
+    monkeypatch.setattr(
+        email_service, "log_event", lambda event, **kw: events.append((event, kw))
+    )
     monkeypatch.setattr(
         email_service, "log_warning", lambda event, **kw: warnings.append((event, kw))
     )
-    monkeypatch.setattr(email_service, "log_error", lambda event, **kw: errors.append((event, kw)))
+    monkeypatch.setattr(
+        email_service, "log_error", lambda event, **kw: errors.append((event, kw))
+    )
 
     smtp_secret_field = "smtp_" + "".join(
         chr(code) for code in [112, 97, 115, 115, 119, 111, 114, 100]
@@ -142,7 +146,9 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
     email_service.emails_send_failed = 0
 
     try:
-        email_service.send_email_now("to@test.ro", "Hello", "Body", "<p>Body</p>", {"ctx": "ok"})
+        email_service.send_email_now(
+            "to@test.ro", "Hello", "Body", "<p>Body</p>", {"ctx": "ok"}
+        )
     finally:
         _restore_settings(monkeypatch, original)
 
@@ -196,7 +202,9 @@ def test_send_email_async_branches(monkeypatch, db_session):
     monkeypatch.setattr(email_service.settings, "task_queue_enabled", False)
     called_now = []
     monkeypatch.setattr(
-        email_service, "send_email_now", lambda *args, **kwargs: called_now.append((args, kwargs))
+        email_service,
+        "send_email_now",
+        lambda *args, **kwargs: called_now.append((args, kwargs)),
     )
     email_service.send_email_async(None, None, "to@test.ro", "Sub", "Body")
     assert called_now
@@ -265,7 +273,9 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
     assert "Rezumat săptămânal" in digest_ro[0]
     assert "events/" in digest_en[1]
 
-    fill_en = email_templates.render_filling_fast_email(user, event, available_seats=2, lang="en")
+    fill_en = email_templates.render_filling_fast_email(
+        user, event, available_seats=2, lang="en"
+    )
     fill_ro = email_templates.render_filling_fast_email(
         user, event, available_seats=None, lang="ro"
     )

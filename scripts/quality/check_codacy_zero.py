@@ -379,7 +379,9 @@ def _repository_analysis_state(payload: dict[str, Any]) -> BranchAnalysisState:
     branch_info = data.get("branch")
     analysed_sha = str((last_analysed_commit or {}).get("sha") or "").strip()
     branch_head_sha = str(
-        (selected_branch or {}).get("lastCommit") or (branch_info or {}).get("lastCommit") or ""
+        (selected_branch or {}).get("lastCommit")
+        or (branch_info or {}).get("lastCommit")
+        or ""
     ).strip()
     return BranchAnalysisState(
         analysed_sha,
@@ -549,7 +551,9 @@ def _evaluate_commit_analysis(
 
     return _issues_result(
         open_issues=_quality_new_issues(payload),
-        missing_message=("Codacy commit response did not include a parseable new issue count."),
+        missing_message=(
+            "Codacy commit response did not include a parseable new issue count."
+        ),
         nonzero_message=(
             f"Codacy reports {_quality_new_issues(payload)} commit new issues (expected 0)."
         ),
@@ -581,7 +585,9 @@ def _evaluate_codacy(request: CodacyRequest) -> tuple[str, int | None, list[str]
     last_exc: Exception | None = None
     for candidate in _provider_candidates(request.provider):
         try:
-            status, open_issues, findings = _evaluate_candidate(request.with_provider(candidate))
+            status, open_issues, findings = _evaluate_candidate(
+                request.with_provider(candidate)
+            )
         except Exception as exc:  # pragma: no cover - network/runtime surface
             last_exc = exc
             return "fail", None, [f"Codacy API request failed: {exc}"]

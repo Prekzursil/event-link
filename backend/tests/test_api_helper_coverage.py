@@ -42,7 +42,9 @@ def _seed_favorite_context(helpers):
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("favorite-org@test.ro", "organizer-fixture-A1")
-    organizer = db.query(models.User).filter(models.User.email == "favorite-org@test.ro").first()
+    organizer = (
+        db.query(models.User).filter(models.User.email == "favorite-org@test.ro").first()
+    )
     assert organizer is not None
     student_token = helpers["register_student"]("favorite-student@test.ro")
     tag = models.Tag(name="favorite-tag")
@@ -135,7 +137,11 @@ def _record_interactions_payload(event_id: int) -> dict:
             },
             {
                 "interaction_type": "filter",
-                "meta": {"tags": ["analytics-visible"], "category": "Tech", "city": "Bucuresti"},
+                "meta": {
+                    "tags": ["analytics-visible"],
+                    "category": "Tech",
+                    "city": "Bucuresti",
+                },
             },
             {
                 "interaction_type": "click",
@@ -203,7 +209,9 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     db.add_all([organizer, visible_tag, hidden_tag, event])
     db.commit()
     db.execute(
-        models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id))
+        models.user_hidden_tags.insert().values(
+            user_id=int(student.id), tag_id=int(hidden_tag.id)
+        )
     )
     for model in (
         models.UserImplicitInterestTag(
@@ -261,7 +269,9 @@ def test_check_configuration_required_values_and_email_toggle(monkeypatch):
     with pytest.raises(RuntimeError):
         api._check_configuration()
 
-    monkeypatch.setattr(api.settings, "secret_key", "test-signing-key-material-1234", raising=False)
+    monkeypatch.setattr(
+        api.settings, "secret_key", "test-signing-key-material-1234", raising=False
+    )
     monkeypatch.setattr(api.settings, "email_enabled", True, raising=False)
     monkeypatch.setattr(api.settings, "smtp_host", None, raising=False)
     monkeypatch.setattr(api.settings, "smtp_sender", None, raising=False)
@@ -370,7 +380,9 @@ def test_clone_event_branches_and_success(helpers):
     assert owner is not None
     other_token = helpers["login"]("clone-other@test.ro", "other-fixture-A1")
 
-    missing = client.post("/api/events/999999/clone", headers=helpers["auth_header"](other_token))
+    missing = client.post(
+        "/api/events/999999/clone", headers=helpers["auth_header"](other_token)
+    )
     assert missing.status_code == 404
 
     tag = models.Tag(name="clone-tag")
@@ -506,7 +518,9 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     """Favorite routes should cover missing, exists, list, and delete branches."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
+    assert (
+        context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
+    )
     assert (
         context.client.post(
             f"/api/events/{int(context.event.id)}/favorite", headers=headers

@@ -54,7 +54,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Sync Codacy repository tool settings to the repo's intended analyzer profile."
     )
-    parser.add_argument("--provider", default="gh", help="Codacy provider slug, for example gh")
+    parser.add_argument(
+        "--provider", default="gh", help="Codacy provider slug, for example gh"
+    )
     parser.add_argument("--owner", required=True, help="Repository owner")
     parser.add_argument("--repo", required=True, help="Repository name")
     parser.add_argument("--commit", required=True, help="Commit SHA to reanalyze")
@@ -110,7 +112,11 @@ def _list_tools(*, provider: str, owner: str, repo: str, token: str) -> list[dic
         path=f"api/v3/analysis/organizations/{provider}/{owner}/repositories/{repo}/tools",
         token=token,
     )
-    if status != 200 or not isinstance(payload, dict) or not isinstance(payload.get("data"), list):
+    if (
+        status != 200
+        or not isinstance(payload, dict)
+        or not isinstance(payload.get("data"), list)
+    ):
         raise RuntimeError(f"Unable to list Codacy tools: HTTP {status} {raw[:400]}")
     return payload["data"]
 
@@ -135,7 +141,9 @@ def _configure_tool(
         body=payload,
     )
     if status != 204:
-        raise RuntimeError(f"Codacy tool patch failed for {tool_uuid}: HTTP {status} {raw[:400]}")
+        raise RuntimeError(
+            f"Codacy tool patch failed for {tool_uuid}: HTTP {status} {raw[:400]}"
+        )
 
 
 def _disable_pattern(
@@ -175,7 +183,9 @@ def _reanalyze_commit(
         body={"commitUuid": commit_sha, "cleanCache": True},
     )
     if status != 204:
-        raise RuntimeError(f"Codacy reanalyze failed for {commit_sha}: HTTP {status} {raw[:400]}")
+        raise RuntimeError(
+            f"Codacy reanalyze failed for {commit_sha}: HTTP {status} {raw[:400]}"
+        )
 
 
 def _planned_tool_payload(
@@ -220,7 +230,9 @@ def _tool_uuid(tool_name: str, tool: dict[str, Any]) -> str:
 def _tools_by_name(tools: list[dict[str, Any]]) -> dict[str, dict[str, Any]]:
     """Implements the tools by name helper."""
     return {
-        str(tool["name"]): tool for tool in tools if isinstance(tool, dict) and tool.get("name")
+        str(tool["name"]): tool
+        for tool in tools
+        if isinstance(tool, dict) and tool.get("name")
     }
 
 
@@ -622,7 +634,9 @@ def main() -> int:
 
     try:
         write_workspace_json(
-            raw_path=args.out_json, fallback="codacy-tool-sync/codacy-sync.json", payload=payload
+            raw_path=args.out_json,
+            fallback="codacy-tool-sync/codacy-sync.json",
+            payload=payload,
         )
         md_path = write_workspace_text(
             raw_path=args.out_md,

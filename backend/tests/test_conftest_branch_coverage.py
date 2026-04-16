@@ -34,7 +34,9 @@ def test_ensure_schema_teardown_skips_missing_temp_db(monkeypatch, tmp_path):
     module = _load_conftest_module()
     calls: list[str] = []
 
-    monkeypatch.setattr(module.Base.metadata, "drop_all", lambda **_kwargs: calls.append("drop"))
+    monkeypatch.setattr(
+        module.Base.metadata, "drop_all", lambda **_kwargs: calls.append("drop")
+    )
     monkeypatch.setattr(
         module.Base.metadata, "create_all", lambda **_kwargs: calls.append("create")
     )
@@ -46,6 +48,8 @@ def test_ensure_schema_teardown_skips_missing_temp_db(monkeypatch, tmp_path):
     first = next(generator, _sentinel)
     assert first is not _sentinel, "_ensure_schema generator must yield once before teardown"
     exhausted = next(generator, _sentinel)
-    assert exhausted is _sentinel, "_ensure_schema generator should be exhausted after one yield"
+    assert exhausted is _sentinel, (
+        "_ensure_schema generator should be exhausted after one yield"
+    )
 
     assert calls == ["drop", "create", "drop", "dispose"]

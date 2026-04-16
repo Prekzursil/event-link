@@ -77,7 +77,9 @@ def _is_forbidden_ip(ip_value: ipaddress._BaseAddress | None) -> bool:
     """Return whether an IP address points to a non-public target."""
     if ip_value is None:
         return False
-    return any(bool(getattr(ip_value, attribute, False)) for attribute in _FORBIDDEN_IP_ATTRIBUTES)
+    return any(
+        bool(getattr(ip_value, attribute, False)) for attribute in _FORBIDDEN_IP_ATTRIBUTES
+    )
 
 
 def _reject_local_target(hostname: str) -> None:
@@ -299,7 +301,9 @@ def build_github_api_url(
     )
 
 
-def build_github_commit_checks_url(*, owner: str, repo: str, sha: str, per_page: int = 100) -> str:
+def build_github_commit_checks_url(
+    *, owner: str, repo: str, sha: str, per_page: int = 100
+) -> str:
     """Build the GitHub commit check-runs API URL for a commit."""
     safe_sha = validate_commit_sha(sha)
     return build_github_api_url(

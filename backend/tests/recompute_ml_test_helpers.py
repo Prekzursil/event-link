@@ -70,7 +70,9 @@ def _refresh_all(db_session, *instances) -> None:
 
 def _build_seed_training_entities(now: datetime):
     """Builds the seed training entities fixture data."""
-    organizer = _make_user(email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj")
+    organizer = _make_user(
+        email="org-ml@test.ro", role=models.UserRole.organizator, city="Cluj"
+    )
     student = _make_user(
         email="student-ml@test.ro",
         role=models.UserRole.student,
@@ -80,7 +82,12 @@ def _build_seed_training_entities(now: datetime):
     tag = models.Tag(name="Python")
     events = {
         "positive": _make_event(
-            owner=organizer, title="Positive Event", now=now, days=5, location="Hall A", end_hours=2
+            owner=organizer,
+            title="Positive Event",
+            now=now,
+            days=5,
+            location="Hall A",
+            end_hours=2,
         ),
         "candidate": _make_event(
             owner=organizer,
@@ -110,10 +117,20 @@ def _build_seed_training_entities(now: datetime):
             publish_at=now + timedelta(days=1),
         ),
         "filtered_past": _make_event(
-            owner=organizer, title="Past Event", now=now, days=-1, location="Hall E", max_seats=12
+            owner=organizer,
+            title="Past Event",
+            now=now,
+            days=-1,
+            location="Hall E",
+            max_seats=12,
         ),
         "filtered_full": _make_event(
-            owner=organizer, title="Full Event", now=now, days=12, location="Hall F", max_seats=1
+            owner=organizer,
+            title="Full Event",
+            now=now,
+            days=12,
+            location="Hall F",
+            max_seats=1,
         ),
     }
     return organizer, student, tag, events

@@ -129,10 +129,14 @@ def test_cleanup_root_and_exception_handler_branches(monkeypatch, helpers):
 
     scope = {"type": "http", "method": "GET", "path": "/", "headers": []}
     response = asyncio.run(
-        api.http_exception_handler(Request(scope), HTTPException(status_code=418, detail="teapot"))
+        api.http_exception_handler(
+            Request(scope), HTTPException(status_code=418, detail="teapot")
+        )
     )
     assert response.status_code == 418
-    unhandled = asyncio.run(api.unhandled_exception_handler(Request(scope), RuntimeError("boom")))
+    unhandled = asyncio.run(
+        api.unhandled_exception_handler(Request(scope), RuntimeError("boom"))
+    )
     assert unhandled.status_code == 500
     mismatch = client.post(
         "/register",
@@ -304,7 +308,10 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
 
     def _full_events_with_counts_query(*_args, **_kwargs):
         """Returns cached rows for a full matching event."""
-        return (_rows((SimpleNamespace(id=int(ctx.event.id), max_seats=1, city="Cluj"), 1)), None)
+        return (
+            _rows((SimpleNamespace(id=int(ctx.event.id), max_seats=1, city="Cluj"), 1)),
+            None,
+        )
 
     monkeypatch.setattr(
         api,
@@ -361,7 +368,9 @@ def test_event_mutation_branches_cover_get_update_and_delete(helpers):
         == 422
     )
     assert (
-        ctx.client.delete("/api/events/999999", headers=auth_header(ctx.owner_token)).status_code
+        ctx.client.delete(
+            "/api/events/999999", headers=auth_header(ctx.owner_token)
+        ).status_code
         == 404
     )
     assert (
@@ -499,7 +508,12 @@ def test_admin_filter_email_and_metadata_branches(helpers):
     ctx = admin_registration_context(helpers)
     filtered = ctx.client.get(
         "/api/admin/events",
-        params={"status": "published", "category": "Edu", "city": "clu", "search": "owner@test.ro"},
+        params={
+            "status": "published",
+            "category": "Edu",
+            "city": "clu",
+            "search": "owner@test.ro",
+        },
         headers=auth_header(ctx.admin_token),
     )
     assert filtered.status_code == 200
@@ -528,7 +542,9 @@ def test_export_and_recommendation_branches(monkeypatch, helpers):
     assert "organized_events" in export.json()
     set_settings(monkeypatch, recommendations_use_ml_cache=False)
     assert (
-        ctx.client.get("/api/recommendations", headers=auth_header(ctx.student_token)).status_code
+        ctx.client.get(
+            "/api/recommendations", headers=auth_header(ctx.student_token)
+        ).status_code
         == 200
     )
 
@@ -581,7 +597,11 @@ def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
     )
     learning_payload = {
         "events": [
-            {"interaction_type": "dwell", "event_id": int(ctx.event.id), "meta": {"seconds": 1}},
+            {
+                "interaction_type": "dwell",
+                "event_id": int(ctx.event.id),
+                "meta": {"seconds": 1},
+            },
             {
                 "interaction_type": "search",
                 "meta": {"tags": ["hidden-delta"], "category": "Tech", "city": "Cluj"},
@@ -589,7 +609,9 @@ def test_interaction_learning_hidden_tag_branches(monkeypatch, helpers):
         ]
     }
     learning_resp = ctx.client.post(
-        "/api/analytics/interactions", json=learning_payload, headers=auth_header(ctx.student_token)
+        "/api/analytics/interactions",
+        json=learning_payload,
+        headers=auth_header(ctx.student_token),
     )
     assert learning_resp.status_code == 204
 
@@ -619,11 +641,17 @@ def test_interaction_dwell_refresh_enqueues_job(monkeypatch, helpers):
     monkeypatch.setattr(tq, "enqueue_job", _enqueue)
     refresh_payload = {
         "events": [
-            {"interaction_type": "dwell", "event_id": int(ctx.event.id), "meta": {"seconds": 11}}
+            {
+                "interaction_type": "dwell",
+                "event_id": int(ctx.event.id),
+                "meta": {"seconds": 11},
+            }
         ]
     }
     refresh_resp = ctx.client.post(
-        "/api/analytics/interactions", json=refresh_payload, headers=auth_header(ctx.student_token)
+        "/api/analytics/interactions",
+        json=refresh_payload,
+        headers=auth_header(ctx.student_token),
     )
     assert refresh_resp.status_code == 204
     assert any(job_type == "refresh_user_recommendations_ml" for job_type, _payload in jobs)

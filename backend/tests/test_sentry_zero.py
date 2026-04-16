@@ -39,5 +39,7 @@ def test_evaluate_sentry_skips_missing_projects() -> None:
     )
 
     assert status == "pass"
-    assert project_results == [{"project": "event-link", "unresolved": 0, "state": "not_found"}]
+    assert project_results == [
+        {"project": "event-link", "unresolved": 0, "state": "not_found"}
+    ]
     assert findings == []

@@ -25,7 +25,9 @@ def _user_name(user: User) -> str:
     return user.full_name or user.email
 
 
-def render_registration_email(event: Event, user: User, lang: str = "ro") -> tuple[str, str, str]:
+def render_registration_email(
+    event: Event, user: User, lang: str = "ro"
+) -> tuple[str, str, str]:
     """Implements the render registration email helper."""
     lang = _normalized_lang(lang)
     start_text = _format_dt(event.start_time)
@@ -166,8 +168,7 @@ def _digest_copy(
     else:
         subject = "Rezumat săptămânal EventLink"
         intro = (
-            f"Salut {name},\n\n"
-            "Iată câteva evenimente recomandate pentru săptămâna aceasta:\n"
+            f"Salut {name},\n\nIată câteva evenimente recomandate pentru săptămâna aceasta:\n"
         )
         html_intro = (
             f"<p>Salut {name},</p>"
@@ -198,7 +199,9 @@ def _seats_line(lang: str, available_seats: int | None) -> str:
     """Implements the seats line helper."""
     if available_seats is None:
         return "Limited seats" if lang == "en" else "Locuri limitate"
-    return f"{available_seats} seats left" if lang == "en" else f"{available_seats} locuri rămase"
+    return (
+        f"{available_seats} seats left" if lang == "en" else f"{available_seats} locuri rămase"
+    )
 
 
 def _filling_fast_copy(

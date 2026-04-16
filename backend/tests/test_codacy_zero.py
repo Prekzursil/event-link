@@ -26,7 +26,12 @@ def _load_module():
 
 
 def _request(
-    module, *, branch: str = "", pr_number: str = "", commit_sha: str = "", poll_seconds: int = 5
+    module,
+    *,
+    branch: str = "",
+    pr_number: str = "",
+    commit_sha: str = "",
+    poll_seconds: int = 5,
 ):
     """Implements the request helper."""
     return module.CodacyRequest(
@@ -42,10 +47,14 @@ def _request(
     )
 
 
-def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_module_raises_when_import_spec_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies load module raises when import spec is missing behavior."""
     original_parent = str((REPO_ROOT / "scripts" / "quality").resolve())
-    monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != original_parent])
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
@@ -140,7 +149,9 @@ def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPa
     assert findings == ["Codacy reports 43 PR new issues (expected 0)."]
 
 
-def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_wait_for_branch_analysis_uses_latest_branch_head(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies wait for branch analysis uses latest branch head behavior."""
     module = _load_module()
     payloads = [
@@ -148,8 +159,12 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
             200,
             {
                 "data": {
-                    "selectedBranch": {"lastCommit": "0123456789abcdef0123456789abcdef01234567"},
-                    "lastAnalysedCommit": {"sha": "oldoldoldoldoldoldoldoldoldoldoldoldoldold"},
+                    "selectedBranch": {
+                        "lastCommit": "0123456789abcdef0123456789abcdef01234567"
+                    },
+                    "lastAnalysedCommit": {
+                        "sha": "oldoldoldoldoldoldoldoldoldoldoldoldoldold"
+                    },
                     "issuesCount": 12,
                 }
             },
@@ -158,7 +173,9 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
             200,
             {
                 "data": {
-                    "selectedBranch": {"lastCommit": "0123456789abcdef0123456789abcdef01234567"},
+                    "selectedBranch": {
+                        "lastCommit": "0123456789abcdef0123456789abcdef01234567"
+                    },
                     "lastAnalysedCommit": {"sha": "0123456789abcdef0123456789abcdef01234567"},
                     "issuesCount": 0,
                 }
@@ -167,7 +184,9 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
     ]
     sleeps: list[int] = []
 
-    monkeypatch.setattr(module, "_repository_analysis_request", lambda **_kwargs: payloads.pop(0))
+    monkeypatch.setattr(
+        module, "_repository_analysis_request", lambda **_kwargs: payloads.pop(0)
+    )
     monkeypatch.setattr(module.time, "sleep", sleeps.append)
 
     status, open_issues, findings = module._wait_for_branch_analysis(
@@ -200,7 +219,9 @@ def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_rea
             200,
             {
                 "data": {
-                    "selectedBranch": {"lastCommit": "0123456789abcdef0123456789abcdef01234567"},
+                    "selectedBranch": {
+                        "lastCommit": "0123456789abcdef0123456789abcdef01234567"
+                    },
                     "lastAnalysedCommit": {"sha": "0123456789abcdef0123456789abcdef01234567"},
                     "issuesCount": 4,
                 }

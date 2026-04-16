@@ -32,17 +32,27 @@ def _parse_args() -> argparse.Namespace:
         description="Assert SonarCloud has zero open issues and a passing quality gate."
     )
     parser.add_argument("--project-key", required=True, help="Sonar project key")
-    parser.add_argument("--token", default="", help="Sonar token (falls back to SONAR_TOKEN env)")
+    parser.add_argument(
+        "--token", default="", help="Sonar token (falls back to SONAR_TOKEN env)"
+    )
     parser.add_argument("--branch", default="", help="Optional branch scope")
     parser.add_argument("--pull-request", default="", help="Optional PR scope")
     parser.add_argument(
-        "--expected-commit", default="", help="Optional commit SHA that Sonar must have analyzed"
+        "--expected-commit",
+        default="",
+        help="Optional commit SHA that Sonar must have analyzed",
     )
     parser.add_argument(
-        "--timeout-seconds", type=int, default=180, help="Max seconds to wait for Sonar analysis"
+        "--timeout-seconds",
+        type=int,
+        default=180,
+        help="Max seconds to wait for Sonar analysis",
     )
     parser.add_argument(
-        "--poll-seconds", type=int, default=5, help="Polling interval while waiting for analysis"
+        "--poll-seconds",
+        type=int,
+        default=5,
+        help="Polling interval while waiting for analysis",
     )
     parser.add_argument("--out-json", default="sonar-zero/sonar.json", help="Output JSON path")
     parser.add_argument("--out-md", default="sonar-zero/sonar.md", help="Output markdown path")
@@ -132,7 +142,9 @@ def _validated_scope(args: argparse.Namespace) -> tuple[dict[str, str], list[str
     findings: list[str] = []
     runtime = {
         "token": (args.token or os.environ.get("SONAR_TOKEN", "")).strip(),
-        "api_base": normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip("/"),
+        "api_base": normalize_https_url(SONAR_API_BASE, allowed_hosts={SONAR_HOST}).rstrip(
+            "/"
+        ),
         "project_key": _validated_required_slug(
             args.project_key, field_name="sonar project key", findings=findings
         ),
@@ -209,7 +221,8 @@ def _hotspot_total(
 ) -> int:
     """Implements the hotspot total helper."""
     payload = _request_json(
-        f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}", auth
+        f"{api_base}/api/hotspots/search?{_hotspots_query(project_key, branch, pull_request)}",
+        auth,
     )
     return int((payload.get("paging") or {}).get("total") or 0)
 
@@ -297,7 +310,9 @@ def _legacy_summary(
     pull_request: str,
 ) -> tuple[int, str, int, str]:
     """Implements the legacy summary helper."""
-    issues_url = f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
+    issues_url = (
+        f"{api_base}/api/issues/search?{_issues_query(project_key, branch, pull_request)}"
+    )
     issues_payload = _request_json(issues_url, auth)
     paging = issues_payload.get("paging") or {}
     open_issues = int(paging.get("total") or 0)

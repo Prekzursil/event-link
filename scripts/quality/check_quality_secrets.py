@@ -83,7 +83,9 @@ def _partition_present_and_missing(names: list[str]) -> tuple[list[str], list[st
     return missing, present
 
 
-def evaluate_env(required_secrets: list[str], required_vars: list[str]) -> dict[str, list[str]]:
+def evaluate_env(
+    required_secrets: list[str], required_vars: list[str]
+) -> dict[str, list[str]]:
     """Return which required secrets and variables are present or missing."""
     missing_secrets, present_secrets = _partition_present_and_missing(required_secrets)
     missing_vars, present_vars = _partition_present_and_missing(required_vars)

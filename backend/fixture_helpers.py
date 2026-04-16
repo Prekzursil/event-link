@@ -43,7 +43,11 @@ def build_test_helpers(
         access_code = DEFAULT_STUDENT_CODE
         response = client.post(
             "/register",
-            json={"email": email, SECRET_FIELD: access_code, CONFIRM_SECRET_FIELD: access_code},
+            json={
+                "email": email,
+                SECRET_FIELD: access_code,
+                CONFIRM_SECRET_FIELD: access_code,
+            },
         )
         _require_success(action="register_student", response=response)
         return response.json()[ACCESS_FIELD]
@@ -54,7 +58,9 @@ def build_test_helpers(
         _require_success(action="login", response=response)
         return response.json()[ACCESS_FIELD]
 
-    def make_organizer(email: str = "org@test.ro", access_code: str = DEFAULT_ORG_CODE) -> None:
+    def make_organizer(
+        email: str = "org@test.ro", access_code: str = DEFAULT_ORG_CODE
+    ) -> None:
         """Builds a organizer fixture."""
         organizer = models_module.User(
             **{
@@ -66,7 +72,9 @@ def build_test_helpers(
         db_session.add(organizer)
         db_session.commit()
 
-    def make_admin(email: str = "admin@test.ro", access_code: str = DEFAULT_ADMIN_CODE) -> None:
+    def make_admin(
+        email: str = "admin@test.ro", access_code: str = DEFAULT_ADMIN_CODE
+    ) -> None:
         """Builds a admin fixture."""
         admin = models_module.User(
             **{

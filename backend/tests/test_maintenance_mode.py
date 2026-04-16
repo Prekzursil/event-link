@@ -31,7 +31,8 @@ def test_registration_endpoints_disabled_in_maintenance_mode(helpers):
     settings.maintenance_mode_registrations_disabled = True
     try:
         register = client.post(
-            f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
+            f"/api/events/{event['id']}/register",
+            headers=helpers["auth_header"](student_token),
         )
         assert register.status_code == 503
 

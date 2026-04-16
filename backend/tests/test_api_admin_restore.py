@@ -33,7 +33,9 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
     event_id = create_resp.json()["id"]
 
     student_token = helpers["register_student"]("softdel-stud@test.ro")
-    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+    client.post(
+        f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token)
+    )
 
     delete_resp = client.delete(
         f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token)
@@ -85,7 +87,9 @@ def test_restore_event_restores_event_and_registrations(helpers):
     event_id = create_resp.json()["id"]
 
     student_token = helpers["register_student"]("restore-stud@test.ro")
-    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+    client.post(
+        f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token)
+    )
 
     delete_resp = client.delete(
         f"/api/events/{event_id}", headers=helpers["auth_header"](organizer_token)
@@ -114,7 +118,9 @@ def test_restore_event_restores_event_and_registrations(helpers):
     assert event is not None
     assert event.deleted_at is None
 
-    reg = db.query(models.Registration).filter(models.Registration.event_id == event_id).first()
+    reg = (
+        db.query(models.Registration).filter(models.Registration.event_id == event_id).first()
+    )
     assert reg is not None
     assert reg.deleted_at is None
 
@@ -170,8 +176,12 @@ def test_admin_can_restore_registration(helpers):
     ).json()["id"]
 
     student_token = helpers["register_student"]("admin-restore-stud@test.ro")
-    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
-    client.delete(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
+    client.post(
+        f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token)
+    )
+    client.delete(
+        f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token)
+    )
 
     student = (
         db.query(models.User).filter(models.User.email == "admin-restore-stud@test.ro").first()
@@ -188,7 +198,9 @@ def test_admin_can_restore_registration(helpers):
 
     reg = (
         db.query(models.Registration)
-        .filter(models.Registration.event_id == event_id, models.Registration.user_id == student.id)
+        .filter(
+            models.Registration.event_id == event_id, models.Registration.user_id == student.id
+        )
         .first()
     )
     assert reg is not None
@@ -257,7 +269,9 @@ def test_admin_can_edit_and_delete_any_event(helpers):
 
     helpers["make_admin"]("admin-events@test.ro", DEFAULT_ADMIN_CODE)
     admin_token = helpers["login"]("admin-events@test.ro", DEFAULT_ADMIN_CODE)
-    admin_user = db.query(models.User).filter(models.User.email == "admin-events@test.ro").first()
+    admin_user = (
+        db.query(models.User).filter(models.User.email == "admin-events@test.ro").first()
+    )
     assert admin_user is not None
 
     updated = client.put(
@@ -268,7 +282,9 @@ def test_admin_can_edit_and_delete_any_event(helpers):
     assert updated.status_code == 200
     assert updated.json()["title"] == "Admin edited"
 
-    deleted = client.delete(f"/api/events/{event_id}", headers=helpers["auth_header"](admin_token))
+    deleted = client.delete(
+        f"/api/events/{event_id}", headers=helpers["auth_header"](admin_token)
+    )
     assert deleted.status_code == 204
 
     event = db.query(models.Event).filter(models.Event.id == event_id).first()
@@ -300,8 +316,12 @@ def test_admin_can_view_participants_and_update_attendance(helpers):
     ).json()["id"]
 
     student_token = helpers["register_student"]("participants-stud@test.ro")
-    client.post(f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token))
-    student = db.query(models.User).filter(models.User.email == "participants-stud@test.ro").first()
+    client.post(
+        f"/api/events/{event_id}/register", headers=helpers["auth_header"](student_token)
+    )
+    student = (
+        db.query(models.User).filter(models.User.email == "participants-stud@test.ro").first()
+    )
     assert student is not None
 
     helpers["make_admin"]("participants-admin@test.ro", DEFAULT_ADMIN_CODE)
@@ -312,7 +332,9 @@ def test_admin_can_view_participants_and_update_attendance(helpers):
         headers=helpers["auth_header"](admin_token),
     )
     assert listed.status_code == 200
-    assert any(p["email"] == "participants-stud@test.ro" for p in listed.json()["participants"])
+    assert any(
+        p["email"] == "participants-stud@test.ro" for p in listed.json()["participants"]
+    )
 
     updated = client.put(
         f"/api/organizer/events/{event_id}/participants/{student.id}",

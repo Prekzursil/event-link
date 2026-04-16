@@ -48,7 +48,9 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
     return jwt.encode(to_encode, settings.secret_key, algorithm=settings.algorithm)
 
 
-def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
+def get_current_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)
+):
     """Returns the current user value."""
     credentials_exception = HTTPException(
         status_code=status.HTTP_401_UNAUTHORIZED,
@@ -81,7 +83,9 @@ def get_current_user(token: str = Depends(oauth2_scheme), db: Session = Depends(
     return user
 
 
-def get_optional_user(token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)):
+def get_optional_user(
+    token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)
+):
     """Returns the optional user value."""
     if not token:
         return None

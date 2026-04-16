@@ -173,7 +173,10 @@ def _add_sparse_interactions(
                 meta={"position": 2},
             ),
             models.EventInteraction(
-                user_id=student_id, event_id=candidate_id, interaction_type="dwell", meta="bad-meta"
+                user_id=student_id,
+                event_id=candidate_id,
+                interaction_type="dwell",
+                meta="bad-meta",
             ),
             models.EventInteraction(
                 user_id=student_id,
@@ -186,14 +189,18 @@ def _add_sparse_interactions(
     db_session.commit()
 
 
-def test_main_training_covers_sparse_meta_and_nondecayed_paths(monkeypatch, db_session) -> None:
+def test_main_training_covers_sparse_meta_and_nondecayed_paths(
+    monkeypatch, db_session
+) -> None:
     """Exercises main training covers sparse meta and nondecayed paths."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))
     _install_session_local(monkeypatch, db_session)
     student, candidate, no_category_positive = _seed_sparse_positive_rows(db_session, now=now)
-    future_seen = _refresh_sparse_interest_rows(db_session, student_id=int(student.id), now=now)
+    future_seen = _refresh_sparse_interest_rows(
+        db_session, student_id=int(student.id), now=now
+    )
     _install_sparse_query_interceptor(monkeypatch, db_session, int(student.id), future_seen)
     _add_sparse_interactions(
         db_session,

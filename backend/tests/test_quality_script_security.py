@@ -25,7 +25,9 @@ def _load_module(relative_path: str, module_name: str):
     return module
 
 
-security_helpers = _load_module("scripts/security_helpers.py", "event_link_security_helpers_tests")
+security_helpers = _load_module(
+    "scripts/security_helpers.py", "event_link_security_helpers_tests"
+)
 check_required_checks = _load_module(
     "scripts/quality/check_required_checks.py",
     "event_link_check_required_checks_tests",
@@ -34,7 +36,9 @@ check_required_checks = _load_module(
 
 def test_load_module_rejects_missing_loader(monkeypatch: pytest.MonkeyPatch) -> None:
     """Verifies load module rejects missing loader behavior."""
-    monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
+    )
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
         _load_module("scripts/security_helpers.py", "event_link_missing_loader")
@@ -81,7 +85,10 @@ def test_build_github_commit_urls_use_fixed_host() -> None:
     assert checks_url == (
         "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/check-runs?per_page=50"
     )
-    assert status_url == "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/status"
+    assert (
+        status_url
+        == "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/status"
+    )
 
 
 def test_collect_contexts_captures_check_runs_and_statuses() -> None:

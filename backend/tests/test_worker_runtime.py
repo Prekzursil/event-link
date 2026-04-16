@@ -27,7 +27,9 @@ def _prepare_worker(monkeypatch):
 
     monkeypatch.setattr(worker, "configure_logging", lambda: None)
     monkeypatch.setattr(worker, "log_event", lambda event, **kw: events.append((event, kw)))
-    monkeypatch.setattr(worker, "log_warning", lambda event, **kw: warnings.append((event, kw)))
+    monkeypatch.setattr(
+        worker, "log_warning", lambda event, **kw: warnings.append((event, kw))
+    )
     monkeypatch.setattr(worker, "idle_sleep", lambda: None)
     monkeypatch.setattr(worker, "process_job", lambda db, job: None)
     monkeypatch.setattr(worker, "requeue_stale_jobs", lambda db: 0)

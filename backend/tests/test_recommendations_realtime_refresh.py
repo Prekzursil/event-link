@@ -18,7 +18,9 @@ def _create_realtime_fixture(helpers, *, slug: str, title: str):
     db = helpers["db"]
 
     token = helpers["register_student"](f"student-{slug}@test.ro")
-    student = db.query(models.User).filter(models.User.email == f"student-{slug}@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == f"student-{slug}@test.ro").first()
+    )
     assert student is not None
 
     organizer = models.User(

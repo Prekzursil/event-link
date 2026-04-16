@@ -128,7 +128,11 @@ def _enqueue_weekly_digest_email(
             subject=subject,
             body_text=body_text,
             body_html=body_html,
-            context={"notification": "weekly_digest", "user_id": int(user.id), "week": week_key},
+            context={
+                "notification": "weekly_digest",
+                "user_id": int(user.id),
+                "week": week_key,
+            },
         ),
     )
 
@@ -177,11 +181,14 @@ def send_weekly_digest(
     return {"users": total_users, "emails": enqueued_emails}
 
 
-def _filling_fast_rows(db: Session, now: datetime) -> list[tuple[models.User, models.Event, int]]:
+def _filling_fast_rows(
+    db: Session, now: datetime
+) -> list[tuple[models.User, models.Event, int]]:
     """Implements the filling fast rows helper."""
     seats_subquery = (
         db.query(
-            models.Registration.event_id, func.count(models.Registration.id).label("seats_taken")
+            models.Registration.event_id,
+            func.count(models.Registration.id).label("seats_taken"),
         )
         .filter(models.Registration.deleted_at.is_(None))
         .group_by(models.Registration.event_id)

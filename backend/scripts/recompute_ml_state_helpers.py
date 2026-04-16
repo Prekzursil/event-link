@@ -275,7 +275,9 @@ def _feature_length_is_valid(
     n_features = len(examples[0][0])
     if n_features == len(FEATURE_NAMES):
         return n_features, None
-    print(f"[error] feature vector length mismatch: expected={len(FEATURE_NAMES)} got={n_features}")
+    print(
+        f"[error] feature vector length mismatch: expected={len(FEATURE_NAMES)} got={n_features}"
+    )
     return n_features, 2
 
 
@@ -327,7 +329,9 @@ def _event_is_eligible(*, event: _EventFeatures, now: datetime) -> bool:
 def _eligible_event_ids(events: dict[int, _EventFeatures], now: datetime) -> list[int]:
     """Implements the eligible event ids helper."""
     return [
-        event_id for event_id, event in events.items() if _event_is_eligible(event=event, now=now)
+        event_id
+        for event_id, event in events.items()
+        if _event_is_eligible(event=event, now=now)
     ]
 
 
@@ -391,7 +395,9 @@ def build_recommendation_rows_impl(
                 score=float(score),
                 rank=rank,
                 model_version=state.model_version,
-                reason=deps.reason_for(user=user, event=state.events[event_id], lang=student_lang),
+                reason=deps.reason_for(
+                    user=user, event=state.events[event_id], lang=student_lang
+                ),
             )
             for rank, (score, event_id) in enumerate(top, start=1)
         )

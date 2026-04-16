@@ -44,7 +44,9 @@ def _dedupe_join_table(
     tag_column = join_table.c.tag_id
     canonical_owners = sa.select(owner_column).where(tag_column == canonical_id)
     conn.execute(
-        sa.delete(join_table).where(tag_column == dup_id).where(owner_column.in_(canonical_owners))
+        sa.delete(join_table)
+        .where(tag_column == dup_id)
+        .where(owner_column.in_(canonical_owners))
     )
     conn.execute(sa.update(join_table).where(tag_column == dup_id).values(tag_id=canonical_id))
 
@@ -86,7 +88,9 @@ def upgrade() -> None:
 
     for tag_id in empty_tag_ids:
         conn.execute(sa.delete(_EVENT_TAGS).where(_EVENT_TAGS.c.tag_id == tag_id))
-        conn.execute(sa.delete(_USER_INTEREST_TAGS).where(_USER_INTEREST_TAGS.c.tag_id == tag_id))
+        conn.execute(
+            sa.delete(_USER_INTEREST_TAGS).where(_USER_INTEREST_TAGS.c.tag_id == tag_id)
+        )
         conn.execute(sa.delete(_TAGS).where(_TAGS.c.id == tag_id))
 
     for _normalized, entries in groups.items():
@@ -95,7 +99,9 @@ def upgrade() -> None:
 
         if canonical_raw != canonical_trimmed:
             conn.execute(
-                sa.update(_TAGS).where(_TAGS.c.id == canonical_id).values(name=canonical_trimmed)
+                sa.update(_TAGS)
+                .where(_TAGS.c.id == canonical_id)
+                .values(name=canonical_trimmed)
             )
 
         for dup_id, _dup_trimmed, _dup_raw in entries[1:]:

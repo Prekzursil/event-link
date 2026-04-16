@@ -19,7 +19,9 @@ class _DeterministicRng:
 
     def _next_u64(self) -> int:
         """Implements the next u64 helper."""
-        self._state = (6364136223846793005 * self._state + 1442695040888963407) & ((1 << 64) - 1)
+        self._state = (6364136223846793005 * self._state + 1442695040888963407) & (
+            (1 << 64) - 1
+        )
         return self._state
 
     def randbelow(self, upper_bound: int) -> int:
@@ -348,7 +350,9 @@ def _score_candidate_event_ids(
     return scored
 
 
-def evaluate_hitrate_at_k_impl(*, state: _EvaluationState, deps: _EvaluationDependencies) -> float:
+def evaluate_hitrate_at_k_impl(
+    *, state: _EvaluationState, deps: _EvaluationDependencies
+) -> float:
     """Implements the evaluate hitrate at k impl helper."""
     rng = deps.rng_factory(int(state.seed))
     hits = 0

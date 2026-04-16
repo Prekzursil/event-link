@@ -22,7 +22,9 @@ def _coerce_bool(value: object) -> bool:
     return bool(value)
 
 
-def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
+def _load_personalization_exclusions(
+    *, db: Session, user_id: int
+) -> tuple[set[int], set[int]]:
     """Loads the personalization exclusions resource."""
     hidden_tag_ids = {
         int(row[0])

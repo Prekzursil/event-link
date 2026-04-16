@@ -28,7 +28,9 @@ def _parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Assert Sentry has zero unresolved issues for configured projects."
     )
-    parser.add_argument("--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)")
+    parser.add_argument(
+        "--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)"
+    )
     parser.add_argument(
         "--project",
         action="append",
@@ -38,8 +40,12 @@ def _parse_args() -> argparse.Namespace:
     parser.add_argument(
         "--token", default="", help="Sentry auth token (falls back to SENTRY_AUTH_TOKEN env)"
     )
-    parser.add_argument("--out-json", default="sentry-zero/sentry.json", help="Output JSON path")
-    parser.add_argument("--out-md", default="sentry-zero/sentry.md", help="Output markdown path")
+    parser.add_argument(
+        "--out-json", default="sentry-zero/sentry.json", help="Output JSON path"
+    )
+    parser.add_argument(
+        "--out-md", default="sentry-zero/sentry.md", help="Output markdown path"
+    )
     return parser.parse_args()
 
 
@@ -214,7 +220,9 @@ def _evaluate_sentry(
         except Exception as exc:  # pragma: no cover - network/runtime surface
             message = str(exc)
             if _is_not_found_error(message):
-                project_results.append({"project": project, "unresolved": 0, "state": "not_found"})
+                project_results.append(
+                    {"project": project, "unresolved": 0, "state": "not_found"}
+                )
                 continue
             return "fail", project_results, [*findings, f"Sentry API request failed: {exc}"]
         project_results.append({**result, "state": "ok"})

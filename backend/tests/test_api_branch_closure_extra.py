@@ -176,7 +176,9 @@ def _seed_explicit_language_student(helpers, event_ids: tuple[int, int]) -> str:
     """Implements the seed explicit language student helper."""
     db = helpers["db"]
     student_token = helpers["register_student"]("explicit-lang@test.ro")
-    student = db.query(models.User).filter(models.User.email == "explicit-lang@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "explicit-lang@test.ro").first()
+    )
     assert student is not None
     student.language_preference = "en"
     student.city = "Cluj"
@@ -287,7 +289,9 @@ def test_explicit_language_paths_for_lists_detail_recommendations_and_registrati
     """Verifies explicit language paths for lists detail recommendations and registration
     behavior.
     """
-    client, student_token, _first_id, second_id, register_id = _explicit_language_context(helpers)
+    client, student_token, _first_id, second_id, register_id = _explicit_language_context(
+        helpers
+    )
     langs: list[str] = []
     monkeypatch.setattr(
         api,
@@ -333,7 +337,9 @@ def test_delete_account_reuses_single_placeholder_owner(helpers):
     for idx, token in enumerate((token_a, token_b), start=1):
         created = client.post(
             "/api/events",
-            json=event_payload(helpers["future_time"](days=idx + 2), title=f"Delete Event {idx}"),
+            json=event_payload(
+                helpers["future_time"](days=idx + 2), title=f"Delete Event {idx}"
+            ),
             headers=auth_header(token),
         )
         assert created.status_code == 201
@@ -362,7 +368,9 @@ def _seed_restore_and_clone_context(helpers):
     admin_token = helpers["login"]("restore-admin@test.ro", "admin-fixture-A1")
     owner_token = helpers["login"]("restore-plain-owner@test.ro", "restore-fixture-A1")
     restore_owner = (
-        db.query(models.User).filter(models.User.email == "restore-plain-owner@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "restore-plain-owner@test.ro")
+        .first()
     )
     assert restore_owner is not None
 
@@ -402,13 +410,15 @@ def _assert_restore_and_clone_paths(
 ) -> None:
     """Asserts that restore and clone paths holds."""
     restore_resp = client.post(
-        f"/api/events/{int(restore_event.id)}/restore", headers=helpers["auth_header"](admin_token)
+        f"/api/events/{int(restore_event.id)}/restore",
+        headers=helpers["auth_header"](admin_token),
     )
     assert restore_resp.status_code == 200
     assert restore_resp.json()["restored_registrations"] == 0
 
     clone_resp = client.post(
-        f"/api/events/{int(future_clone.id)}/clone", headers=helpers["auth_header"](owner_token)
+        f"/api/events/{int(future_clone.id)}/clone",
+        headers=helpers["auth_header"](owner_token),
     )
     assert clone_resp.status_code == 200
     assert clone_resp.json()["title"].startswith("Copie -")
@@ -440,8 +450,8 @@ def _assert_suggest_paths(client, helpers, owner_token: str) -> None:
 
 def test_restore_clone_and_suggest_cover_plain_organizer_paths(helpers):
     """Verifies restore clone and suggest cover plain organizer paths behavior."""
-    client, admin_token, owner_token, restore_event, future_clone = _seed_restore_and_clone_context(
-        helpers
+    client, admin_token, owner_token, restore_event, future_clone = (
+        _seed_restore_and_clone_context(helpers)
     )
     _assert_restore_and_clone_paths(
         client, helpers, admin_token, owner_token, restore_event, future_clone
@@ -455,7 +465,9 @@ def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
     db = helpers["db"]
     helpers["register_student"]("partial-notifications@test.ro")
     existing_user = (
-        db.query(models.User).filter(models.User.email == "partial-notifications@test.ro").first()
+        db.query(models.User)
+        .filter(models.User.email == "partial-notifications@test.ro")
+        .first()
     )
     assert existing_user is not None
     existing_user.language_preference = "en"
@@ -463,11 +475,15 @@ def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
     db.commit()
 
     forgot_langs: list[str] = []
-    monkeypatch.setattr(api.settings, "allowed_origins", ["https://frontend.test"], raising=False)
+    monkeypatch.setattr(
+        api.settings, "allowed_origins", ["https://frontend.test"], raising=False
+    )
     monkeypatch.setattr(
         api,
         "render_password_reset_email",
-        lambda user, link, *, lang: forgot_langs.append(lang) or ("subject", link, "<p>html</p>"),
+        lambda user, link, *, lang: (
+            forgot_langs.append(lang) or ("subject", link, "<p>html</p>")
+        ),
     )
     missing_user_resp = client.post("/password/forgot", json={"email": "ghost-user@test.ro"})
     assert missing_user_resp.status_code == 200
@@ -515,7 +531,9 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
     """
     db = helpers["db"]
     helpers["make_organizer"]("suggest-direct@test.ro", "organizer-fixture-A1")
-    organizer = db.query(models.User).filter(models.User.email == "suggest-direct@test.ro").first()
+    organizer = (
+        db.query(models.User).filter(models.User.email == "suggest-direct@test.ro").first()
+    )
     assert organizer is not None
 
     monkeypatch.setattr(api, "_normalize_dt", lambda _value: None)

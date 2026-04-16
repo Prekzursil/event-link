@@ -71,7 +71,9 @@ def test_load_module_inserts_parent_when_missing(monkeypatch: pytest.MonkeyPatch
 
 def test_load_module_raises_when_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
     """Fail loudly when the target module cannot be resolved from disk."""
-    monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
+    )
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
         _load_module()
@@ -223,7 +225,9 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
         return (
             1,
             "https://app.deepsource.com/gh/Prekzursil/event-link/run/49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/",
-            ["DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"],
+            [
+                "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"
+            ],
         )
 
     status, open_issues, findings, source_url = module._evaluate_deepscan(
@@ -306,7 +310,9 @@ def test_resolve_open_issues_retries_until_provider_statuses_exist(
 ) -> None:
     """Retry provider-status discovery until matching statuses are published."""
     module = _load_module()
-    success_url = "https://app.deepsource.com/gh/Prekzursil/event-link/run/available/javascript/"
+    success_url = (
+        "https://app.deepsource.com/gh/Prekzursil/event-link/run/available/javascript/"
+    )
     payloads = [
         {"statuses": []},
         _status_payload(
@@ -370,7 +376,8 @@ def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> No
     assert status == "fail"
     assert open_issues == 0
     assert (
-        source_url == "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/"
+        source_url
+        == "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/"
     )
     assert findings == ["DeepSource analysis is still in progress."]
 

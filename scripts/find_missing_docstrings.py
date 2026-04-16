@@ -31,7 +31,9 @@ def _missing(node) -> bool:
     if not body:
         return True
     first = body[0]
-    return not (isinstance(first, ast.Expr) and isinstance(first.value, (ast.Constant, ast.Str)))
+    return not (
+        isinstance(first, ast.Expr) and isinstance(first.value, (ast.Constant, ast.Str))
+    )
 
 
 def scan(root: pathlib.Path) -> tuple[dict, dict, dict]:

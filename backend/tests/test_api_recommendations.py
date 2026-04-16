@@ -88,21 +88,32 @@ def test_recommendations_skip_full_and_past(helpers):
     }
     full_event = client.post(
         "/api/events",
-        json={**tag_payload, "title": "Full Event", "start_time": helpers["future_time"](days=1)},
+        json={
+            **tag_payload,
+            "title": "Full Event",
+            "start_time": helpers["future_time"](days=1),
+        },
         headers=helpers["auth_header"](organizer_token),
     ).json()
     client.post(
         "/api/events",
-        json={**tag_payload, "title": "Past Event", "start_time": helpers["future_time"](days=-1)},
+        json={
+            **tag_payload,
+            "title": "Past Event",
+            "start_time": helpers["future_time"](days=-1),
+        },
         headers=helpers["auth_header"](organizer_token),
     )
 
     student_token = helpers["register_student"]("stud@test.ro")
     client.post(
-        f"/api/events/{full_event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{full_event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
 
-    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    rec = client.get(
+        "/api/recommendations", headers=helpers["auth_header"](student_token)
+    ).json()
     titles = [e["title"] for e in rec]
     assert "Full Event" not in titles
     assert "Past Event" not in titles
@@ -144,7 +155,9 @@ def test_recommendations_boosts_user_city(helpers):
 
     for i in range(3):
         tok = helpers["register_student"](f"pop{i}@test.ro")
-        client.post(f"/api/events/{remote['id']}/register", headers=helpers["auth_header"](tok))
+        client.post(
+            f"/api/events/{remote['id']}/register", headers=helpers["auth_header"](tok)
+        )
 
     student_token = helpers["register_student"]("city@test.ro")
     client.put(
@@ -197,10 +210,16 @@ def test_my_events_and_registration_state(helpers):
     ).json()
 
     student_token = helpers["register_student"]("stud@test.ro")
-    client.post(f"/api/events/{e2['id']}/register", headers=helpers["auth_header"](student_token))
-    client.post(f"/api/events/{e1['id']}/register", headers=helpers["auth_header"](student_token))
+    client.post(
+        f"/api/events/{e2['id']}/register", headers=helpers["auth_header"](student_token)
+    )
+    client.post(
+        f"/api/events/{e1['id']}/register", headers=helpers["auth_header"](student_token)
+    )
 
-    my_events = client.get("/api/me/events", headers=helpers["auth_header"](student_token)).json()
+    my_events = client.get(
+        "/api/me/events", headers=helpers["auth_header"](student_token)
+    ).json()
     assert [e1["id"], e2["id"]] == [e["id"] for e in my_events]
 
     detail = client.get(
@@ -245,10 +264,13 @@ def test_recommended_uses_tags_and_excludes_registered(helpers):
 
     student_token = helpers["register_student"]("stud@test.ro")
     client.post(
-        f"/api/events/{python_event['id']}/register", headers=helpers["auth_header"](student_token)
+        f"/api/events/{python_event['id']}/register",
+        headers=helpers["auth_header"](student_token),
     )
 
-    rec_resp = client.get("/api/recommendations", headers=helpers["auth_header"](student_token))
+    rec_resp = client.get(
+        "/api/recommendations", headers=helpers["auth_header"](student_token)
+    )
     assert rec_resp.status_code == 200
     rec = rec_resp.json()
     rec_ids = [e["id"] for e in rec]
@@ -326,7 +348,9 @@ def test_recommendations_use_ml_cache_when_present(helpers):
         second_reason="cache-2",
     )
 
-    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    rec = client.get(
+        "/api/recommendations", headers=helpers["auth_header"](student_token)
+    ).json()
     assert len(rec) >= 2
     assert rec[0]["id"] == later["id"]
     assert rec[0].get("recommendation_reason") == "cache-1"
@@ -353,7 +377,9 @@ def test_recommendations_ignore_stale_ml_cache(helpers):
     )
     db.commit()
 
-    rec = client.get("/api/recommendations", headers=helpers["auth_header"](student_token)).json()
+    rec = client.get(
+        "/api/recommendations", headers=helpers["auth_header"](student_token)
+    ).json()
     assert len(rec) >= 1
     assert rec[0]["id"] == earlier["id"]
 
@@ -395,7 +421,10 @@ def test_analytics_interactions_recorded(helpers):
                     "event_id": event["id"],
                     "meta": {"source": "events_list"},
                 },
-                {"interaction_type": "search", "meta": {"query": "Track", "city": "București"}},
+                {
+                    "interaction_type": "search",
+                    "meta": {"query": "Track", "city": "București"},
+                },
             ]
         },
         headers=helpers["auth_header"](student_token),
@@ -428,7 +457,8 @@ def test_events_list_sort_recommended_uses_ml_cache(helpers):
     )
 
     resp = client.get(
-        "/api/events?sort=recommended&page_size=10", headers=helpers["auth_header"](student_token)
+        "/api/events?sort=recommended&page_size=10",
+        headers=helpers["auth_header"](student_token),
     )
     assert resp.status_code == 200
     data = resp.json()

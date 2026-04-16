@@ -25,10 +25,14 @@ def _load_module():
     return module
 
 
-def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+def test_load_module_raises_when_import_spec_is_missing(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """Verifies load module raises when import spec is missing behavior."""
     original_parent = str((REPO_ROOT / "scripts" / "quality").resolve())
-    monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
+    monkeypatch.setattr(
+        importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None
+    )
     monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != original_parent])
 
     with pytest.raises(RuntimeError, match="Unable to load module"):

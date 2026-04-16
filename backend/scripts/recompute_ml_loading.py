@@ -58,7 +58,8 @@ def _load_event_features(*, db, models, func):
 
     seats_rows = (
         db.query(
-            models.Registration.event_id, func.count(models.Registration.id).label("seats_taken")
+            models.Registration.event_id,
+            func.count(models.Registration.id).label("seats_taken"),
         )
         .filter(models.Registration.deleted_at.is_(None))
         .group_by(models.Registration.event_id)
@@ -175,9 +176,13 @@ def _load_registration_and_favorite_rows(*, db, models, user_id: int | None):
     reg_query = db.query(
         models.Registration.user_id, models.Registration.event_id, models.Registration.attended
     ).filter(models.Registration.deleted_at.is_(None))
-    reg_query = _maybe_filter_user(reg_query, user_id=user_id, column=models.Registration.user_id)
+    reg_query = _maybe_filter_user(
+        reg_query, user_id=user_id, column=models.Registration.user_id
+    )
     fav_query = db.query(models.FavoriteEvent.user_id, models.FavoriteEvent.event_id)
-    fav_query = _maybe_filter_user(fav_query, user_id=user_id, column=models.FavoriteEvent.user_id)
+    fav_query = _maybe_filter_user(
+        fav_query, user_id=user_id, column=models.FavoriteEvent.user_id
+    )
     return reg_query.all(), fav_query.all()
 
 

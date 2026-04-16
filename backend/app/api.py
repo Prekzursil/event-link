@@ -212,7 +212,9 @@ def _compute_moderation(
         weight=0.4,
     )
     score += _moderation_signal(
-        condition=bool(urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)),
+        condition=bool(
+            urls and re.search(r"\b(password|parol|otp|one[- ]time|cod)\b", lowered)
+        ),
         flag="credential_request",
         flags=flags,
         weight=0.5,
@@ -280,7 +282,9 @@ def _suggest_city_from_text(*, content: str, city: str | None) -> str | None:
     if city:
         return city
     catalog_cities = {
-        item.get("city") for item in ro_universities.get_university_catalog() if item.get("city")
+        item.get("city")
+        for item in ro_universities.get_university_catalog()
+        if item.get("city")
     }
     lowered = content.lower()
     for candidate_city in sorted(
@@ -966,7 +970,9 @@ def _event_is_visible_to_user(
     """Return whether the current user is allowed to see the event detail."""
     if event.status == "published" and (not event.publish_at or event.publish_at <= now):
         return True
-    return bool(current_user and (current_user.id == event.owner_id or _is_admin(current_user)))
+    return bool(
+        current_user and (current_user.id == event.owner_id or _is_admin(current_user))
+    )
 
 
 def _event_user_flags(
@@ -1119,7 +1125,11 @@ def _apply_event_time_updates(
         normalized_start_time = update.start_time
     if update.end_time is not None:
         update.end_time = _normalize_dt(update.end_time)
-        if normalized_start_time and update.end_time and update.end_time <= normalized_start_time:
+        if (
+            normalized_start_time
+            and update.end_time
+            and update.end_time <= normalized_start_time
+        ):
             raise HTTPException(
                 status_code=400,
                 detail="Ora de sfârșit trebuie să fie după ora de început.",
@@ -1898,7 +1908,8 @@ def _load_existing_interaction_event_ids(
     if not event_ids:
         return set()
     return {
-        row[0] for row in (db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all())
+        row[0]
+        for row in (db.query(models.Event.id).filter(models.Event.id.in_(event_ids)).all())
     }
 
 
@@ -2009,7 +2020,8 @@ def _load_event_delta_context(
         for event_id, category, _city in event_rows
     }
     event_city_by_id = {
-        int(event_id): _normalize_interest_value(city) for event_id, _category, city in event_rows
+        int(event_id): _normalize_interest_value(city)
+        for event_id, _category, city in event_rows
     }
 
     tag_rows = (
@@ -2038,7 +2050,9 @@ def _merge_event_signal_deltas(
     for event_id, delta in event_deltas.items():
         category_key = event_category_by_id.get(event_id)
         if category_key:
-            category_deltas[category_key] = category_deltas.get(category_key, 0.0) + float(delta)
+            category_deltas[category_key] = category_deltas.get(category_key, 0.0) + float(
+                delta
+            )
 
         city_key = event_city_by_id.get(event_id)
         if city_key:
@@ -2205,8 +2219,8 @@ def _apply_online_learning(
         return
 
     decay_lambda, max_score = _online_learning_settings()
-    event_deltas, tag_name_deltas, category_deltas, city_deltas = _collect_online_learning_deltas(
-        payload
+    event_deltas, tag_name_deltas, category_deltas, city_deltas = (
+        _collect_online_learning_deltas(payload)
     )
     if not any((event_deltas, tag_name_deltas, category_deltas, city_deltas)):
         return
@@ -2671,7 +2685,9 @@ def update_event(
     current_user: OrganizerUser,
 ):
     """Update an existing organizer event."""
-    db_event = _load_event_for_owner_update(db=db, event_id=event_id, current_user=current_user)
+    db_event = _load_event_for_owner_update(
+        db=db, event_id=event_id, current_user=current_user
+    )
     content_changed = _apply_event_update_fields(db=db, db_event=db_event, update=update)
     if content_changed:
         score, flags, moderation_status = _compute_moderation(
@@ -3614,7 +3630,9 @@ def _serialize_event_for_export(event: models.Event) -> dict:
         "publish_at": publish_at.isoformat() if publish_at else None,
         "owner_id": event.owner_id,
         "tags": [t.name for t in (event.tags or [])],
-        "created_at": (_normalize_dt(event.created_at).isoformat() if event.created_at else None),
+        "created_at": (
+            _normalize_dt(event.created_at).isoformat() if event.created_at else None
+        ),
     }
 
 
@@ -3646,7 +3664,9 @@ def _registration_export_rows(
     return [
         {
             "registration_time": (
-                _normalize_dt(reg.registration_time).isoformat() if reg.registration_time else None
+                _normalize_dt(reg.registration_time).isoformat()
+                if reg.registration_time
+                else None
             ),
             "attended": bool(reg.attended),
             "event": _serialize_event_for_export(ev),
@@ -3785,7 +3805,9 @@ def _delete_user_relations(*, db: Session, user_id: int) -> None:
         synchronize_session=False
     )
     db.execute(
-        models.user_interest_tags.delete().where(models.user_interest_tags.c.user_id == user_id)
+        models.user_interest_tags.delete().where(
+            models.user_interest_tags.c.user_id == user_id
+        )
     )
 
 
@@ -4187,7 +4209,9 @@ def _registration_stats_by_day(
         .all()
     )
     return [
-        schemas.RegistrationDayStat(date=str(row.day), registrations=int(row.registrations or 0))
+        schemas.RegistrationDayStat(
+            date=str(row.day), registrations=int(row.registrations or 0)
+        )
         for row in rows
     ]
 
@@ -4245,7 +4269,9 @@ def admin_stats(
 
     total_users = db.query(func.count(models.User.id)).scalar() or 0
     total_events = (
-        db.query(func.count(models.Event.id)).filter(models.Event.deleted_at.is_(None)).scalar()
+        db.query(func.count(models.Event.id))
+        .filter(models.Event.deleted_at.is_(None))
+        .scalar()
         or 0
     )
     total_registrations = (
@@ -4276,7 +4302,9 @@ def _personalization_metric_counts_by_day(
             func.count(models.EventInteraction.id).label("count"),
         )
         .filter(models.EventInteraction.occurred_at >= start)
-        .filter(models.EventInteraction.interaction_type.in_(["impression", "click", "register"]))
+        .filter(
+            models.EventInteraction.interaction_type.in_(["impression", "click", "register"])
+        )
         .group_by("day", "type")
         .order_by("day")
         .all()
@@ -4331,8 +4359,8 @@ def admin_personalization_metrics(
     _validate_admin_days(days)
     start = datetime.now(timezone.utc) - timedelta(days=days)
     by_day = _personalization_metric_counts_by_day(db=db, start=start)
-    items, total_impressions, total_clicks, total_registrations = _personalization_metrics_items(
-        by_day
+    items, total_impressions, total_clicks, total_registrations = (
+        _personalization_metrics_items(by_day)
     )
     totals_ctr = (total_clicks / total_impressions) if total_impressions else 0.0
     totals_conversion = (total_registrations / total_clicks) if total_clicks else 0.0
@@ -4616,7 +4644,9 @@ def _admin_user_rows_query(
             models.User,
             func.coalesce(reg_counts.c.registrations_count, 0).label("registrations_count"),
             func.coalesce(reg_counts.c.attended_count, 0).label("attended_count"),
-            func.coalesce(events_counts.c.events_created_count, 0).label("events_created_count"),
+            func.coalesce(events_counts.c.events_created_count, 0).label(
+                "events_created_count"
+            ),
         )
         .outerjoin(reg_counts, reg_counts.c.user_id == models.User.id)
         .outerjoin(events_counts, events_counts.c.user_id == models.User.id)
@@ -4918,7 +4948,8 @@ def list_favorites(db: DbSession, current_user: StudentUser):
     )
     query, _ = _events_with_counts_query(db, base_query)
     items = [
-        _serialize_event(ev, seats) for ev, seats in query.order_by(models.Event.start_time).all()
+        _serialize_event(ev, seats)
+        for ev, seats in query.order_by(models.Event.start_time).all()
     ]
     return {"items": items}
 

@@ -8,7 +8,12 @@ from datetime import datetime, timezone
 import pytest
 
 from app import auth, models, task_queue
-from task_queue_test_support import mk_job, raise_assertion, raise_queue_empty, unexpected_enqueue
+from task_queue_test_support import (
+    mk_job,
+    raise_assertion,
+    raise_queue_empty,
+    unexpected_enqueue,
+)
 
 
 def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):

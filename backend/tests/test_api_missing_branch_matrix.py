@@ -181,7 +181,9 @@ def test_event_update_validation_and_permission_branches(helpers):
         ),
     ]
     for method, path, payload, token, status in requests:
-        response = client.request(method, path, json=payload, headers=helpers["auth_header"](token))
+        response = client.request(
+            method, path, json=payload, headers=helpers["auth_header"](token)
+        )
         assert response.status_code == status
 
 
@@ -195,7 +197,11 @@ def test_bulk_validation_and_suggest_branches(helpers):
         ("/api/organizer/events/bulk/status", {"event_ids": [999999], "status": "draft"}, 404),
         ("/api/organizer/events/bulk/tags", {"event_ids": [], "tags": ["x"]}, 422),
         ("/api/organizer/events/bulk/tags", {"event_ids": [999999], "tags": ["x"]}, 404),
-        ("/api/organizer/events/bulk/tags", {"event_ids": [event_id], "tags": ["x" * 101]}, 400),
+        (
+            "/api/organizer/events/bulk/tags",
+            {"event_ids": [event_id], "tags": ["x" * 101]},
+            400,
+        ),
     ]
     for path, payload, status in bulk_requests:
         response = client.post(path, json=payload, headers=helpers["auth_header"](owner_token))
@@ -219,7 +225,9 @@ def test_personalization_hidden_and_blocked_branches(helpers):
     """Verifies personalization hidden and blocked branches behavior."""
     client, db, _admin_token, student_token, _student = _admin_student_context(helpers)
     assert (
-        client.get("/api/me/profile", headers=helpers["auth_header"](student_token)).status_code
+        client.get(
+            "/api/me/profile", headers=helpers["auth_header"](student_token)
+        ).status_code
         == 200
     )
     assert (
@@ -342,7 +350,11 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
     db.add(placeholder)
     db.commit()
     placeholder_token = auth.create_access_token(
-        {"sub": str(placeholder.id), "email": placeholder.email, "role": placeholder.role.value}
+        {
+            "sub": str(placeholder.id),
+            "email": placeholder.email,
+            "role": placeholder.role.value,
+        }
     )
     blocked_delete = client.request(
         "DELETE",

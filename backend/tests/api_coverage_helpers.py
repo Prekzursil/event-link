@@ -98,7 +98,9 @@ def cached_recommendation_context(helpers):
     if owner is None:
         raise ValueError("owner fixture not found")
     student_token = helpers["register_student"]("events-student@test.ro")
-    student = db.query(models.User).filter(models.User.email == "events-student@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "events-student@test.ro").first()
+    )
     if student is None:
         raise ValueError("student fixture not found")
     student.city = "Cluj"
@@ -140,7 +142,9 @@ def mutation_context(helpers):
     owner_token = helpers["login"](MUTATION_OWNER_EMAIL, "owner-fixture-A1")
     other_token = helpers["login"]("mut-other@test.ro", "other-fixture-A1")
     student_token = helpers["register_student"]("mut-student@test.ro")
-    owner_user = db.query(models.User).filter(models.User.email == MUTATION_OWNER_EMAIL).first()
+    owner_user = (
+        db.query(models.User).filter(models.User.email == MUTATION_OWNER_EMAIL).first()
+    )
     if owner_user is None:
         raise ValueError("mutation owner fixture not found")
     db.add(
@@ -205,7 +209,9 @@ def admin_registration_context(helpers):
         "draft": make_event(
             title="Draft", owner_id=int(owner.id), start_time=future_dt(days=6), status="draft"
         ),
-        "past": make_event(title="Past", owner_id=int(owner.id), start_time=future_dt(days=-1)),
+        "past": make_event(
+            title="Past", owner_id=int(owner.id), start_time=future_dt(days=-1)
+        ),
         "full": make_event(
             title="Full", owner_id=int(owner.id), start_time=future_dt(days=2), max_seats=1
         ),
@@ -263,7 +269,9 @@ def interaction_context(helpers):
     db.add_all([organizer, hidden_tag, event])
     db.commit()
     db.execute(
-        models.user_hidden_tags.insert().values(user_id=int(student.id), tag_id=int(hidden_tag.id))
+        models.user_hidden_tags.insert().values(
+            user_id=int(student.id), tag_id=int(hidden_tag.id)
+        )
     )
     db.add_all(
         [
@@ -274,7 +282,10 @@ def interaction_context(helpers):
                 last_seen_at=future_dt(hours=1),
             ),
             models.UserImplicitInterestCategory(
-                user_id=int(student.id), category="tech", score=1.5, last_seen_at=future_dt(hours=1)
+                user_id=int(student.id),
+                category="tech",
+                score=1.5,
+                last_seen_at=future_dt(hours=1),
             ),
         ]
     )

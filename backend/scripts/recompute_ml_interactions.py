@@ -81,7 +81,12 @@ def _impression_position(meta: object) -> int | None:
 
 
 def _record_impression_feedback(
-    *, user_id: int, event_id: int, meta: object, seen_by_user, impression_position_by_user_event
+    *,
+    user_id: int,
+    event_id: int,
+    meta: object,
+    seen_by_user,
+    impression_position_by_user_event,
 ) -> None:
     """Implements the record impression feedback helper."""
     seen_by_user.setdefault(user_id, set()).add(event_id)

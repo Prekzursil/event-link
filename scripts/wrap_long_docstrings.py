@@ -5,6 +5,7 @@ functions with very long imperative names produce one-liner docstrings
 that exceed 99 characters. This script rewrites those as triple-quoted
 multi-line strings indented to match the function body.
 """
+
 from __future__ import annotations
 
 import pathlib

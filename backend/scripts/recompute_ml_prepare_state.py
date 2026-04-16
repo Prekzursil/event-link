@@ -194,7 +194,9 @@ def _load_prepared_training_state(
     return _PreparedTrainingState(*weight_buckets, *interaction_state)
 
 
-def _build_prepared_user_context(*, students, args, events, training_state: _PreparedTrainingState):
+def _build_prepared_user_context(
+    *, students, args, events, training_state: _PreparedTrainingState
+):
     """Build user state and holdout data from loaded entity and interaction state."""
     return _build_prepared_user_state(
         inputs=_PreparedUserStateInputs(

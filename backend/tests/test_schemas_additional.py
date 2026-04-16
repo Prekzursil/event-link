@@ -24,7 +24,9 @@ def test_user_create_password_validators_reject_invalid_inputs() -> None:
         schemas.UserCreate(email="a@test.ro", **{_ACCESS_CODE_FIELD: "short"})
 
     with pytest.raises(ValidationError):
-        schemas.UserCreate(email="a@test.ro", **{_ACCESS_CODE_FIELD: _compose_code("2468", "2468")})
+        schemas.UserCreate(
+            email="a@test.ro", **{_ACCESS_CODE_FIELD: _compose_code("2468", "2468")}
+        )
 
 
 def test_student_register_rejects_mismatched_confirmation() -> None:

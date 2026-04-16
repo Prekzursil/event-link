@@ -167,9 +167,13 @@ def _seed_edge_training_rows(db_session, fixture, now: datetime):
     )
     rows = [
         models.Registration(
-            user_id=int(fixture["student"].id), event_id=int(fixture["holdout"].id), attended=True
+            user_id=int(fixture["student"].id),
+            event_id=int(fixture["holdout"].id),
+            attended=True,
         ),
-        models.FavoriteEvent(user_id=int(fixture["student"].id), event_id=int(fixture["train"].id)),
+        models.FavoriteEvent(
+            user_id=int(fixture["student"].id), event_id=int(fixture["train"].id)
+        ),
         models.FavoriteEvent(
             user_id=int(fixture["student"].id), event_id=int(fixture["deleted_positive"].id)
         ),

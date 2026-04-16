@@ -74,7 +74,9 @@ def test_event_moderation_flags_are_exposed_in_admin_events(client, helpers):
     assert flagged["moderation_status"] == "flagged"
     assert (flagged.get("moderation_score") or 0) >= 0.5
 
-    resp = client.post(f"/api/admin/events/{event_id}/moderation/review", headers=admin_headers)
+    resp = client.post(
+        f"/api/admin/events/{event_id}/moderation/review", headers=admin_headers
+    )
     assert resp.status_code == 200
 
     resp = client.get("/api/admin/events?include_deleted=true", headers=admin_headers)

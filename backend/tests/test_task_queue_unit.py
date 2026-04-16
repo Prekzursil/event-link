@@ -146,7 +146,9 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
         task_queue, "mark_job_succeeded", lambda _db, job: succeeded.append(job.job_type)
     )
     monkeypatch.setattr(
-        task_queue, "mark_job_failed", lambda _db, job, error: failed.append((job.job_type, error))
+        task_queue,
+        "mark_job_failed",
+        lambda _db, job, error: failed.append((job.job_type, error)),
     )
     monkeypatch.setattr(task_queue, "log_event", lambda *_args, **_kwargs: None)
 

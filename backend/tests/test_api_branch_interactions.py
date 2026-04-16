@@ -14,7 +14,12 @@ from api_branch_extra_helpers import api, auth_header, event_payload, models, sc
 def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypatch):
     """Verifies record interactions refresh interval with aware cache enqueues behavior."""
     request = Request(
-        {"type": "http", "method": "POST", "path": "/api/analytics/interactions", "headers": []}
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/analytics/interactions",
+            "headers": [],
+        }
     )
     current_user = SimpleNamespace(id=5, role=models.UserRole.student)
     payload = schemas.InteractionBatchIn.model_validate(
@@ -79,9 +84,14 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
         api.settings, "recommendations_realtime_refresh_enabled", True, raising=False
     )
     monkeypatch.setattr(
-        api.settings, "recommendations_realtime_refresh_min_interval_seconds", 60, raising=False
+        api.settings,
+        "recommendations_realtime_refresh_min_interval_seconds",
+        60,
+        raising=False,
     )
-    monkeypatch.setattr(api.settings, "recommendations_realtime_refresh_top_n", 9, raising=False)
+    monkeypatch.setattr(
+        api.settings, "recommendations_realtime_refresh_top_n", 9, raising=False
+    )
     monkeypatch.setattr(api, "_enforce_rate_limit", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(
         task_queue_module,
@@ -96,7 +106,11 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
 
     assert len(db.interactions) == 1
     assert captured_jobs == [
-        ("refresh_user_recommendations_ml", {"user_id": 5, "top_n": 9, "skip_training": True}, "5")
+        (
+            "refresh_user_recommendations_ml",
+            {"user_id": 5, "top_n": 9, "skip_training": True},
+            "5",
+        )
     ]
 
 
@@ -144,7 +158,9 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
     client = helpers["client"]
     db = helpers["db"]
     token = helpers["register_student"]("aware-implicit@test.ro")
-    student = db.query(models.User).filter(models.User.email == "aware-implicit@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "aware-implicit@test.ro").first()
+    )
     assert student is not None
 
     tag = models.Tag(name="aware-tag")
@@ -156,7 +172,10 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
     db.add_all(
         [
             models.UserImplicitInterestTag(
-                user_id=int(student.id), tag_id=int(tag.id), score=1.0, last_seen_at=future_seen
+                user_id=int(student.id),
+                tag_id=int(tag.id),
+                score=1.0,
+                last_seen_at=future_seen,
             ),
             models.UserImplicitInterestCategory(
                 user_id=int(student.id), category="tech", score=1.0, last_seen_at=future_seen
@@ -252,7 +271,12 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
         ),
     )
     request = Request(
-        {"type": "http", "method": "POST", "path": "/api/analytics/interactions", "headers": []}
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/analytics/interactions",
+            "headers": [],
+        }
     )
     payload = schemas.InteractionBatchIn.model_construct(
         events=[
@@ -329,7 +353,12 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
             self.commits += 1
 
     request = Request(
-        {"type": "http", "method": "POST", "path": "/api/analytics/interactions", "headers": []}
+        {
+            "type": "http",
+            "method": "POST",
+            "path": "/api/analytics/interactions",
+            "headers": [],
+        }
     )
     payload = schemas.InteractionBatchIn.model_validate(
         {
@@ -349,9 +378,13 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
         api.settings, "recommendations_online_learning_enabled", True, raising=False
     )
     monkeypatch.setattr(api.settings, "task_queue_enabled", False, raising=False)
-    monkeypatch.setattr(api, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
+    monkeypatch.setattr(
+        api, "_load_personalization_exclusions", lambda **_kwargs: (set(), set())
+    )
 
-    api.record_interactions(payload=payload, request=request, db=fake_db, current_user=current_user)
+    api.record_interactions(
+        payload=payload, request=request, db=fake_db, current_user=current_user
+    )
 
     assert len(fake_db.interactions) == 1
     assert fake_db.commits == 2

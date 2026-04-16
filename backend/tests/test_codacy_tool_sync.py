@@ -280,7 +280,9 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_con
 
     assert tool_changes == [{"tool": "JSHint (deprecated)", "payload": {"enabled": False}}]
     assert failures == []
-    assert notes == ["JSHint (deprecated): managed by Codacy standard; skipping disable request"]
+    assert notes == [
+        "JSHint (deprecated): managed by Codacy standard; skipping disable request"
+    ]
 
 
 def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None:

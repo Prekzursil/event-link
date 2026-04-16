@@ -9,7 +9,12 @@ from app import auth, models, task_queue
 
 
 def mk_job(
-    db_session, *, job_type: str, payload: dict | None = None, status: str = "queued", run_at=None
+    db_session,
+    *,
+    job_type: str,
+    payload: dict | None = None,
+    status: str = "queued",
+    run_at=None,
 ):
     """Implements the mk job helper."""
     job = models.BackgroundJob(
@@ -87,7 +92,9 @@ def reset_guardrail_state(db_session) -> None:
     db_session.commit()
 
 
-def add_balanced_guardrail_rows(db_session, *, user_id: int, event_id: int, now: datetime) -> None:
+def add_balanced_guardrail_rows(
+    db_session, *, user_id: int, event_id: int, now: datetime
+) -> None:
     """Implements the add balanced guardrail rows helper."""
     rows = []
     for sort in ("recommended", "time"):
@@ -128,7 +135,11 @@ def seed_weekly_digest_fixture(db_session):
             (
                 "active",
                 "digest-active@test.ro",
-                {"is_active": True, "email_digest_enabled": True, "language_preference": "system"},
+                {
+                    "is_active": True,
+                    "email_digest_enabled": True,
+                    "language_preference": "system",
+                },
             ),
             (
                 "inactive",
@@ -282,14 +293,18 @@ def seed_filling_fast_branch_matrix(db_session):
         ("system", "system"),
     ]
     db_session.add_all(
-        models.FavoriteEvent(user_id=int(users[user_name].id), event_id=int(events[event_name].id))
+        models.FavoriteEvent(
+            user_id=int(users[user_name].id), event_id=int(events[event_name].id)
+        )
         for user_name, event_name in favorites
     )
     db_session.add(
         models.Registration(user_id=int(users["full"].id), event_id=int(events["full"].id))
     )
     db_session.commit()
-    return SimpleNamespace(organizer=organizer, hidden_tag=hidden_tag, users=users, events=events)
+    return SimpleNamespace(
+        organizer=organizer, hidden_tag=hidden_tag, users=users, events=events
+    )
 
 
 def patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
@@ -320,7 +335,9 @@ def patch_filling_fast_alerts(monkeypatch, setup, *, enqueued, langs) -> None:
     )
 
 
-def seed_guardrail_window_rows(db_session, *, user_id: int, event_id: int, now: datetime) -> None:
+def seed_guardrail_window_rows(
+    db_session, *, user_id: int, event_id: int, now: datetime
+) -> None:
     """Implements the seed guardrail window rows helper."""
     db_session.add_all(
         [
@@ -376,7 +393,11 @@ def seed_guardrail_rollback_state(db_session, *, user_id: int, event_id: int, no
         )
     )
     previous = models.RecommenderModel(
-        model_version="model-prev", feature_names=["bias"], weights=[0.0], meta={}, is_active=False
+        model_version="model-prev",
+        feature_names=["bias"],
+        weights=[0.0],
+        meta={},
+        is_active=False,
     )
     active = models.RecommenderModel(
         model_version="model-active",

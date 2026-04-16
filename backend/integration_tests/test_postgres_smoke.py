@@ -33,7 +33,8 @@ def test_postgres_end_to_end_flow(helpers):
         headers=helpers["auth_header"](organizer_token),
     )
     _require(
-        created.status_code == 201, f"expected 201 when creating event, got {created.status_code}"
+        created.status_code == 201,
+        f"expected 201 when creating event, got {created.status_code}",
     )
     event_id = created.json()["id"]
 

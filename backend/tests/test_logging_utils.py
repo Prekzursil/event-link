@@ -92,7 +92,9 @@ def test_request_id_middleware_uses_incoming_header() -> None:
     }
     asyncio.run(middleware(scope, _receive, _send))
 
-    start_msg = next((msg for msg in messages if msg.get("type") == "http.response.start"), None)
+    start_msg = next(
+        (msg for msg in messages if msg.get("type") == "http.response.start"), None
+    )
     assert start_msg is not None, "expected an http.response.start message to be captured"
     assert (b"x-request-id", b"req-123") in start_msg.get("headers", [])
 

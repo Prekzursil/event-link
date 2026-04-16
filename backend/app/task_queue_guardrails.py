@@ -36,7 +36,8 @@ def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
     return _GuardrailConfig(
         days=days,
         min_impressions=int(
-            payload.get("min_impressions") or settings.personalization_guardrails_min_impressions
+            payload.get("min_impressions")
+            or settings.personalization_guardrails_min_impressions
         ),
         ctr_drop_ratio=float(
             payload.get("ctr_drop_ratio") or settings.personalization_guardrails_ctr_drop_ratio
@@ -196,7 +197,9 @@ def _guardrail_threshold_status(
     recommended_conv = result["conversion"]["recommended"]
     time_conv = result["conversion"]["time"]
     ctr_ok = time_ctr == 0 or recommended_ctr >= time_ctr * (1.0 - config.ctr_drop_ratio)
-    conv_ok = time_conv == 0 or recommended_conv >= time_conv * (1.0 - config.conversion_drop_ratio)
+    conv_ok = time_conv == 0 or recommended_conv >= time_conv * (
+        1.0 - config.conversion_drop_ratio
+    )
     return ctr_ok, conv_ok
 
 

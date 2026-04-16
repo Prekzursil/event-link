@@ -169,9 +169,13 @@ def _impression_negative_ids(
     return [event_id for event_id, _position in impression_candidates[:50]]
 
 
-def _append_example(*, examples, user, event, now: datetime, label: int, weight: float) -> None:
+def _append_example(
+    *, examples, user, event, now: datetime, label: int, weight: float
+) -> None:
     """Implements the append example helper."""
-    examples.append((_build_feature_vector(user=user, event=event, now=now), label, float(weight)))
+    examples.append(
+        (_build_feature_vector(user=user, event=event, now=now), label, float(weight))
+    )
 
 
 def _sample_negative_example(
@@ -238,7 +242,9 @@ def _matches_weak_signal(
 ) -> bool:
     """Implements the matches weak signal helper."""
     matches_city = bool(
-        weak_city and candidate_event.city and _normalize_city(candidate_event.city) == weak_city
+        weak_city
+        and candidate_event.city
+        and _normalize_city(candidate_event.city) == weak_city
     )
     matches_category = bool(
         candidate_event.category and candidate_event.category in weak_categories
@@ -302,7 +308,9 @@ def _append_weak_signal_examples(**kwargs) -> None:
             label=1,
             weight=0.15,
         )
-        kwargs["user_positive_ids"].add(_event_id_for_features(kwargs["events"], candidate_event))
+        kwargs["user_positive_ids"].add(
+            _event_id_for_features(kwargs["events"], candidate_event)
+        )
         added += 1
 
 
@@ -315,7 +323,9 @@ def _append_negative_feedback_examples(
         event = events.get(event_id)
         if not user or not event:
             continue
-        _append_example(examples=examples, user=user, event=event, now=now, label=0, weight=weight)
+        _append_example(
+            examples=examples, user=user, event=event, now=now, label=0, weight=weight
+        )
 
 
 def _append_user_training_examples(*, kwargs, examples, rng) -> None:
@@ -391,7 +401,13 @@ def _build_recommendation_rows(**kwargs):
 
 
 def _train_model_state(
-    *, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime
+    *,
+    db,
+    models,
+    args,
+    requested_model_version: str | None,
+    state: _PreparedState,
+    now: datetime,
 ) -> tuple[str | None, list[float] | None, int | None]:
     """Implements the train model state helper."""
     model_version = requested_model_version or f"ml-v1-{now.date().isoformat()}"
@@ -411,7 +427,9 @@ def _train_model_state(
         now=now,
     )
     if not examples:
-        print("No training data found (no registrations/favorites/interactions); nothing to do.")
+        print(
+            "No training data found (no registrations/favorites/interactions); nothing to do."
+        )
         return None, None, 0
 
     n_features, exit_code = _feature_length_is_valid(examples)
@@ -447,7 +465,13 @@ def _train_model_state(
 
 
 def _resolve_model_state(
-    *, db, models, args, requested_model_version: str | None, state: _PreparedState, now: datetime
+    *,
+    db,
+    models,
+    args,
+    requested_model_version: str | None,
+    state: _PreparedState,
+    now: datetime,
 ) -> tuple[str | None, list[float] | None, int | None]:
     """Implements the resolve model state helper."""
     if args.skip_training:
@@ -520,7 +544,9 @@ def main() -> int:
     models, settings, session_local_factory, func = _load_runtime_objects()
     now = datetime.now(timezone.utc)
     requested_model_version = os.environ.get("RECOMMENDER_MODEL_VERSION")
-    half_life_hours = max(1, int(settings.recommendations_online_learning_decay_half_life_hours))
+    half_life_hours = max(
+        1, int(settings.recommendations_online_learning_decay_half_life_hours)
+    )
     decay_lambda = math.log(2.0) / (float(half_life_hours) * 3600.0)
     max_score = float(settings.recommendations_online_learning_max_score)
 
@@ -560,7 +586,9 @@ def main() -> int:
         if store_exit is not None:
             return store_exit
 
-    print(f"Done. See docs/recommendations-ml.md for operational guidance (repo: {repo_root}).")
+    print(
+        f"Done. See docs/recommendations-ml.md for operational guidance (repo: {repo_root})."
+    )
     return 0
 
 

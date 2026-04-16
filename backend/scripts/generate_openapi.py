@@ -24,7 +24,8 @@ def main() -> int:
     out_path = repo_root / "contracts" / "openapi.json"
     out_path.parent.mkdir(parents=True, exist_ok=True)
     out_path.write_text(
-        json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n", encoding="utf-8"
+        json.dumps(schema, indent=2, sort_keys=True, ensure_ascii=False) + "\n",
+        encoding="utf-8",
     )
     print(f"Wrote {out_path.relative_to(repo_root)}")
     return 0

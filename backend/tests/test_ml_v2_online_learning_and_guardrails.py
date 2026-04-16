@@ -144,7 +144,9 @@ def test_background_job_dedupe_key_returns_existing_job(helpers):
     job2 = enqueue_job(db, "test_job", {"value": 2}, dedupe_key="k1")
     assert int(job1.id) == int(job2.id)
     assert (
-        db.query(models.BackgroundJob).filter(models.BackgroundJob.job_type == "test_job").count()
+        db.query(models.BackgroundJob)
+        .filter(models.BackgroundJob.job_type == "test_job")
+        .count()
         == 1
     )
 
@@ -155,7 +157,9 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
     db = helpers["db"]
 
     token = helpers["register_student"]("student-implicit@test.ro")
-    student = db.query(models.User).filter(models.User.email == "student-implicit@test.ro").first()
+    student = (
+        db.query(models.User).filter(models.User.email == "student-implicit@test.ro").first()
+    )
     assert student is not None
 
     organizer = models.User(
@@ -206,7 +210,9 @@ def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
     assert result["action"] == "rollback"
 
     active_models = (
-        db.query(models.RecommenderModel).filter(models.RecommenderModel.is_active.is_(True)).all()
+        db.query(models.RecommenderModel)
+        .filter(models.RecommenderModel.is_active.is_(True))
+        .all()
     )
     assert len(active_models) == 1
     assert active_models[0].model_version == "old"

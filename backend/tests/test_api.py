@@ -65,7 +65,9 @@ def test_student_cannot_create_event(helpers):
         "max_seats": 10,
         "tags": [],
     }
-    resp = client.post("/api/events", json=payload, headers=helpers["auth_header"](student_token))
+    resp = client.post(
+        "/api/events", json=payload, headers=helpers["auth_header"](student_token)
+    )
     assert resp.status_code == 403
 
 
@@ -137,7 +139,9 @@ def test_reregister_after_unregister_restores_registration(helpers):
     )
     assert second.status_code == 201
 
-    regs = db.query(models.Registration).filter(models.Registration.event_id == event["id"]).all()
+    regs = (
+        db.query(models.Registration).filter(models.Registration.event_id == event["id"]).all()
+    )
     assert len(regs) == 1
     assert regs[0].deleted_at is None
 
@@ -176,7 +180,11 @@ def test_events_list_filters_and_order(helpers):
     ).json()
     client.post(
         "/api/events",
-        json={**base_payload, "title": "Old Event", "start_time": helpers["future_time"](days=-1)},
+        json={
+            **base_payload,
+            "title": "Old Event",
+            "start_time": helpers["future_time"](days=-1),
+        },
         headers=helpers["auth_header"](organizer_token),
     )
 
@@ -459,7 +467,8 @@ def test_resend_registration_email_requires_registration(helpers):
     ).json()
     student_token = helpers["register_student"]("stud@test.ro")
     not_registered = client.post(
-        f"/api/events/{event['id']}/register/resend", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register/resend",
+        headers=helpers["auth_header"](student_token),
     )
     assert not_registered.status_code == 400
 
@@ -467,7 +476,8 @@ def test_resend_registration_email_requires_registration(helpers):
         f"/api/events/{event['id']}/register", headers=helpers["auth_header"](student_token)
     )
     ok = client.post(
-        f"/api/events/{event['id']}/register/resend", headers=helpers["auth_header"](student_token)
+        f"/api/events/{event['id']}/register/resend",
+        headers=helpers["auth_header"](student_token),
     )
     assert ok.status_code == 200
 
@@ -542,7 +552,9 @@ def test_mark_attendance_requires_owner(helpers):
     )
     assert forbidden.status_code == 403
 
-    student = helpers["db"].query(models.User).filter(models.User.email == "stud@test.ro").first()
+    student = (
+        helpers["db"].query(models.User).filter(models.User.email == "stud@test.ro").first()
+    )
     student_id = student.id  # type: ignore
     ok = client.put(
         f"/api/organizer/events/{event['id']}/participants/{student_id}",

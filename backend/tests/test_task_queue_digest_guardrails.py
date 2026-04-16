@@ -119,7 +119,9 @@ def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db
     assert result == {"users": 1, "emails": 0}
 
 
-def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(db_session, monkeypatch):
+def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(
+    db_session, monkeypatch
+):
     """Verifies send weekly digest filters blocked organizers and hidden tags behavior."""
     users, event = seed_weekly_digest_fixture(db_session)
     active_user = users["active"]
@@ -210,7 +212,9 @@ def test_guardrails_returns_ok_for_balanced_metrics(monkeypatch, db_session):
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-    add_balanced_guardrail_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
+    add_balanced_guardrail_rows(
+        db_session, user_id=int(user.id), event_id=int(event.id), now=now
+    )
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     result = task_queue._evaluate_personalization_guardrails(
         db=db_session,
@@ -231,7 +235,9 @@ def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-    add_balanced_guardrail_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
+    add_balanced_guardrail_rows(
+        db_session, user_id=int(user.id), event_id=int(event.id), now=now
+    )
     db_session.add(
         interaction(
             user_id=int(user.id),
@@ -260,7 +266,9 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-    add_balanced_guardrail_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
+    add_balanced_guardrail_rows(
+        db_session, user_id=int(user.id), event_id=int(event.id), now=now
+    )
     db_session.add(
         interaction(
             user_id=int(user.id),
@@ -271,7 +279,11 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch
         )
     )
     active_model = models.RecommenderModel(
-        model_version="active-only", feature_names=["bias"], weights=[0.0], meta={}, is_active=True
+        model_version="active-only",
+        feature_names=["bias"],
+        weights=[0.0],
+        meta={},
+        is_active=True,
     )
     db_session.add(active_model)
     db_session.commit()
@@ -303,7 +315,9 @@ def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(monkeypatc
     assert len(enqueued) == 2
 
 
-def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(monkeypatch, db_session):
+def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(
+    monkeypatch, db_session
+):
     """Verifies send filling fast alerts branch matrix defaults system language behavior."""
     setup = seed_filling_fast_branch_matrix(db_session)
     enqueued = []
@@ -329,7 +343,9 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
     )
     event = SimpleNamespace(id=21, owner_id=31, tags=[], max_seats=None, title="No seats")
     fake_db = FakeFillingFastDb(
-        ChainQuery(subquery_result=SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))),
+        ChainQuery(
+            subquery_result=SimpleNamespace(c=SimpleNamespace(seats_taken=0, event_id=0))
+        ),
         ChainQuery(rows=[(user, event, 0)]),
         ChainQuery(first_result=None),
         ChainQuery(first_result=None),
@@ -342,7 +358,9 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
     import app.email_templates as tpl
 
     monkeypatch.setattr(
-        tpl, "render_filling_fast_email", lambda *_args, **_kwargs: render_calls.append("rendered")
+        tpl,
+        "render_filling_fast_email",
+        lambda *_args, **_kwargs: render_calls.append("rendered"),
     )
     result = task_queue._send_filling_fast_alerts(
         db=fake_db,
@@ -358,7 +376,9 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
-    seed_guardrail_window_rows(db_session, user_id=int(user.id), event_id=int(event.id), now=now)
+    seed_guardrail_window_rows(
+        db_session, user_id=int(user.id), event_id=int(event.id), now=now
+    )
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", True)
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_days", 7)
     result = task_queue._evaluate_personalization_guardrails(
@@ -410,7 +430,12 @@ def test_guardrails_skips_registers_with_unknown_click_sort(monkeypatch, db_sess
         db=db_session,
         payload={"days": 1, "min_impressions": 1, "click_to_register_window_hours": 1},
     )
-    assert result["action"] in {"skip_low_volume", "ok", "no_active_model", "no_previous_model"}
+    assert result["action"] in {
+        "skip_low_volume",
+        "ok",
+        "no_active_model",
+        "no_previous_model",
+    }
 
 
 def test_guardrails_rollback_reactivates_previous_model(monkeypatch, db_session):

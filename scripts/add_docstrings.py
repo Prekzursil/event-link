@@ -144,7 +144,9 @@ def _already_has_docstring(body: cst.IndentedBlock | cst.SimpleStatementSuite) -
 def _docstring_stmt(text: str) -> cst.SimpleStatementLine:
     """Builds a docstring statement line from ``text``."""
     safe = text.replace('"""', '"""')
-    return cst.SimpleStatementLine(body=[cst.Expr(value=cst.SimpleString(value=f'"""{safe}"""'))])
+    return cst.SimpleStatementLine(
+        body=[cst.Expr(value=cst.SimpleString(value=f'"""{safe}"""'))]
+    )
 
 
 class _Injector(cst.CSTTransformer):
@@ -271,7 +273,9 @@ def main() -> int:
             if added_c or added_f or added_m:
                 files_touched += 1
                 print(f"{target}: classes+={added_c} funcs+={added_f} module+={int(added_m)}")
-    print(f"\nTotal: files={files_touched} classes={total_c} functions={total_f} modules={total_m}")
+    print(
+        f"\nTotal: files={files_touched} classes={total_c} functions={total_f} modules={total_m}"
+    )
     return 0
 
 

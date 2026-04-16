@@ -50,7 +50,9 @@ class User(Base):
     org_description = Column(Text)
     org_logo_url = Column(String(500))
     org_website = Column(String(255))
-    theme_preference = Column(String(10), nullable=False, server_default="system", default="system")
+    theme_preference = Column(
+        String(10), nullable=False, server_default="system", default="system"
+    )
     language_preference = Column(
         String(10), nullable=False, server_default="system", default="system"
     )
@@ -59,7 +61,9 @@ class User(Base):
     faculty = Column(String(255))
     study_level = Column(String(20))
     study_year = Column(Integer)
-    email_digest_enabled = Column(Boolean, nullable=False, server_default="false", default=False)
+    email_digest_enabled = Column(
+        Boolean, nullable=False, server_default="false", default=False
+    )
     email_filling_fast_enabled = Column(
         Boolean, nullable=False, server_default="false", default=False
     )
@@ -71,7 +75,9 @@ class User(Base):
         cascade=CASCADE_DELETE_ORPHAN,
         foreign_keys="Registration.user_id",
     )
-    favorites = relationship("FavoriteEvent", back_populates="user", cascade=CASCADE_DELETE_ORPHAN)
+    favorites = relationship(
+        "FavoriteEvent", back_populates="user", cascade=CASCADE_DELETE_ORPHAN
+    )
     interest_tags = relationship("Tag", secondary="user_interest_tags")
 
 
@@ -107,7 +113,9 @@ class Event(Base):
     publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
     moderation_score = Column(Float, nullable=False, server_default="0", default=0.0)
     moderation_flags = Column(JSON, nullable=True)
-    moderation_status = Column(String(20), nullable=False, server_default="clean", default="clean")
+    moderation_status = Column(
+        String(20), nullable=False, server_default="clean", default="clean"
+    )
     moderation_reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
     moderation_reviewed_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
     deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
@@ -118,9 +126,13 @@ class Event(Base):
         "Registration", back_populates="event", cascade=CASCADE_DELETE_ORPHAN
     )
     tags = relationship("Tag", secondary="event_tags", back_populates="events")
-    favorites = relationship("FavoriteEvent", back_populates="event", cascade=CASCADE_DELETE_ORPHAN)
+    favorites = relationship(
+        "FavoriteEvent", back_populates="event", cascade=CASCADE_DELETE_ORPHAN
+    )
     deleted_by = relationship("User", foreign_keys=[deleted_by_user_id])
-    moderation_reviewed_by = relationship("User", foreign_keys=[moderation_reviewed_by_user_id])
+    moderation_reviewed_by = relationship(
+        "User", foreign_keys=[moderation_reviewed_by_user_id]
+    )
 
 
 class Registration(Base):
@@ -204,7 +216,9 @@ class NotificationDelivery(Base):
     """Recorded outbound notification delivery."""
 
     __tablename__ = "notification_deliveries"
-    __table_args__ = (UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),)
+    __table_args__ = (
+        UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     dedupe_key = Column(String(200), nullable=False)
@@ -295,7 +309,9 @@ class UserImplicitInterestTag(Base):
     """Derived tag affinity for a user."""
 
     __tablename__ = "user_implicit_interest_tags"
-    __table_args__ = (UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
@@ -338,7 +354,9 @@ class UserImplicitInterestCity(Base):
     """Derived city affinity for a user."""
 
     __tablename__ = "user_implicit_interest_cities"
-    __table_args__ = (UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),)
+    __table_args__ = (
+        UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),
+    )
 
     id = Column(Integer, primary_key=True, index=True)
     user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)

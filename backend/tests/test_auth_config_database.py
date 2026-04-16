@@ -121,7 +121,9 @@ def test_is_admin_accepts_whitelisted_email(monkeypatch) -> None:
         role=models.UserRole.student,
     )
     old = list(config.settings.admin_emails)
-    monkeypatch.setattr(config.settings, "admin_emails", ["special-admin@test.ro", "other@test.ro"])
+    monkeypatch.setattr(
+        config.settings, "admin_emails", ["special-admin@test.ro", "other@test.ro"]
+    )
     try:
         assert auth.is_admin(user) is True
     finally:
