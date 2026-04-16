@@ -15,7 +15,6 @@ import pathlib
 import sys
 
 import libcst as cst
-import libcst.matchers as m
 
 
 SKIP_TOKENS = ("/.venv", "/node_modules", "/alembic/versions/")
