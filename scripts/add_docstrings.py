@@ -14,7 +14,6 @@ import re
 import sys
 
 import libcst as cst
-import libcst.matchers as m
 
 
 SKIP_TOKENS = (

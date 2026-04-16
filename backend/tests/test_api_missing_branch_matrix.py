@@ -224,17 +224,19 @@ def test_bulk_validation_and_suggest_branches(helpers):
 def test_personalization_hidden_and_blocked_branches(helpers):
     """Verifies personalization hidden and blocked branches behavior."""
     client, db, _admin_token, student_token, _student = _admin_student_context(helpers)
-    assert (
-        client.get(
+    _response = client.get(
             "/api/me/profile", headers=helpers["auth_header"](student_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 200
     )
-    assert (
-        client.post(
+    _response = client.post(
             "/api/me/personalization/hidden-tags/999999",
             headers=helpers["auth_header"](student_token),
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
     tag = models.Tag(name="edge-tag")
@@ -252,11 +254,12 @@ def test_personalization_hidden_and_blocked_branches(helpers):
     assert first_hidden.status_code == 201
     assert second_hidden.status_code == 201
     assert second_hidden.json()["status"] == "exists"
-    assert (
-        client.post(
+    _response = client.post(
             "/api/me/personalization/blocked-organizers/999999",
             headers=helpers["auth_header"](student_token),
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
     org, _org_token = _blocked_organizer_context(helpers, db)
@@ -326,19 +329,21 @@ def test_admin_listing_review_and_placeholder_delete_branches(helpers):
         headers=helpers["auth_header"](admin_token),
     )
     assert users_filtered.status_code == 200
-    assert (
-        client.patch(
+    _response = client.patch(
             "/api/admin/users/999999",
             json={"is_active": False},
             headers=helpers["auth_header"](admin_token),
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
-    assert (
-        client.post(
+    _response = client.post(
             "/api/admin/events/999999/moderation/review",
             headers=helpers["auth_header"](admin_token),
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
     placeholder_access_code = "placeholder-code-A1"

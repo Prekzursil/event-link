@@ -11,7 +11,6 @@ from __future__ import annotations
 import pathlib
 import re
 import sys
-import textwrap
 
 
 LINE_LIMIT = 95
@@ -55,8 +54,22 @@ def _wrap(text: str, indent: str, triple: str) -> str:
     return "\n".join(pieces) + "\n"
 
 
+_REPO_ROOT = pathlib.Path.cwd().resolve()
+
+
+def _is_inside_repo(path: pathlib.Path) -> bool:
+    """Returns True when ``path`` resolves inside the repository root."""
+    try:
+        path.resolve().relative_to(_REPO_ROOT)
+    except ValueError:
+        return False
+    return True
+
+
 def _process(path: pathlib.Path) -> int:
     """Rewrites overlong docstrings in ``path``; returns lines changed."""
+    if not _is_inside_repo(path):
+        raise ValueError(f"refusing to write outside repo root: {path}")
     src = path.read_text(encoding="utf-8")
     changes = 0
     out_lines: list[str] = []

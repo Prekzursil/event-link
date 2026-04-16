@@ -97,8 +97,22 @@ def _has_preceding_jsdoc(source: str, start_idx: int) -> bool:
     return False
 
 
+_REPO_ROOT = pathlib.Path.cwd().resolve()
+
+
+def _is_inside_repo(path: pathlib.Path) -> bool:
+    """Returns True when ``path`` resolves inside the repository root."""
+    try:
+        path.resolve().relative_to(_REPO_ROOT)
+    except ValueError:
+        return False
+    return True
+
+
 def _inject(path: pathlib.Path) -> int:
     """Adds JSDoc above each declaration in ``path`` that lacks one; returns count added."""
+    if not _is_inside_repo(path):
+        raise ValueError(f"refusing to write outside repo root: {path}")
     text = path.read_text(encoding="utf-8")
     # Walk declarations in order by position so we do not disturb later offsets until we rebuild.
     hits: list[tuple[int, int, str, str]] = []

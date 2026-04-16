@@ -216,8 +216,10 @@ def test_run_migrations_success_and_lifespan_branches(monkeypatch, tmp_path):
 def test_events_filter_branches_return_cached_reason(monkeypatch, helpers):
     """Exercises events filter branches return cached reason."""
     ctx = cached_recommendation_context(helpers)
-    assert ctx.client.get("/api/events", params={"page": 0}).status_code == 400
-    assert ctx.client.get("/api/events", params={"page_size": 0}).status_code == 400
+    _response = ctx.client.get("/api/events", params={"page": 0})
+    assert _response.status_code == 400
+    _response = ctx.client.get("/api/events", params={"page_size": 0})
+    assert _response.status_code == 400
     set_settings(
         monkeypatch,
         recommendations_use_ml_cache=True,
@@ -340,7 +342,8 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
 def test_event_mutation_branches_cover_get_update_and_delete(helpers):
     """Exercises event mutation branches cover get update and delete."""
     ctx = mutation_context(helpers)
-    assert ctx.client.get("/api/events/999999").status_code == 404
+    _response = ctx.client.get("/api/events/999999")
+    assert _response.status_code == 404
     update_ok = ctx.client.put(
         f"/api/events/{ctx.event_id}",
         json={
@@ -359,42 +362,48 @@ def test_event_mutation_branches_cover_get_update_and_delete(helpers):
         headers=auth_header(ctx.owner_token),
     )
     assert update_ok.status_code == 200
-    assert (
-        ctx.client.put(
+    _response = ctx.client.put(
             f"/api/events/{ctx.event_id}",
             json={"status": "invalid"},
             headers=auth_header(ctx.owner_token),
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 422
     )
-    assert (
-        ctx.client.delete(
+    _response = ctx.client.delete(
             "/api/events/999999", headers=auth_header(ctx.owner_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
-    assert (
-        ctx.client.delete(
+    _response = ctx.client.delete(
             f"/api/events/{ctx.event_id}", headers=auth_header(ctx.other_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 403
     )
-    assert (
-        ctx.client.post(
+    _response = ctx.client.post(
             "/api/events/999999/restore", headers=auth_header(ctx.owner_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
-    assert (
-        ctx.client.delete(
+    _response = ctx.client.delete(
             f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 204
     )
-    assert (
-        ctx.client.post(
+    _response = ctx.client.post(
             f"/api/events/{ctx.event_id}/restore", headers=auth_header(ctx.student_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 403
     )
 
@@ -413,10 +422,11 @@ def test_bulk_status_and_tag_branches_follow_event_lifecycle(helpers):
         headers=auth_header(ctx.owner_token),
     )
     assert same_status_early.status_code == 200
-    assert (
-        ctx.client.delete(
+    _response = ctx.client.delete(
             f"/api/events/{ctx.event_id}", headers=auth_header(ctx.owner_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 204
     )
     bulk_requests = [
@@ -530,8 +540,10 @@ def test_admin_filter_email_and_metadata_branches(helpers):
             path, json={"subject": "s", "message": "m"}, headers=auth_header(token)
         )
         assert response.status_code == status
-    assert ctx.client.get(f"/api/organizers/{int(ctx.owner.id)}").status_code == 200
-    assert ctx.client.get("/api/metadata/universities").status_code == 200
+    _response = ctx.client.get(f"/api/organizers/{int(ctx.owner.id)}")
+    assert _response.status_code == 200
+    _response = ctx.client.get("/api/metadata/universities")
+    assert _response.status_code == 200
 
 
 def test_export_and_recommendation_branches(monkeypatch, helpers):
@@ -541,10 +553,11 @@ def test_export_and_recommendation_branches(monkeypatch, helpers):
     assert export.status_code == 200
     assert "organized_events" in export.json()
     set_settings(monkeypatch, recommendations_use_ml_cache=False)
-    assert (
-        ctx.client.get(
+    _response = ctx.client.get(
             "/api/recommendations", headers=auth_header(ctx.student_token)
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 200
     )
 

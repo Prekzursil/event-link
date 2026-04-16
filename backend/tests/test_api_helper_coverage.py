@@ -454,28 +454,32 @@ def test_hidden_tag_personalization_endpoints(helpers):
     """Hidden-tag endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
-    assert (
-        context.client.post(
+    _response = context.client.post(
             f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 201
     )
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 204
     )
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/me/personalization/hidden-tags/{int(context.tag.id)}", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
 
@@ -484,32 +488,36 @@ def test_blocked_organizer_personalization_endpoints(helpers):
     """Blocked-organizer endpoints should cover create, delete, and missing states."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
             headers=headers,
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
-    assert (
-        context.client.post(
+    _response = context.client.post(
             f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
             headers=headers,
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 201
     )
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
             headers=headers,
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 204
     )
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/me/personalization/blocked-organizers/{int(context.organizer.id)}",
             headers=headers,
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
 
@@ -518,13 +526,15 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     """Favorite routes should cover missing, exists, list, and delete branches."""
     context = _seed_favorite_context(helpers)
     headers = helpers["auth_header"](context.student_token)
+    _response = context.client.post("/api/events/999999/favorite", headers=headers)
     assert (
-        context.client.post("/api/events/999999/favorite", headers=headers).status_code == 404
+        _response.status_code == 404
     )
-    assert (
-        context.client.post(
+    _response = context.client.post(
             f"/api/events/{int(context.event.id)}/favorite", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 201
     )
     favorite_exists = context.client.post(
@@ -535,16 +545,18 @@ def test_favorite_endpoints_cover_missing_exists_list_and_delete_paths(helpers):
     listed = context.client.get("/api/me/favorites", headers=headers)
     assert listed.status_code == 200
     assert listed.json()["items"]
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/events/{int(context.event.id)}/favorite", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 204
     )
-    assert (
-        context.client.delete(
+    _response = context.client.delete(
             f"/api/events/{int(context.event.id)}/favorite", headers=headers
-        ).status_code
+        )
+    assert (
+        _response.status_code
         == 404
     )
 

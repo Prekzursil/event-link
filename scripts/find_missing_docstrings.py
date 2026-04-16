@@ -59,8 +59,8 @@ def scan(root: pathlib.Path) -> tuple[dict, dict, dict]:
     return classes, functions, modules
 
 
-def main() -> None:
-    """Entry point for CLI invocation."""
+def main() -> int:
+    """Entry point for CLI invocation; returns the POSIX exit code."""
     classes, functions, modules = scan(pathlib.Path("."))
     print("== missing class docstrings (PY-D0002) ==")
     print("total:", sum(classes.values()))
@@ -76,6 +76,7 @@ def main() -> None:
     print("total:", sum(modules.values()))
     for stem, count in sorted(modules.items(), key=lambda item: -item[1])[:25]:
         print(count, stem)
+    return 0
 
 
 if __name__ == "__main__":

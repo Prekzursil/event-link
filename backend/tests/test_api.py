@@ -383,8 +383,10 @@ def test_public_events_api_is_rate_limited(helpers):
             headers=helpers["auth_header"](organizer_token),
         )
 
-        assert client.get("/api/public/events").status_code == 200
-        assert client.get("/api/public/events").status_code == 200
+        _response = client.get("/api/public/events")
+        assert _response.status_code == 200
+        _response = client.get("/api/public/events")
+        assert _response.status_code == 200
         limited = client.get("/api/public/events")
         assert limited.status_code == 429
     finally:

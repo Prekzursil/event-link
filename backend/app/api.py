@@ -584,7 +584,7 @@ def _apply_event_visibility_filters(query, *, now: datetime, include_past: bool)
     if not include_past:
         query = query.filter(models.Event.start_time >= now)
     return query.filter(models.Event.status == "published").filter(
-        (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now)
     )
 
 
@@ -770,7 +770,7 @@ def _cached_recommendation_event_query(
         .filter(models.Event.deleted_at.is_(None))
         .filter(models.Event.start_time >= now)
         .filter(models.Event.status == "published")
-        .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
+        .filter(models.Event.publish_at.is_(None) | (models.Event.publish_at <= now))
     )
     if registered_event_ids:
         base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
@@ -3209,7 +3209,7 @@ def _serialize_profile(user: models.User, db: Session) -> schemas.OrganizerProfi
     now = datetime.now(timezone.utc)
     base_query = base_query.filter(
         models.Event.status == "published",
-        (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now),
     ).order_by(models.Event.start_time)
     query, _ = _events_with_counts_query(db, base_query)
     events = [_serialize_event(ev, seats) for ev, seats in query.all()]
@@ -4944,7 +4944,7 @@ def list_favorites(db: DbSession, current_user: StudentUser):
     base_query = base_query.filter(
         models.Event.deleted_at.is_(None),
         models.Event.status == "published",
-        (models.Event.publish_at == None) | (models.Event.publish_at <= now),  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now),
     )
     query, _ = _events_with_counts_query(db, base_query)
     items = [
@@ -5084,7 +5084,7 @@ def _tag_recommendation_base_query(*, db: Session, match_tag_names: list[str], n
         .filter(models.Event.deleted_at.is_(None))
         .filter(models.Event.start_time >= now)
         .filter(models.Event.status == "published")
-        .filter((models.Event.publish_at == None) | (models.Event.publish_at <= now))  # noqa: E711
+        .filter(models.Event.publish_at.is_(None) | (models.Event.publish_at <= now))
     )
 
 
@@ -5109,7 +5109,7 @@ def _popular_recommendations(
         blocked_organizer_ids=blocked_organizer_ids,
     )
     base_query = base_query.filter(models.Event.status == "published").filter(
-        (models.Event.publish_at == None) | (models.Event.publish_at <= now)  # noqa: E711
+        models.Event.publish_at.is_(None) | (models.Event.publish_at <= now)
     )
     query, seats_subquery = _events_with_counts_query(db, base_query)
     fallback_reason = (
