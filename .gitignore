@@ -195,4 +195,6 @@ startup.bat
 event-link-database.txt
 .claude/ralph-loop.local.md
 .claude/scheduled_tasks.lock
-main_codacy_issues.json\nmain_issues_all.json
+main_codacy_issues.json
+main_issues_all.json
+.venv-quality-zero/
