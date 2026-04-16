@@ -1,7 +1,7 @@
 """Tests for the seed main behavior."""
 
 # Test fixture classes commonly have a single public method by design.
-# pylint: disable=too-few-public-methods
+# pylint: disable=too-few-public-methods,import-outside-toplevel
 
 from __future__ import annotations
 

@@ -18,6 +18,7 @@ from sqlalchemy import (
 # add app path
 sys.path.append(os.path.dirname(os.path.abspath(__file__)) + "/../")
 
+# pylint: disable=wrong-import-position
 from app import models  # noqa: E402
 from app.config import settings  # noqa: E402
 

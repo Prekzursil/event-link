@@ -1,7 +1,7 @@
 """Coverage-closure tests for recommendation recomputation edge paths."""
 
 # Tests access private helpers of modules-under-test intentionally.
-# pylint: disable=protected-access
+# pylint: disable=protected-access,import-outside-toplevel
 
 from __future__ import annotations
 

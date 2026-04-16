@@ -1,5 +1,8 @@
 """Tests for the maintenance mode behavior."""
 
+# Deferred imports intentionally break cycles or avoid import-time side effects.
+# pylint: disable=import-outside-toplevel
+
 
 def test_registration_endpoints_disabled_in_maintenance_mode(helpers):
     """Verifies registration endpoints disabled in maintenance mode behavior."""

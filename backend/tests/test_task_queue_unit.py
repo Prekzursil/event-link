@@ -1,7 +1,7 @@
 """Tests for the task queue unit behavior."""
 
 # Tests access private helpers of modules-under-test intentionally.
-# pylint: disable=protected-access
+# pylint: disable=protected-access,import-outside-toplevel
 
 # Test fixture classes commonly have a single public method by design.
 # pylint: disable=too-few-public-methods
