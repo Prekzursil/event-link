@@ -215,6 +215,10 @@ const installMegaPagesBrowserState = () => {
   defineMutableValue(URL, 'createObjectURL', vi.fn().mockReturnValue('blob://mock-file'));
 };
 
+/**
+ * Restores the shared auth state to the default fully-authorised student
+ * test fixture so each it-block starts from the same baseline.
+ */
 const resetMegaPagesAuthState = () => {
   authState.isAuthenticated = true;
   authState.isOrganizer = true;

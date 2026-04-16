@@ -373,7 +373,9 @@ def test_public_events_api_is_rate_limited(helpers):
     old_window = settings.public_api_rate_window_seconds
     settings.public_api_rate_limit = 2
     settings.public_api_rate_window_seconds = 60
-    (_s := getattr(api_module, "_RATE_LIMIT_STORE", None)) and _s.clear()
+    _store = getattr(api_module, "_RATE_LIMIT_STORE", None)
+    if _store is not None:
+        _store.clear()
     try:
         client.post(
             "/api/events",
@@ -399,7 +401,9 @@ def test_public_events_api_is_rate_limited(helpers):
     finally:
         settings.public_api_rate_limit = old_limit
         settings.public_api_rate_window_seconds = old_window
-        (_s := getattr(api_module, "_RATE_LIMIT_STORE", None)) and _s.clear()
+        _store = getattr(api_module, "_RATE_LIMIT_STORE", None)
+        if _store is not None:
+            _store.clear()
 
 
 def test_event_validation_rules(helpers):

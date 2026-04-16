@@ -42,7 +42,8 @@ _LOCAL_ARROW_RE = (
     r"^(?P<indent>[ \t]*)"
     r"(?P<kw>const|let)"
     r"\s+(?P<name>handle[A-Z][\w$]*|install[A-Z][\w$]*|"
-    r"seed[A-Z][\w$]*|render[A-Z][\w$]*|make[A-Z][\w$]*)\s*=\s*(?:async\s*)?\("
+    r"seed[A-Z][\w$]*|render[A-Z][\w$]*|make[A-Z][\w$]*|"
+    r"reset[A-Z][\w$]*)\s*=\s*(?:async\s*)?\("
 )
 
 DECL_PATTERNS = [
