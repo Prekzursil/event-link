@@ -107,7 +107,7 @@ def test_evaluate_sonar_fails_when_expected_commit_never_arrives(monkeypatch: py
 
     monkeypatch.setattr(module, "_current_summary", lambda **_kwargs: summaries.pop(0))
     monkeypatch.setattr(module.time, "sleep", lambda _seconds: None)
-    monkeypatch.setattr(module.time, "time", lambda: next(timestamps))
+    monkeypatch.setattr(module.time, "time", lambda: next(timestamps, 4))
 
     status, open_issues, quality_gate, open_hotspots, findings = module._evaluate_sonar(
         runtime={

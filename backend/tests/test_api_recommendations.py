@@ -239,7 +239,8 @@ def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
     student_token = helpers["register_student"]("interest@test.ro")
 
     tags = client.get("/api/tags").json()["items"]
-    rock_tag_id = next(t["id"] for t in tags if t["name"] == "Rock")
+    rock_tag_id = next((t["id"] for t in tags if t["name"] == "Rock"), None)
+    assert rock_tag_id is not None, "expected a 'Rock' tag in /api/tags"
 
     update = client.put(
         "/api/me/profile",

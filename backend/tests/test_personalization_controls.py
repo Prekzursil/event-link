@@ -51,7 +51,8 @@ def test_personalization_hide_tag_excludes_events(client, helpers):
 
     student_token = helpers["register_student"]("student@test.ro")
     tags = client.get("/api/tags").json()["items"]
-    rock_tag_id = next(tag["id"] for tag in tags if tag["name"].lower() == "rock")
+    rock_tag_id = next((tag["id"] for tag in tags if tag["name"].lower() == "rock"), None)
+    assert rock_tag_id is not None, "expected a 'rock' tag in /api/tags"
 
     resp = client.post(
         f"/api/me/personalization/hidden-tags/{rock_tag_id}",
@@ -135,7 +136,8 @@ def test_personalization_settings_endpoint_lists_hidden_and_blocked(client, help
 
     student_token = helpers["register_student"]("student3@test.ro")
     tags = client.get("/api/tags").json()["items"]
-    tech_tag_id = next(tag["id"] for tag in tags if tag["name"].lower() == "tech")
+    tech_tag_id = next((tag["id"] for tag in tags if tag["name"].lower() == "tech"), None)
+    assert tech_tag_id is not None, "expected a 'tech' tag in /api/tags"
 
     resp = client.post(
         f"/api/me/personalization/hidden-tags/{tech_tag_id}",

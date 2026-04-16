@@ -18,5 +18,9 @@ def test_normalize_university_name_aliases_legacy_typos():
 
 def test_university_catalog_includes_aliases():
     items = ro_universities.get_university_catalog()
-    transilvania = next(item for item in items if item["name"] == 'University "Transilvania" of Brasov')
+    transilvania = next(
+        (item for item in items if item["name"] == 'University "Transilvania" of Brasov'),
+        None,
+    )
+    assert transilvania is not None, "Transilvania university should be in the catalog"
     assert 'University "Transilvany" of Brasov' in transilvania["aliases"]

@@ -142,11 +142,17 @@ beforeEach(() => {
   authState.isAuthenticated = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
 
-  eventServiceMock.getEvents.mockImplementation(async (filters: { sort?: string; page_size?: number }) => {
+  eventServiceMock.getEvents.mockImplementation((filters: { sort?: string; page_size?: number }) => {
     if (filters?.sort === 'recommended' && filters?.page_size === 4) {
-      return { items: [makeEvent(90, 'Recommended 90')], total: 1, page: 1, page_size: 4, total_pages: 1 };
+      return Promise.resolve({
+        items: [makeEvent(90, 'Recommended 90')],
+        total: 1,
+        page: 1,
+        page_size: 4,
+        total_pages: 1,
+      });
     }
-    return { items: [makeEvent(1)], total: 1, page: 1, page_size: 12, total_pages: 1 };
+    return Promise.resolve({ items: [makeEvent(1)], total: 1, page: 1, page_size: 12, total_pages: 1 });
   });
   eventServiceMock.getFavorites.mockResolvedValue({ items: [makeEvent(90, 'Recommended 90')] });
   eventServiceMock.addToFavorites.mockResolvedValue();

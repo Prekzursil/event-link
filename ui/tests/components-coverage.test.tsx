@@ -96,7 +96,7 @@ describe('shared component coverage matrix', () => {
     });
   });
 
-  it('covers EventCard image/favorite/recommendation/edit/past/full branches', async () => {
+  it('covers EventCard image/favorite/recommendation/edit/past/full branches', () => {
     const onFavoriteToggle = vi.fn();
     const onEventClick = vi.fn();
 
