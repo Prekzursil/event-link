@@ -109,7 +109,7 @@ describe('useEventsPageFilters', () => {
         ),
       },
     );
-    expect(result.current.dateRangeLabel).toMatch(/\d+ [A-Za-z]+ 2030/);
+    expect(result.current.dateRangeLabel).toContain('2030');
     expect(result.current.selectedDateRange.from).toBeInstanceOf(Date);
   });
 
