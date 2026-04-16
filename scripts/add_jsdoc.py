@@ -87,7 +87,9 @@ def _describe(kind: str, name: str) -> str:
 
 
 def _has_preceding_jsdoc(source: str, start_idx: int) -> bool:
-    """Returns True when the first non-blank line above ``start_idx`` ends with ``*/``."""
+    """Returns True when the first non-blank line above ``start_idx``
+    ends with ``*/``.
+    """
     cursor = start_idx
     while cursor > 0:
         # back up to the previous line start
@@ -125,7 +127,9 @@ _ALLOWED_ROOT = str(_REPO_ROOT)
 
 
 def _safe_resolve_in_repo(path: pathlib.Path) -> str:
-    """Normalises ``path`` and returns a string; raises for anything outside repo root."""
+    """Normalises ``path`` and returns a string; raises for anything
+    outside repo root.
+    """
     import os as _os
 
     absolute = _os.path.normpath(_os.path.abspath(str(path)))
@@ -142,7 +146,8 @@ def _inject(path: pathlib.Path) -> int:
     safe_str = _safe_resolve_in_repo(path)
     with open(safe_str, "r", encoding="utf-8") as handle:
         text = handle.read()
-    # Walk declarations in order by position so we do not disturb later offsets until we rebuild.
+    # Walk declarations in order by position so we do not disturb later
+    # offsets until we rebuild the full file.
     hits: list[tuple[int, int, str, str]] = []
     for pattern, kind in DECL_PATTERNS:
         for match in pattern.finditer(text):

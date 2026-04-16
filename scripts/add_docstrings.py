@@ -293,10 +293,12 @@ def main() -> int:
             if added_c or added_f or added_m:
                 files_touched += 1
                 print(
-                    f"{target}: classes+={added_c} funcs+={added_f} module+={int(added_m)}"
+                    f"{target}: classes+={added_c} funcs+={added_f}"
+                    f" module+={int(added_m)}"
                 )
     print(
-        f"\nTotal: files={files_touched} classes={total_c} functions={total_f} modules={total_m}"
+        f"\nTotal: files={files_touched} classes={total_c}"
+        f" functions={total_f} modules={total_m}"
     )
     return 0
 
