@@ -1,3 +1,4 @@
+"""Tests for the auth config database behavior."""
 from __future__ import annotations
 
 from datetime import timedelta
@@ -12,6 +13,7 @@ class _DummySession:
     """Minimal session double that records whether close() was called."""
 
     def __init__(self) -> None:
+        """Initializes the instance state."""
         self.closed = False
 
     def close(self) -> None:

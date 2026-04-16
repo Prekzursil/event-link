@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Command-line helper: recompute ml shared."""
 from __future__ import annotations
 
 import math
@@ -8,31 +9,38 @@ from datetime import datetime, timezone
 
 
 class _DeterministicRng:
+    """Deterministic Rng value object used in the surrounding module."""
     def __init__(self, seed: int) -> None:
+        """Initializes the instance state."""
         seed_value = int(seed) & ((1 << 64) - 1)
         self._state = seed_value or 0xA5A5A5A5A5A5A5A5
 
     def _next_u64(self) -> int:
+        """Implements the next u64 helper."""
         self._state = (6364136223846793005 * self._state + 1442695040888963407) & ((1 << 64) - 1)
         return self._state
 
     def randbelow(self, upper_bound: int) -> int:
+        """Implements the randbelow helper."""
         if upper_bound <= 0:
             raise ValueError("upper bound must be positive")
         return self._next_u64() % upper_bound
 
     def choice(self, items):
+        """Implements the choice helper."""
         if not items:
             raise IndexError("cannot choose from an empty sequence")
         return items[self.randbelow(len(items))]
 
     def shuffle(self, items) -> None:
+        """Implements the shuffle helper."""
         for index in range(len(items) - 1, 0, -1):
             swap_index = self.randbelow(index + 1)
             items[index], items[swap_index] = items[swap_index], items[index]
 
 
 def _sigmoid(z: float) -> float:
+    """Implements the sigmoid helper."""
     if z >= 0:
         exp_neg = math.exp(-z)
         return 1.0 / (1.0 + exp_neg)
@@ -41,11 +49,13 @@ def _sigmoid(z: float) -> float:
 
 
 def _dot(weights: list[float], features: list[float]) -> float:
+    """Implements the dot helper."""
     return sum(w * x for w, x in zip(weights, features, strict=False))
 
 
 @dataclass(frozen=True)
 class _EventFeatures:
+    """Event Features value object used in the surrounding module."""
     tags: set[str]
     category: str | None
     city: str | None
@@ -59,6 +69,7 @@ class _EventFeatures:
 
 @dataclass(frozen=True)
 class _UserFeatures:
+    """User Features value object used in the surrounding module."""
     city: str | None
     interest_tag_weights: dict[str, float]
     history_tags: set[str]
@@ -70,6 +81,7 @@ class _UserFeatures:
 
 @dataclass(frozen=True)
 class _PreparedState:
+    """Prepared State value object used in the surrounding module."""
     user_ids: list[int]
     events: dict[int, _EventFeatures]
     all_event_ids: list[int]
@@ -88,6 +100,7 @@ class _PreparedState:
 
 @dataclass(frozen=True)
 class _EvaluationState:
+    """Evaluation State value object used in the surrounding module."""
     weights: list[float]
     users: dict[int, _UserFeatures]
     events: dict[int, _EventFeatures]
@@ -101,6 +114,7 @@ class _EvaluationState:
 
 @dataclass(frozen=True)
 class _EvaluationDependencies:
+    """Evaluation Dependencies value object used in the surrounding module."""
     rng_factory: Callable[[int], _DeterministicRng]
     build_feature_vector: Callable[..., list[float]]
     sigmoid: Callable[[float], float]
@@ -120,10 +134,12 @@ FEATURE_NAMES = [
 
 
 def _normalize_tag(name: str) -> str:
+    """Implements the normalize tag helper."""
     return (name or "").strip().lower()
 
 
 def _normalize_city(name: str | None) -> str | None:
+    """Implements the normalize city helper."""
     if not name:
         return None
     name = name.strip()
@@ -131,6 +147,7 @@ def _normalize_city(name: str | None) -> str | None:
 
 
 def _normalize_category(name: str | None) -> str | None:
+    """Implements the normalize category helper."""
     if not name:
         return None
     name = name.strip()
@@ -138,6 +155,7 @@ def _normalize_category(name: str | None) -> str | None:
 
 
 def _coerce_utc(value: datetime | None) -> datetime | None:
+    """Implements the coerce utc helper."""
     if value is None:
         return None
     if value.tzinfo is None:
@@ -146,6 +164,7 @@ def _coerce_utc(value: datetime | None) -> datetime | None:
 
 
 def _tag_overlap_ratios(*, user: _UserFeatures, event: _EventFeatures) -> tuple[float, float]:
+    """Implements the tag overlap ratios helper."""
     tags = event.tags
     tag_count = max(1, len(tags))
     overlap_interest = sum(float(user.interest_tag_weights.get(tag, 0.0)) for tag in tags)
@@ -154,6 +173,7 @@ def _tag_overlap_ratios(*, user: _UserFeatures, event: _EventFeatures) -> tuple[
 
 
 def _same_city_score(*, user: _UserFeatures, event: _EventFeatures) -> float:
+    """Implements the same city score helper."""
     if user.city and event.city and user.city == event.city:
         return 1.0
     if event.city:
@@ -162,6 +182,7 @@ def _same_city_score(*, user: _UserFeatures, event: _EventFeatures) -> float:
 
 
 def _category_match_score(*, user: _UserFeatures, event: _EventFeatures) -> float:
+    """Implements the category match score helper."""
     if event.category and event.category in user.history_categories:
         return 1.0
     if event.category:
@@ -170,6 +191,7 @@ def _category_match_score(*, user: _UserFeatures, event: _EventFeatures) -> floa
 
 
 def _days_until_score(*, event: _EventFeatures, now: datetime) -> float:
+    """Implements the days until score helper."""
     if not event.start_time:
         return 0.0
     delta_days = (event.start_time - now).total_seconds() / 86400.0
@@ -177,6 +199,7 @@ def _days_until_score(*, event: _EventFeatures, now: datetime) -> float:
 
 
 def _build_feature_vector(*, user: _UserFeatures, event: _EventFeatures, now: datetime) -> list[float]:
+    """Constructs a feature vector structure."""
     overlap_interest_ratio, overlap_history_ratio = _tag_overlap_ratios(user=user, event=event)
     same_city = _same_city_score(user=user, event=event)
     category_match = _category_match_score(user=user, event=event)
@@ -196,6 +219,7 @@ def _build_feature_vector(*, user: _UserFeatures, event: _EventFeatures, now: da
 
 
 def _weighted_overlap_tags(*, user: _UserFeatures, event: _EventFeatures) -> list[tuple[str, float]]:
+    """Implements the weighted overlap tags helper."""
     overlap: list[tuple[str, float]] = []
     for tag in event.tags:
         weight = float(user.interest_tag_weights.get(tag, 0.0))
@@ -206,15 +230,18 @@ def _weighted_overlap_tags(*, user: _UserFeatures, event: _EventFeatures) -> lis
 
 
 def _interest_reason(*, overlap: list[tuple[str, float]], lang: str) -> str:
+    """Implements the interest reason helper."""
     top = ", ".join(tag for tag, _weight in overlap[:3])
     return f"Your interests: {top}" if lang == "en" else f"Interesele tale: {top}"
 
 
 def _event_is_local_for_user(*, user: _UserFeatures, event: _EventFeatures) -> bool:
+    """Implements the event is local for user helper."""
     return bool(user.city and event.city and user.city == event.city)
 
 
 def _reason_for(*, user: _UserFeatures, event: _EventFeatures, lang: str) -> str:
+    """Implements the reason for helper."""
     overlap = _weighted_overlap_tags(user=user, event=event)
     if overlap:
         return _interest_reason(overlap=overlap, lang=lang)
@@ -234,6 +261,7 @@ def _train_log_regression_sgd(
     l2: float,
     seed: int,
 ) -> list[float]:
+    """Implements the train log regression sgd helper."""
     rng = _DeterministicRng(seed)
     weights = [0.0] * n_features
     eps = 1e-12
@@ -257,6 +285,7 @@ def _train_log_regression_sgd(
 
 
 def _impression_negative_weight(position: int | None) -> float:
+    """Implements the impression negative weight helper."""
     if position is None or position < 0:
         return 0.05
     if position <= 2:
@@ -275,6 +304,7 @@ def _sample_negative_event_ids(
     positive_event_id: int,
     negatives_per_user: int,
 ) -> list[int]:
+    """Implements the sample negative event ids helper."""
     negatives: list[int] = []
     while len(negatives) < negatives_per_user and len(negatives) < len(all_event_ids):
         candidate_event_id = rng.choice(all_event_ids)
@@ -295,6 +325,7 @@ def _score_candidate_event_ids(
     sigmoid,
     dot,
 ) -> list[tuple[float, int]]:
+    """Implements the score candidate event ids helper."""
     scored: list[tuple[float, int]] = []
     for event_id in candidate_event_ids:
         event = events.get(event_id)
@@ -307,6 +338,7 @@ def _score_candidate_event_ids(
 
 
 def evaluate_hitrate_at_k_impl(*, state: _EvaluationState, deps: _EvaluationDependencies) -> float:
+    """Implements the evaluate hitrate at k impl helper."""
     rng = deps.rng_factory(int(state.seed))
     hits = 0
     total = 0

@@ -1,3 +1,4 @@
+"""Tests for the codacy zero behavior."""
 from __future__ import annotations
 
 import importlib.util
@@ -10,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _load_module():
+    """Loads the module resource."""
     module_path = REPO_ROOT / "scripts" / "quality" / "check_codacy_zero.py"
     parent = str(module_path.parent)
     if parent not in sys.path:
@@ -23,6 +25,7 @@ def _load_module():
 
 
 def _request(module, *, branch: str = "", pr_number: str = "", commit_sha: str = "", poll_seconds: int = 5):
+    """Implements the request helper."""
     return module.CodacyRequest(
         provider="gh",
         owner="Prekzursil",
@@ -37,6 +40,7 @@ def _request(module, *, branch: str = "", pr_number: str = "", commit_sha: str =
 
 
 def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies load module raises when import spec is missing behavior."""
     original_parent = str((REPO_ROOT / "scripts" / "quality").resolve())
     monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(sys, "path", [entry for entry in sys.path if entry != original_parent])
@@ -46,6 +50,7 @@ def test_load_module_raises_when_import_spec_is_missing(monkeypatch: pytest.Monk
 
 
 def test_quality_new_issues_prefers_quality_section() -> None:
+    """Verifies quality new issues prefers quality section behavior."""
     module = _load_module()
 
     assert (
@@ -60,6 +65,7 @@ def test_quality_new_issues_prefers_quality_section() -> None:
 
 
 def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies wait for pr analysis uses pr scope and current head behavior."""
     module = _load_module()
     payloads = [
         (
@@ -100,6 +106,7 @@ def test_wait_for_pr_analysis_uses_pr_scope_and_current_head(monkeypatch: pytest
 
 
 def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies wait for pr analysis reports pr new issues behavior."""
     module = _load_module()
 
     monkeypatch.setattr(
@@ -129,6 +136,7 @@ def test_wait_for_pr_analysis_reports_pr_new_issues(monkeypatch: pytest.MonkeyPa
 
 
 def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies wait for branch analysis uses latest branch head behavior."""
     module = _load_module()
     payloads = [
         (
@@ -175,6 +183,7 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(monkeypatch: pytest.Mo
 def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_ready(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
+    """Verifies wait for branch analysis reports open issues once current commit is ready behavior."""
     module = _load_module()
 
     monkeypatch.setattr(

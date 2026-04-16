@@ -1,4 +1,6 @@
+"""Tests for the organizer assist and moderation behavior."""
 def test_organizer_suggest_endpoint_returns_duplicates_and_category(client, helpers):
+    """Verifies organizer suggest endpoint returns duplicates and category behavior."""
     helpers["make_organizer"]("org@test.ro")
     org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
     headers = helpers["auth_header"](org_token)
@@ -36,6 +38,7 @@ def test_organizer_suggest_endpoint_returns_duplicates_and_category(client, help
 
 
 def test_event_moderation_flags_are_exposed_in_admin_events(client, helpers):
+    """Verifies event moderation flags are exposed in admin events behavior."""
     helpers["make_organizer"]("org@test.ro")
     org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
     org_headers = helpers["auth_header"](org_token)

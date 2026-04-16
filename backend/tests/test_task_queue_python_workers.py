@@ -1,3 +1,4 @@
+"""Tests for the task queue python workers behavior."""
 from __future__ import annotations
 
 import os
@@ -10,6 +11,7 @@ from task_queue_test_support import mk_job, raise_assertion, raise_queue_empty, 
 
 
 def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
+    """Verifies execute python script handles success timeout and exceptions behavior."""
     script_ok = tmp_path / "ok.py"
     script_ok.write_text("print('ok')\nraise SystemExit(0)\n", encoding="utf-8")
     result_ok = task_queue._execute_python_script(
@@ -48,11 +50,15 @@ def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
 
 
 def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path):
+    """Verifies run python entrypoint worker restores env and reports failures behavior."""
     class _Queue:
+        """Queue value object used in the surrounding module."""
         def __init__(self) -> None:
+            """Initializes the instance state."""
             self.payload = None
 
         def put(self, value) -> None:
+            """Implements the put helper."""
             self.payload = value
 
     os.environ["EVENT_LINK_QUEUE_FLAG"] = "parent-flag"
@@ -91,6 +97,7 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
 
 
 def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
+    """Verifies execute python script timeout path behavior."""
     process = type(
         "_Process",
         (),
@@ -133,6 +140,7 @@ def test_execute_python_script_timeout_path(monkeypatch, tmp_path):
 
 
 def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
+    """Verifies execute python script queue empty fallback behavior."""
     process = type(
         "_Process",
         (),
@@ -168,6 +176,7 @@ def test_execute_python_script_queue_empty_fallback(monkeypatch, tmp_path):
 
 
 def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
+    """Verifies enqueue job success and deduped existing path behavior."""
     from sqlalchemy.exc import IntegrityError
 
     job = task_queue.enqueue_job(db_session, "mail", {"x": 1}, dedupe_key="fresh-key")
@@ -186,6 +195,7 @@ def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
     db_session.refresh(existing)
 
     def _commit_fail():
+        """Implements the commit fail helper."""
         raise IntegrityError("stmt", {}, RuntimeError("dup"))
 
     monkeypatch.setattr(db_session, "commit", _commit_fail)
@@ -195,6 +205,7 @@ def test_enqueue_job_success_and_deduped_existing_path(monkeypatch, db_session):
 
 
 def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
+    """Verifies mark job succeeded and load personalization exclusions behavior."""
     user = models.User(
         email="prefs@test.ro",
         password_hash=auth.get_password_hash("student-fixture-A1"),
@@ -237,6 +248,7 @@ def test_mark_job_succeeded_and_load_personalization_exclusions(db_session):
 
 
 def test_send_weekly_digest_skips_already_sent_delivery(monkeypatch, db_session):
+    """Verifies send weekly digest skips already sent delivery behavior."""
     now = datetime.now(timezone.utc)
     iso = now.isocalendar()
     week_key = f"{iso.year}-W{iso.week:02d}"

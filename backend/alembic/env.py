@@ -1,3 +1,4 @@
+"""Alembic runtime configuration."""
 from logging import basicConfig
 import os
 import sys

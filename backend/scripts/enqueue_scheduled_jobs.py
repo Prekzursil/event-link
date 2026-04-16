@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Command-line helper: enqueue scheduled jobs."""
 from __future__ import annotations
 
 import argparse
@@ -9,6 +10,7 @@ from typing import Any
 
 
 def _bootstrap_imports() -> None:
+    """Implements the bootstrap imports helper."""
     backend_root = Path(__file__).resolve().parents[1]
     sys.path.insert(0, str(backend_root))
 
@@ -16,6 +18,7 @@ def _bootstrap_imports() -> None:
 
 
 def _parse_args() -> argparse.Namespace:
+    """Implements the parse args helper."""
     parser = argparse.ArgumentParser(description="Enqueue scheduled background jobs.")
     parser.add_argument("--retrain-ml", action="store_true", help="Enqueue ML recommendations retraining job.")
     parser.add_argument(
@@ -35,6 +38,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _job_constants() -> dict[str, str]:
+    """Implements the job constants helper."""
     from app.task_queue import (  # noqa: PLC0415
         JOB_TYPE_EVALUATE_PERSONALIZATION_GUARDRAILS,
         JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML,
@@ -51,6 +55,7 @@ def _job_constants() -> dict[str, str]:
 
 
 def _wanted_jobs(args: argparse.Namespace) -> dict[str, bool]:
+    """Implements the wanted jobs helper."""
     wanted = {
         "retrain": bool(args.retrain_ml or args.all),
         "guardrails": bool(args.guardrails or args.all),
@@ -68,6 +73,7 @@ def _wanted_jobs(args: argparse.Namespace) -> dict[str, bool]:
 
 
 def _job_payloads(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
+    """Implements the job payloads helper."""
     return {
         "retrain": {"top_n": int(args.top_n)},
         "weekly_digest": {},
@@ -77,6 +83,7 @@ def _job_payloads(args: argparse.Namespace) -> dict[str, dict[str, Any]]:
 
 
 def _enqueue_once(db, enqueue_job, *, job_type: str, payload: dict[str, Any]) -> int | None:
+    """Implements the enqueue once helper."""
     job = enqueue_job(db, job_type, payload, dedupe_key="global")
     if getattr(job, "_deduped", False):
         return None
@@ -86,6 +93,7 @@ def _enqueue_once(db, enqueue_job, *, job_type: str, payload: dict[str, Any]) ->
 def _enqueue_requested_jobs(
     db, enqueue_job, *, wanted: dict[str, bool], payloads: dict[str, dict[str, Any]]
 ) -> list[tuple[str, int]]:
+    """Implements the enqueue requested jobs helper."""
     created: list[tuple[str, int]] = []
     for key, job_type in _job_constants().items():
         if not wanted[key]:
@@ -97,6 +105,7 @@ def _enqueue_requested_jobs(
 
 
 def _print_results(created: list[tuple[str, int]]) -> None:
+    """Implements the print results helper."""
     if not created:
         print("no jobs enqueued (already queued/running)")
         return
@@ -105,6 +114,7 @@ def _print_results(created: list[tuple[str, int]]) -> None:
 
 
 def main() -> int:
+    """Implements the main helper."""
     args = _parse_args()
     _bootstrap_imports()
 

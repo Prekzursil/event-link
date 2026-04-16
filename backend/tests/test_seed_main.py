@@ -1,3 +1,4 @@
+"""Tests for the seed main behavior."""
 from __future__ import annotations
 
 import importlib.util
@@ -13,6 +14,7 @@ class _FakeResult:
     """Simple result wrapper that mimics SQLAlchemy scalar() responses."""
 
     def __init__(self, value):
+        """Initializes the instance state."""
         self._value = value
 
     def scalar(self):
@@ -24,6 +26,7 @@ class _FakeSession:
     """Session double that records statements and transaction calls."""
 
     def __init__(self, *, user_count=0, delete_fail_tables=None, raise_on_add=False):
+        """Initializes the instance state."""
         self.user_count = user_count
         self.delete_fail_tables = set(delete_fail_tables or [])
         self.raise_on_add = raise_on_add
@@ -85,6 +88,7 @@ def _load_seed_data_module(monkeypatch):
         """Minimal passlib context replacement for seed-data import tests."""
 
         def __init__(self, *args, **kwargs):
+            """Initializes the instance state."""
             # Intentional empty fake context for seed-data import tests.
             pass
 
@@ -252,6 +256,7 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
         """Minimal passlib context replacement for the __main__ execution path."""
 
         def __init__(self, *args, **kwargs):
+            """Initializes the instance state."""
             # Intentional empty fake context for module __main__ path coverage.
             pass
 

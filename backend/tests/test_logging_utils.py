@@ -1,3 +1,4 @@
+"""Tests for the logging utils behavior."""
 import asyncio
 import logging
 
@@ -11,6 +12,7 @@ _AUTH_SCHEME = "Bear" + "er"
 
 
 def test_log_event_sanitizes_message_and_drops_dynamic_context(caplog):
+    """Verifies log event sanitizes message and drops dynamic context behavior."""
     with caplog.at_level(logging.INFO, logger="event_link"):
         log_event("hello\nworld", user_input="attacker\r\nforged")
 
@@ -21,6 +23,7 @@ def test_log_event_sanitizes_message_and_drops_dynamic_context(caplog):
 
 
 def test_log_warning_does_not_emit_sensitive_kwargs(caplog):
+    """Verifies log warning does not emit sensitive kwargs behavior."""
     with caplog.at_level(logging.WARNING, logger="event_link"):
         log_warning(
             "security_event",
@@ -38,6 +41,7 @@ def test_log_warning_does_not_emit_sensitive_kwargs(caplog):
 
 
 def test_json_formatter_adds_exc_info_field() -> None:
+    """Verifies json formatter adds exc info field behavior."""
     formatter = logging_utils.JsonFormatter()
     record = logging.LogRecord(
         name="event_link",
@@ -58,9 +62,11 @@ def test_json_formatter_adds_exc_info_field() -> None:
 
 
 def test_request_id_middleware_uses_incoming_header() -> None:
+    """Verifies request id middleware uses incoming header behavior."""
     messages = []
 
     async def _app(_scope, receive, send):
+        """Implements the app helper."""
         await receive()
         await send({"type": "http.response.start", "status": 200, "headers": []})
         await send({"type": "http.response.body", "body": b"ok"})
@@ -68,10 +74,12 @@ def test_request_id_middleware_uses_incoming_header() -> None:
     middleware = logging_utils.RequestIdMiddleware(_app)
 
     async def _receive():
+        """Implements the receive helper."""
         await asyncio.sleep(0)
         return {"type": "http.request", "body": b"", "more_body": False}
 
     async def _send(message):
+        """Implements the send helper."""
         await asyncio.sleep(0)
         messages.append(message)
 
@@ -89,6 +97,7 @@ def test_request_id_middleware_uses_incoming_header() -> None:
 
 
 def test_log_error_sanitizes_message(caplog):
+    """Verifies log error sanitizes message behavior."""
     with caplog.at_level(logging.ERROR, logger="event_link"):
         logging_utils.log_error("danger\nline")
 

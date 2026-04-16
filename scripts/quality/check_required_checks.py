@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Support module: check required checks."""
 from __future__ import annotations
 
 import argparse
@@ -21,6 +22,7 @@ write_workspace_text = _security_helpers.write_workspace_text
 
 
 def _parse_args() -> argparse.Namespace:
+    """Implements the parse args helper."""
     parser = argparse.ArgumentParser(
         description="Wait for required GitHub check contexts and assert they are successful."
     )
@@ -35,6 +37,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _api_get(url: str, token: str) -> dict[str, Any]:
+    """Implements the api get helper."""
     retries = 4
     delay_seconds = 2
     last_error = "GitHub API request exhausted retries"
@@ -69,6 +72,7 @@ def _api_get(url: str, token: str) -> dict[str, Any]:
 
 
 def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
+    """Implements the check run context helper."""
     name = str(run.get("name") or "").strip()
     if not name:
         return None
@@ -80,6 +84,7 @@ def _check_run_context(run: dict[str, Any]) -> tuple[str, dict[str, str]] | None
 
 
 def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None:
+    """Implements the status context helper."""
     name = str(status.get("context") or "").strip()
     if not name:
         return None
@@ -91,6 +96,7 @@ def _status_context(status: dict[str, Any]) -> tuple[str, dict[str, str]] | None
 
 
 def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[str, Any]) -> dict[str, dict[str, str]]:
+    """Implements the collect contexts helper."""
     contexts: dict[str, dict[str, str]] = {}
     for run in check_runs_payload.get("check_runs", []) or []:
         context = _check_run_context(run)
@@ -106,6 +112,7 @@ def _collect_contexts(check_runs_payload: dict[str, Any], status_payload: dict[s
 
 
 def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
+    """Implements the check run failure helper."""
     state = observed.get("state")
     if state != "completed":
         return f"{context}: status={state}"
@@ -116,6 +123,7 @@ def _check_run_failure(context: str, observed: dict[str, str]) -> str | None:
 
 
 def _status_failure(context: str, observed: dict[str, str]) -> str | None:
+    """Implements the status failure helper."""
     conclusion = observed.get("conclusion")
     if conclusion != "success":
         return f"{context}: state={conclusion}"
@@ -123,6 +131,7 @@ def _status_failure(context: str, observed: dict[str, str]) -> str | None:
 
 
 def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple[str, list[str], list[str]]:
+    """Implements the evaluate helper."""
     missing: list[str] = []
     failed: list[str] = []
 
@@ -144,6 +153,7 @@ def _evaluate(required: list[str], contexts: dict[str, dict[str, str]]) -> tuple
 
 
 def _render_md(payload: dict[str, Any]) -> str:
+    """Implements the render md helper."""
     lines = [
         "# Quality Zero Gate - Required Contexts",
         "",
@@ -171,6 +181,7 @@ def _render_md(payload: dict[str, Any]) -> str:
 
 
 def _validated_runtime(args: argparse.Namespace) -> tuple[str, list[str], str, str, str]:
+    """Implements the validated runtime helper."""
     required = [item.strip() for item in args.required_context if item.strip()]
     if not required:
         raise ValueError("At least one --required-context is required")
@@ -192,6 +203,7 @@ def _payload_from_contexts(
     required: list[str],
     contexts: dict[str, dict[str, str]],
 ) -> dict[str, Any]:
+    """Implements the payload from contexts helper."""
     status, missing, failed = _evaluate(required, contexts)
     return {
         "status": status,
@@ -206,6 +218,7 @@ def _payload_from_contexts(
 
 
 def _fetch_contexts(*, owner: str, repo: str, sha: str, token: str) -> dict[str, dict[str, str]]:
+    """Implements the fetch contexts helper."""
     check_runs = _api_get(
         build_github_commit_checks_url(owner=owner, repo=repo, sha=sha, per_page=100),
         token,
@@ -218,6 +231,7 @@ def _fetch_contexts(*, owner: str, repo: str, sha: str, token: str) -> dict[str,
 
 
 def _has_in_progress_check_runs(contexts: dict[str, dict[str, str]]) -> bool:
+    """Implements the has in progress check runs helper."""
     return any(value.get("state") != "completed" for value in contexts.values() if value.get("source") == "check_run")
 
 
@@ -231,6 +245,7 @@ def _poll_required_contexts(
     timeout_seconds: int,
     poll_seconds: int,
 ) -> dict[str, Any]:
+    """Implements the poll required contexts helper."""
     deadline = time.time() + max(timeout_seconds, 1)
     final_payload: dict[str, Any] | None = None
 
@@ -255,6 +270,7 @@ def _poll_required_contexts(
 
 
 def main() -> int:
+    """Implements the main helper."""
     args = _parse_args()
     try:
         token, required, owner, repo, sha = _validated_runtime(args)

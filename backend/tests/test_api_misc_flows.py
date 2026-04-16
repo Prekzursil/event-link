@@ -1,3 +1,4 @@
+"""Tests for the api misc flows behavior."""
 from app import models
 from api_test_support import (
     CONFIRM_SECRET_FIELD,
@@ -13,6 +14,7 @@ from api_test_support import (
 
 
 def test_health_endpoint(helpers):
+    """Verifies health endpoint behavior."""
     client = helpers["client"]
     resp = client.get("/api/health")
     assert resp.status_code == 200
@@ -22,6 +24,7 @@ def test_health_endpoint(helpers):
 
 
 def test_event_ics_and_calendar_feed(helpers):
+    """Verifies event ics and calendar feed behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -61,6 +64,7 @@ def test_event_ics_and_calendar_feed(helpers):
 
 
 def test_access_code_reset_flow(helpers):
+    """Verifies access code reset flow behavior."""
     client = helpers["client"]
     helpers["register_student"]("reset@test.ro")
     req = client.post(f"{PASSCODE_ROUTE}/forgot", json={"email": "reset@test.ro"})
@@ -80,6 +84,7 @@ def test_access_code_reset_flow(helpers):
 
 
 def test_participants_pagination(helpers):
+    """Verifies participants pagination behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     org_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -121,6 +126,7 @@ def test_participants_pagination(helpers):
 
 
 def test_account_export_and_deletion_student(helpers):
+    """Verifies account export and deletion student behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     org_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -175,6 +181,7 @@ def test_account_export_and_deletion_student(helpers):
 
 
 def test_organizer_account_deletion_reassigns_events(helpers):
+    """Verifies organizer account deletion reassigns events behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     org_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)

@@ -1,3 +1,4 @@
+"""Tests for the lizard tooling regressions behavior."""
 from __future__ import annotations
 
 from pathlib import Path
@@ -88,11 +89,13 @@ TARGET_LIMITS = {
 
 
 def _function_map(path: Path):
+    """Implements the function map helper."""
     analysis = lizard.analyze_file(str(path))
     return {function.name: function for function in analysis.function_list}
 
 
 def test_selected_python_tooling_functions_stay_under_lizard_limits() -> None:
+    """Verifies selected python tooling functions stay under lizard limits behavior."""
     offenders: list[str] = []
 
     for path, expected_functions in TARGET_LIMITS.items():
@@ -112,6 +115,7 @@ def test_selected_python_tooling_functions_stay_under_lizard_limits() -> None:
 
 
 def test_selected_python_tooling_functions_report_offenders() -> None:
+    """Verifies selected python tooling functions report offenders behavior."""
     original_limits = TARGET_LIMITS.copy()
     try:
         TARGET_LIMITS.clear()

@@ -1,3 +1,4 @@
+"""Tests for the workflow contracts behavior."""
 import re
 from pathlib import Path
 

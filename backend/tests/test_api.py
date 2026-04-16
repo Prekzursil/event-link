@@ -1,3 +1,4 @@
+"""Tests for the api behavior."""
 from datetime import datetime, timezone
 
 from app import models
@@ -7,6 +8,7 @@ from api_test_support import (
 
 
 def test_event_creation_and_capacity_enforced(helpers):
+    """Verifies event creation and capacity enforced behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -48,6 +50,7 @@ def test_event_creation_and_capacity_enforced(helpers):
 
 
 def test_student_cannot_create_event(helpers):
+    """Verifies student cannot create event behavior."""
     client = helpers["client"]
     student_token = helpers["register_student"]("stud@test.ro")
     payload = {
@@ -66,6 +69,7 @@ def test_student_cannot_create_event(helpers):
 
 
 def test_edit_forbidden_for_non_owner(helpers):
+    """Verifies edit forbidden for non owner behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("o1@test.ro", "owner-fixture-A1")
     helpers["make_organizer"]("o2@test.ro", "other-fixture-A1")
@@ -97,6 +101,7 @@ def test_edit_forbidden_for_non_owner(helpers):
 
 
 def test_reregister_after_unregister_restores_registration(helpers):
+    """Verifies reregister after unregister restores registration behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("rereg-org@test.ro", DEFAULT_ORG_CODE)
@@ -131,6 +136,7 @@ def test_reregister_after_unregister_restores_registration(helpers):
 
 
 def test_events_list_filters_and_order(helpers):
+    """Verifies events list filters and order behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -190,6 +196,7 @@ def test_events_list_filters_and_order(helpers):
 
 
 def test_events_list_filters_by_city(helpers):
+    """Verifies events list filters by city behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -219,6 +226,7 @@ def test_events_list_filters_by_city(helpers):
 
 
 def test_events_list_filters_by_tags_without_duplicates(helpers):
+    """Verifies events list filters by tags without duplicates behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -252,6 +260,7 @@ def test_events_list_filters_by_tags_without_duplicates(helpers):
 
 
 def test_public_events_filters_by_tags_without_duplicates(helpers):
+    """Verifies public events filters by tags without duplicates behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("public-tags-org@test.ro", DEFAULT_ORG_CODE)
     organizer_token = helpers["login"]("public-tags-org@test.ro", DEFAULT_ORG_CODE)
@@ -285,6 +294,7 @@ def test_public_events_filters_by_tags_without_duplicates(helpers):
 
 
 def test_public_events_api_exposes_published_only(helpers):
+    """Verifies public events api exposes published only behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("public-org@test.ro", DEFAULT_ORG_CODE)
     organizer_token = helpers["login"]("public-org@test.ro", DEFAULT_ORG_CODE)
@@ -323,6 +333,7 @@ def test_public_events_api_exposes_published_only(helpers):
 
 
 def test_public_events_api_is_rate_limited(helpers):
+    """Verifies public events api is rate limited behavior."""
     client = helpers["client"]
     from app import api as api_module
     from app.config import settings
@@ -362,6 +373,7 @@ def test_public_events_api_is_rate_limited(helpers):
 
 
 def test_event_validation_rules(helpers):
+    """Verifies event validation rules behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -381,6 +393,7 @@ def test_event_validation_rules(helpers):
 
 
 def test_duplicate_registration_blocked(helpers):
+    """Verifies duplicate registration blocked behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -407,6 +420,7 @@ def test_duplicate_registration_blocked(helpers):
 
 
 def test_resend_registration_email_requires_registration(helpers):
+    """Verifies resend registration email requires registration behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -436,6 +450,7 @@ def test_resend_registration_email_requires_registration(helpers):
 
 
 def test_unregister_restores_spot(helpers):
+    """Verifies unregister restores spot behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -466,6 +481,7 @@ def test_unregister_restores_spot(helpers):
 
 
 def test_mark_attendance_requires_owner(helpers):
+    """Verifies mark attendance requires owner behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
     helpers["make_organizer"]("other@test.ro", "other-fixture-A1")

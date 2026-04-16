@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Command-line helper: recompute ml state helpers."""
 from __future__ import annotations
 
 from collections.abc import Callable
@@ -26,6 +27,7 @@ from recompute_ml_shared import (
 
 
 def _resolved_user_city(*, student, user_id: int, implicit_city_by_user, city_weights_by_user) -> str | None:
+    """Implements the resolved user city helper."""
     city = _normalize_city(student.city) or implicit_city_by_user.get(user_id)
     if city:
         return city
@@ -36,10 +38,12 @@ def _resolved_user_city(*, student, user_id: int, implicit_city_by_user, city_we
 
 
 def _preferred_lang(language_preference: str | None) -> str:
+    """Implements the preferred lang helper."""
     return "en" if (language_preference or "system").strip().lower() == "en" else "ro"
 
 
 def _holdout_positive_event_ids(*, user_id: int, positives, holdout, rng) -> list[int]:
+    """Implements the holdout positive event ids helper."""
     positive_event_ids = list(positives.keys())
     if len(positive_event_ids) < 2:
         return positive_event_ids
@@ -52,6 +56,7 @@ def _holdout_positive_event_ids(*, user_id: int, positives, holdout, rng) -> lis
 def _history_from_positive_events(
     *, positive_event_ids: list[int], events, implicit_categories: set[str]
 ) -> tuple[set[str], set[str], set[int]]:
+    """Implements the history from positive events helper."""
     history_tags: set[str] = set()
     history_categories: set[str] = set()
     history_organizers: set[int] = set()
@@ -68,6 +73,7 @@ def _history_from_positive_events(
 
 
 def _selected_model_row(*, db, models, requested_model_version: str | None):
+    """Implements the selected model row helper."""
     model_query = db.query(models.RecommenderModel)
     if requested_model_version:
         model_row = model_query.filter(models.RecommenderModel.model_version == requested_model_version).first()
@@ -85,6 +91,7 @@ def _selected_model_row(*, db, models, requested_model_version: str | None):
 
 
 def _validated_persisted_model(model_row) -> tuple[str | None, list[float] | None, int | None]:
+    """Implements the validated persisted model helper."""
     if model_row is None:
         print("[warn] no persisted recommender model found; run the retraining job first")
         return None, None, 0
@@ -102,6 +109,7 @@ def _validated_persisted_model(model_row) -> tuple[str | None, list[float] | Non
 def _load_persisted_model_state(
     *, db, models, requested_model_version: str | None
 ) -> tuple[str | None, list[float] | None, int | None]:
+    """Loads the persisted model state resource."""
     model_row = _selected_model_row(db=db, models=models, requested_model_version=requested_model_version)
     model_version, weights, exit_code = _validated_persisted_model(model_row)
     if exit_code is not None:
@@ -111,6 +119,7 @@ def _load_persisted_model_state(
 
 
 def _positive_weights_by_user(positive_weights) -> dict[int, dict[int, float]]:
+    """Implements the positive weights by user helper."""
     positives_by_user: dict[int, dict[int, float]] = {}
     for (user_id, event_id), weight in positive_weights.items():
         positives_by_user.setdefault(user_id, {})[event_id] = weight
@@ -118,6 +127,7 @@ def _positive_weights_by_user(positive_weights) -> dict[int, dict[int, float]]:
 
 
 def _load_decay_weight_buckets(*, db, models, args, now: datetime, decay_lambda: float, max_score: float):
+    """Loads the decay weight buckets resource."""
     interest_tag_weights_by_user = _load_interest_tag_weights(
         db=db,
         models=models,
@@ -162,6 +172,7 @@ def _load_decay_weight_buckets(*, db, models, args, now: datetime, decay_lambda:
 
 
 def _interaction_training_state(*, db, models, args):
+    """Implements the interaction training state helper."""
     reg_rows, fav_rows = _load_registration_and_favorite_rows(db=db, models=models, user_id=args.user_id)
     registered_event_ids_by_user = _build_registered_event_ids_by_user(reg_rows)
     positive_weights = _build_positive_weights(reg_rows, fav_rows)
@@ -193,6 +204,7 @@ def _interaction_training_state(*, db, models, args):
 
 
 def _prepared_state_from_loaded_data(**kwargs) -> _PreparedState:
+    """Implements the prepared state from loaded data helper."""
     positives_by_user = _positive_weights_by_user(kwargs["positive_weights"])
     return _PreparedState(
         user_ids=kwargs["user_ids"],
@@ -213,6 +225,7 @@ def _prepared_state_from_loaded_data(**kwargs) -> _PreparedState:
 
 
 def _student_event_state(*, db, models, func, args):
+    """Implements the student event state helper."""
     students = _load_students(db=db, models=models, user_id=args.user_id)
     if not students:
         print("No student users found; nothing to do.")
@@ -228,6 +241,7 @@ def _student_event_state(*, db, models, func, args):
 def _training_meta(
     *, args, now: datetime, examples: list[tuple[list[float], int, float]], hitrate: float
 ) -> dict[str, float | int | str]:
+    """Implements the training meta helper."""
     return {
         "hitrate_at_10": float(hitrate),
         "trained_at": now.isoformat(),
@@ -240,6 +254,7 @@ def _training_meta(
 
 
 def _feature_length_is_valid(examples: list[tuple[list[float], int, float]]) -> tuple[int, int | None]:
+    """Implements the feature length is valid helper."""
     n_features = len(examples[0][0])
     if n_features == len(FEATURE_NAMES):
         return n_features, None
@@ -248,6 +263,7 @@ def _feature_length_is_valid(examples: list[tuple[list[float], int, float]]) -> 
 
 
 def _persist_model_state(*, db, models, model_version: str, weights: list[float], meta: dict) -> None:
+    """Implements the persist model state helper."""
     existing_model = (
         db.query(models.RecommenderModel).filter(models.RecommenderModel.model_version == model_version).first()
     )
@@ -273,6 +289,7 @@ def _persist_model_state(*, db, models, model_version: str, weights: list[float]
 
 
 def _event_is_eligible(*, event: _EventFeatures, now: datetime) -> bool:
+    """Implements the event is eligible helper."""
     if event.status != "published":
         return False
     if event.publish_at and event.publish_at > now:
@@ -285,11 +302,13 @@ def _event_is_eligible(*, event: _EventFeatures, now: datetime) -> bool:
 
 
 def _eligible_event_ids(events: dict[int, _EventFeatures], now: datetime) -> list[int]:
+    """Implements the eligible event ids helper."""
     return [event_id for event_id, event in events.items() if _event_is_eligible(event=event, now=now)]
 
 
 @dataclass(frozen=True)
 class _RecommendationBuildState:
+    """Recommendation Build State value object used in the surrounding module."""
     user_ids: list[int]
     users: dict[int, _UserFeatures]
     user_lang: dict[int, str]
@@ -305,6 +324,7 @@ class _RecommendationBuildState:
 
 @dataclass(frozen=True)
 class _RecommendationDependencies:
+    """Recommendation Dependencies value object used in the surrounding module."""
     build_feature_vector: Callable[..., list[float]]
     reason_for: Callable[..., str]
     sigmoid: Callable[[float], float]
@@ -312,6 +332,7 @@ class _RecommendationDependencies:
 
 
 def build_recommendation_rows_impl(*, state: _RecommendationBuildState, deps: _RecommendationDependencies):
+    """Constructs a recommendation rows impl structure."""
     inserts = []
     for user_id in state.user_ids:
         user = state.users[user_id]

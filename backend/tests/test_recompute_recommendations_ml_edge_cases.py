@@ -223,10 +223,12 @@ def _patch_rng_for_choices(monkeypatch, module, choices: list[int]) -> None:
         """Test double for FakeRng."""
 
         def __init__(self, _seed: int) -> None:
+            """Initializes the instance state."""
             self._remaining = list(choices)
             self._cursor = 0
 
         def choice(self, items):
+            """Implements the choice helper."""
             ordered = list(items)
             if self._remaining:
                 wanted = self._remaining.pop(0)
@@ -391,6 +393,7 @@ def test_evaluate_hitrate_can_miss_positive(monkeypatch) -> None:
     user, pos_event, neg_event = _build_helper_user_and_events(module, now)
 
     def _miss_positive_feature_vector(*, user, event, now):
+        """Implements the miss positive feature vector helper."""
         return [0.0] if event is pos_event else [1.0]
 
     monkeypatch.setattr(module, "_build_feature_vector", _miss_positive_feature_vector)

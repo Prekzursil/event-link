@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Command-line helper: generate openapi."""
 import json
 import os
 import sys
@@ -6,6 +7,7 @@ from pathlib import Path
 
 
 def main() -> int:
+    """Implements the main helper."""
     repo_root = Path(__file__).resolve().parents[2]
     backend_root = Path(__file__).resolve().parents[1]
 

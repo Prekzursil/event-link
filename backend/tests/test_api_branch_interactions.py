@@ -1,3 +1,4 @@
+"""Tests for the api branch interactions behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,7 @@ from api_branch_extra_helpers import api, auth_header, event_payload, models, sc
 
 
 def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypatch):
+    """Verifies record interactions refresh interval with aware cache enqueues behavior."""
     request = Request({"type": "http", "method": "POST", "path": "/api/analytics/interactions", "headers": []})
     current_user = SimpleNamespace(id=5, role=models.UserRole.student)
     payload = schemas.InteractionBatchIn.model_validate({"events": [{"interaction_type": "click", "event_id": 7}]})
@@ -17,21 +19,28 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
     captured_jobs: list[tuple[str, dict, str | None]] = []
 
     class _RowsQuery:
+        """Rows Query value object used in the surrounding module."""
         def __init__(self, *, rows=None, scalar_value=None):
+            """Initializes the instance state."""
             self._rows = rows if rows is not None else []
             self._scalar_value = scalar_value
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             return self
 
         def all(self):
+            """Implements the all helper."""
             return list(self._rows)
 
         def scalar(self):
+            """Implements the scalar helper."""
             return self._scalar_value
 
     class _RefreshDb:
+        """Refresh Db value object used in the surrounding module."""
         def __init__(self):
+            """Initializes the instance state."""
             self._queries = [
                 _RowsQuery(rows=[(7,)]),
                 _RowsQuery(scalar_value=now - timedelta(hours=2)),
@@ -39,13 +48,16 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
             self.interactions = []
 
         def query(self, *_args, **_kwargs):
+            """Implements the query helper."""
             return self._queries.pop(0)
 
         def add_all(self, rows):
+            """Implements the add all helper."""
             self.interactions.extend(rows)
 
         @staticmethod
         def commit():
+            """Implements the commit helper."""
             return None
 
     import app.task_queue as task_queue_module
@@ -74,6 +86,7 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
 
 
 def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_learning_updates(helpers, monkeypatch):
+    """Verifies record interactions search only invalid meta skips event lookup and learning updates behavior."""
     client = helpers["client"]
     db = helpers["db"]
     student_token = helpers["register_student"]("invalid-search-only@test.ro")
@@ -95,6 +108,7 @@ def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_lea
 
 
 def test_record_interactions_updates_aware_implicit_rows_without_realtime_refresh(helpers, monkeypatch):
+    """Verifies record interactions updates aware implicit rows without realtime refresh behavior."""
     client = helpers["client"]
     db = helpers["db"]
     token = helpers["register_student"]("aware-implicit@test.ro")
@@ -156,6 +170,7 @@ def test_record_interactions_updates_aware_implicit_rows_without_realtime_refres
 
 
 def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refresh(helpers, monkeypatch):
+    """Verifies record interactions low signal payload does not trigger realtime refresh behavior."""
     db = helpers["db"]
     helpers["make_organizer"]("no-refresh-org@test.ro", "organizer-fixture-A1")
     organizer_token = helpers["login"]("no-refresh-org@test.ro", "organizer-fixture-A1")
@@ -209,20 +224,27 @@ def test_record_interactions_low_signal_payload_does_not_trigger_realtime_refres
 
 
 def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
+    """Verifies record interactions direct fake db covers aware rows behavior."""
     aware_seen = datetime.now(timezone.utc) + timedelta(hours=1)
 
     class _Query:
+        """Query stub that counts how many filter() calls it received."""
         def __init__(self, rows):
+            """Initializes the instance state."""
             self._rows = rows
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             return self
 
         def all(self):
+            """Implements the all helper."""
             return list(self._rows)
 
     class _FakeDb:
+        """Test double standing in for a real db."""
         def __init__(self):
+            """Initializes the instance state."""
             self._queries = [
                 _Query([(1, "aware-tag")]),
                 _Query([SimpleNamespace(tag_id=1, last_seen_at=aware_seen, score=1.0)]),
@@ -234,15 +256,19 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
             self.commits = 0
 
         def query(self, *_args, **_kwargs):
+            """Implements the query helper."""
             return self._queries.pop(0)
 
         def add_all(self, rows):
+            """Implements the add all helper."""
             self.interactions.extend(rows)
 
         def add(self, row):
+            """Implements the add helper."""
             self.added.append(row)
 
         def commit(self):
+            """Implements the commit helper."""
             self.commits += 1
 
     request = Request({"type": "http", "method": "POST", "path": "/api/analytics/interactions", "headers": []})
@@ -268,9 +294,12 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
 
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
+    """Verifies recommendation reason map empty and invalid dwell seconds do not query db behavior."""
     class _NoQueryDb:
+        """No Query Db value object used in the surrounding module."""
         @staticmethod
         def query(*_args, **_kwargs):
+            """Implements the query helper."""
             raise AssertionError("query should not run")
 
     assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
@@ -280,13 +309,17 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
 
 
 def test_online_learning_and_realtime_refresh_guard_returns(monkeypatch):
+    """Verifies online learning and realtime refresh guard returns behavior."""
     class _GuardDb:
+        """Guard Db value object used in the surrounding module."""
         @staticmethod
         def query(*_args, **_kwargs):
+            """Implements the query helper."""
             raise AssertionError("query should not run")
 
         @staticmethod
         def commit():
+            """Implements the commit helper."""
             raise AssertionError("commit should not run")
 
     payload = schemas.InteractionBatchIn.model_validate({"events": [{"interaction_type": "click", "event_id": 1}]})

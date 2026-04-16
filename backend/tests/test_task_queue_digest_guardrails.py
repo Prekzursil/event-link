@@ -1,3 +1,4 @@
+"""Tests for the task queue digest guardrails behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -24,6 +25,7 @@ from task_queue_test_support import (
 
 
 def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_session):
+    """Verifies send weekly digest skips and handles system language behavior."""
     seed_weekly_digest_fixture(db_session)
     monkeypatch.setattr(task_queue, "_load_personalization_exclusions", lambda **_kwargs: (set(), set()))
     enqueued = []
@@ -35,24 +37,30 @@ def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_se
 
 
 def test_evaluate_personalization_guardrails_disabled(monkeypatch, db_session):
+    """Verifies evaluate personalization guardrails disabled behavior."""
     monkeypatch.setattr(task_queue.settings, "personalization_guardrails_enabled", False)
     result = task_queue._evaluate_personalization_guardrails(db=db_session, payload={})
     assert result == {"enabled": False}
 
 
 def test_coerce_bool_fallback_uses_truthiness_of_custom_object() -> None:
+    """Verifies coerce bool fallback uses truthiness of custom object behavior."""
     class _Truthy:
+        """Truthy value object used in the surrounding module."""
         def __bool__(self) -> bool:
+            """Implements the bool helper."""
             return True
 
     assert task_queue._coerce_bool(_Truthy()) is True
 
 
 def test_claim_next_job_returns_none_when_queue_empty(db_session):
+    """Verifies claim next job returns none when queue empty behavior."""
     assert task_queue.claim_next_job(db_session, worker_id="worker-none") is None
 
 
 def test_claim_next_job_uses_skip_locked_for_postgres(monkeypatch, db_session):
+    """Verifies claim next job uses skip locked for postgres behavior."""
     mk_job(db_session, job_type="queued")
 
     query_type = type(db_session.query(models.BackgroundJob))
@@ -60,6 +68,7 @@ def test_claim_next_job_uses_skip_locked_for_postgres(monkeypatch, db_session):
     seen: dict[str, bool] = {}
 
     def _spy_with_for_update(self, *args, **kwargs):
+        """Implements the spy with for update helper."""
         seen["skip_locked"] = bool(kwargs.get("skip_locked"))
         return original_with_for_update(self, *args, **kwargs)
 
@@ -73,6 +82,7 @@ def test_claim_next_job_uses_skip_locked_for_postgres(monkeypatch, db_session):
 
 
 def test_run_recompute_recommendations_ml_missing_script_path(monkeypatch, tmp_path):
+    """Verifies run recompute recommendations ml missing script path behavior."""
     backend_root = tmp_path / "backend"
     backend_root.mkdir(parents=True, exist_ok=True)
     monkeypatch.setattr(task_queue, "_backend_root", lambda: backend_root)
@@ -82,6 +92,7 @@ def test_run_recompute_recommendations_ml_missing_script_path(monkeypatch, tmp_p
 
 
 def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db_session):
+    """Verifies send weekly digest counts eligible users when no events behavior."""
     user = models.User(
         email="digest-no-events@test.ro",
         password_hash=auth.get_password_hash("student-fixture-A1"),
@@ -100,6 +111,7 @@ def test_send_weekly_digest_counts_eligible_users_when_no_events(monkeypatch, db
 
 
 def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(db_session, monkeypatch):
+    """Verifies send weekly digest filters blocked organizers and hidden tags behavior."""
     users, event = seed_weekly_digest_fixture(db_session)
     active_user = users["active"]
     organizer = event.owner
@@ -127,6 +139,7 @@ def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(db_sessio
 
 
 def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, db_session):
+    """Verifies guardrails low volume with invalid days and meta variants behavior."""
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
     db_session.add_all(
@@ -173,6 +186,7 @@ def test_guardrails_low_volume_with_invalid_days_and_meta_variants(monkeypatch, 
 
 
 def test_guardrails_returns_ok_for_balanced_metrics(monkeypatch, db_session):
+    """Verifies guardrails returns ok for balanced metrics behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -186,6 +200,7 @@ def test_guardrails_returns_ok_for_balanced_metrics(monkeypatch, db_session):
 
 
 def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(monkeypatch, db_session):
+    """Verifies guardrails reports no active model when recommended quality collapses behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -209,6 +224,7 @@ def test_guardrails_reports_no_active_model_when_recommended_quality_collapses(m
 
 
 def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch, db_session):
+    """Verifies guardrails reports no previous model without inactive model behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -236,6 +252,7 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(monkeypatch
 
 
 def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(monkeypatch, db_session):
+    """Verifies send filling fast alerts branch matrix counts and exclusions behavior."""
     setup = seed_filling_fast_branch_matrix(db_session)
     enqueued = []
     langs = []
@@ -250,6 +267,7 @@ def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(monkeypatc
 
 
 def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(monkeypatch, db_session):
+    """Verifies send filling fast alerts branch matrix defaults system language behavior."""
     setup = seed_filling_fast_branch_matrix(db_session)
     enqueued = []
     langs = []
@@ -262,6 +280,7 @@ def test_send_filling_fast_alerts_branch_matrix_defaults_system_language(monkeyp
 
 
 def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
+    """Verifies send filling fast alerts skips rows without max seats behavior."""
     user = SimpleNamespace(
         id=11, is_active=True, email_filling_fast_enabled=True, language_preference="en", email="user@test.ro"
     )
@@ -288,6 +307,7 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
 
 
 def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch, db_session):
+    """Verifies guardrails days fallback click source skip and window skip behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -309,6 +329,7 @@ def test_guardrails_days_fallback_click_source_skip_and_window_skip(monkeypatch,
 
 
 def test_guardrails_skips_registers_with_unknown_click_sort(monkeypatch, db_session):
+    """Verifies guardrails skips registers with unknown click sort behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)
@@ -346,6 +367,7 @@ def test_guardrails_skips_registers_with_unknown_click_sort(monkeypatch, db_sess
 
 
 def test_guardrails_rollback_reactivates_previous_model(monkeypatch, db_session):
+    """Verifies guardrails rollback reactivates previous model behavior."""
     reset_guardrail_state(db_session)
     user, event = seed_guardrail_user_event(db_session)
     now = datetime.now(timezone.utc)

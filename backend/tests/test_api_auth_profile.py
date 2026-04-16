@@ -1,9 +1,11 @@
+"""Tests for the api auth profile behavior."""
 from __future__ import annotations
 
 from api_test_support import CONFIRM_SECRET_FIELD, DEFAULT_STUDENT_CODE, SECRET_FIELD
 
 
 def test_student_registration_and_duplicate_email(helpers):
+    """Verifies student registration and duplicate email behavior."""
     client = helpers["client"]
     client.post(
         "/register",
@@ -26,6 +28,7 @@ def test_student_registration_and_duplicate_email(helpers):
 
 
 def test_login_failure(helpers):
+    """Verifies login failure behavior."""
     client = helpers["client"]
     helpers["register_student"]("login@test.ro")
     bad = client.post("/login", json={"email": "login@test.ro", SECRET_FIELD: "wrong"})
@@ -34,6 +37,7 @@ def test_login_failure(helpers):
 
 
 def test_theme_preference_default_and_update(helpers):
+    """Verifies theme preference default and update behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("theme@test.ro")
 
@@ -55,6 +59,7 @@ def test_theme_preference_default_and_update(helpers):
 
 
 def test_theme_preference_rejects_invalid_value(helpers):
+    """Verifies theme preference rejects invalid value behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("theme-bad@test.ro")
 
@@ -67,6 +72,7 @@ def test_theme_preference_rejects_invalid_value(helpers):
 
 
 def test_language_preference_default_and_update(helpers):
+    """Verifies language preference default and update behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("lang@test.ro")
 
@@ -88,6 +94,7 @@ def test_language_preference_default_and_update(helpers):
 
 
 def test_language_preference_rejects_invalid_value(helpers):
+    """Verifies language preference rejects invalid value behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("lang-bad@test.ro")
 
@@ -100,6 +107,7 @@ def test_language_preference_rejects_invalid_value(helpers):
 
 
 def test_student_profile_updates_academic_fields(helpers):
+    """Verifies student profile updates academic fields behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("profile@test.ro")
 
@@ -124,6 +132,7 @@ def test_student_profile_updates_academic_fields(helpers):
 
 
 def test_student_profile_rejects_invalid_study_year(helpers):
+    """Verifies student profile rejects invalid study year behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("profile-bad@test.ro")
 

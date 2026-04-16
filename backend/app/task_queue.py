@@ -1,3 +1,4 @@
+"""Support module: task queue."""
 from __future__ import annotations
 
 import contextlib
@@ -49,6 +50,7 @@ JOB_TYPE_SEND_FILLING_FAST_ALERTS = "send_filling_fast_alerts"
 
 @dataclass
 class _PythonRunResult:
+    """Python Run Result value object used in the surrounding module."""
     returncode: int
     stdout: str
     stderr: str
@@ -61,6 +63,7 @@ def _run_python_entrypoint_worker(
     env_overrides: dict[str, str],
     result_queue,
 ) -> None:
+    """Runs the python entrypoint worker helper path."""
     stdout_buffer = io.StringIO()
     stderr_buffer = io.StringIO()
     original_cwd = os.getcwd()
@@ -107,6 +110,7 @@ def _execute_python_script(
     env_overrides: dict[str, str],
     timeout_seconds: int,
 ) -> _PythonRunResult:
+    """Implements the execute python script helper."""
     ctx = multiprocessing.get_context("spawn")
     result_queue = ctx.Queue()
     process = ctx.Process(
@@ -143,6 +147,7 @@ def enqueue_job(
     run_at: datetime | None = None,
     max_attempts: int | None = None,
 ) -> models.BackgroundJob:
+    """Implements the enqueue job helper."""
     job = models.BackgroundJob(
         job_type=job_type,
         dedupe_key=dedupe_key,
@@ -179,10 +184,12 @@ def enqueue_job(
 
 
 def _now_utc() -> datetime:
+    """Implements the now utc helper."""
     return datetime.now(timezone.utc)
 
 
 def requeue_stale_jobs(db: Session, *, stale_after_seconds: int | None = None) -> int:
+    """Implements the requeue stale jobs helper."""
     stale_after_seconds = stale_after_seconds or settings.task_queue_stale_after_seconds
     cutoff = _now_utc() - timedelta(seconds=stale_after_seconds)
     count = (
@@ -208,6 +215,7 @@ def requeue_stale_jobs(db: Session, *, stale_after_seconds: int | None = None) -
 
 
 def claim_next_job(db: Session, *, worker_id: str) -> models.BackgroundJob | None:
+    """Implements the claim next job helper."""
     now = _now_utc()
     query = (
         db.query(models.BackgroundJob)
@@ -229,6 +237,7 @@ def claim_next_job(db: Session, *, worker_id: str) -> models.BackgroundJob | Non
 
 
 def mark_job_succeeded(db: Session, job: models.BackgroundJob) -> None:
+    """Implements the mark job succeeded helper."""
     job.status = "succeeded"
     job.finished_at = _now_utc()
     job.dedupe_key = None
@@ -238,6 +247,7 @@ def mark_job_succeeded(db: Session, job: models.BackgroundJob) -> None:
 
 
 def mark_job_failed(db: Session, job: models.BackgroundJob, error: str) -> None:
+    """Implements the mark job failed helper."""
     job.attempts = (job.attempts or 0) + 1
     job.last_error = error
     job.locked_at = None
@@ -275,6 +285,7 @@ def mark_job_failed(db: Session, job: models.BackgroundJob, error: str) -> None:
 
 
 def _backend_root() -> Path:
+    """Implements the backend root helper."""
     # backend/app/task_queue.py -> backend/
     return Path(__file__).resolve().parents[1]
 
@@ -282,6 +293,7 @@ def _backend_root() -> Path:
 def _apply_personalization_exclusions(
     query, *, hidden_tag_ids: set[int], blocked_organizer_ids: set[int]
 ):  # noqa: ANN001
+    """Applies personalization exclusions to the target."""
     if blocked_organizer_ids:
         query = query.filter(~models.Event.owner_id.in_(sorted(blocked_organizer_ids)))
     if hidden_tag_ids:
@@ -290,6 +302,7 @@ def _apply_personalization_exclusions(
 
 
 def _run_recompute_recommendations_ml(*, payload: dict[str, Any]) -> None:
+    """Runs the recompute recommendations ml helper path."""
     backend_root = _backend_root()
     script_path = backend_root / "scripts" / "recompute_recommendations_ml.py"
     if not script_path.exists():
@@ -308,6 +321,7 @@ def _run_recompute_recommendations_ml(*, payload: dict[str, Any]) -> None:
 
 
 def _trainer_argv(*, script_path: Path, payload: dict[str, Any]) -> list[str]:
+    """Implements the trainer argv helper."""
     argv = [str(script_path)]
     numeric_args = {
         "top_n": ("--top-n", int),
@@ -327,12 +341,14 @@ def _trainer_argv(*, script_path: Path, payload: dict[str, Any]) -> list[str]:
 
 
 def _trainer_env_overrides(payload: dict[str, Any]) -> dict[str, str]:
+    """Implements the trainer env overrides helper."""
     if not payload.get("model_version"):
         return {}
     return {"RECOMMENDER_MODEL_VERSION": str(payload["model_version"])}
 
 
 def _send_weekly_digest(payload: dict[str, Any], *, db: Session) -> dict[str, int]:
+    """Implements the send weekly digest helper."""
     return _send_weekly_digest_impl(
         db=db,
         payload=payload,
@@ -343,6 +359,7 @@ def _send_weekly_digest(payload: dict[str, Any], *, db: Session) -> dict[str, in
 
 
 def _send_filling_fast_alerts(payload: dict[str, Any], *, db: Session) -> dict[str, int]:
+    """Implements the send filling fast alerts helper."""
     return _send_filling_fast_alerts_impl(
         db=db,
         payload=payload,
@@ -353,6 +370,7 @@ def _send_filling_fast_alerts(payload: dict[str, Any], *, db: Session) -> dict[s
 
 
 def _evaluate_personalization_guardrails(payload: dict[str, Any], *, db: Session) -> dict[str, Any]:
+    """Implements the evaluate personalization guardrails helper."""
     return _evaluate_personalization_guardrails_impl(
         db=db,
         payload=payload,
@@ -362,6 +380,7 @@ def _evaluate_personalization_guardrails(payload: dict[str, Any], *, db: Session
 
 
 def _send_email_job(payload: dict[str, Any]) -> None:
+    """Implements the send email job helper."""
     from .email_service import send_email_now  # noqa: PLC0415
 
     send_email_now(
@@ -374,6 +393,7 @@ def _send_email_job(payload: dict[str, Any]) -> None:
 
 
 def _job_handlers(db: Session) -> dict[str, tuple[Any, str | None]]:
+    """Implements the job handlers helper."""
     return {
         JOB_TYPE_SEND_EMAIL: (_send_email_job, None),
         JOB_TYPE_RECOMPUTE_RECOMMENDATIONS_ML: (_run_recompute_recommendations_ml, None),
@@ -394,6 +414,7 @@ def _job_handlers(db: Session) -> dict[str, tuple[Any, str | None]]:
 
 
 def process_job(db: Session, job: models.BackgroundJob) -> None:
+    """Implements the process job helper."""
     payload = job.payload or {}
     handler_entry = _job_handlers(db).get(job.job_type)
     if handler_entry is None:
@@ -410,4 +431,5 @@ def process_job(db: Session, job: models.BackgroundJob) -> None:
 
 
 def idle_sleep() -> None:
+    """Implements the idle sleep helper."""
     time.sleep(max(0.1, float(settings.task_queue_poll_interval_seconds)))

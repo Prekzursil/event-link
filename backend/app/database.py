@@ -1,3 +1,4 @@
+"""Support module: database."""
 from sqlalchemy import create_engine
 from sqlalchemy.orm import declarative_base, sessionmaker
 
@@ -10,6 +11,7 @@ Base = declarative_base()
 
 
 def get_db():
+    """Returns the db value."""
     db = SessionLocal()
     try:
         yield db

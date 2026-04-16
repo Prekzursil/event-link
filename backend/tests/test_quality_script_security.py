@@ -1,3 +1,4 @@
+"""Tests for the quality script security behavior."""
 from __future__ import annotations
 
 import importlib.util
@@ -10,6 +11,7 @@ REPO_ROOT = Path(__file__).resolve().parents[2]
 
 
 def _load_module(relative_path: str, module_name: str):
+    """Loads the module resource."""
     module_path = REPO_ROOT / relative_path
     parent = str(module_path.parent)
     if parent not in sys.path:
@@ -30,6 +32,7 @@ check_required_checks = _load_module(
 
 
 def test_load_module_rejects_missing_loader(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies load module rejects missing loader behavior."""
     monkeypatch.setattr(importlib.util, "spec_from_file_location", lambda *_args, **_kwargs: None)
 
     with pytest.raises(RuntimeError, match="Unable to load module"):
@@ -37,6 +40,7 @@ def test_load_module_rejects_missing_loader(monkeypatch: pytest.MonkeyPatch) -> 
 
 
 def test_write_workspace_text_rejects_escape(tmp_path: Path) -> None:
+    """Verifies write workspace text rejects escape behavior."""
     with pytest.raises(ValueError, match="escapes workspace root"):
         security_helpers.write_workspace_text(
             raw_path="../escape.txt",
@@ -47,6 +51,7 @@ def test_write_workspace_text_rejects_escape(tmp_path: Path) -> None:
 
 
 def test_write_workspace_json_creates_parent_and_file(tmp_path: Path) -> None:
+    """Verifies write workspace json creates parent and file behavior."""
     target = security_helpers.write_workspace_json(
         raw_path="reports/output.json",
         fallback="fallback.json",
@@ -59,6 +64,7 @@ def test_write_workspace_json_creates_parent_and_file(tmp_path: Path) -> None:
 
 
 def test_build_github_commit_urls_use_fixed_host() -> None:
+    """Verifies build github commit urls use fixed host behavior."""
     checks_url = security_helpers.build_github_commit_checks_url(
         owner="Prekzursil",
         repo="event-link",
@@ -76,6 +82,7 @@ def test_build_github_commit_urls_use_fixed_host() -> None:
 
 
 def test_collect_contexts_captures_check_runs_and_statuses() -> None:
+    """Verifies collect contexts captures check runs and statuses behavior."""
     contexts = check_required_checks._collect_contexts(
         {"check_runs": [{"name": "backend", "status": "completed", "conclusion": "success"}]},
         {"statuses": [{"context": "codecov/patch", "state": "success"}]},
@@ -94,6 +101,7 @@ def test_collect_contexts_captures_check_runs_and_statuses() -> None:
 
 
 def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies api get retries retryable http statuses behavior."""
     responses = [
         ({"message": "slow down"}, {}, 429),
         ({"check_runs": []}, {}, 200),
@@ -116,6 +124,7 @@ def test_api_get_retries_retryable_http_statuses(monkeypatch: pytest.MonkeyPatch
 
 
 def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Verifies request https json uses urllib request behavior."""
     calls: dict[str, object] = {}
 
     class _FakeResponse:
@@ -125,10 +134,12 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
 
         @staticmethod
         def read() -> bytes:
+            """Implements the read helper."""
             return b'{"status": "ok"}'
 
         @staticmethod
         def getheaders():
+            """Implements the getheaders helper."""
             return [("X-Hits", "5"), ("Content-Type", "application/json")]
 
     class _FakeOpener:
@@ -136,6 +147,7 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
 
         @staticmethod
         def open(request, timeout=None):
+            """Implements the open helper."""
             calls["request"] = {
                 "method": request.get_method(),
                 "url": request.full_url,
@@ -173,6 +185,7 @@ def test_request_https_json_uses_urllib_request(monkeypatch: pytest.MonkeyPatch)
 
 
 def test_request_https_json_rejects_non_https_url() -> None:
+    """Verifies request https json rejects non https url behavior."""
     with pytest.raises(ValueError, match="Only https URLs are allowed"):
         insecure_url = "http" + "://api.github.com/repos/Prekzursil/event-link"
         security_helpers.request_https_json(insecure_url)

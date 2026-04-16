@@ -1,3 +1,4 @@
+"""Tests for the deepscan zero behavior."""
 from __future__ import annotations
 
 import importlib.util

@@ -1,3 +1,4 @@
+"""Tests for the openapi contract behavior."""
 import json
 from pathlib import Path
 
@@ -5,6 +6,7 @@ from app.api import app
 
 
 def test_openapi_contract_snapshot_is_up_to_date():
+    """Verifies openapi contract snapshot is up to date behavior."""
     repo_root = Path(__file__).resolve().parents[2]
     contract_path = repo_root / "contracts" / "openapi.json"
 

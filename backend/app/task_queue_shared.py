@@ -1,3 +1,4 @@
+"""Support module: task queue shared."""
 from __future__ import annotations
 
 from typing import Any
@@ -8,6 +9,7 @@ from . import models
 
 
 def _coerce_bool(value: object) -> bool:
+    """Implements the coerce bool helper."""
     if isinstance(value, bool):
         return value
     if value is None:
@@ -20,6 +22,7 @@ def _coerce_bool(value: object) -> bool:
 
 
 def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[int], set[int]]:
+    """Loads the personalization exclusions resource."""
     hidden_tag_ids = {
         int(row[0])
         for row in db.query(models.user_hidden_tags.c.tag_id).filter(models.user_hidden_tags.c.user_id == user_id).all()
@@ -34,10 +37,12 @@ def _load_personalization_exclusions(*, db: Session, user_id: int) -> tuple[set[
 
 
 def _preferred_lang(value: str | None) -> str:
+    """Implements the preferred lang helper."""
     return "ro" if not value or value == "system" else value
 
 
 def _notification_exists(*, db: Session, dedupe_key: str) -> bool:
+    """Implements the notification exists helper."""
     return (
         db.query(models.NotificationDelivery.id).filter(models.NotificationDelivery.dedupe_key == dedupe_key).first()
         is not None
@@ -52,6 +57,7 @@ def _send_email_payload(
     body_html: str | None,
     context: dict[str, Any],
 ) -> dict[str, Any]:
+    """Implements the send email payload helper."""
     return {
         "to_email": to_email,
         "subject": subject,

@@ -1,3 +1,4 @@
+"""Tests for the api helper coverage behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -23,6 +24,7 @@ class _FirstQuery:
     """Minimal query double that supports chained filter().first() calls."""
 
     def __init__(self, result) -> None:
+        """Initializes the instance state."""
         self._result = result
 
     def filter(self, *_args, **_kwargs):
@@ -136,6 +138,7 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
         """Minimal Alembic Config replacement used by migration tests."""
 
         def __init__(self, _path: str):
+            """Initializes the instance state."""
             self.path = _path
 
         @staticmethod

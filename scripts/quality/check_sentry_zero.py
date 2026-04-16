@@ -1,4 +1,5 @@
 #!/usr/bin/env python3
+"""Support module: check sentry zero."""
 from __future__ import annotations
 
 import argparse
@@ -22,6 +23,7 @@ SENTRY_API_BASE = f"https://{SENTRY_HOST}/api/0"
 
 
 def _parse_args() -> argparse.Namespace:
+    """Implements the parse args helper."""
     parser = argparse.ArgumentParser(description="Assert Sentry has zero unresolved issues for configured projects.")
     parser.add_argument("--org", default="", help="Sentry org slug (falls back to SENTRY_ORG env)")
     parser.add_argument(
@@ -37,6 +39,7 @@ def _parse_args() -> argparse.Namespace:
 
 
 def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
+    """Implements the request helper."""
     safe_url = normalize_https_url(url, allowed_host_suffixes={SENTRY_HOST})
     payload, headers, status = request_https_json(
         safe_url,
@@ -57,6 +60,7 @@ def _request(url: str, token: str) -> tuple[list[Any], dict[str, str]]:
 
 
 def _hits_from_headers(headers: dict[str, str]) -> int | None:
+    """Implements the hits from headers helper."""
     raw = headers.get("x-hits")
     if not raw:
         return None
@@ -67,6 +71,7 @@ def _hits_from_headers(headers: dict[str, str]) -> int | None:
 
 
 def _render_md(payload: dict) -> str:
+    """Implements the render md helper."""
     lines = [
         "# Sentry Zero Gate",
         "",
@@ -96,6 +101,7 @@ def _render_md(payload: dict) -> str:
 
 
 def _collect_projects(args: argparse.Namespace) -> list[str]:
+    """Implements the collect projects helper."""
     projects = [project for project in args.project if project]
     if projects:
         return projects
@@ -107,6 +113,7 @@ def _collect_projects(args: argparse.Namespace) -> list[str]:
 
 
 def _validated_org(org_input: str, findings: list[str]) -> str:
+    """Implements the validated org helper."""
     if not org_input:
         findings.append("SENTRY_ORG is missing.")
         return ""
@@ -118,6 +125,7 @@ def _validated_org(org_input: str, findings: list[str]) -> str:
 
 
 def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
+    """Implements the validated projects helper."""
     if not projects:
         findings.append("No Sentry projects configured (SENTRY_PROJECT_BACKEND/SENTRY_PROJECT_WEB/SENTRY_PROJECT).")
         return []
@@ -132,6 +140,7 @@ def _validated_projects(projects: list[str], findings: list[str]) -> list[str]:
 
 
 def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], str, list[str]]:
+    """Implements the validated inputs helper."""
     token = (args.token or os.environ.get("SENTRY_AUTH_TOKEN", "")).strip()
     org_input = (args.org or os.environ.get("SENTRY_ORG", "")).strip()
     findings: list[str] = []
@@ -146,6 +155,7 @@ def _validated_inputs(args: argparse.Namespace) -> tuple[str, str, list[str], st
 
 
 def _project_result(*, api_base: str, token: str, org: str, project: str) -> tuple[dict[str, Any], list[str]]:
+    """Implements the project result helper."""
     query = urllib.parse.urlencode({"query": "is:unresolved", "limit": "1"})
     org_slug = urllib.parse.quote(org, safe="")
     project_slug = urllib.parse.quote(project, safe="")
@@ -165,6 +175,7 @@ def _project_result(*, api_base: str, token: str, org: str, project: str) -> tup
 
 
 def _is_not_found_error(message: str) -> bool:
+    """Implements the is not found error helper."""
     return "HTTP 404" in message
 
 
@@ -176,6 +187,7 @@ def _evaluate_sentry(
     api_base: str,
     findings: list[str],
 ) -> tuple[str, list[dict[str, Any]], list[str]]:
+    """Implements the evaluate sentry helper."""
     if findings:
         return "fail", [], findings
 
@@ -202,6 +214,7 @@ def _evaluate_sentry(
 
 
 def main() -> int:
+    """Implements the main helper."""
     args = _parse_args()
     token, org, safe_projects, api_base, findings = _validated_inputs(args)
     status, project_results, findings = _evaluate_sentry(

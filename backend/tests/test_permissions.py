@@ -1,4 +1,6 @@
+"""Tests for the permissions behavior."""
 def test_create_event_requires_auth(helpers):
+    """Verifies create event requires auth behavior."""
     client = helpers["client"]
     payload = {
         "title": "Auth Required",
@@ -15,6 +17,7 @@ def test_create_event_requires_auth(helpers):
 
 
 def test_organizer_routes_reject_students(helpers):
+    """Verifies organizer routes reject students behavior."""
     client = helpers["client"]
     token = helpers["register_student"]("stud@test.ro")
     resp = client.get("/api/organizer/events", headers=helpers["auth_header"](token))
@@ -22,6 +25,7 @@ def test_organizer_routes_reject_students(helpers):
 
 
 def test_participants_visible_only_to_owner(helpers):
+    """Verifies participants visible only to owner behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
     helpers["make_organizer"]("other@test.ro", "other-fixture-A1")

@@ -1,3 +1,4 @@
+"""Support module: task queue guardrails."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -13,6 +14,7 @@ from .logging_utils import log_event, log_warning
 
 @dataclass(frozen=True)
 class _GuardrailConfig:
+    """Guardrail Config value object used in the surrounding module."""
     days: int
     min_impressions: int
     ctr_drop_ratio: float
@@ -21,6 +23,7 @@ class _GuardrailConfig:
 
 
 def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
+    """Implements the guardrail config helper."""
     days = int(payload.get("days") or settings.personalization_guardrails_days)
     if days < 1 or days > 365:
         days = int(settings.personalization_guardrails_days)
@@ -40,6 +43,7 @@ def _guardrail_config(payload: dict[str, Any]) -> _GuardrailConfig:
 
 
 def _meta_value(meta: object, key: str) -> str | None:
+    """Implements the meta value helper."""
     if isinstance(meta, dict):
         value = meta.get(key)
         return None if value is None else str(value)
@@ -47,10 +51,12 @@ def _meta_value(meta: object, key: str) -> str | None:
 
 
 def _guardrail_buckets() -> dict[str, int]:
+    """Implements the guardrail buckets helper."""
     return {"recommended": 0, "time": 0}
 
 
 def _load_impression_counts(*, db: Session, start: datetime) -> dict[str, int]:
+    """Loads the impression counts resource."""
     impressions = _guardrail_buckets()
     rows = (
         db.query(
@@ -78,6 +84,7 @@ def _load_click_counts(
     db: Session,
     start: datetime,
 ) -> tuple[dict[str, int], dict[tuple[int, int], tuple[str, datetime]]]:
+    """Loads the click counts resource."""
     clicks = _guardrail_buckets()
     click_by_user_event: dict[tuple[int, int], tuple[str, datetime]] = {}
     rows = (
@@ -113,6 +120,7 @@ def _load_conversion_counts(
     click_by_user_event: dict[tuple[int, int], tuple[str, datetime]],
     window: timedelta,
 ) -> dict[str, int]:
+    """Loads the conversion counts resource."""
     conversions = _guardrail_buckets()
     rows = (
         db.query(
@@ -137,6 +145,7 @@ def _load_conversion_counts(
 
 
 def _safe_ratio(num: int, den: int) -> float:
+    """Implements the safe ratio helper."""
     return float(num) / float(den) if den else 0.0
 
 
@@ -147,6 +156,7 @@ def _guardrail_result(
     clicks: dict[str, int],
     conversions: dict[str, int],
 ) -> dict[str, Any]:
+    """Implements the guardrail result helper."""
     ctr = {key: _safe_ratio(clicks[key], impressions[key]) for key in impressions}
     conversion = {key: _safe_ratio(conversions[key], clicks[key]) for key in clicks}
     return {
@@ -161,6 +171,7 @@ def _guardrail_result(
 
 
 def _is_low_volume(result: dict[str, Any], *, min_impressions: int) -> bool:
+    """Implements the is low volume helper."""
     return result["impressions"]["recommended"] < min_impressions or result["impressions"]["time"] < min_impressions
 
 
@@ -169,6 +180,7 @@ def _guardrail_threshold_status(
     *,
     config: _GuardrailConfig,
 ) -> tuple[bool, bool]:
+    """Implements the guardrail threshold status helper."""
     recommended_ctr = result["ctr"]["recommended"]
     time_ctr = result["ctr"]["time"]
     recommended_conv = result["conversion"]["recommended"]
@@ -179,6 +191,7 @@ def _guardrail_threshold_status(
 
 
 def _active_and_previous_models(db: Session) -> tuple[models.RecommenderModel | None, models.RecommenderModel | None]:
+    """Implements the active and previous models helper."""
     is_active_attr = "is_active"
     active = (
         db.query(models.RecommenderModel)
@@ -206,6 +219,7 @@ def _rollback_guardrail_model(
     recompute_job_type: str,
     result: dict[str, Any],
 ) -> dict[str, Any]:
+    """Implements the rollback guardrail model helper."""
     setattr(active, "is_active", False)
     setattr(previous, "is_active", True)
     db.add_all([active, previous])
@@ -235,6 +249,7 @@ def evaluate_personalization_guardrails(
     enqueue_job_fn: Callable[..., Any],
     recompute_job_type: str,
 ) -> dict[str, Any]:
+    """Implements the evaluate personalization guardrails helper."""
     if not settings.personalization_guardrails_enabled:
         return {"enabled": False}
 

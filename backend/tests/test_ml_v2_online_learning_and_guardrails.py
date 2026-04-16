@@ -1,3 +1,4 @@
+"""Tests for the ml v2 online learning and guardrails behavior."""
 from datetime import datetime, timedelta, timezone
 
 from app import api as api_module, auth, models
@@ -5,12 +6,14 @@ from app.task_queue import enqueue_job, _evaluate_personalization_guardrails
 
 
 def _set_setting(obj, name: str, value):  # noqa: ANN001
+    """Sets the setting value."""
     original = getattr(obj, name)
     setattr(obj, name, value)
     return original
 
 
 def _guardrails_models():
+    """Implements the guardrails models helper."""
     older = models.RecommenderModel(
         model_version="old",
         feature_names=["bias"],
@@ -29,6 +32,7 @@ def _guardrails_models():
 
 
 def _guardrails_users_and_events():
+    """Implements the guardrails users and events helper."""
     user = models.User(
         email="guardrails@test.ro",
         password_hash=auth.get_password_hash("student-fixture-A1"),
@@ -52,6 +56,7 @@ def _guardrails_users_and_events():
 
 
 def _seed_guardrails_interactions(db, *, user_id: int, events) -> None:
+    """Implements the seed guardrails interactions helper."""
     now = datetime.now(timezone.utc)
     repeated_impressions = [
         models.EventInteraction(
@@ -94,6 +99,7 @@ def _seed_guardrails_interactions(db, *, user_id: int, events) -> None:
 
 
 def _prepare_guardrails_rollback_fixture(helpers):
+    """Implements the prepare guardrails rollback fixture helper."""
     db = helpers["db"]
     older, active = _guardrails_models()
     user, org, events = _guardrails_users_and_events()
@@ -107,6 +113,7 @@ def _prepare_guardrails_rollback_fixture(helpers):
 
 
 def _run_guardrails_rollback(db):
+    """Runs the guardrails rollback helper path."""
     originals = {}
     try:
         originals["personalization_guardrails_enabled"] = _set_setting(
@@ -130,6 +137,7 @@ def _run_guardrails_rollback(db):
 
 
 def test_background_job_dedupe_key_returns_existing_job(helpers):
+    """Verifies background job dedupe key returns existing job behavior."""
     db = helpers["db"]
     job1 = enqueue_job(db, "test_job", {"value": 1}, dedupe_key="k1")
     job2 = enqueue_job(db, "test_job", {"value": 2}, dedupe_key="k1")
@@ -138,6 +146,7 @@ def test_background_job_dedupe_key_returns_existing_job(helpers):
 
 
 def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
+    """Verifies online learning adds implicit interest tags from clicks behavior."""
     client = helpers["client"]
     db = helpers["db"]
 
@@ -185,6 +194,7 @@ def test_online_learning_adds_implicit_interest_tags_from_clicks(helpers):
 
 
 def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
+    """Verifies guardrails rolls back active model and enqueues recompute behavior."""
     db = _prepare_guardrails_rollback_fixture(helpers)
     result = _run_guardrails_rollback(db)
     assert result["action"] == "rollback"
@@ -201,6 +211,7 @@ def test_guardrails_rolls_back_active_model_and_enqueues_recompute(helpers):
 
 
 def test_admin_personalization_status_includes_active_model_version(helpers):
+    """Verifies admin personalization status includes active model version behavior."""
     client = helpers["client"]
     db = helpers["db"]
 

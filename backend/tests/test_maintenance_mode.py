@@ -1,4 +1,6 @@
+"""Tests for the maintenance mode behavior."""
 def test_registration_endpoints_disabled_in_maintenance_mode(helpers):
+    """Verifies registration endpoints disabled in maintenance mode behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
     organizer_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")

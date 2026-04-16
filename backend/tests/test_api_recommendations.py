@@ -1,3 +1,4 @@
+"""Tests for the api recommendations behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -7,6 +8,7 @@ from api_test_support import DEFAULT_ORG_CODE
 
 
 def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = None):
+    """Implements the ml cache context helper."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]()
@@ -38,6 +40,7 @@ def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = No
 def _store_ml_cache(
     *, db, student, earlier, later, first_reason: str, second_reason: str, generated_at: datetime | None = None
 ) -> None:
+    """Implements the store ml cache helper."""
     rows = [
         models.UserRecommendation(
             user_id=student.id,
@@ -63,6 +66,7 @@ def _store_ml_cache(
 
 
 def test_recommendations_skip_full_and_past(helpers):
+    """Verifies recommendations skip full and past behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -95,6 +99,7 @@ def test_recommendations_skip_full_and_past(helpers):
 
 
 def test_recommendations_boosts_user_city(helpers):
+    """Verifies recommendations boosts user city behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("org@test.ro", DEFAULT_ORG_CODE)
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -138,6 +143,7 @@ def test_recommendations_boosts_user_city(helpers):
 
 
 def test_my_events_and_registration_state(helpers):
+    """Verifies my events and registration state behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -183,6 +189,7 @@ def test_my_events_and_registration_state(helpers):
 
 
 def test_recommended_uses_tags_and_excludes_registered(helpers):
+    """Verifies recommended uses tags and excludes registered behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -216,6 +223,7 @@ def test_recommended_uses_tags_and_excludes_registered(helpers):
 
 
 def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
+    """Verifies recommendations use profile interest tags when no history behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -260,6 +268,7 @@ def test_recommendations_use_profile_interest_tags_when_no_history(helpers):
 
 
 def test_recommendations_use_ml_cache_when_present(helpers):
+    """Verifies recommendations use ml cache when present behavior."""
     client, db, student_token, student, earlier, later, _generated_at = _ml_cache_context(
         helpers,
         email="mlcache@test.ro",
@@ -280,6 +289,7 @@ def test_recommendations_use_ml_cache_when_present(helpers):
 
 
 def test_recommendations_ignore_stale_ml_cache(helpers):
+    """Verifies recommendations ignore stale ml cache behavior."""
     old = datetime.now(timezone.utc) - timedelta(days=2)
     client, db, student_token, student, earlier, later, _generated_at = _ml_cache_context(
         helpers,
@@ -305,6 +315,7 @@ def test_recommendations_ignore_stale_ml_cache(helpers):
 
 
 def test_analytics_interactions_recorded(helpers):
+    """Verifies analytics interactions recorded behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]()
@@ -348,6 +359,7 @@ def test_analytics_interactions_recorded(helpers):
 
 
 def test_events_list_sort_recommended_uses_ml_cache(helpers):
+    """Verifies events list sort recommended uses ml cache behavior."""
     client, db, student_token, student, earlier, later, _generated_at = _ml_cache_context(
         helpers,
         email="mlsort@test.ro",

@@ -1,3 +1,4 @@
+"""Tests for the api admin restore behavior."""
 from __future__ import annotations
 
 from app import models
@@ -5,6 +6,7 @@ from api_test_support import DEFAULT_ADMIN_CODE, DEFAULT_ORG_CODE, DEFAULT_STUDE
 
 
 def test_delete_soft_deletes_event_and_registrations(helpers):
+    """Verifies delete soft deletes event and registrations behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("softdel-org@test.ro", DEFAULT_ORG_CODE)
     organizer_token = helpers["login"]("softdel-org@test.ro", DEFAULT_ORG_CODE)
@@ -51,6 +53,7 @@ def test_delete_soft_deletes_event_and_registrations(helpers):
 
 
 def test_restore_event_restores_event_and_registrations(helpers):
+    """Verifies restore event restores event and registrations behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("restore-owner@test.ro", DEFAULT_ORG_CODE)
@@ -101,6 +104,7 @@ def test_restore_event_restores_event_and_registrations(helpers):
 
 
 def test_restore_event_forbidden_for_other_organizer(helpers):
+    """Verifies restore event forbidden for other organizer behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
     helpers["make_organizer"]("other@test.ro", "other-fixture-A1")
@@ -127,6 +131,7 @@ def test_restore_event_forbidden_for_other_organizer(helpers):
 
 
 def test_admin_can_restore_registration(helpers):
+    """Verifies admin can restore registration behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("org@test.ro", DEFAULT_ORG_CODE)
@@ -171,6 +176,7 @@ def test_admin_can_restore_registration(helpers):
 
 
 def test_admin_can_list_and_update_users(helpers):
+    """Verifies admin can list and update users behavior."""
     client = helpers["client"]
     db = helpers["db"]
 
@@ -206,6 +212,7 @@ def test_admin_can_list_and_update_users(helpers):
 
 
 def test_admin_can_edit_and_delete_any_event(helpers):
+    """Verifies admin can edit and delete any event behavior."""
     client = helpers["client"]
     db = helpers["db"]
 
@@ -249,6 +256,7 @@ def test_admin_can_edit_and_delete_any_event(helpers):
 
 
 def test_admin_can_view_participants_and_update_attendance(helpers):
+    """Verifies admin can view participants and update attendance behavior."""
     client = helpers["client"]
     db = helpers["db"]
 
@@ -305,6 +313,7 @@ def test_admin_can_view_participants_and_update_attendance(helpers):
 
 
 def test_admin_stats_endpoint_smoke(helpers):
+    """Verifies admin stats endpoint smoke behavior."""
     client = helpers["client"]
 
     helpers["make_admin"]("admin-stats@test.ro", DEFAULT_ADMIN_CODE)

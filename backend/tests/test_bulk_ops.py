@@ -1,4 +1,6 @@
+"""Tests for the bulk ops behavior."""
 def test_organizer_bulk_update_status(helpers):
+    """Verifies organizer bulk update status behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
@@ -38,6 +40,7 @@ def test_organizer_bulk_update_status(helpers):
 
 
 def test_organizer_bulk_update_tags(helpers):
+    """Verifies organizer bulk update tags behavior."""
     client = helpers["client"]
     helpers["make_organizer"]()
     organizer_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
@@ -71,6 +74,7 @@ def test_organizer_bulk_update_tags(helpers):
 
 
 def test_organizer_bulk_ops_forbidden_for_other_organizer(helpers):
+    """Verifies organizer bulk ops forbidden for other organizer behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
     owner_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")
@@ -108,6 +112,7 @@ def test_organizer_bulk_ops_forbidden_for_other_organizer(helpers):
 
 
 def test_organizer_email_participants(helpers):
+    """Verifies organizer email participants behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("owner@test.ro", "owner-fixture-A1")
     organizer_token = helpers["login"]("owner@test.ro", "owner-fixture-A1")

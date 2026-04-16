@@ -1,12 +1,15 @@
+"""Tests for the postgres smoke behavior."""
 from datetime import datetime, timedelta, timezone
 
 
 def _require(condition: bool, message: str) -> None:
+    """Implements the require helper."""
     if not condition:
         raise AssertionError(message)
 
 
 def test_postgres_end_to_end_flow(helpers):
+    """Verifies postgres end to end flow behavior."""
     client = helpers["client"]
 
     helpers["make_organizer"]()

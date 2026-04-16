@@ -1,3 +1,4 @@
+"""Tests for the codacy legacy eslint contract behavior."""
 from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
@@ -7,6 +8,7 @@ PROSPECTOR_CONFIG = REPO_ROOT / ".prospector.yaml"
 
 
 def test_root_legacy_eslint_config_exists_for_provider_compatibility() -> None:
+    """Verifies root legacy eslint config exists for provider compatibility behavior."""
     assert ROOT_ESLINTRC.is_file()
 
     content = ROOT_ESLINTRC.read_text(encoding="utf-8")
@@ -24,6 +26,7 @@ def test_root_legacy_eslint_config_exists_for_provider_compatibility() -> None:
 
 
 def test_root_tslint_config_disables_legacy_default_export_rule() -> None:
+    """Verifies root tslint config disables legacy default export rule behavior."""
     assert ROOT_TSLINT.is_file()
 
     content = ROOT_TSLINT.read_text(encoding="utf-8")
@@ -31,6 +34,7 @@ def test_root_tslint_config_disables_legacy_default_export_rule() -> None:
 
 
 def test_prospector_config_disables_duplicate_bandit_analysis() -> None:
+    """Verifies prospector config disables duplicate bandit analysis behavior."""
     assert PROSPECTOR_CONFIG.is_file()
 
     content = PROSPECTOR_CONFIG.read_text(encoding="utf-8")

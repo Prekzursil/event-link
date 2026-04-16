@@ -1,3 +1,4 @@
+"""Tests for the api branch closure extra behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -10,6 +11,7 @@ from api_branch_extra_helpers import ScalarDb, api, auth_header, event_payload, 
 
 
 def _serializer_edge_event():
+    """Implements the serializer edge event helper."""
     return models.Event(
         id=1,
         title="Edge",
@@ -25,6 +27,7 @@ def _serializer_edge_event():
 
 
 def _assert_serializer_defaults(event) -> None:
+    """Asserts that serializer defaults holds."""
     serialized = api._serialize_event(event, seats_taken=0)
     public_serialized = api._serialize_public_event(event, seats_taken=0)
     admin_serialized = api._serialize_admin_event(event, seats_taken=0)
@@ -35,6 +38,7 @@ def _assert_serializer_defaults(event) -> None:
 
 
 def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
+    """Asserts that create event accepts missing start time holds."""
     monkeypatch.setattr(api, "_attach_tags", lambda *_args, **_kwargs: None)
     monkeypatch.setattr(api, "_compute_moderation", lambda **_kwargs: (0.0, [], "clean"))
     monkeypatch.setattr(api, "log_event", lambda *_args, **_kwargs: None)
@@ -47,16 +51,20 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
     )
 
     class _CreateDb:
+        """Create Db value object used in the surrounding module."""
         @staticmethod
         def add(_obj):
+            """Implements the add helper."""
             return None
 
         @staticmethod
         def commit():
+            """Implements the commit helper."""
             return None
 
         @staticmethod
         def refresh(obj):
+            """Implements the refresh helper."""
             obj.id = 77
 
     created = api.create_event(
@@ -82,6 +90,7 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
 
 
 def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatch):
+    """Verifies serializers cache fresh and create event optional start time behavior."""
     event = _serializer_edge_event()
     _assert_serializer_defaults(event)
 
@@ -92,6 +101,7 @@ def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatc
 
 
 def test_events_and_public_events_include_past_and_optional_detail_user(helpers):
+    """Verifies events and public events include past and optional detail user behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("include-past-org@test.ro", "organizer-fixture-A1")
@@ -143,6 +153,7 @@ def test_events_and_public_events_include_past_and_optional_detail_user(helpers)
 
 
 def _create_explicit_language_event(client, auth_headers, start_time: str, title: str) -> int:
+    """Implements the create explicit language event helper."""
     response = client.post(
         "/api/events",
         json=event_payload(start_time, title=title),
@@ -153,6 +164,7 @@ def _create_explicit_language_event(client, auth_headers, start_time: str, title
 
 
 def _seed_explicit_language_student(helpers, event_ids: tuple[int, int]) -> str:
+    """Implements the seed explicit language student helper."""
     db = helpers["db"]
     student_token = helpers["register_student"]("explicit-lang@test.ro")
     student = db.query(models.User).filter(models.User.email == "explicit-lang@test.ro").first()
@@ -187,6 +199,7 @@ def _seed_explicit_language_student(helpers, event_ids: tuple[int, int]) -> str:
 
 
 def _explicit_language_context(helpers):
+    """Implements the explicit language context helper."""
     client = helpers["client"]
     helpers["make_organizer"]("lang-owner@test.ro", "organizer-fixture-A1")
     organizer_token = helpers["login"]("lang-owner@test.ro", "organizer-fixture-A1")
@@ -216,6 +229,7 @@ def _explicit_language_context(helpers):
 
 
 def _assert_explicit_language_reads_cached_reason(client, student_token: str, event_id: int) -> None:
+    """Asserts that explicit language reads cached reason holds."""
     sorted_resp = client.get(
         "/api/events",
         params={"sort": "recommended", "include_past": "true"},
@@ -242,6 +256,7 @@ def _assert_explicit_language_reads_cached_reason(client, student_token: str, ev
 def _assert_registration_email_uses_profile_language(
     client, student_token: str, event_id: int, langs: list[str]
 ) -> None:
+    """Asserts that registration email uses profile language holds."""
     register_resp = client.post(
         f"/api/events/{event_id}/register",
         headers={**auth_header(student_token), "Accept-Language": "ro"},
@@ -256,6 +271,7 @@ def _assert_registration_email_uses_profile_language(
 
 
 def test_explicit_language_paths_for_lists_detail_recommendations_and_registration(helpers, monkeypatch):
+    """Verifies explicit language paths for lists detail recommendations and registration behavior."""
     client, student_token, _first_id, second_id, register_id = _explicit_language_context(helpers)
     langs: list[str] = []
     monkeypatch.setattr(
@@ -268,6 +284,7 @@ def test_explicit_language_paths_for_lists_detail_recommendations_and_registrati
 
 
 def test_update_notifications_supports_partial_payloads(helpers):
+    """Verifies update notifications supports partial payloads behavior."""
     client = helpers["client"]
     student_token = helpers["register_student"]("partial-notifications@test.ro")
     partial_digest = client.put(
@@ -290,6 +307,7 @@ def test_update_notifications_supports_partial_payloads(helpers):
 
 
 def test_delete_account_reuses_single_placeholder_owner(helpers):
+    """Verifies delete account reuses single placeholder owner behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("delete-owner-a@test.ro", "owner-fixture-A1")
@@ -317,6 +335,7 @@ def test_delete_account_reuses_single_placeholder_owner(helpers):
 
 
 def _seed_restore_and_clone_context(helpers):
+    """Implements the seed restore and clone context helper."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_admin"]("restore-admin@test.ro", "admin-fixture-A1")
@@ -360,6 +379,7 @@ def _seed_restore_and_clone_context(helpers):
 def _assert_restore_and_clone_paths(
     client, helpers, admin_token: str, owner_token: str, restore_event, future_clone
 ) -> None:
+    """Asserts that restore and clone paths holds."""
     restore_resp = client.post(
         f"/api/events/{int(restore_event.id)}/restore", headers=helpers["auth_header"](admin_token)
     )
@@ -372,6 +392,7 @@ def _assert_restore_and_clone_paths(
 
 
 def _assert_suggest_paths(client, helpers, owner_token: str) -> None:
+    """Asserts that suggest paths holds."""
     suggest_with_city = client.post(
         "/api/organizer/events/suggest",
         json={"title": "Covered Duplicate Title", "description": "desc", "city": "Iasi", "location": "Hall"},
@@ -390,12 +411,14 @@ def _assert_suggest_paths(client, helpers, owner_token: str) -> None:
 
 
 def test_restore_clone_and_suggest_cover_plain_organizer_paths(helpers):
+    """Verifies restore clone and suggest cover plain organizer paths behavior."""
     client, admin_token, owner_token, restore_event, future_clone = _seed_restore_and_clone_context(helpers)
     _assert_restore_and_clone_paths(client, helpers, admin_token, owner_token, restore_event, future_clone)
     _assert_suggest_paths(client, helpers, owner_token)
 
 
 def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
+    """Verifies forgot password uses stored language preference behavior."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["register_student"]("partial-notifications@test.ro")
@@ -425,6 +448,7 @@ def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
 
 
 def test_update_event_allows_blank_cover_url_without_content_recompute(helpers):
+    """Verifies update event allows blank cover url without content recompute behavior."""
     client = helpers["client"]
     helpers["make_organizer"]("blank-cover-org@test.ro", "organizer-fixture-A1")
     organizer_token = helpers["login"]("blank-cover-org@test.ro", "organizer-fixture-A1")
@@ -450,6 +474,7 @@ def test_update_event_allows_blank_cover_url_without_content_recompute(helpers):
 
 
 def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none(helpers, monkeypatch):
+    """Verifies organizer suggest event skips date filter when normalized start is none behavior."""
     db = helpers["db"]
     helpers["make_organizer"]("suggest-direct@test.ro", "organizer-fixture-A1")
     organizer = db.query(models.User).filter(models.User.email == "suggest-direct@test.ro").first()
@@ -472,9 +497,12 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
 
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
+    """Verifies recommendation reason map empty and invalid dwell seconds do not query db behavior."""
     class _NoQueryDb:
+        """No Query Db value object used in the surrounding module."""
         @staticmethod
         def query(*_args, **_kwargs):
+            """Implements the query helper."""
             raise AssertionError("query should not run")
 
     assert api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}

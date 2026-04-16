@@ -1,3 +1,4 @@
+"""Tests for the task queue unit behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -14,6 +15,7 @@ from task_queue_test_support import (
 
 
 def test_unexpected_enqueue_guard_raises() -> None:
+    """Verifies unexpected enqueue guard raises behavior."""
     with pytest.raises(AssertionError, match="enqueue_job should not run"):
         unexpected_enqueue()
     with pytest.raises(AssertionError, match="timeout path"):
@@ -21,6 +23,7 @@ def test_unexpected_enqueue_guard_raises() -> None:
 
 
 def test_coerce_bool_variants() -> None:
+    """Verifies coerce bool variants behavior."""
     assert task_queue._coerce_bool(True) is True
     assert task_queue._coerce_bool(False) is False
     assert task_queue._coerce_bool(1) is True
@@ -31,12 +34,14 @@ def test_coerce_bool_variants() -> None:
 
 
 def test_backend_root_points_to_backend_directory() -> None:
+    """Verifies backend root points to backend directory behavior."""
     backend_root = task_queue._backend_root()
     assert backend_root.name == "backend"
     assert (backend_root / "app" / "task_queue.py").exists()
 
 
 def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
+    """Verifies requeue stale jobs claim and retry paths behavior."""
     stale_job = mk_job(
         db_session,
         job_type="stale",
@@ -80,10 +85,12 @@ def test_requeue_stale_jobs_claim_and_retry_paths(db_session):
 
 
 def test_requeue_stale_jobs_returns_zero_without_matches(db_session):
+    """Verifies requeue stale jobs returns zero without matches behavior."""
     assert task_queue.requeue_stale_jobs(db_session, stale_after_seconds=30) == 0
 
 
 def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
+    """Verifies run recompute recommendations ml paths behavior."""
     backend_root = tmp_path / "backend"
     script_path = backend_root / "scripts" / "recompute_recommendations_ml.py"
     script_path.parent.mkdir(parents=True)
@@ -92,6 +99,7 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
     observed = {}
 
     def _run_script(**kwargs):
+        """Runs the script helper path."""
         observed.update(kwargs)
         return SimpleNamespace(returncode=0, stdout="", stderr="")
 
@@ -129,6 +137,7 @@ def test_run_recompute_recommendations_ml_paths(monkeypatch, tmp_path):
 
 
 def test_process_job_dispatches_all_paths(monkeypatch, db_session):
+    """Verifies process job dispatches all paths behavior."""
     succeeded = []
     failed = []
 
@@ -168,6 +177,7 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
     assert any(name == "unknown" for name, _ in failed)
 
     def _boom(payload):
+        """Implements the boom helper."""
         raise RuntimeError("explode")
 
     monkeypatch.setattr(task_queue, "_run_recompute_recommendations_ml", _boom)
@@ -184,6 +194,7 @@ def test_process_job_dispatches_all_paths(monkeypatch, db_session):
 
 
 def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
+    """Verifies send filling fast alerts enqueues and dedupes behavior."""
     user = models.User(
         email="fill@test.ro",
         password_hash=auth.get_password_hash("fixture-access-A1"),
@@ -240,6 +251,7 @@ def test_send_filling_fast_alerts_enqueues_and_dedupes(monkeypatch, db_session):
 
 
 def test_idle_sleep_uses_minimum_poll_interval(monkeypatch):
+    """Verifies idle sleep uses minimum poll interval behavior."""
     seen = []
     monkeypatch.setattr(task_queue.settings, "task_queue_poll_interval_seconds", 0.0)
     monkeypatch.setattr(task_queue.time, "sleep", seen.append)
@@ -248,9 +260,11 @@ def test_idle_sleep_uses_minimum_poll_interval(monkeypatch):
 
 
 def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
+    """Verifies enqueue job integrity error paths behavior."""
     from sqlalchemy.exc import IntegrityError
 
     def _commit_fail():
+        """Implements the commit fail helper."""
         raise IntegrityError("stmt", {}, RuntimeError("dup"))
 
     monkeypatch.setattr(db_session, "commit", _commit_fail)
@@ -262,13 +276,16 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
         """Query stub that chains filter()/order_by() and never finds a row."""
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             return self
 
         def order_by(self, *_args, **_kwargs):
+            """Implements the order by helper."""
             return self
 
         @staticmethod
         def first():
+            """Implements the first helper."""
             return None
 
     monkeypatch.setattr(db_session, "query", lambda *_args, **_kwargs: _NoMatchQuery())
@@ -277,13 +294,16 @@ def test_enqueue_job_integrity_error_paths(monkeypatch, db_session):
 
 
 def test_apply_personalization_exclusions_applies_both_filters():
+    """Verifies apply personalization exclusions applies both filters behavior."""
     class _Query:
         """Minimal query stub that counts how many times filter() was called."""
 
         def __init__(self) -> None:
+            """Initializes the instance state."""
             self.filters = 0
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             self.filters += 1
             return self
 
@@ -298,13 +318,16 @@ def test_apply_personalization_exclusions_applies_both_filters():
 
 
 def test_apply_personalization_exclusions_returns_query_when_sets_empty():
+    """Verifies apply personalization exclusions returns query when sets empty behavior."""
     class _Query:
         """Minimal query stub that counts how many times filter() was called."""
 
         def __init__(self) -> None:
+            """Initializes the instance state."""
             self.filters = 0
 
         def filter(self, *_args, **_kwargs):
+            """Implements the filter helper."""
             self.filters += 1
             return self
 

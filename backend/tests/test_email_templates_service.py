@@ -1,3 +1,4 @@
+"""Tests for the email templates service behavior."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -9,7 +10,9 @@ from app import auth, email_service, email_templates, models
 
 
 class _FakeSmtpSuccess:
+    """Test double standing in for a real smtp success."""
     def __init__(self, host, port, timeout):
+        """Initializes the instance state."""
         self.host = host
         self.port = port
         self.timeout = timeout
@@ -18,40 +21,51 @@ class _FakeSmtpSuccess:
         self.sent = False
 
     def __enter__(self):
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        """Leaves the context manager and releases any held state."""
         return False
 
     def starttls(self):
+        """Implements the starttls helper."""
         self.started_tls = True
 
     def login(self, username, password):
+        """Implements the login helper."""
         self.logged_in = True
         self.login_args = (username, password)
 
     def send_message(self, message):
+        """Implements the send message helper."""
         self.sent = True
         self.subject = message["Subject"]
 
 
 class _FakeSmtpFail:
+    """Test double standing in for a real smtp fail."""
     def __init__(self, *_args, **_kwargs):
+        """Initializes the instance state."""
         # Intentional no-op fake used to exercise SMTP failure branches.
         pass
 
     def __enter__(self):
+        """Enters the context manager."""
         return self
 
     def __exit__(self, exc_type, exc, tb):
+        """Leaves the context manager and releases any held state."""
         return False
 
     @staticmethod
     def send_message(_message):
+        """Implements the send message helper."""
         raise RuntimeError("smtp failed")
 
 
 def _set_email_settings(monkeypatch, **overrides):
+    """Sets the email settings value."""
     original = {}
     for key, value in overrides.items():
         original[key] = getattr(email_service.settings, key)
@@ -60,11 +74,13 @@ def _set_email_settings(monkeypatch, **overrides):
 
 
 def _restore_settings(monkeypatch, original):
+    """Implements the restore settings helper."""
     for key, value in original.items():
         monkeypatch.setattr(email_service.settings, key, value)
 
 
 def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
+    """Verifies send email now handles disabled and missing smtp behavior."""
     warnings = []
     monkeypatch.setattr(email_service, "log_warning", lambda event, **kw: warnings.append((event, kw)))
 
@@ -89,6 +105,7 @@ def test_send_email_now_handles_disabled_and_missing_smtp(monkeypatch):
 
 
 def test_send_email_now_success_and_retry_failure(monkeypatch):
+    """Verifies send email now success and retry failure behavior."""
     events = []
     warnings = []
     errors = []
@@ -147,6 +164,7 @@ def test_send_email_now_success_and_retry_failure(monkeypatch):
 
 
 def test_send_email_async_branches(monkeypatch, db_session):
+    """Verifies send email async branches behavior."""
     recorded = []
     monkeypatch.setattr(
         email_service, "enqueue_job", lambda db, job_type, payload: recorded.append((db, job_type, payload))
@@ -176,6 +194,7 @@ def test_send_email_async_branches(monkeypatch, db_session):
 
 
 def _mk_user_event(db_session):
+    """Implements the mk user event helper."""
     user = models.User(
         email="templ-user@test.ro",
         password_hash=auth.get_password_hash("templ-user-marker-A1"),
@@ -207,6 +226,7 @@ def _mk_user_event(db_session):
 
 
 def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
+    """Verifies email template renderers cover language paths behavior."""
     user, event = _mk_user_event(db_session)
 
     assert email_templates._format_dt(None) == ""
@@ -237,6 +257,7 @@ def test_email_template_renderers_cover_language_paths(monkeypatch, db_session):
 
 
 def test_frontend_hint_and_ro_digest_with_events(monkeypatch, db_session):
+    """Verifies frontend hint and ro digest with events behavior."""
     user, event = _mk_user_event(db_session)
 
     monkeypatch.setattr(email_templates.settings, "allowed_origins", [])

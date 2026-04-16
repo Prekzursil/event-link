@@ -1,3 +1,4 @@
+"""Tests for the notifications behavior."""
 from datetime import datetime, timezone
 
 from app import models
@@ -10,6 +11,7 @@ from app.task_queue import (
 
 
 def test_notification_preferences_get_and_update(client, helpers):
+    """Verifies notification preferences get and update behavior."""
     token = helpers["register_student"]("student-notif@test.ro")
     headers = helpers["auth_header"](token)
 
@@ -29,6 +31,7 @@ def test_notification_preferences_get_and_update(client, helpers):
 
 
 def test_weekly_digest_job_enqueues_send_email_and_is_idempotent(client, helpers):
+    """Verifies weekly digest job enqueues send email and is idempotent behavior."""
     helpers["make_organizer"]("org@test.ro")
     org_token = helpers["login"]("org@test.ro", "organizer-fixture-A1")
     resp = client.post(

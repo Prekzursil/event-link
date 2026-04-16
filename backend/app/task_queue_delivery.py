@@ -1,3 +1,4 @@
+"""Support module: task queue delivery."""
 from __future__ import annotations
 
 from dataclasses import dataclass
@@ -25,12 +26,14 @@ __all__ = [
 
 @dataclass(frozen=True)
 class FillingFastSettings:
+    """Filling Fast Settings value object used in the surrounding module."""
     threshold_abs: int
     threshold_ratio: float
     max_per_user: int
 
 
 def _weekly_digest_window(now: datetime) -> tuple[datetime, datetime, str]:
+    """Implements the weekly digest window helper."""
     iso = now.isocalendar()
     week_key = f"{iso.year}-W{iso.week:02d}"
     weekday = now.isoweekday()
@@ -40,6 +43,7 @@ def _weekly_digest_window(now: datetime) -> tuple[datetime, datetime, str]:
 
 
 def _eligible_weekly_digest_users(db: Session) -> list[models.User]:
+    """Implements the eligible weekly digest users helper."""
     return (
         db.query(models.User)
         .filter(
@@ -58,6 +62,7 @@ def _weekly_digest_events(
     top_n: int,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> list[models.Event]:
+    """Implements the weekly digest events helper."""
     query = (
         db.query(models.Event)
         .join(models.UserRecommendation, models.UserRecommendation.event_id == models.Event.id)
@@ -87,6 +92,7 @@ def _enqueue_weekly_digest_email(
     events: list[models.Event],
     week_key: str,
 ) -> None:
+    """Implements the enqueue weekly digest email helper."""
     from .email_templates import render_weekly_digest_email  # noqa: PLC0415
 
     subject, body_text, body_html = render_weekly_digest_email(
@@ -125,6 +131,7 @@ def send_weekly_digest(
     send_email_job_type: str,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> dict[str, int]:
+    """Implements the send weekly digest helper."""
     now = datetime.now(timezone.utc)
     _week_start, _week_end, week_key = _weekly_digest_window(now)
     top_n = max(1, int(payload.get("top_n") or 5))
@@ -161,6 +168,7 @@ def send_weekly_digest(
 
 
 def _filling_fast_rows(db: Session, now: datetime) -> list[tuple[models.User, models.Event, int]]:
+    """Implements the filling fast rows helper."""
     seats_subquery = (
         db.query(models.Registration.event_id, func.count(models.Registration.id).label("seats_taken"))
         .filter(models.Registration.deleted_at.is_(None))
@@ -191,6 +199,7 @@ def _filling_fast_rows(db: Session, now: datetime) -> list[tuple[models.User, mo
 
 
 def _skip_filling_fast_user(user: models.User) -> bool:
+    """Implements the skip filling fast user helper."""
     return not _coerce_bool(getattr(user, "is_active", True)) or not _coerce_bool(
         getattr(user, "email_filling_fast_enabled", False)
     )
@@ -202,6 +211,7 @@ def _passes_filling_fast_personalization(
     hidden_tag_ids: set[int],
     blocked_organizer_ids: set[int],
 ) -> bool:
+    """Implements the passes filling fast personalization helper."""
     if blocked_organizer_ids and int(event.owner_id) in blocked_organizer_ids:
         return False
     if hidden_tag_ids and any(int(tag.id) in hidden_tag_ids for tag in (event.tags or [])):
@@ -216,6 +226,7 @@ def _available_seats_within_threshold(
     threshold_abs: int,
     threshold_ratio: float,
 ) -> int | None:
+    """Implements the available seats within threshold helper."""
     if event.max_seats is None:
         return None
     available = int(event.max_seats) - int(seats_taken or 0)
@@ -236,6 +247,7 @@ def _enqueue_filling_fast_email(
     event: models.Event,
     available: int,
 ) -> None:
+    """Implements the enqueue filling fast email helper."""
     from .email_templates import render_filling_fast_email  # noqa: PLC0415
 
     subject, body_text, body_html = render_filling_fast_email(
@@ -269,6 +281,7 @@ def _enqueue_filling_fast_email(
 
 
 def _filling_fast_settings(payload: dict[str, Any]) -> FillingFastSettings:
+    """Implements the filling fast settings helper."""
     return FillingFastSettings(
         threshold_abs=int(payload.get("threshold_abs") or 5),
         threshold_ratio=float(payload.get("threshold_ratio") or 0.2),
@@ -282,6 +295,7 @@ def _user_reached_filling_fast_limit(
     user_id: int,
     max_per_user: int,
 ) -> bool:
+    """Implements the user reached filling fast limit helper."""
     return sent_by_user.get(user_id, 0) >= max_per_user
 
 
@@ -296,6 +310,7 @@ def _process_filling_fast_row(
     settings: FillingFastSettings,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> bool:
+    """Implements the process filling fast row helper."""
     user_id = int(user.id)
     event_id = int(event.id)
     hidden_tag_ids, blocked_organizer_ids = load_personalization_exclusions_fn(db=db, user_id=user_id)
@@ -334,6 +349,7 @@ def send_filling_fast_alerts(
     send_email_job_type: str,
     load_personalization_exclusions_fn: Callable[..., tuple[set[int], set[int]]],
 ) -> dict[str, int]:
+    """Implements the send filling fast alerts helper."""
     now = datetime.now(timezone.utc)
     settings = _filling_fast_settings(payload)
     total_pairs = 0

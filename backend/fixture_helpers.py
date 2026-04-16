@@ -1,3 +1,4 @@
+"""Support module: fixture helpers."""
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
@@ -15,6 +16,7 @@ DEFAULT_ADMIN_CODE = "admin-fixture-A1"
 
 
 def _require_success(*, action: str, response: Any) -> None:
+    """Implements the require success helper."""
     if response.status_code == 200:
         return
     detail = getattr(response, "text", "") or getattr(response, "content", b"") or ""
@@ -33,7 +35,9 @@ def build_test_helpers(
     include_admin: bool = True,
     include_future_time: bool = True,
 ) -> dict[str, Any]:
+    """Constructs a test helpers structure."""
     def register_student(email: str) -> str:
+        """Implements the register student helper."""
         access_code = DEFAULT_STUDENT_CODE
         response = client.post(
             "/register",
@@ -43,11 +47,13 @@ def build_test_helpers(
         return response.json()[ACCESS_FIELD]
 
     def login(email: str, access_code: str) -> str:
+        """Implements the login helper."""
         response = client.post("/login", json={"email": email, SECRET_FIELD: access_code})
         _require_success(action="login", response=response)
         return response.json()[ACCESS_FIELD]
 
     def make_organizer(email: str = "org@test.ro", access_code: str = DEFAULT_ORG_CODE) -> None:
+        """Builds a organizer fixture."""
         organizer = models_module.User(
             **{
                 "email": email,
@@ -59,6 +65,7 @@ def build_test_helpers(
         db_session.commit()
 
     def make_admin(email: str = "admin@test.ro", access_code: str = DEFAULT_ADMIN_CODE) -> None:
+        """Builds a admin fixture."""
         admin = models_module.User(
             **{
                 "email": email,
@@ -70,9 +77,11 @@ def build_test_helpers(
         db_session.commit()
 
     def future_time(days: int = 1) -> str:
+        """Implements the future time helper."""
         return (datetime.now(timezone.utc) + timedelta(days=days)).isoformat()
 
     def auth_header(session_key: str) -> dict[str, str]:
+        """Implements the auth header helper."""
         return {AUTH_HEADER: f"{AUTH_SCHEME} {session_key}"}
 
     helper_map: dict[str, Any] = {
