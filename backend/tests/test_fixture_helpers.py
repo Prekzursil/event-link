@@ -62,8 +62,6 @@ class _FakeUser:
 class _FakeModels:
     """Test double standing in for a real models."""
 
-    pass
-
 
 setattr(_FakeModels, "User", _FakeUser)
 setattr(_FakeModels, "UserRole", _FakeUserRole)

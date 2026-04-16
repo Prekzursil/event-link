@@ -115,7 +115,9 @@ def upgrade() -> None:
 
 
 def downgrade() -> None:
-    """Revert the event-data normalization migration where possible."""
-    # Normalization merged duplicate tags and trimmed stored values
-    # in place; downgrade cannot reconstruct the original data.
-    pass
+    """Revert the event-data normalization migration where possible.
+
+    Normalization merged duplicate tags and trimmed stored values in
+    place; downgrade cannot reconstruct the original data, so this is
+    intentionally a no-op.
+    """

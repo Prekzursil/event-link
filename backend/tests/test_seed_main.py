@@ -89,9 +89,10 @@ def _load_seed_data_module(monkeypatch):
         """Minimal passlib context replacement for seed-data import tests."""
 
         def __init__(self, *args, **kwargs):
-            """Initializes the instance state."""
-            # Intentional empty fake context for seed-data import tests.
-            pass
+            """Initializes the instance state.
+
+            Intentional empty fake context for seed-data import tests.
+            """
 
         @staticmethod
         def hash(value):
@@ -259,9 +260,10 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
         """Minimal passlib context replacement for the __main__ execution path."""
 
         def __init__(self, *args, **kwargs):
-            """Initializes the instance state."""
-            # Intentional empty fake context for module __main__ path coverage.
-            pass
+            """Initializes the instance state.
+
+            Intentional empty fake context for module __main__ path coverage.
+            """
 
         @staticmethod
         def hash(value):

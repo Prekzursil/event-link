@@ -49,9 +49,10 @@ class _FakeSmtpFail:
     """Test double standing in for a real smtp fail."""
 
     def __init__(self, *_args, **_kwargs):
-        """Initializes the instance state."""
-        # Intentional no-op fake used to exercise SMTP failure branches.
-        pass
+        """Initializes the instance state.
+
+        Intentional no-op fake used to exercise SMTP failure branches.
+        """
 
     def __enter__(self):
         """Enters the context manager."""
