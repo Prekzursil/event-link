@@ -195,6 +195,7 @@ const DropdownMenuSeparator = React.forwardRef<
 ))
 DropdownMenuSeparator.displayName = DmSeparator.displayName
 
+/** Right-aligned keyboard-hint text shown at the end of a menu row. */
 const DropdownMenuShortcut = ({
   className,
   ...props
