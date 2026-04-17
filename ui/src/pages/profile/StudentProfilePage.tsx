@@ -115,22 +115,28 @@ export function StudentProfilePage() {
       />
 
       <AcademicProfileCard
-        city={controller.city}
-        university={controller.university}
-        faculty={controller.faculty}
-        studyLevel={controller.studyLevel}
-        studyYear={controller.studyYear}
-        cityOptions={controller.cityOptions}
-        universityCatalog={controller.universityCatalog}
-        facultyOptions={controller.facultyOptions}
-        selectedUniversity={controller.selectedUniversity}
-        studyYearOptions={controller.studyYearOptions}
+        values={{
+          city: controller.city,
+          university: controller.university,
+          faculty: controller.faculty,
+          studyLevel: controller.studyLevel,
+          studyYear: controller.studyYear,
+        }}
+        options={{
+          cityOptions: controller.cityOptions,
+          universityCatalog: controller.universityCatalog,
+          facultyOptions: controller.facultyOptions,
+          selectedUniversity: controller.selectedUniversity,
+          studyYearOptions: controller.studyYearOptions,
+        }}
+        handlers={{
+          onCityChange: controller.setCity,
+          onUniversityChange: controller.handleUniversityChange,
+          onFacultyChange: controller.setFaculty,
+          onStudyLevelChange: controller.handleStudyLevelChange,
+          onStudyYearChange: (value) => controller.setStudyYear(Number.parseInt(value, 10)),
+        }}
         t={controller.t}
-        onCityChange={controller.setCity}
-        onUniversityChange={controller.handleUniversityChange}
-        onFacultyChange={controller.setFaculty}
-        onStudyLevelChange={controller.handleStudyLevelChange}
-        onStudyYearChange={(value) => controller.setStudyYear(Number.parseInt(value, 10))}
       />
 
       <AppearanceCard

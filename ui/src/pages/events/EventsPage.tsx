@@ -20,7 +20,6 @@ import {
 } from '@/components/ui/select';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { Badge } from '@/components/ui/badge';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
@@ -29,14 +28,13 @@ import {
   Search,
   Filter,
   CalendarIcon,
-  X,
   ChevronLeft,
   ChevronRight,
   Sparkles,
 } from 'lucide-react';
-import { format } from 'date-fns';
 import { getDateFnsLocale } from '@/lib/language';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
+import { EventsActiveFilters } from './EventsActiveFilters';
 
 const PAGE_SIZES = [6, 12, 24, 48];
 const ALL_CATEGORIES_VALUE = ALL_CATEGORIES_VALUE_IMPORT;
@@ -419,29 +417,34 @@ export function EventsPage() {
     eventsContent = (
       <div className="space-y-8">
         {renderEventsGrid()}
-        {totalPages > 1 && (
-          <div className="mt-8 flex items-center justify-center gap-2">
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={filters.page === 1}
-              onClick={() => updateFilters({ page: filters.page - 1 })}
-            >
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            <span className="text-sm">
-              {t.events.pageLabel} {filters.page} {t.events.pageOf} {totalPages}
-            </span>
-            <Button
-              variant="outline"
-              size="icon"
-              disabled={filters.page === totalPages}
-              onClick={() => updateFilters({ page: filters.page + 1 })}
-            >
-              <ChevronRight className="h-4 w-4" />
-            </Button>
-          </div>
-        )}
+        {totalPages > 1 && renderPaginationControls()}
+      </div>
+    );
+  }
+
+  /** Render the page prev/next controls for the events grid. */
+  function renderPaginationControls() {
+    return (
+      <div className="mt-8 flex items-center justify-center gap-2">
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={filters.page === 1}
+          onClick={() => updateFilters({ page: filters.page - 1 })}
+        >
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <span className="text-sm">
+          {t.events.pageLabel} {filters.page} {t.events.pageOf} {totalPages}
+        </span>
+        <Button
+          variant="outline"
+          size="icon"
+          disabled={filters.page === totalPages}
+          onClick={() => updateFilters({ page: filters.page + 1 })}
+        >
+          <ChevronRight className="h-4 w-4" />
+        </Button>
       </div>
     );
   }
@@ -545,59 +548,24 @@ export function EventsPage() {
     />
   );
 
-  const activeFiltersSection = hasActiveFilters ? (
-    <div className="flex flex-wrap items-center gap-2">
-      <span className="text-sm text-muted-foreground">{t.events.activeFilters}</span>
-      {filters.search && (
-        <Badge variant="secondary" className="gap-1">
-          {t.events.filterSearch}: {filters.search}
-          <X
-            className="h-3 w-3 cursor-pointer"
-            onClick={() => updateFilters({ search: '' })}
-          />
-        </Badge>
-      )}
-      {filters.category && (
-        <Badge variant="secondary" className="gap-1">
-          {getEventCategoryLabel(filters.category, language)}
-          <X
-            className="h-3 w-3 cursor-pointer"
-            onClick={() => updateFilters({ category: '' })}
-          />
-        </Badge>
-      )}
-      {filters.start_date && (
-        <Badge variant="secondary" className="gap-1">
-          {t.events.filterFrom}: {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
-          <X
-            className="h-3 w-3 cursor-pointer"
-            onClick={() => updateFilters({ start_date: '', end_date: '' })}
-          />
-        </Badge>
-      )}
-      {filters.city && (
-        <Badge variant="secondary" className="gap-1">
-          {t.events.filterCity}: {filters.city}
-          <X
-            className="h-3 w-3 cursor-pointer"
-            onClick={() => updateFilters({ city: '' })}
-          />
-        </Badge>
-      )}
-      {filters.location && (
-        <Badge variant="secondary" className="gap-1">
-          {t.events.filterLocation}: {filters.location}
-          <X
-            className="h-3 w-3 cursor-pointer"
-            onClick={() => updateFilters({ location: '' })}
-          />
-        </Badge>
-      )}
-      <Button variant="ghost" size="sm" onClick={clearFilters}>
-        {t.events.clearAll}
-      </Button>
-    </div>
-  ) : null;
+  const activeFiltersSection = (
+    <EventsActiveFilters
+      filters={filters}
+      hasActiveFilters={hasActiveFilters}
+      language={language}
+      dateFnsLocale={dateFnsLocale}
+      labels={{
+        activeFilters: t.events.activeFilters,
+        filterSearch: t.events.filterSearch,
+        filterFrom: t.events.filterFrom,
+        filterCity: t.events.filterCity,
+        filterLocation: t.events.filterLocation,
+        clearAll: t.events.clearAll,
+      }}
+      onUpdateFilter={updateFilters}
+      onClearAll={clearFilters}
+    />
+  );
 
   const filtersSection = (
     <div className="mb-6 space-y-4">
