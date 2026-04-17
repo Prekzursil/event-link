@@ -258,6 +258,33 @@ def _rollback_guardrail_model(
     return result
 
 
+def _collect_guardrail_metrics(db: Session, config) -> dict[str, Any]:
+    """Runs the three DB rollups and returns the combined guardrail result dict."""
+    start = datetime.now(timezone.utc) - timedelta(days=config.days)
+    impressions = _load_impression_counts(db=db, start=start)
+    clicks, click_by_user_event = _load_click_counts(db=db, start=start)
+    conversions = _load_conversion_counts(
+        db=db, start=start, click_by_user_event=click_by_user_event,
+        window=config.click_to_register_window,
+    )
+    return _guardrail_result(
+        config=config, impressions=impressions,
+        clicks=clicks, conversions=conversions,
+    )
+
+
+def _resolve_threshold_action(result: dict[str, Any], *, config) -> dict[str, Any] | None:
+    """Returns the short-circuit result dict when thresholds hold, else ``None``."""
+    ctr_ok, conv_ok = _guardrail_threshold_status(result, config=config)
+    result["ctr_ok"] = ctr_ok
+    result["conversion_ok"] = conv_ok
+    if ctr_ok and conv_ok:
+        log_event("personalization_guardrails_ok", **result)
+        result["action"] = "ok"
+        return result
+    return None
+
+
 def evaluate_personalization_guardrails(
     *,
     db: Session,
@@ -270,31 +297,16 @@ def evaluate_personalization_guardrails(
         return {"enabled": False}
 
     config = _guardrail_config(payload)
-    start = datetime.now(timezone.utc) - timedelta(days=config.days)
-    impressions = _load_impression_counts(db=db, start=start)
-    clicks, click_by_user_event = _load_click_counts(db=db, start=start)
-    conversions = _load_conversion_counts(
-        db=db,
-        start=start,
-        click_by_user_event=click_by_user_event,
-        window=config.click_to_register_window,
-    )
-    result = _guardrail_result(
-        config=config, impressions=impressions, clicks=clicks, conversions=conversions
-    )
+    result = _collect_guardrail_metrics(db, config)
 
     if _is_low_volume(result, min_impressions=config.min_impressions):
         log_event("personalization_guardrails_skip_low_volume", **result)
         result["action"] = "skip_low_volume"
         return result
 
-    ctr_ok, conv_ok = _guardrail_threshold_status(result, config=config)
-    result["ctr_ok"] = ctr_ok
-    result["conversion_ok"] = conv_ok
-    if ctr_ok and conv_ok:
-        log_event("personalization_guardrails_ok", **result)
-        result["action"] = "ok"
-        return result
+    threshold_result = _resolve_threshold_action(result, config=config)
+    if threshold_result is not None:
+        return threshold_result
 
     active, previous = _active_and_previous_models(db)
     if not active:
@@ -310,10 +322,7 @@ def evaluate_personalization_guardrails(
         result["action"] = "no_previous_model"
         return result
     return _rollback_guardrail_model(
-        db=db,
-        active=active,
-        previous=previous,
+        db=db, active=active, previous=previous,
         enqueue_job_fn=enqueue_job_fn,
-        recompute_job_type=recompute_job_type,
-        result=result,
+        recompute_job_type=recompute_job_type, result=result,
     )
