@@ -682,8 +682,6 @@ def _apply_event_list_filters(
     )
 
 
-
-
 def _load_cached_recommendations(
     *,
     db: Session,
