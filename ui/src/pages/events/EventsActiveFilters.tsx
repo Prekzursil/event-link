@@ -76,9 +76,10 @@ export function EventsActiveFilters({
       {filters.start_date &&
         renderChip(
           'start_date',
-          `${labels.filterFrom}: ${format(new Date(filters.start_date), 'd MMM', {
-            locale: dateFnsLocale,
-          })}`,
+          <>
+            {labels.filterFrom}:{' '}
+            {format(new Date(filters.start_date), 'd MMM', { locale: dateFnsLocale })}
+          </>,
         )}
       {filters.city && renderChip('city', `${labels.filterCity}: ${filters.city}`)}
       {filters.location &&
