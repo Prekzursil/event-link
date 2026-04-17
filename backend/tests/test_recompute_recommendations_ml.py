@@ -394,13 +394,12 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
     generic_event = _basic_event_features(
         module, now, city="timisoara", owner_id=3, days=4
     )
-    reason_for = getattr(module, "_reason_for")
     assert (
         module._reason_for(user=same_city_user, event=same_city_event, lang="en")
         == "Near you"
     )
     assert (
-        reason_for(user=weighted_city_user, event=weighted_city_event, lang="en")
+        module._reason_for(user=weighted_city_user, event=weighted_city_event, lang="en")
         == "Near you"
     )
     assert (

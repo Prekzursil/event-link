@@ -277,7 +277,7 @@ def test_cached_recommendations_handle_disabled_cache_and_empty_user(
     ctx.db.add(fresh_user)
     ctx.db.commit()
     assert (
-        getattr(api, "_load_cached_recommendations")(
+        api._load_cached_recommendations(
             db=ctx.db, user=fresh_user, now=now, registered_event_ids=[], lang="en"
         )
         is None
@@ -296,7 +296,7 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
 
     monkeypatch.setattr(api, "_recommendations_cache_is_fresh", _always_fresh)
     assert (
-        getattr(api, "_load_cached_recommendations")(
+        api._load_cached_recommendations(
             db=ctx.db,
             user=ctx.student,
             now=now,
@@ -332,7 +332,7 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
         _unmatched_events_with_counts_query,
     )
     assert (
-        getattr(api, "_load_cached_recommendations")(
+        api._load_cached_recommendations(
             db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en"
         )
         is None
@@ -343,7 +343,7 @@ def test_cached_recommendations_skip_registered_and_full_events(monkeypatch, hel
         _full_events_with_counts_query,
     )
     assert (
-        getattr(api, "_load_cached_recommendations")(
+        api._load_cached_recommendations(
             db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en"
         )
         is None
