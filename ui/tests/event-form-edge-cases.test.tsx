@@ -29,9 +29,9 @@ describe('event form edge cases', () => {
     renderLanguageRoute('/organizer/events/44/edit', '/organizer/events/:id/edit', <EventFormPage />);
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(44));
     expect(screen.getByLabelText(/Description/i)).toHaveValue('');
-    expect(screen.getByLabelText(/City/i)).toHaveValue('');
+    expect(screen.getByLabelText(/City/iu)).toHaveValue('');
     expect(screen.getByLabelText(/Location/i)).toHaveValue('');
-    expect(screen.getByLabelText(/Max seats/i)).toHaveValue(null);
+    expect(screen.getByLabelText(/Max seats/iu)).toHaveValue(null);
 
     cleanup();
     eventServiceMock.suggestEvent.mockResolvedValueOnce({
@@ -53,27 +53,27 @@ describe('event form edge cases', () => {
     });
 
     renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
-    fireEvent.change(screen.getByLabelText(/Title/i), { target: { value: 'Fallback event' } });
-    fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
+    fireEvent.change(screen.getByLabelText(/Title/iu), { target: { value: 'Fallback event' } });
+    fireEvent.click(screen.getByRole('button', { name: /Suggest/iu }));
     await waitFor(() => expect(eventServiceMock.suggestEvent).toHaveBeenCalled());
     expect(screen.getAllByText('—').length).toBeGreaterThan(1);
-    expect(screen.getByText(/- • 33%/i)).toBeInTheDocument();
-    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/i }));
-    expect(screen.getByLabelText(/City/i)).toHaveValue('');
+    expect(screen.getByText(/- • 33%/iu)).toBeInTheDocument();
+    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/iu }));
+    expect(screen.getByLabelText(/City/iu)).toHaveValue('');
 
-    const tagInput = screen.getByPlaceholderText(/tag/i);
+    const tagInput = screen.getByPlaceholderText(/tag/iu);
     fireEvent.keyDown(tagInput, { key: 'Escape' });
-    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
-    expect(screen.queryByText(/^AI$/i)).not.toBeInTheDocument();
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/iu }));
+    expect(screen.queryByText(/^AI$/iu)).not.toBeInTheDocument();
 
     fireEvent.change(tagInput, { target: { value: 'AI' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/iu }));
     fireEvent.change(tagInput, { target: { value: 'AI' } });
-    fireEvent.click(screen.getByRole('button', { name: /^Add$/i }));
+    fireEvent.click(screen.getByRole('button', { name: /^Add$/iu }));
     expect(screen.getAllByText('AI')).toHaveLength(1);
 
-    fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '' } });
-    expect(screen.getByLabelText(/Max seats/i)).toHaveValue(null);
+    fireEvent.change(screen.getByLabelText(/Max seats/iu), { target: { value: '' } });
+    expect(screen.getByLabelText(/Max seats/iu)).toHaveValue(null);
   });
 
   it('covers suggest payload timestamps, duplicate-apply retention, and max-seats reset', async () => {
@@ -90,16 +90,16 @@ describe('event form edge cases', () => {
 
     renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
-    fireEvent.change(screen.getByLabelText(/Title/i), {
+    fireEvent.change(screen.getByLabelText(/Title/iu), {
       target: { value: 'Suggest payload event' },
     });
-    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Braila' } });
-    fireEvent.change(screen.getByLabelText(/Start date/i), {
+    fireEvent.change(screen.getByLabelText(/City/iu), { target: { value: 'Braila' } });
+    fireEvent.change(screen.getByLabelText(/Start date/iu), {
       target: { value: '2026-03-10T10:00' },
     });
     fireEvent.click(screen.getAllByRole('button', { name: /Technical|Tehnic/i })[0]);
 
-    fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Suggest/iu }));
     await waitFor(() =>
       expect(eventServiceMock.suggestEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -119,12 +119,12 @@ describe('event form edge cases', () => {
       moderation_flags: [],
       moderation_status: 'clear',
     });
-    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /^Apply$/iu }));
 
-    expect(screen.getByLabelText(/City/i)).toHaveValue('Braila');
+    expect(screen.getByLabelText(/City/iu)).toHaveValue('Braila');
     expect(screen.getAllByText('AI').length).toBeGreaterThan(0);
 
-    const maxSeatsInput = screen.getByLabelText(/Max seats/i);
+    const maxSeatsInput = screen.getByLabelText(/Max seats/iu);
     fireEvent.change(maxSeatsInput, { target: { value: '12' } });
     fireEvent.change(maxSeatsInput, { target: { value: '' } });
     expect(maxSeatsInput).toHaveValue(null);
@@ -149,10 +149,10 @@ describe('event form edge cases', () => {
 
     renderLanguageRoute('/organizer/events/new', '/organizer/events/new', <EventFormPage />);
 
-    fireEvent.change(screen.getByLabelText(/Title/i), {
+    fireEvent.change(screen.getByLabelText(/Title/iu), {
       target: { value: 'Fallback create event' },
     });
-    fireEvent.click(screen.getByRole('button', { name: /Suggest/i }));
+    fireEvent.click(screen.getByRole('button', { name: /Suggest/iu }));
     await waitFor(() =>
       expect(eventServiceMock.suggestEvent).toHaveBeenCalledWith(
         expect.objectContaining({
@@ -168,11 +168,11 @@ describe('event form edge cases', () => {
 
     fireEvent.click(screen.getAllByRole('button', { name: /Technical|Tehnic/i })[0]);
     fireEvent.change(screen.getByLabelText(/Location/i), { target: { value: 'Aula Magna' } });
-    fireEvent.change(screen.getByLabelText(/City/i), { target: { value: 'Cluj' } });
-    fireEvent.change(screen.getByLabelText(/Start date/i), {
+    fireEvent.change(screen.getByLabelText(/City/iu), { target: { value: 'Cluj' } });
+    fireEvent.change(screen.getByLabelText(/Start date/iu), {
       target: { value: '2026-03-10T10:00' },
     });
-    fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '25' } });
+    fireEvent.change(screen.getByLabelText(/Max seats/iu), { target: { value: '25' } });
 
     fireEvent.submit(requireForm(/Create event/i, screen));
     await waitFor(() => expect(eventServiceMock.createEvent).toHaveBeenCalled());

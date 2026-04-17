@@ -1,8 +1,8 @@
+#!/usr/bin/env python3
+"""Command-line helper: enqueue scheduled jobs."""
 
 # Deferred imports intentionally break cycles or avoid import-time side effects.
 # pylint: disable=import-outside-toplevel
-#!/usr/bin/env python3
-"""Command-line helper: enqueue scheduled jobs."""
 
 from __future__ import annotations
 

@@ -32,16 +32,18 @@ describe('layout and toast smoke', () => {
 
     expect(screen.getByText(/All rights reserved/i)).toBeInTheDocument();
 
+    const layoutRoutes = (
+      <Routes>
+        <Route path="/" element={<Layout />}>
+          <Route index element={<div>Outlet Content</div>} />
+        </Route>
+      </Routes>
+    );
+
     render(
       <MemoryRouter initialEntries={['/']}>
         <ThemeProvider>
-          <LanguageProvider>
-            <Routes>
-              <Route path="/" element={<Layout />}>
-                <Route index element={<div>Outlet Content</div>} />
-              </Route>
-            </Routes>
-          </LanguageProvider>
+          <LanguageProvider>{layoutRoutes}</LanguageProvider>
         </ThemeProvider>
       </MemoryRouter>,
     );
