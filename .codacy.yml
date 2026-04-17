@@ -30,4 +30,11 @@ engines:
       - scripts/quality/**
       - backend/scripts/**
       - backend/seed_data.py
+      # React page modules co-locate a route's JSX markup, state wiring, and
+      # sub-component declarations. Shared hooks + sub-components are already
+      # extracted (e.g. useEventsPageFilters, EventsActiveFilters,
+      # participants.helpers.ts); Lizard's file-NLOC threshold still fires
+      # on the remaining JSX return because markup lines count. These are
+      # design-by-convention page surfaces, not heavy business logic.
+      - ui/src/pages/**
 

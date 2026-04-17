@@ -62,23 +62,35 @@ function TagOptionCard({ tag, isSelected, onToggle }: TagOptionCardProps) {
   );
 }
 
-type AcademicProfileCardProps = Readonly<{
+export type AcademicProfileValues = Readonly<{
   city: string;
   university: string;
   faculty: string;
   studyLevel: StudyLevel | '';
   studyYear: number | undefined;
+}>;
+
+export type AcademicProfileOptions = Readonly<{
   cityOptions: string[];
   universityCatalog: UniversityCatalogItem[];
   facultyOptions: string[];
   selectedUniversity: UniversityCatalogItem | null;
   studyYearOptions: number[];
-  t: ProfileTexts;
+}>;
+
+export type AcademicProfileHandlers = Readonly<{
   onCityChange: (value: string) => void;
   onUniversityChange: (value: string) => void;
   onFacultyChange: (value: string) => void;
   onStudyLevelChange: (value: string) => void;
   onStudyYearChange: (value: string) => void;
+}>;
+
+type AcademicProfileCardProps = Readonly<{
+  values: AcademicProfileValues;
+  options: AcademicProfileOptions;
+  handlers: AcademicProfileHandlers;
+  t: ProfileTexts;
 }>;
 
 /** Render one datalist-backed input field for academic profile text values. */
@@ -196,29 +208,19 @@ function StudyYearField({
 
 /** Render the academic profile card with city, university, faculty, and study data. */
 export function AcademicProfileCard({
-  city,
-  university,
-  faculty,
-  studyLevel,
-  studyYear,
-  cityOptions,
-  universityCatalog,
-  facultyOptions,
-  selectedUniversity,
-  studyYearOptions,
+  values,
+  options,
+  handlers,
   t,
-  onCityChange,
-  onUniversityChange,
-  onFacultyChange,
-  onStudyLevelChange,
-  onStudyYearChange,
 }: AcademicProfileCardProps) {
   const facultyPlaceholder =
-    facultyOptions.length > 0
+    options.facultyOptions.length > 0
       ? t.profile.facultyPlaceholderWithOptions
       : t.profile.facultyPlaceholderNoOptions;
   const facultyNote =
-    selectedUniversity && facultyOptions.length === 0 ? t.profile.facultyFallbackNote : undefined;
+    options.selectedUniversity && options.facultyOptions.length === 0
+      ? t.profile.facultyFallbackNote
+      : undefined;
 
   return (
     <Card className="mb-6">
@@ -232,45 +234,51 @@ export function AcademicProfileCard({
       <CardContent className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <AcademicTextField
-            datalistId={cityOptions.length > 0 ? 'city-options' : undefined}
+            datalistId={options.cityOptions.length > 0 ? 'city-options' : undefined}
             label={t.profile.cityLabel}
-            listValues={cityOptions}
-            onChange={onCityChange}
+            listValues={options.cityOptions}
+            onChange={handlers.onCityChange}
             placeholder={t.profile.cityPlaceholder}
             testId="city"
-            value={city}
+            value={values.city}
           />
           <AcademicTextField
-            datalistId={universityCatalog.length > 0 ? 'university-options' : undefined}
+            datalistId={
+              options.universityCatalog.length > 0 ? 'university-options' : undefined
+            }
             label={t.profile.universityLabel}
-            listValues={universityCatalog.map((item) => item.name)}
-            note={universityCatalog.length === 0 ? t.profile.universityFallbackNote : undefined}
-            onChange={onUniversityChange}
+            listValues={options.universityCatalog.map((item) => item.name)}
+            note={
+              options.universityCatalog.length === 0
+                ? t.profile.universityFallbackNote
+                : undefined
+            }
+            onChange={handlers.onUniversityChange}
             placeholder={t.profile.universityPlaceholder}
             testId="university"
-            value={university}
+            value={values.university}
           />
           <AcademicTextField
-            datalistId={facultyOptions.length > 0 ? 'faculty-options' : undefined}
+            datalistId={options.facultyOptions.length > 0 ? 'faculty-options' : undefined}
             label={t.profile.facultyLabel}
-            listValues={facultyOptions}
+            listValues={options.facultyOptions}
             note={facultyNote}
-            onChange={onFacultyChange}
+            onChange={handlers.onFacultyChange}
             placeholder={facultyPlaceholder}
             testId="faculty"
-            value={faculty}
+            value={values.faculty}
           />
           <StudyLevelField
-            studyLevel={studyLevel}
+            studyLevel={values.studyLevel}
             t={t}
-            onStudyLevelChange={onStudyLevelChange}
+            onStudyLevelChange={handlers.onStudyLevelChange}
           />
           <StudyYearField
-            studyLevel={studyLevel}
-            studyYear={studyYear}
-            studyYearOptions={studyYearOptions}
+            studyLevel={values.studyLevel}
+            studyYear={values.studyYear}
+            studyYearOptions={options.studyYearOptions}
             t={t}
-            onStudyYearChange={onStudyYearChange}
+            onStudyYearChange={handlers.onStudyYearChange}
           />
         </div>
       </CardContent>
