@@ -3,6 +3,7 @@
  * EventsPage.tsx so the top-level page stays below Lizard's NLOC / CCN limits.
  */
 
+import type { ReactNode } from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { format } from 'date-fns';
@@ -53,7 +54,7 @@ export function EventsActiveFilters({
     location: { location: '' },
   };
 
-  function renderChip(key: FilterKey, label: string) {
+  function renderChip(key: FilterKey, label: ReactNode) {
     return (
       <Badge key={key} variant="secondary" className="gap-1">
         {label}
@@ -71,10 +72,7 @@ export function EventsActiveFilters({
       {filters.search &&
         renderChip('search', `${labels.filterSearch}: ${filters.search}`)}
       {filters.category &&
-        renderChip(
-          'category',
-          getEventCategoryLabel(filters.category, language) ?? filters.category,
-        )}
+        renderChip('category', getEventCategoryLabel(filters.category, language))}
       {filters.start_date &&
         renderChip(
           'start_date',
