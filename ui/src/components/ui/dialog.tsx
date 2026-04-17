@@ -66,6 +66,7 @@ const DialogContent = React.forwardRef<
 ))
 DialogContent.displayName = DialogPrimitiveContent.displayName
 
+/** Stacked title/description region shown at the top of the dialog. */
 const DialogHeader = ({
   className,
   ...props
@@ -80,6 +81,7 @@ const DialogHeader = ({
 )
 DialogHeader.displayName = "DialogHeader"
 
+/** Action row pinned to the bottom of the dialog. */
 const DialogFooter = ({
   className,
   ...props
