@@ -44,6 +44,7 @@ import {
   ChevronRight,
   ArrowUpDown,
 } from 'lucide-react';
+import { formatDateTime } from '@/lib/utils';
 import {
   type ParticipantsTexts,
   downloadParticipantsCsv,
