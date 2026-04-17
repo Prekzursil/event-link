@@ -15,22 +15,22 @@ import type { EventsPageFilters } from './useEventsPageFilters';
 
 type FilterKey = 'search' | 'category' | 'start_date' | 'city' | 'location';
 
-export type EventsActiveFiltersProps = {
+export type EventsActiveFiltersProps = Readonly<{
   filters: EventsPageFilters;
   hasActiveFilters: boolean;
   language: ResolvedLanguage;
   dateFnsLocale: Locale;
-  labels: {
+  labels: Readonly<{
     activeFilters: string;
     filterSearch: string;
     filterFrom: string;
     filterCity: string;
     filterLocation: string;
     clearAll: string;
-  };
+  }>;
   onUpdateFilter: (patch: Partial<EventsPageFilters>) => void;
   onClearAll: () => void;
-};
+}>;
 
 /** Render the pill-list summary of every filter currently applied. */
 export function EventsActiveFilters({
