@@ -1,3 +1,7 @@
+/**
+ * Thin wrappers around the Radix UI primitives used across the app.
+ * Each named export re-exposes the underlying primitive with project styling.
+ */
 import React from "react"
 import {
   Root,
@@ -32,6 +36,7 @@ const DropdownMenuSub = Sub
 
 const DropdownMenuRadioGroup = RadioGroup
 
+/** Sub-menu trigger with a chevron affordance. */
 const DropdownMenuSubTrigger = React.forwardRef<
   React.ElementRef<typeof SubTrigger>,
   React.ComponentPropsWithoutRef<typeof SubTrigger> & {
@@ -54,6 +59,7 @@ const DropdownMenuSubTrigger = React.forwardRef<
 DropdownMenuSubTrigger.displayName =
   SubTrigger.displayName
 
+/** Sub-menu panel for nested menus. */
 const DropdownMenuSubContent = React.forwardRef<
   React.ElementRef<typeof SubContent>,
   React.ComponentPropsWithoutRef<typeof SubContent>
@@ -70,6 +76,7 @@ const DropdownMenuSubContent = React.forwardRef<
 DropdownMenuSubContent.displayName =
   SubContent.displayName
 
+/** Top-level dropdown-menu panel. */
 const DropdownMenuContent = React.forwardRef<
   React.ElementRef<typeof DmContent>,
   React.ComponentPropsWithoutRef<typeof DmContent>
@@ -89,6 +96,7 @@ const DropdownMenuContent = React.forwardRef<
 ))
 DropdownMenuContent.displayName = DmContent.displayName
 
+/** Interactive dropdown-menu row. */
 const DropdownMenuItem = React.forwardRef<
   React.ElementRef<typeof DmItem>,
   React.ComponentPropsWithoutRef<typeof DmItem> & {
@@ -107,6 +115,7 @@ const DropdownMenuItem = React.forwardRef<
 ))
 DropdownMenuItem.displayName = DmItem.displayName
 
+/** Checkbox-state dropdown-menu row. */
 const DropdownMenuCheckboxItem = React.forwardRef<
   React.ElementRef<typeof CheckboxItem>,
   React.ComponentPropsWithoutRef<typeof CheckboxItem>
@@ -131,6 +140,7 @@ const DropdownMenuCheckboxItem = React.forwardRef<
 DropdownMenuCheckboxItem.displayName =
   CheckboxItem.displayName
 
+/** Radio-group dropdown-menu row. */
 const DropdownMenuRadioItem = React.forwardRef<
   React.ElementRef<typeof RadioItem>,
   React.ComponentPropsWithoutRef<typeof RadioItem>
@@ -153,6 +163,7 @@ const DropdownMenuRadioItem = React.forwardRef<
 ))
 DropdownMenuRadioItem.displayName = RadioItem.displayName
 
+/** Non-interactive dropdown-menu section label. */
 const DropdownMenuLabel = React.forwardRef<
   React.ElementRef<typeof DmLabel>,
   React.ComponentPropsWithoutRef<typeof DmLabel> & {
@@ -171,6 +182,7 @@ const DropdownMenuLabel = React.forwardRef<
 ))
 DropdownMenuLabel.displayName = DmLabel.displayName
 
+/** Horizontal divider for dropdown-menu groups. */
 const DropdownMenuSeparator = React.forwardRef<
   React.ElementRef<typeof DmSeparator>,
   React.ComponentPropsWithoutRef<typeof DmSeparator>

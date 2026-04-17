@@ -41,7 +41,9 @@ it('covers participants route guards and populated display branches', async () =
   );
   expect(screen.getByText('-')).toBeInTheDocument();
 
-  const pendingAttendance = new Promise<void>(() => {});
+  const pendingAttendance = new Promise<void>(() => {
+    /* never resolves — exercises pending-request branch */
+  });
   eventServiceMock.updateParticipantAttendance.mockReturnValueOnce(pendingAttendance);
   const participantCheckboxes = screen.getAllByRole('checkbox');
   fireEvent.click(participantCheckboxes[participantCheckboxes.length - 1]);

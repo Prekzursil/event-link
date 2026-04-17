@@ -1,3 +1,7 @@
+/**
+ * Thin wrappers around the Radix UI primitives used across the app.
+ * Each named export re-exposes the underlying primitive with project styling.
+ */
 import React from "react"
 import {
   Root,
@@ -21,6 +25,7 @@ const DialogPortal = Portal
 
 const DialogClose = Close
 
+/** Dimmed backdrop rendered behind the dialog surface. */
 const DialogOverlay = React.forwardRef<
   React.ElementRef<typeof Overlay>,
   React.ComponentPropsWithoutRef<typeof Overlay>
@@ -36,6 +41,7 @@ const DialogOverlay = React.forwardRef<
 ))
 DialogOverlay.displayName = Overlay.displayName
 
+/** Modal content surface with the built-in close button. */
 const DialogContent = React.forwardRef<
   React.ElementRef<typeof DialogPrimitiveContent>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitiveContent>
@@ -88,6 +94,7 @@ const DialogFooter = ({
 )
 DialogFooter.displayName = "DialogFooter"
 
+/** Accessible dialog heading. */
 const DialogTitle = React.forwardRef<
   React.ElementRef<typeof DialogPrimitiveTitle>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitiveTitle>
@@ -103,6 +110,7 @@ const DialogTitle = React.forwardRef<
 ))
 DialogTitle.displayName = DialogPrimitiveTitle.displayName
 
+/** Accessible dialog description. */
 const DialogDescription = React.forwardRef<
   React.ElementRef<typeof DialogPrimitiveDescription>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitiveDescription>

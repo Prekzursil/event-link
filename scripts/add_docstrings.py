@@ -140,7 +140,7 @@ def _class_doc(name: str) -> str:
 
 
 def _match_stem_rule(stem: str, parent: str) -> str | None:
-    """Returns a docstring based on the file stem pattern, or ``None`` if no rule fits."""
+    """Returns a docstring based on the file stem pattern, or ``None``."""
     if stem == "__init__":
         return f"Package marker for the {parent} module."
     if stem.startswith("test_"):

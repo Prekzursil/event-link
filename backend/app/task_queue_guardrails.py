@@ -273,7 +273,9 @@ def _collect_guardrail_metrics(db: Session, config) -> dict[str, Any]:
     )
 
 
-def _resolve_threshold_action(result: dict[str, Any], *, config) -> dict[str, Any] | None:
+def _resolve_threshold_action(
+    result: dict[str, Any], *, config,
+) -> dict[str, Any] | None:
     """Returns the short-circuit result dict when thresholds hold, else ``None``."""
     ctr_ok, conv_ok = _guardrail_threshold_status(result, config=config)
     result["ctr_ok"] = ctr_ok
