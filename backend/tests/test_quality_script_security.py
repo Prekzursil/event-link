@@ -137,8 +137,7 @@ def test_api_get_retries_retryable_http_statuses(
     )
     monkeypatch.setattr(check_required_checks.time, "sleep", sleeps.append)
 
-    api_get = getattr(check_required_checks, "_api_get")
-    payload = api_get(
+    payload = check_required_checks._api_get(
         "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef/check-runs",
         "token",
     )

@@ -25,16 +25,11 @@ def _load_module():
         sys.path.pop(0)
 
 
-def _planned_tool_payload(module, *args, **kwargs):
-    """Invokes the ``_planned_tool_payload`` helper on ``module`` via ``getattr``."""
-    return getattr(module, "_planned_tool_payload")(*args, **kwargs)
-
-
 def test_planned_tool_payload_disables_legacy_tools():
     """Verifies planned tool payload disables legacy tools behavior."""
     module = _load_module()
 
-    payload, notes = _planned_tool_payload(module, "ESLint", {"isEnabled": True})
+    payload, notes = module._planned_tool_payload("ESLint", {"isEnabled": True})
 
     assert payload == {"enabled": False}
     assert notes == [
@@ -46,7 +41,7 @@ def test_planned_tool_payload_disables_lizard_for_test_noise_control():
     """Verifies planned tool payload disables lizard for test noise control behavior."""
     module = _load_module()
 
-    payload, notes = _planned_tool_payload(module, "Lizard", {"isEnabled": True})
+    payload, notes = module._planned_tool_payload("Lizard", {"isEnabled": True})
 
     assert payload == {"enabled": False}
     assert notes == []
@@ -56,9 +51,7 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
     """Verifies planned tool payload enables configuration file when available behavior."""
     module = _load_module()
 
-    payload, notes = _planned_tool_payload(
-        module,
-        "ESLint9",
+    payload, notes = module._planned_tool_payload("ESLint9",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -78,9 +71,7 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
     """
     module = _load_module()
 
-    payload, notes = _planned_tool_payload(
-        module,
-        "ESLint",
+    payload, notes = module._planned_tool_payload("ESLint",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -96,9 +87,7 @@ def test_planned_tool_payload_skips_missing_configuration_files():
     """Verifies planned tool payload skips missing configuration files behavior."""
     module = _load_module()
 
-    payload, notes = _planned_tool_payload(
-        module,
-        "Stylelint",
+    payload, notes = module._planned_tool_payload("Stylelint",
         {
             "isEnabled": True,
             "hasConfigurationFile": False,
@@ -120,9 +109,7 @@ def test_planned_tool_payload_enables_prospector_configuration_file_when_availab
     """
     module = _load_module()
 
-    payload, notes = _planned_tool_payload(
-        module,
-        "Prospector",
+    payload, notes = module._planned_tool_payload("Prospector",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -167,7 +154,7 @@ def test_append_markdown_section_uses_none_marker_for_empty_values():
     module = _load_module()
     lines = ["# Title"]
 
-    getattr(module, "_append_markdown_section")(lines, "Tool Changes", [])
+    module._append_markdown_section(lines, "Tool Changes", [])
 
     assert lines == ["# Title", "", "## Tool Changes", module.NONE_MARKDOWN_ITEM]
 

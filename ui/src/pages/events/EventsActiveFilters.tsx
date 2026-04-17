@@ -54,6 +54,7 @@ export function EventsActiveFilters({
     location: { location: '' },
   };
 
+  /** Renders one filter chip with its label and a close affordance. */
   function renderChip(key: FilterKey, label: ReactNode) {
     return (
       <Badge key={key} variant="secondary" className="gap-1">

@@ -61,12 +61,11 @@ def test_helper_feature_vector_reason_and_impression_weights() -> None:
     assert vector[3] == pytest.approx(1.0)
     assert vector[4] == pytest.approx(1.0)
     assert vector[5] == pytest.approx(1.0)
-    reason_for = getattr(module, "_reason_for")
     assert (
-        reason_for(user=user, event=event, lang="en")
+        module._reason_for(user=user, event=event, lang="en")
         == "Your interests: python"
     )
-    assert reason_for(user=user, event=other_event, lang="ro") == "În apropiere"
+    assert module._reason_for(user=user, event=other_event, lang="ro") == "În apropiere"
     assert module._impression_negative_weight(None) == pytest.approx(0.05)
     assert module._impression_negative_weight(1) == pytest.approx(0.25)
     assert module._impression_negative_weight(4) == pytest.approx(0.15)
@@ -397,7 +396,7 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
     )
     reason_for = getattr(module, "_reason_for")
     assert (
-        reason_for(user=same_city_user, event=same_city_event, lang="en")
+        module._reason_for(user=same_city_user, event=same_city_event, lang="en")
         == "Near you"
     )
     assert (
@@ -405,7 +404,7 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
         == "Near you"
     )
     assert (
-        reason_for(user=generic_user, event=generic_event, lang="ro")
+        module._reason_for(user=generic_user, event=generic_event, lang="ro")
         == "Recomandat pentru tine"
     )
 

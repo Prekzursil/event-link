@@ -43,13 +43,9 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
     assert "many_links" in flags
     assert status in {"clean", "flagged"}
 
-    format_ics_dt = getattr(api, "_format_ics_dt")
-    in_experiment_treatment = getattr(api, "_in_experiment_treatment")
-    is_admin = getattr(api, "_is_admin")
-    jaccard_similarity = getattr(api, "_jaccard_similarity")
-    jaccard_empty = jaccard_similarity(set(), set())
-    jaccard_one_side = jaccard_similarity({"a"}, set())
-    ics_null = format_ics_dt(None)
+    jaccard_empty = api._jaccard_similarity(set(), set())
+    jaccard_one_side = api._jaccard_similarity({"a"}, set())
+    ics_null = api._format_ics_dt(None)
     assert jaccard_empty == pytest.approx(1.0)
     assert jaccard_one_side == pytest.approx(0.0)
     assert ics_null == ""
@@ -69,8 +65,8 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
 
     bucket = api._experiment_bucket("exp", "identity")
     assert 0 <= bucket < 100
-    in_treatment = in_experiment_treatment("exp", 50, "identity")
-    none_is_admin = is_admin(None)
+    in_treatment = api._in_experiment_treatment("exp", 50, "identity")
+    none_is_admin = api._is_admin(None)
     assert in_treatment is (bucket < 50)
 
     assert none_is_admin is False
@@ -80,7 +76,7 @@ def test_helper_math_and_admin_branches(monkeypatch, helpers):
         role=models.UserRole.student,
     )
     set_settings(monkeypatch, admin_emails=["admin@test.ro"])
-    user_is_admin = is_admin(user)
+    user_is_admin = api._is_admin(user)
     assert user_is_admin is True
 
 
@@ -261,7 +257,7 @@ def test_cached_recommendations_handle_disabled_cache_and_empty_user(
     now = datetime.now(timezone.utc)
     set_settings(monkeypatch, recommendations_use_ml_cache=False)
     assert (
-        getattr(api, "_load_cached_recommendations")(
+        api._load_cached_recommendations(
             db=ctx.db, user=ctx.student, now=now, registered_event_ids=[], lang="en"
         )
         is None
