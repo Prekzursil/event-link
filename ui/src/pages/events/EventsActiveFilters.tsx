@@ -9,6 +9,7 @@ import { format } from 'date-fns';
 import type { Locale } from 'date-fns';
 import { X } from 'lucide-react';
 import { getEventCategoryLabel } from '@/lib/eventCategories';
+import type { ResolvedLanguage } from '@/lib/language';
 import type { EventsPageFilters } from './useEventsPageFilters';
 
 type FilterKey = 'search' | 'category' | 'start_date' | 'city' | 'location';
@@ -16,7 +17,7 @@ type FilterKey = 'search' | 'category' | 'start_date' | 'city' | 'location';
 export type EventsActiveFiltersProps = {
   filters: EventsPageFilters;
   hasActiveFilters: boolean;
-  language: string;
+  language: ResolvedLanguage;
   dateFnsLocale: Locale;
   labels: {
     activeFilters: string;
@@ -70,7 +71,10 @@ export function EventsActiveFilters({
       {filters.search &&
         renderChip('search', `${labels.filterSearch}: ${filters.search}`)}
       {filters.category &&
-        renderChip('category', getEventCategoryLabel(filters.category, language))}
+        renderChip(
+          'category',
+          getEventCategoryLabel(filters.category, language) ?? filters.category,
+        )}
       {filters.start_date &&
         renderChip(
           'start_date',
