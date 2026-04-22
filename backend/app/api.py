@@ -2,7 +2,7 @@
 
 from datetime import date, datetime, timedelta, timezone
 from typing import Annotated, List, Optional
-from contextlib import asynccontextmanager, suppress
+from contextlib import asynccontextmanager
 import time
 import re
 import logging
@@ -97,8 +97,10 @@ async def lifespan(_app: FastAPI):
         yield
     finally:
         cleanup_task.cancel()
-        with suppress(asyncio.CancelledError):
+        try:
             await cleanup_task
+        except asyncio.CancelledError:
+            pass
 
 
 app = FastAPI(title="Event Link API", version="1.0.0", lifespan=lifespan)
