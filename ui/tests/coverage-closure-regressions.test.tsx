@@ -1,8 +1,9 @@
 import React from 'react';
-import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import { useI18n } from '@/contexts/LanguageContext';
+import { LanguageProvider, useI18n } from '@/contexts/LanguageContext';
 import { renderLanguageRoute, setEnglishPreference } from './page-test-helpers';
 
 const {
@@ -27,6 +28,8 @@ const {
     cloneEvent: vi.fn(),
     createEvent: vi.fn(),
     getEvent: vi.fn(),
+    getEvents: vi.fn(),
+    getFavorites: vi.fn(),
     hideTag: vi.fn(),
     registerForEvent: vi.fn(),
     removeFromFavorites: vi.fn(),
@@ -62,7 +65,62 @@ import type { AdminDashboardController } from '@/pages/admin/admin-dashboard/use
 import { EventDetailOverview } from '@/pages/events/event-detail/EventDetailOverview';
 import { useEventDetailController } from '@/pages/events/event-detail/useEventDetailController';
 import { useEventFormController } from '@/pages/organizer/event-form/useEventFormController';
+import { EventsPage } from '@/pages/events/EventsPage';
 import type { EventDetail } from '@/types';
+
+interface MatchMediaMock {
+  media: string;
+  matches: boolean;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
+  removeListener: ReturnType<typeof vi.fn>;
+}
+
+function mountMatchMediaMock(): MatchMediaMock {
+  const mock: MatchMediaMock = {
+    media: '(min-width: 640px)',
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  };
+  Object.defineProperty(globalThis, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(() => mock),
+  });
+  return mock;
+}
+
+function renderEventsPage() {
+  return render(
+    <MemoryRouter initialEntries={['/events']}>
+      <LanguageProvider>
+        <Routes>
+          <Route path="/events" element={<EventsPage />} />
+        </Routes>
+      </LanguageProvider>
+    </MemoryRouter>,
+  );
+}
+
+function renderEventDetailProbe(eventId: number) {
+  function ProbeComponent() {
+    const controller = useEventDetailController();
+    return <div data-testid="detail-probe">{controller.event?.title ?? ''}</div>;
+  }
+  return render(
+    <MemoryRouter initialEntries={[`/events/${eventId}`]}>
+      <LanguageProvider>
+        <Routes>
+          <Route path="/events/:id" element={<ProbeComponent />} />
+        </Routes>
+      </LanguageProvider>
+    </MemoryRouter>,
+  );
+}
 
 const swallowPromise = (result: undefined | Promise<unknown>) => {
   Promise.resolve(result).catch(() => undefined);
@@ -333,5 +391,78 @@ describe('coverage closure regressions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'apply-suggestion' }));
     expect(toastSpy).not.toHaveBeenCalled();
+  });
+
+  it('runs the EventsPage media-query change handler when the viewport toggles', async () => {
+    const mediaMock = mountMatchMediaMock();
+    recordInteractionsSpy.mockResolvedValue(undefined);
+    eventServiceMock.getEvents.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 12, total_pages: 1 });
+    eventServiceMock.getFavorites.mockResolvedValue({ items: [] });
+
+    renderEventsPage();
+
+    await waitFor(() => expect(mediaMock.addEventListener).toHaveBeenCalled());
+    const [, handler] = mediaMock.addEventListener.mock.calls[0] as [
+      string,
+      (event: { matches: boolean }) => void,
+    ];
+    act(() => handler({ matches: false }));
+    act(() => handler({ matches: true }));
+
+    expect(mediaMock.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
+  });
+
+  it('swallows analytics rejections inside EventsPage impression tracking', async () => {
+    mountMatchMediaMock();
+    recordInteractionsSpy.mockRejectedValue(new Error('analytics down'));
+    eventServiceMock.getEvents.mockResolvedValue({
+      items: [
+        {
+          id: 1,
+          title: 'Analytics Probe Event',
+          description: 'desc',
+          category: 'Technical',
+          start_time: new Date(Date.now() + 3_600_000).toISOString(),
+          end_time: new Date(Date.now() + 7_200_000).toISOString(),
+          city: 'Cluj',
+          location: 'Main Hall',
+          max_seats: 20,
+          seats_taken: 0,
+          tags: [],
+          owner_id: 1,
+          owner_name: 'Owner',
+          status: 'published',
+        },
+      ],
+      total: 1,
+      page: 1,
+      page_size: 12,
+      total_pages: 1,
+    });
+    eventServiceMock.getFavorites.mockResolvedValue({ items: [] });
+
+    renderEventsPage();
+
+    await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(screen.getByText('Analytics Probe Event')).toBeInTheDocument();
+  });
+
+  it('swallows analytics rejections when the detail page records interactions', async () => {
+    mountMatchMediaMock();
+    recordInteractionsSpy.mockRejectedValue(new Error('analytics down'));
+    eventServiceMock.getEvent.mockResolvedValue(
+      makeEventDetail({ id: 9, title: 'Detail Fixture' }),
+    );
+
+    renderEventDetailProbe(9);
+
+    await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
+    await act(async () => {
+      await Promise.resolve();
+    });
+    expect(await screen.findByTestId('detail-probe')).toHaveTextContent('Detail Fixture');
   });
 });

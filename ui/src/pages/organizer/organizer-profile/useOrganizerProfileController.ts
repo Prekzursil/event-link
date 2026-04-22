@@ -67,7 +67,7 @@ export function useOrganizerProfileController() {
       setIsLoading(false);
       return;
     }
-    void loadProfile(organizerId);
+    loadProfile(organizerId);
   }, [id, loadProfile]);
 
   const { upcomingEvents, pastEvents } = useMemo(() => splitEvents(profile), [profile]);

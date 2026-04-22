@@ -97,10 +97,7 @@ async def lifespan(_app: FastAPI):
         yield
     finally:
         cleanup_task.cancel()
-        try:
-            await cleanup_task
-        except asyncio.CancelledError:
-            pass
+        await asyncio.gather(cleanup_task, return_exceptions=True)
 
 
 app = FastAPI(title="Event Link API", version="1.0.0", lifespan=lifespan)

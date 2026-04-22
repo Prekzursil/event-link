@@ -51,7 +51,7 @@ export function useEventFormController() {
 
   useEffect(() => {
     if (isEditing && id) {
-      void loadEvent(Number.parseInt(id, 10));
+      loadEvent(Number.parseInt(id, 10));
     }
   }, [id, isEditing, loadEvent]);
 
