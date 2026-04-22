@@ -1,10 +1,13 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import { MemoryRouter, Route, Routes } from 'react-router-dom';
 
-import { LanguageProvider, useI18n } from '@/contexts/LanguageContext';
-import { renderLanguageRoute, setEnglishPreference } from './page-test-helpers';
+import { useI18n } from '@/contexts/LanguageContext';
+import {
+  mountMatchMediaMock,
+  renderLanguageRoute,
+  setEnglishPreference,
+} from './page-test-helpers';
 
 const {
   authState,
@@ -68,59 +71,30 @@ import { useEventFormController } from '@/pages/organizer/event-form/useEventFor
 import { EventsPage } from '@/pages/events/EventsPage';
 import type { EventDetail } from '@/types';
 
-interface MatchMediaMock {
-  media: string;
-  matches: boolean;
-  addEventListener: ReturnType<typeof vi.fn>;
-  removeEventListener: ReturnType<typeof vi.fn>;
-  addListener: ReturnType<typeof vi.fn>;
-  removeListener: ReturnType<typeof vi.fn>;
-}
-
-function mountMatchMediaMock(): MatchMediaMock {
-  const mock: MatchMediaMock = {
-    media: '(min-width: 640px)',
-    matches: true,
-    addEventListener: vi.fn(),
-    removeEventListener: vi.fn(),
-    addListener: vi.fn(),
-    removeListener: vi.fn(),
-  };
-  Object.defineProperty(globalThis, 'matchMedia', {
-    configurable: true,
-    writable: true,
-    value: vi.fn(() => mock),
-  });
-  return mock;
-}
-
-function renderEventsPage() {
-  return render(
-    <MemoryRouter initialEntries={['/events']}>
-      <LanguageProvider>
-        <Routes>
-          <Route path="/events" element={<EventsPage />} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
-
-function renderEventDetailProbe(eventId: number) {
-  function ProbeComponent() {
-    const controller = useEventDetailController();
-    return <div data-testid="detail-probe">{controller.event?.title ?? ''}</div>;
-  }
-  return render(
-    <MemoryRouter initialEntries={[`/events/${eventId}`]}>
-      <LanguageProvider>
-        <Routes>
-          <Route path="/events/:id" element={<ProbeComponent />} />
-        </Routes>
-      </LanguageProvider>
-    </MemoryRouter>,
-  );
-}
+const SOLO_EVENT_PAGE = {
+  items: [
+    {
+      id: 1,
+      title: 'Analytics Probe Event',
+      description: 'desc',
+      category: 'Technical',
+      start_time: new Date(Date.now() + 3_600_000).toISOString(),
+      end_time: new Date(Date.now() + 7_200_000).toISOString(),
+      city: 'Cluj',
+      location: 'Main Hall',
+      max_seats: 20,
+      seats_taken: 0,
+      tags: [],
+      owner_id: 1,
+      owner_name: 'Owner',
+      status: 'published',
+    },
+  ],
+  total: 1,
+  page: 1,
+  page_size: 12,
+  total_pages: 1,
+} as const;
 
 const swallowPromise = (result: undefined | Promise<unknown>) => {
   Promise.resolve(result).catch(() => undefined);
@@ -309,6 +283,14 @@ function AdminEventsTabHarness() {
   return <AdminEventsTab controller={controller} />;
 }
 
+/**
+ * Test helper: event detail probe surfaces the loaded event title.
+ */
+function EventDetailProbe() {
+  const controller = useEventDetailController();
+  return <div data-testid="detail-probe">{controller.event?.title ?? ''}</div>;
+}
+
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -393,13 +375,13 @@ describe('coverage closure regressions', () => {
     expect(toastSpy).not.toHaveBeenCalled();
   });
 
-  it('runs the EventsPage media-query change handler when the viewport toggles', async () => {
+  it('covers EventsPage media-query handler + analytics rejection catch path', async () => {
     const mediaMock = mountMatchMediaMock();
-    recordInteractionsSpy.mockResolvedValue(undefined);
-    eventServiceMock.getEvents.mockResolvedValue({ items: [], total: 0, page: 1, page_size: 12, total_pages: 1 });
+    recordInteractionsSpy.mockRejectedValue(new Error('analytics down'));
+    eventServiceMock.getEvents.mockResolvedValue(SOLO_EVENT_PAGE);
     eventServiceMock.getFavorites.mockResolvedValue({ items: [] });
 
-    renderEventsPage();
+    renderLanguageRoute('/events', '/events', <EventsPage />);
 
     await waitFor(() => expect(mediaMock.addEventListener).toHaveBeenCalled());
     const [, handler] = mediaMock.addEventListener.mock.calls[0] as [
@@ -408,40 +390,6 @@ describe('coverage closure regressions', () => {
     ];
     act(() => handler({ matches: false }));
     act(() => handler({ matches: true }));
-
-    expect(mediaMock.addEventListener).toHaveBeenCalledWith('change', expect.any(Function));
-  });
-
-  it('swallows analytics rejections inside EventsPage impression tracking', async () => {
-    mountMatchMediaMock();
-    recordInteractionsSpy.mockRejectedValue(new Error('analytics down'));
-    eventServiceMock.getEvents.mockResolvedValue({
-      items: [
-        {
-          id: 1,
-          title: 'Analytics Probe Event',
-          description: 'desc',
-          category: 'Technical',
-          start_time: new Date(Date.now() + 3_600_000).toISOString(),
-          end_time: new Date(Date.now() + 7_200_000).toISOString(),
-          city: 'Cluj',
-          location: 'Main Hall',
-          max_seats: 20,
-          seats_taken: 0,
-          tags: [],
-          owner_id: 1,
-          owner_name: 'Owner',
-          status: 'published',
-        },
-      ],
-      total: 1,
-      page: 1,
-      page_size: 12,
-      total_pages: 1,
-    });
-    eventServiceMock.getFavorites.mockResolvedValue({ items: [] });
-
-    renderEventsPage();
 
     await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
     await act(async () => {
@@ -457,7 +405,7 @@ describe('coverage closure regressions', () => {
       makeEventDetail({ id: 9, title: 'Detail Fixture' }),
     );
 
-    renderEventDetailProbe(9);
+    renderLanguageRoute('/events/9', '/events/:id', <EventDetailProbe />);
 
     await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
     await act(async () => {

@@ -1,6 +1,7 @@
 import React from 'react';
 import { render } from '@testing-library/react';
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
+import { vi } from 'vitest';
 
 import { LanguageProvider } from '@/contexts/LanguageContext';
 
@@ -56,4 +57,34 @@ export function defineMutableValue<T extends object, V = undefined>(target: T, k
  */
 export function setEnglishPreference() {
   localStorage.setItem('language_preference', 'en');
+}
+
+export interface MatchMediaMock {
+  media: string;
+  matches: boolean;
+  addEventListener: ReturnType<typeof vi.fn>;
+  removeEventListener: ReturnType<typeof vi.fn>;
+  addListener: ReturnType<typeof vi.fn>;
+  removeListener: ReturnType<typeof vi.fn>;
+}
+
+/**
+ * Installs a matchMedia mock on globalThis and returns the stub so tests
+ * can capture the registered change handler.
+ */
+export function mountMatchMediaMock(): MatchMediaMock {
+  const mock: MatchMediaMock = {
+    media: '(min-width: 640px)',
+    matches: true,
+    addEventListener: vi.fn(),
+    removeEventListener: vi.fn(),
+    addListener: vi.fn(),
+    removeListener: vi.fn(),
+  };
+  Object.defineProperty(globalThis, 'matchMedia', {
+    configurable: true,
+    writable: true,
+    value: vi.fn(() => mock),
+  });
+  return mock;
 }
