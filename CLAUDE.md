@@ -2,6 +2,29 @@
 
 This guide helps AI assistants understand the Event Link project structure, setup, and common tasks.
 
+## Operational Notes
+
+- **`gh` CLI defaults to the upstream parent** (`victormura/event-link`).
+  All PR / CI / Dependabot / code-scanning queries must use `-R Prekzursil/event-link`
+  (or `gh api repos/Prekzursil/event-link/...`) — otherwise `gh pr view` / `gh pr list`
+  return empty on PRs and runs that exist on this fork.
+- **Coverage is enforced in three independent places.** There is **no**
+  `.coverage-thresholds.json` despite the metaswarm CLAUDE.md referring to one;
+  the real sources of truth are:
+  1. `.github/workflows/ci.yml` — `pytest --cov-fail-under=100` on backend + backend-integration.
+  2. `ui/vite.config.ts` — `coverage.thresholds: {lines, functions, branches, statements: 100}`.
+  3. `codecov.yml` — `coverage.status.project.target: 100%` + per-flag component targets.
+  When bumping thresholds, update all three.
+- **`.codacy.yml` needs two engines for complexity noise suppression.** The
+  `metric` engine (separate from `lizard`) drives the per-PR "Complexity
+  increased by N" status check. Mirror `lizard.exclude_paths` onto
+  `metric.exclude_paths` for the same scaffolding paths (tests, Alembic
+  migrations, seed scripts, React page modules) — excluding only Lizard won't
+  stop the PR-level complexity failure.
+- **Always use the latest stable Node.** CI runs on Ubuntu runners; pin
+  `setup-node.with.node-version` to the current LTS (≥ 24). Don't leave
+  `'20'` in place because GitHub is deprecating Node-20-based Actions runtimes.
+
 ## Project Overview
 
 Event Link is a full-stack event management platform that allows:
