@@ -100,7 +100,7 @@ export function useEventDetailController() {
   }, [id, navigate, t, toast]);
 
   useEffect(() => {
-    swallowPromise(loadEvent());
+    void loadEvent();
   }, [loadEvent]);
 
   const eventId = event?.id;

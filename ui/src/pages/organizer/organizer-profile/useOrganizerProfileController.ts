@@ -5,13 +5,6 @@ import type { OrganizerProfile } from '@/types';
 import { useI18n } from '@/contexts/LanguageContext';
 
 /**
- * Test helper: swallow promise.
- */
-function swallowPromise(result: Promise<unknown>) {
-  result.catch(() => undefined);
-}
-
-/**
  * Test helper: split events.
  */
 function splitEvents(profile: OrganizerProfile | null) {
@@ -74,7 +67,7 @@ export function useOrganizerProfileController() {
       setIsLoading(false);
       return;
     }
-    swallowPromise(loadProfile(organizerId));
+    void loadProfile(organizerId);
   }, [id, loadProfile]);
 
   const { upcomingEvents, pastEvents } = useMemo(() => splitEvents(profile), [profile]);

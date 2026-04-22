@@ -17,13 +17,6 @@ import {
 } from './shared';
 
 /**
- * Test helper: swallow promise.
- */
-function swallowPromise(result: Promise<unknown>) {
-  result.catch(() => undefined);
-}
-
-/**
  * React hook: event form controller.
  */
 export function useEventFormController() {
@@ -58,7 +51,7 @@ export function useEventFormController() {
 
   useEffect(() => {
     if (isEditing && id) {
-      swallowPromise(loadEvent(Number.parseInt(id, 10)));
+      void loadEvent(Number.parseInt(id, 10));
     }
   }, [id, isEditing, loadEvent]);
 
