@@ -2,7 +2,7 @@ import React from 'react';
 import { cleanup } from '@testing-library/react';
 import { beforeEach, vi } from 'vitest';
 
-import { defineMutableValue, setEnglishPreference } from './page-test-helpers';
+import { mountMatchMediaMock, setEnglishPreference } from './page-test-helpers';
 
 const eventPagesFixtures = vi.hoisted(() => ({
   toastSpy: vi.fn(),
@@ -135,18 +135,7 @@ beforeEach(() => {
   vi.clearAllMocks();
   setEnglishPreference();
 
-  defineMutableValue(
-    globalThis,
-    'matchMedia',
-    vi.fn().mockImplementation(() => ({
-      matches: true,
-      media: '(min-width: 640px)',
-      addEventListener: vi.fn(),
-      removeEventListener: vi.fn(),
-      addListener: vi.fn(),
-      removeListener: vi.fn(),
-    })),
-  );
+  mountMatchMediaMock();
 
   authState.isAuthenticated = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };

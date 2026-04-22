@@ -34,13 +34,20 @@ jobs:
       - name: Run backend tests
         run: |
           cd backend
-          pytest --cov-report=xml:coverage.xml --cov-fail-under=70
+          pytest --cov-report=xml:coverage.xml --cov-fail-under=100
       - name: Upload backend coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
           name: backend-coverage
           path: backend/coverage.xml
           if-no-files-found: error
+      - name: Upload backend coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          files: backend/coverage.xml
+          flags: backend
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   frontend:
     runs-on: ubuntu-latest
@@ -72,6 +79,13 @@ jobs:
           name: frontend-coverage
           path: ui/coverage
           if-no-files-found: error
+      - name: Upload frontend coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          files: ui/coverage/lcov.info,ui/coverage/cobertura-coverage.xml
+          flags: ui
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   backend-integration:
     runs-on: ubuntu-latest
@@ -116,7 +130,20 @@ jobs:
           RUN_INTEGRATION_TESTS: "1"
         run: |
           cd backend
-          pytest integration_tests
+          pytest integration_tests --cov=app --cov-report=xml:coverage-integration.xml
+      - name: Upload integration coverage
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
+        with:
+          name: backend-integration-coverage
+          path: backend/coverage-integration.xml
+          if-no-files-found: error
+      - name: Upload integration coverage to Codecov
+        uses: codecov/codecov-action@671740ac38dd9b0130fbe1cec585b89eea48d3de # v5
+        with:
+          files: backend/coverage-integration.xml
+          flags: backend-integration
+          fail_ci_if_error: false
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   docker-compose:
     runs-on: ubuntu-latest

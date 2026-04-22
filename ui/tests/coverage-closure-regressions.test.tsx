@@ -1,9 +1,16 @@
 import React from 'react';
-import { cleanup, fireEvent, screen } from '@testing-library/react';
+import { act, cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useI18n } from '@/contexts/LanguageContext';
-import { renderLanguageRoute, setEnglishPreference } from './page-test-helpers';
+import {
+  SOLO_EVENT_PAGE,
+  flushMicrotasks,
+  mountMatchMediaMock,
+  readMatchMediaChangeHandler,
+  renderLanguageRoute,
+  setEnglishPreference,
+} from './page-test-helpers';
 
 const {
   authState,
@@ -27,6 +34,8 @@ const {
     cloneEvent: vi.fn(),
     createEvent: vi.fn(),
     getEvent: vi.fn(),
+    getEvents: vi.fn(),
+    getFavorites: vi.fn(),
     hideTag: vi.fn(),
     registerForEvent: vi.fn(),
     removeFromFavorites: vi.fn(),
@@ -62,6 +71,7 @@ import type { AdminDashboardController } from '@/pages/admin/admin-dashboard/use
 import { EventDetailOverview } from '@/pages/events/event-detail/EventDetailOverview';
 import { useEventDetailController } from '@/pages/events/event-detail/useEventDetailController';
 import { useEventFormController } from '@/pages/organizer/event-form/useEventFormController';
+import { EventsPage } from '@/pages/events/EventsPage';
 import type { EventDetail } from '@/types';
 
 const swallowPromise = (result: undefined | Promise<unknown>) => {
@@ -251,6 +261,14 @@ function AdminEventsTabHarness() {
   return <AdminEventsTab controller={controller} />;
 }
 
+/**
+ * Test helper: event detail probe surfaces the loaded event title.
+ */
+function EventDetailProbe() {
+  const controller = useEventDetailController();
+  return <div data-testid="detail-probe">{controller.event?.title ?? ''}</div>;
+}
+
 beforeEach(() => {
   cleanup();
   vi.clearAllMocks();
@@ -333,5 +351,37 @@ describe('coverage closure regressions', () => {
 
     fireEvent.click(screen.getByRole('button', { name: 'apply-suggestion' }));
     expect(toastSpy).not.toHaveBeenCalled();
+  });
+
+  it('covers EventsPage media-query handler + analytics rejection catch path', async () => {
+    const mediaMock = mountMatchMediaMock();
+    recordInteractionsSpy.mockRejectedValue(new Error('analytics down'));
+    eventServiceMock.getEvents.mockResolvedValue(SOLO_EVENT_PAGE);
+    eventServiceMock.getFavorites.mockResolvedValue({ items: [] });
+
+    renderLanguageRoute('/events', '/events', <EventsPage />);
+
+    await waitFor(() => expect(mediaMock.addEventListener).toHaveBeenCalled());
+    const handler = readMatchMediaChangeHandler(mediaMock);
+    act(() => handler({ matches: false }));
+    act(() => handler({ matches: true }));
+
+    await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
+    await act(flushMicrotasks);
+    expect(screen.getByText('Analytics Probe Event')).toBeInTheDocument();
+  });
+
+  it('swallows analytics rejections when the detail page records interactions', async () => {
+    mountMatchMediaMock();
+    recordInteractionsSpy.mockRejectedValue(new Error('analytics down'));
+    eventServiceMock.getEvent.mockResolvedValue(
+      makeEventDetail({ id: 9, title: 'Detail Fixture' }),
+    );
+
+    renderLanguageRoute('/events/9', '/events/:id', <EventDetailProbe />);
+
+    await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
+    await act(flushMicrotasks);
+    expect(await screen.findByTestId('detail-probe')).toHaveTextContent('Detail Fixture');
   });
 });

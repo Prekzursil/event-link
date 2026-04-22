@@ -10,6 +10,20 @@ engines:
       - backend/integration_tests/**
   pylint:
     python_version: 3
+  # Codacy's complexity metric (separate from Lizard) fires on long test
+  # setups / fixture blocks where the complexity is test-scaffolding, not
+  # production code. Mirror the lizard exclusions here so PR-level
+  # "Complexity increased by N" checks stay focused on application code.
+  metric:
+    exclude_paths:
+      - backend/tests/**
+      - backend/integration_tests/**
+      - ui/tests/**
+      - backend/alembic/versions/**
+      - scripts/quality/**
+      - backend/scripts/**
+      - backend/seed_data.py
+      - ui/src/pages/**
   lizard:
     exclude_paths:
       # Alembic migrations use long upgrade()/downgrade() methods by design —
