@@ -4,7 +4,10 @@ import { beforeEach, describe, expect, it, vi } from 'vitest';
 
 import { useI18n } from '@/contexts/LanguageContext';
 import {
+  SOLO_EVENT_PAGE,
+  flushMicrotasks,
   mountMatchMediaMock,
+  readMatchMediaChangeHandler,
   renderLanguageRoute,
   setEnglishPreference,
 } from './page-test-helpers';
@@ -70,31 +73,6 @@ import { useEventDetailController } from '@/pages/events/event-detail/useEventDe
 import { useEventFormController } from '@/pages/organizer/event-form/useEventFormController';
 import { EventsPage } from '@/pages/events/EventsPage';
 import type { EventDetail } from '@/types';
-
-const SOLO_EVENT_PAGE = {
-  items: [
-    {
-      id: 1,
-      title: 'Analytics Probe Event',
-      description: 'desc',
-      category: 'Technical',
-      start_time: new Date(Date.now() + 3_600_000).toISOString(),
-      end_time: new Date(Date.now() + 7_200_000).toISOString(),
-      city: 'Cluj',
-      location: 'Main Hall',
-      max_seats: 20,
-      seats_taken: 0,
-      tags: [],
-      owner_id: 1,
-      owner_name: 'Owner',
-      status: 'published',
-    },
-  ],
-  total: 1,
-  page: 1,
-  page_size: 12,
-  total_pages: 1,
-} as const;
 
 const swallowPromise = (result: undefined | Promise<unknown>) => {
   Promise.resolve(result).catch(() => undefined);
@@ -384,17 +362,12 @@ describe('coverage closure regressions', () => {
     renderLanguageRoute('/events', '/events', <EventsPage />);
 
     await waitFor(() => expect(mediaMock.addEventListener).toHaveBeenCalled());
-    const [, handler] = mediaMock.addEventListener.mock.calls[0] as [
-      string,
-      (event: { matches: boolean }) => void,
-    ];
+    const handler = readMatchMediaChangeHandler(mediaMock);
     act(() => handler({ matches: false }));
     act(() => handler({ matches: true }));
 
     await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await act(flushMicrotasks);
     expect(screen.getByText('Analytics Probe Event')).toBeInTheDocument();
   });
 
@@ -408,9 +381,7 @@ describe('coverage closure regressions', () => {
     renderLanguageRoute('/events/9', '/events/:id', <EventDetailProbe />);
 
     await waitFor(() => expect(recordInteractionsSpy).toHaveBeenCalled());
-    await act(async () => {
-      await Promise.resolve();
-    });
+    await act(flushMicrotasks);
     expect(await screen.findByTestId('detail-probe')).toHaveTextContent('Detail Fixture');
   });
 });

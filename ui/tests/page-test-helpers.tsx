@@ -88,3 +88,52 @@ export function mountMatchMediaMock(): MatchMediaMock {
   });
   return mock;
 }
+
+/**
+ * Reads the change listener that a matchMedia consumer registered on the
+ * mocked MediaQueryList. Callers use this to simulate viewport toggles.
+ */
+export function readMatchMediaChangeHandler(mock: MatchMediaMock) {
+  const [, handler] = mock.addEventListener.mock.calls[0] as [
+    string,
+    (event: { matches: boolean }) => void,
+  ];
+  return handler;
+}
+
+/**
+ * Awaits a microtask so any pending .catch() handlers attached to a
+ * rejected promise get a chance to run before the test asserts.
+ */
+export async function flushMicrotasks() {
+  await Promise.resolve();
+}
+
+/**
+ * Canonical single-event list fixture used by tests that exercise the
+ * events-page impression-tracking analytics path.
+ */
+export const SOLO_EVENT_PAGE = {
+  items: [
+    {
+      id: 1,
+      title: 'Analytics Probe Event',
+      description: 'desc',
+      category: 'Technical',
+      start_time: new Date(Date.now() + 3_600_000).toISOString(),
+      end_time: new Date(Date.now() + 7_200_000).toISOString(),
+      city: 'Cluj',
+      location: 'Main Hall',
+      max_seats: 20,
+      seats_taken: 0,
+      tags: [],
+      owner_id: 1,
+      owner_name: 'Owner',
+      status: 'published',
+    },
+  ],
+  total: 1,
+  page: 1,
+  page_size: 12,
+  total_pages: 1,
+} as const;
