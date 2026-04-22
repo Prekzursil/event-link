@@ -4,6 +4,7 @@ import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import { vi } from 'vitest';
 
 import { LanguageProvider } from '@/contexts/LanguageContext';
+import { makeEvent } from './page-test-data';
 
 /**
  * Renders the language route scaffolding for tests.
@@ -114,24 +115,7 @@ export async function flushMicrotasks() {
  * events-page impression-tracking analytics path.
  */
 export const SOLO_EVENT_PAGE = {
-  items: [
-    {
-      id: 1,
-      title: 'Analytics Probe Event',
-      description: 'desc',
-      category: 'Technical',
-      start_time: new Date(Date.now() + 3_600_000).toISOString(),
-      end_time: new Date(Date.now() + 7_200_000).toISOString(),
-      city: 'Cluj',
-      location: 'Main Hall',
-      max_seats: 20,
-      seats_taken: 0,
-      tags: [],
-      owner_id: 1,
-      owner_name: 'Owner',
-      status: 'published',
-    },
-  ],
+  items: [makeEvent(1, { title: 'Analytics Probe Event', seats_taken: 0, tags: [] })],
   total: 1,
   page: 1,
   page_size: 12,
