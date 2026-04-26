@@ -31,12 +31,12 @@ describe('mega pages admin fallbacks', () => {
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalled());
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    fireEvent.click(screen.getByRole('button', { name: /Reload/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Reload/i }));
     await waitFor(() => expect(adminServiceMock.getStats).toHaveBeenCalledTimes(2));
 
-    fireEvent.click(screen.getByRole('button', { name: /Retrain/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Digest/i }));
-    fireEvent.click(screen.getByRole('button', { name: /Filling-fast/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Retrain/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Digest/i }));
+    fireEvent.click(await screen.findByRole('button', { name: /Filling-fast/i }));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
     const usersTab = screen.getByRole('tab', { name: /Users/i });
@@ -198,8 +198,10 @@ describe('mega pages admin fallbacks', () => {
     fireEvent.mouseDown(usersTab);
     fireEvent.click(usersTab);
     await waitFor(() => expect(adminServiceMock.getUsers).toHaveBeenCalled());
-    expect(screen.getAllByText(/Organizer|Organizator/i).length).toBeGreaterThan(0);
-    expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+    await waitFor(() => {
+      expect(screen.getAllByText(/Organizer|Organizator/i).length).toBeGreaterThan(0);
+      expect(screen.getAllByText('-').length).toBeGreaterThan(0);
+    });
 
     const organizerRow = screen.getByText(/student@test.local/i).closest('tr');
     fireEvent.click(

@@ -21,11 +21,6 @@ event-link/
 - **Python**: 3.11+
 - **Docker**: optional, for containerized runs
 
-## GitHub credentials (Codex/MCP + git)
-
-If you use Codex GitHub MCP tooling or want `git push` to work without interactive prompts, see
-`docs/github-auth.md`.
-
 ## Architecture diagrams
 
 Mermaid UML diagrams (domain + core flows): `docs/uml.md`.
