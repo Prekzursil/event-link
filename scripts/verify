@@ -52,3 +52,17 @@ fi
 rm -rf ui/node_modules
 run_node20 "npm --prefix ui ci"
 run_node20 "npm --prefix ui run test"
+
+# Adjust lcov SF: paths so SonarCloud's path matcher can resolve them.
+# vitest's v8 coverage emits SF: lines relative to its cwd (``ui/``), so
+# entries look like ``SF:src/components/Foo.tsx``. SonarCloud joins SF
+# paths against ``sonar.sources`` and the project root; with
+# ``sonar.sources=ui/src``, the matcher looks for ``src/components/...``
+# at the project root — which doesn't exist. Prefixing each SF: line
+# with ``ui/`` makes the paths repo-root-relative. This step lives in
+# scripts/verify so it runs in BOTH event-link's own CI workflow AND
+# the QZP-managed ``Quality Zero Platform > Coverage 100 Gate > Run
+# selected lane`` step (which calls ``bash scripts/verify``).
+if [ -f ui/coverage/lcov.info ]; then
+  sed -i 's|^SF:|SF:ui/|' ui/coverage/lcov.info
+fi
