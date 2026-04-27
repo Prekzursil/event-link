@@ -1,4 +1,4 @@
-import type * as React from 'react';
+import type { ComponentType, SVGProps } from 'react';
 import { Link } from 'react-router-dom';
 import { Calendar, Mail } from 'lucide-react';
 import { useI18n } from '@/contexts/LanguageContext';
@@ -7,7 +7,7 @@ import { useI18n } from '@/contexts/LanguageContext';
 // 0.x with no built-in replacement (see lucide-icons/lucide#670). Render
 // the official GitHub mark inline so we don't pull in an extra brand-icon
 // package just for the footer link.
-function GithubIcon(props: Readonly<React.SVGProps<SVGSVGElement>>) {
+function GithubIcon(props: Readonly<SVGProps<SVGSVGElement>>) {
   return (
     <svg
       xmlns="http://www.w3.org/2000/svg"
@@ -33,7 +33,7 @@ type ContactLinkItem = Readonly<{
   // icon accepts both lucide-react ForwardRefExoticComponents (e.g.
   // typeof Calendar) and our inline GithubIcon component, which is a
   // plain functional component with className/SVG props.
-  icon: React.ComponentType<{ className?: string } & React.SVGProps<SVGSVGElement>>;
+  icon: ComponentType<{ className?: string } & SVGProps<SVGSVGElement>>;
   label: string;
 }>;
 
