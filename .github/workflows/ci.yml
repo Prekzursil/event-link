@@ -73,6 +73,19 @@ jobs:
         run: |
           cd ui
           npm test
+      - name: Adjust lcov SF paths for SonarCloud
+        # vitest's v8 coverage provider emits SF: lines relative to its cwd
+        # (``ui/``), so an ``SF:src/components/Foo.tsx`` line ends up looking
+        # for ``src/components/Foo.tsx`` at the SonarCloud project root —
+        # which doesn't exist (the actual file is ``ui/src/components/Foo.tsx``).
+        # Without this prefix step, SonarCloud's ``new_coverage`` quality-gate
+        # condition sees ~65.9% instead of the actual 100% because some files
+        # don't match. Prefixing each SF: line with ``ui/`` makes the paths
+        # repo-root-relative, matching ``sonar.sources=ui/src``.
+        run: |
+          if [ -f ui/coverage/lcov.info ]; then
+            sed -i 's|^SF:|SF:ui/|' ui/coverage/lcov.info
+          fi
       - name: Upload frontend coverage
         uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4
         with:
