@@ -68,7 +68,10 @@ jobs:
       - name: Install frontend deps
         run: |
           cd ui
-          npm ci
+          # --ignore-scripts: don't auto-run package lifecycle scripts on
+          # install (githubactions:S6505 hotspot mitigation). The build
+          # commands we need run via npm test / npm run build below.
+          npm ci --ignore-scripts
       - name: Run frontend checks
         run: |
           cd ui
@@ -251,7 +254,10 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: '1'
         run: |
           cd ui
-          npm ci
+          # --ignore-scripts: don't auto-run package lifecycle scripts on
+          # install (githubactions:S6505 hotspot mitigation). The build
+          # commands we need run via npm test / npm run build below.
+          npm ci --ignore-scripts
       - name: Install Playwright (Chromium)
         run: |
           cd ui

@@ -4,7 +4,7 @@ import { Root, Image, Fallback } from "@radix-ui/react-avatar"
 import { cn } from "@/lib/utils"
 
 const Avatar = React.forwardRef<
-  React.ElementRef<typeof Root>,
+  React.ComponentRef<typeof Root>,
   React.ComponentPropsWithoutRef<typeof Root>
 >(({ className, ...props }, ref) => (
   <Root
@@ -19,7 +19,7 @@ const Avatar = React.forwardRef<
 Avatar.displayName = Root.displayName
 
 const AvatarImage = React.forwardRef<
-  React.ElementRef<typeof Image>,
+  React.ComponentRef<typeof Image>,
   React.ComponentPropsWithoutRef<typeof Image>
 >(({ className, ...props }, ref) => (
   <Image
@@ -31,7 +31,7 @@ const AvatarImage = React.forwardRef<
 AvatarImage.displayName = Image.displayName
 
 const AvatarFallback = React.forwardRef<
-  React.ElementRef<typeof Fallback>,
+  React.ComponentRef<typeof Fallback>,
   React.ComponentPropsWithoutRef<typeof Fallback>
 >(({ className, ...props }, ref) => (
   <Fallback

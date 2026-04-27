@@ -6,7 +6,7 @@ import { cn } from "@/lib/utils"
 const Tabs = Root
 
 const TabsList = React.forwardRef<
-  React.ElementRef<typeof List>,
+  React.ComponentRef<typeof List>,
   React.ComponentPropsWithoutRef<typeof List>
 >(({ className, ...props }, ref) => (
   <List
@@ -21,7 +21,7 @@ const TabsList = React.forwardRef<
 TabsList.displayName = List.displayName
 
 const TabsTrigger = React.forwardRef<
-  React.ElementRef<typeof Trigger>,
+  React.ComponentRef<typeof Trigger>,
   React.ComponentPropsWithoutRef<typeof Trigger>
 >(({ className, ...props }, ref) => (
   <Trigger
@@ -36,7 +36,7 @@ const TabsTrigger = React.forwardRef<
 TabsTrigger.displayName = Trigger.displayName
 
 const TabsContent = React.forwardRef<
-  React.ElementRef<typeof Content>,
+  React.ComponentRef<typeof Content>,
   React.ComponentPropsWithoutRef<typeof Content>
 >(({ className, ...props }, ref) => (
   <Content

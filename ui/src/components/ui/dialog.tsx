@@ -27,7 +27,7 @@ const DialogClose = Close
 
 /** Dimmed backdrop rendered behind the dialog surface. */
 const DialogOverlay = React.forwardRef<
-  React.ElementRef<typeof Overlay>,
+  React.ComponentRef<typeof Overlay>,
   React.ComponentPropsWithoutRef<typeof Overlay>
 >(({ className, ...props }, ref) => (
   <Overlay
@@ -43,7 +43,7 @@ DialogOverlay.displayName = Overlay.displayName
 
 /** Modal content surface with the built-in close button. */
 const DialogContent = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitiveContent>,
+  React.ComponentRef<typeof DialogPrimitiveContent>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitiveContent>
 >(({ className, children, ...props }, ref) => (
   <DialogPortal>
@@ -98,7 +98,7 @@ DialogFooter.displayName = "DialogFooter"
 
 /** Accessible dialog heading. */
 const DialogTitle = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitiveTitle>,
+  React.ComponentRef<typeof DialogPrimitiveTitle>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitiveTitle>
 >(({ className, ...props }, ref) => (
   <DialogPrimitiveTitle
@@ -114,7 +114,7 @@ DialogTitle.displayName = DialogPrimitiveTitle.displayName
 
 /** Accessible dialog description. */
 const DialogDescription = React.forwardRef<
-  React.ElementRef<typeof DialogPrimitiveDescription>,
+  React.ComponentRef<typeof DialogPrimitiveDescription>,
   React.ComponentPropsWithoutRef<typeof DialogPrimitiveDescription>
 >(({ className, ...props }, ref) => (
   <DialogPrimitiveDescription
