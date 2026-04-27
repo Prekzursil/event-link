@@ -16,7 +16,7 @@ import { cn } from "@/lib/utils"
 const ToastProvider = Provider
 
 const ToastViewport = React.forwardRef<
-  React.ElementRef<typeof Viewport>,
+  React.ComponentRef<typeof Viewport>,
   React.ComponentPropsWithoutRef<typeof Viewport>
 >(({ className, ...props }, ref) => (
   <Viewport
@@ -48,7 +48,7 @@ const toastVariants = cva(
 )
 
 const Toast = React.forwardRef<
-  React.ElementRef<typeof Root>,
+  React.ComponentRef<typeof Root>,
   React.ComponentPropsWithoutRef<typeof Root> &
     VariantProps<typeof toastVariants>
 >(({ className, variant, ...props }, ref) => {
@@ -63,7 +63,7 @@ const Toast = React.forwardRef<
 Toast.displayName = Root.displayName
 
 const ToastAction = React.forwardRef<
-  React.ElementRef<typeof Action>,
+  React.ComponentRef<typeof Action>,
   React.ComponentPropsWithoutRef<typeof Action>
 >(({ className, ...props }, ref) => (
   <Action
@@ -78,7 +78,7 @@ const ToastAction = React.forwardRef<
 ToastAction.displayName = Action.displayName
 
 const ToastClose = React.forwardRef<
-  React.ElementRef<typeof Close>,
+  React.ComponentRef<typeof Close>,
   React.ComponentPropsWithoutRef<typeof Close>
 >(({ className, ...props }, ref) => (
   <Close
@@ -96,7 +96,7 @@ const ToastClose = React.forwardRef<
 ToastClose.displayName = Close.displayName
 
 const ToastTitle = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitiveTitle>,
+  React.ComponentRef<typeof ToastPrimitiveTitle>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitiveTitle>
 >(({ className, ...props }, ref) => (
   <ToastPrimitiveTitle
@@ -108,7 +108,7 @@ const ToastTitle = React.forwardRef<
 ToastTitle.displayName = ToastPrimitiveTitle.displayName
 
 const ToastDescription = React.forwardRef<
-  React.ElementRef<typeof ToastPrimitiveDescription>,
+  React.ComponentRef<typeof ToastPrimitiveDescription>,
   React.ComponentPropsWithoutRef<typeof ToastPrimitiveDescription>
 >(({ className, ...props }, ref) => (
   <ToastPrimitiveDescription

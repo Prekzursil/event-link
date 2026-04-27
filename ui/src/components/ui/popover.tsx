@@ -10,7 +10,7 @@ const PopoverTrigger = Trigger
 const PopoverAnchor = Anchor
 
 const PopoverContent = React.forwardRef<
-  React.ElementRef<typeof Content>,
+  React.ComponentRef<typeof Content>,
   React.ComponentPropsWithoutRef<typeof Content>
 >(({ className, align = "center", sideOffset = 4, ...props }, ref) => (
   <Portal>

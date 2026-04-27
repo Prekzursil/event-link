@@ -9,7 +9,7 @@ const labelVariants = cva(
 )
 
 const Label = React.forwardRef<
-  React.ElementRef<typeof Root>,
+  React.ComponentRef<typeof Root>,
   React.ComponentPropsWithoutRef<typeof Root> &
     VariantProps<typeof labelVariants>
 >(({ className, ...props }, ref) => (
