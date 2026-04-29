@@ -3479,7 +3479,9 @@ def add_hidden_tag(
     # session, ``tag_id`` is an int path-param. Semgrep's
     # generic-sql-fastapi taint rule misclassifies this as injection.
     db.execute(
-        models.user_hidden_tags.insert().values(user_id=current_user.id, tag_id=tag_id)  # nosemgrep
+        models.user_hidden_tags  # nosemgrep
+        .insert()
+        .values(user_id=current_user.id, tag_id=tag_id)
     )
     _audit_log(
         db,
@@ -3557,9 +3559,9 @@ def add_blocked_organizer(
     # int path-param organizer_id. Semgrep generic-sql-fastapi false
     # positive — no SQL string concatenation occurs.
     db.execute(
-        models.user_blocked_organizers.insert().values(  # nosemgrep
-            user_id=current_user.id, organizer_id=organizer_id
-        )
+        models.user_blocked_organizers  # nosemgrep
+        .insert()
+        .values(user_id=current_user.id, organizer_id=organizer_id)
     )
     _audit_log(
         db,
