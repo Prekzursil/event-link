@@ -3474,8 +3474,12 @@ def add_hidden_tag(
     if existing:
         return {"status": "exists"}
 
+    # Parameterized insert via SQLAlchemy ``.values(field=val)`` — no SQL
+    # string concatenation, ``current_user.id`` comes from JWT-validated
+    # session, ``tag_id`` is an int path-param. Semgrep's
+    # generic-sql-fastapi taint rule misclassifies this as injection.
     db.execute(
-        models.user_hidden_tags.insert().values(user_id=current_user.id, tag_id=tag_id)
+        models.user_hidden_tags.insert().values(user_id=current_user.id, tag_id=tag_id)  # nosemgrep
     )
     _audit_log(
         db,
@@ -3548,8 +3552,12 @@ def add_blocked_organizer(
     if existing:
         return {"status": "exists"}
 
+    # Same shape as the user_hidden_tags insert above — SQLAlchemy
+    # ``.values(field=val)`` parameter binding, JWT-validated user_id,
+    # int path-param organizer_id. Semgrep generic-sql-fastapi false
+    # positive — no SQL string concatenation occurs.
     db.execute(
-        models.user_blocked_organizers.insert().values(
+        models.user_blocked_organizers.insert().values(  # nosemgrep
             user_id=current_user.id, organizer_id=organizer_id
         )
     )
