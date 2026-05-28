@@ -592,3 +592,38 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
     ) == pytest.approx(0.0)
     with pytest.raises(AssertionError, match="query should not run"):
         _NoQueryDb().query()
+
+
+@pytest.mark.parametrize(
+    ("content", "expected"),
+    [
+        # No keyword matches -> the score<=0 ``continue`` runs for every
+        # category and the function returns ``None``.
+        ("nothing relevant here at all", None),
+        # ``None`` / empty input exercises the ``(content or "")`` guard.
+        (None, None),
+        ("", None),
+        # A single matching category exercises the ``score > best_score``
+        # True branch (first/only winner).
+        ("join our hackathon weekend", "Hackathon"),
+        # Two keywords for one category beat a later single-keyword match,
+        # so the later ``score > best_score`` comparison is False.
+        ("hackathon ctf festival", "Hackathon"),
+    ],
+)
+def test_suggest_category_from_text_covers_scoring_branches(content, expected):
+    """Exercises every branch of ``_suggest_category_from_text`` directly."""
+    assert api._suggest_category_from_text(content) == expected
+
+
+def test_suggest_category_from_text_keeps_first_winner_on_score_tie():
+    """A later equal-score match must not overwrite the earlier winner.
+
+    ``hackathon`` (Hackathon) and ``festival`` (Festival) each score 1; since
+    Hackathon is iterated first, the Festival comparison hits the
+    ``score > best_score`` False branch and the result stays ``Hackathon``.
+    """
+    assert list(api._CATEGORY_KEYWORDS).index("Hackathon") < list(
+        api._CATEGORY_KEYWORDS
+    ).index("Festival")
+    assert api._suggest_category_from_text("hackathon festival") == "Hackathon"

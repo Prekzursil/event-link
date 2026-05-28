@@ -65,10 +65,15 @@ def _guardrail_buckets() -> dict[str, int]:
     return {"recommended": 0, "time": 0}
 
 
-def _load_impression_counts(*, db: Session, start: datetime) -> dict[str, int]:
-    """Loads the impression counts resource."""
-    impressions = _guardrail_buckets()
-    rows = (
+def _query_events_list_interactions(
+    *, db: Session, start: datetime, interaction_type: str
+) -> list[Any]:
+    """Fetch event-interaction rows of one type since ``start``.
+
+    Shared by the impression and click loaders, which differ only in the
+    ``interaction_type`` filter, so the row-selection query lives here once.
+    """
+    return (
         db.query(
             models.EventInteraction.user_id,
             models.EventInteraction.event_id,
@@ -78,8 +83,16 @@ def _load_impression_counts(*, db: Session, start: datetime) -> dict[str, int]:
         .filter(models.EventInteraction.occurred_at >= start)
         .filter(models.EventInteraction.user_id.isnot(None))
         .filter(models.EventInteraction.event_id.isnot(None))
-        .filter(models.EventInteraction.interaction_type == "impression")
+        .filter(models.EventInteraction.interaction_type == interaction_type)
         .all()
+    )
+
+
+def _load_impression_counts(*, db: Session, start: datetime) -> dict[str, int]:
+    """Loads the impression counts resource."""
+    impressions = _guardrail_buckets()
+    rows = _query_events_list_interactions(
+        db=db, start=start, interaction_type="impression"
     )
     for _user_id, _event_id, _occurred_at, meta in rows:
         source = (_meta_value(meta, "source") or "").strip().lower()
@@ -97,19 +110,7 @@ def _load_click_counts(
     """Loads the click counts resource."""
     clicks = _guardrail_buckets()
     click_by_user_event: dict[tuple[int, int], tuple[str, datetime]] = {}
-    rows = (
-        db.query(
-            models.EventInteraction.user_id,
-            models.EventInteraction.event_id,
-            models.EventInteraction.occurred_at,
-            models.EventInteraction.meta,
-        )
-        .filter(models.EventInteraction.occurred_at >= start)
-        .filter(models.EventInteraction.user_id.isnot(None))
-        .filter(models.EventInteraction.event_id.isnot(None))
-        .filter(models.EventInteraction.interaction_type == "click")
-        .all()
-    )
+    rows = _query_events_list_interactions(db=db, start=start, interaction_type="click")
     for user_id, event_id, occurred_at, meta in rows:
         source = (_meta_value(meta, "source") or "").strip().lower()
         sort = (_meta_value(meta, "sort") or "").strip().lower()
