@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { useFavoriteToggle } from '@/hooks/use-favorite-toggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
 import { Calendar, CalendarPlus, Clock, History, Search, Plus, Megaphone } from 'lucide-react';
@@ -21,7 +22,10 @@ export function MyEventsPage() {
   const [upcomingEvents, setUpcomingEvents] = useState<Event[]>([]);
   const [pastEvents, setPastEvents] = useState<Event[]>([]);
   const [organizerEvents, setOrganizerEvents] = useState<Event[]>([]);
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
+  const { favorites, setFavorites, toggleFavorite } = useFavoriteToggle({
+    errorTitle: t.myEvents.favoritesErrorTitle,
+    errorDescription: t.myEvents.favoritesErrorDescription,
+  });
   const [isLoading, setIsLoading] = useState(true);
   const [isDownloadingCalendar, setIsDownloadingCalendar] = useState(false);
   const { toast } = useToast();
@@ -76,7 +80,7 @@ export function MyEventsPage() {
     } catch {
       // Silent fail
     }
-  }, []);
+  }, [setFavorites]);
 
   useEffect(() => {
     loadEvents();
@@ -84,27 +88,8 @@ export function MyEventsPage() {
   }, [loadEvents, loadFavorites]);
 
   /** Toggle one event in the favorites collection and keep local state in sync. */
-  const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
-    try {
-      if (shouldFavorite) {
-        await eventService.addToFavorites(eventId);
-        setFavorites((prev) => new Set([...prev, eventId]));
-      } else {
-        await eventService.removeFromFavorites(eventId);
-        setFavorites((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(eventId);
-          return newSet;
-        });
-      }
-    } catch {
-      toast({
-        title: t.myEvents.favoritesErrorTitle,
-        description: t.myEvents.favoritesErrorDescription,
-        variant: 'destructive',
-      });
-    }
-  };
+  const handleFavoriteToggle = (eventId: number, shouldFavorite: boolean) =>
+    toggleFavorite(eventId, shouldFavorite);
 
   /** Download the current user's calendar feed as an ICS file. */
   const handleDownloadCalendar = async () => {

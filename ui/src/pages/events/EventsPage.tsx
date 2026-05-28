@@ -22,6 +22,7 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { useFavoriteToggle } from '@/hooks/use-favorite-toggle';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
 import { Search, Filter, CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
@@ -222,7 +223,6 @@ function handleRecommendationClick(eventId: number) {
 export function EventsPage() {
   const [events, setEvents] = useState<Event[]>([]);
   const [recommendations, setRecommendations] = useState<Event[]>([]);
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const [totalPages, setTotalPages] = useState(1);
   const [totalEvents, setTotalEvents] = useState(0);
@@ -230,6 +230,10 @@ export function EventsPage() {
   const { toast } = useToast();
   const { isAuthenticated, user } = useAuth();
   const { language, t } = useI18n();
+  const { favorites, setFavorites, toggleFavorite } = useFavoriteToggle({
+    errorTitle: t.events.favoritesUpdateErrorTitle,
+    errorDescription: t.events.favoritesUpdateErrorDescription,
+  });
 
   const dateFnsLocale = useMemo(() => getDateFnsLocale(language), [language]);
 
@@ -306,7 +310,7 @@ export function EventsPage() {
       setRecommendations(nextRecommendations);
       setFavorites(favoriteIds);
     });
-  }, [isAuthenticated, user?.role]);
+  }, [isAuthenticated, user?.role, setFavorites]);
 
   /** Apply the selected calendar range to the query-string backed filter state. */
   function handleDateRangeSelect(range: { from?: Date; to?: Date } | undefined) {
@@ -316,36 +320,24 @@ export function EventsPage() {
     });
   }
 
-  /** Toggle the favorite state for an event card while keeping the local favorite set in sync. */
-  async function handleFavoriteToggle(eventId: number, shouldFavorite: boolean) {
-    if (!isAuthenticated) {
-      toast({
-        title: t.events.loginRequiredTitle,
-        description: t.events.loginRequiredDescription,
-        variant: 'destructive',
-      });
-      return;
+  /** Show the login-required toast and report whether the user is authenticated. */
+  function ensureAuthenticatedForFavorite(): boolean {
+    if (isAuthenticated) {
+      return true;
     }
+    toast({
+      title: t.events.loginRequiredTitle,
+      description: t.events.loginRequiredDescription,
+      variant: 'destructive',
+    });
+    return false;
+  }
 
-    try {
-      if (shouldFavorite) {
-        await eventService.addToFavorites(eventId);
-        setFavorites((prev) => new Set([...prev, eventId]));
-      } else {
-        await eventService.removeFromFavorites(eventId);
-        setFavorites((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(eventId);
-          return newSet;
-        });
-      }
-    } catch {
-      toast({
-        title: t.events.favoritesUpdateErrorTitle,
-        description: t.events.favoritesUpdateErrorDescription,
-        variant: 'destructive',
-      });
-    }
+  /** Toggle the favorite state for an event card while keeping the local favorite set in sync. */
+  function handleFavoriteToggle(eventId: number, shouldFavorite: boolean) {
+    return toggleFavorite(eventId, shouldFavorite, {
+      guard: ensureAuthenticatedForFavorite,
+    });
   }
 
   /** Render the main events grid for the current result set. */

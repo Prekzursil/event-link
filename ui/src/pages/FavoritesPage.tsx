@@ -6,6 +6,7 @@ import { EventCard } from '@/components/events/EventCard';
 import { Button } from '@/components/ui/button';
 import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
+import { useFavoriteToggle } from '@/hooks/use-favorite-toggle';
 import { useI18n } from '@/contexts/LanguageContext';
 import { Heart, Search } from 'lucide-react';
 
@@ -78,10 +79,13 @@ function FavoritesGrid({ events, favorites, onFavoriteToggle }: FavoritesGridPro
  */
 export function FavoritesPage() {
   const [events, setEvents] = useState<Event[]>([]);
-  const [favorites, setFavorites] = useState<Set<number>>(new Set());
   const [isLoading, setIsLoading] = useState(true);
   const { toast } = useToast();
   const { t } = useI18n();
+  const { favorites, setFavorites, toggleFavorite } = useFavoriteToggle({
+    errorTitle: t.favorites.updateErrorTitle,
+    errorDescription: t.favorites.updateErrorDescription,
+  });
 
   const loadFavorites = useCallback(async () => {
     setIsLoading(true);
@@ -98,7 +102,7 @@ export function FavoritesPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [toast, t]);
+  }, [toast, t, setFavorites]);
 
   useEffect(() => {
     loadFavorites();
@@ -107,29 +111,11 @@ export function FavoritesPage() {
   /**
    * Handles the favorite toggle event.
    */
-  const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
-    try {
-      if (shouldFavorite) {
-        await eventService.addToFavorites(eventId);
-        setFavorites((prev) => new Set([...prev, eventId]));
-      } else {
-        await eventService.removeFromFavorites(eventId);
-        setFavorites((prev) => {
-          const newSet = new Set(prev);
-          newSet.delete(eventId);
-          return newSet;
-        });
-        // Remove from displayed list
-        setEvents((prev) => prev.filter((e) => e.id !== eventId));
-      }
-    } catch {
-      toast({
-        title: t.favorites.updateErrorTitle,
-        description: t.favorites.updateErrorDescription,
-        variant: 'destructive',
-      });
-    }
-  };
+  const handleFavoriteToggle = (eventId: number, shouldFavorite: boolean) =>
+    toggleFavorite(eventId, shouldFavorite, {
+      // Remove from displayed list when un-favorited.
+      onRemoved: (id) => setEvents((prev) => prev.filter((e) => e.id !== id)),
+    });
 
   if (isLoading) {
     return <LoadingPage message={t.favorites.loading} />;

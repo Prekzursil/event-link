@@ -24,6 +24,7 @@ import {
 } from '@/components/ui/table';
 import { formatDateTime } from '@/lib/utils';
 import { getModerationPresentation } from './shared';
+import { AdminPagination } from './adminComponents';
 import type { AdminDashboardController } from './useAdminDashboardController';
 
 type Props = Readonly<{
@@ -134,15 +135,6 @@ type AdminEventRowProps = {
   onRestore: (eventId: number) => void;
   onReview: (eventId: number) => void;
   reviewingEventId: number | null;
-};
-
-type EventsPaginationProps = {
-  copy: PaginationCopy;
-  currentPage: number;
-  onNext: () => void;
-  onPrevious: () => void;
-  totalItems: number;
-  totalPages: number;
 };
 
 type EventsResultsProps = {
@@ -431,30 +423,6 @@ const AdminEventRow = ({
   );
 };
 
-/** Render the shared pagination footer for the admin events tab. */
-const EventsPagination = ({
-  copy,
-  currentPage,
-  onNext,
-  onPrevious,
-  totalItems,
-  totalPages,
-}: EventsPaginationProps) => (
-  <div className="mt-4 flex items-center justify-between">
-    <p className="text-sm text-muted-foreground">
-      {copy.page} {currentPage} / {totalPages} • {copy.total} {totalItems}
-    </p>
-    <div className="flex gap-2">
-      <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={onPrevious}>
-        {copy.prev}
-      </Button>
-      <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={onNext}>
-        {copy.next}
-      </Button>
-    </div>
-  </div>
-);
-
 /** Render the admin events table structure without pagination. */
 const EventsTableContent = ({
   events,
@@ -526,7 +494,7 @@ const EventsResults = ({
         onReview={onReview}
         reviewingEventId={reviewingEventId}
       />
-      <EventsPagination
+      <AdminPagination
         copy={paginationCopy}
         currentPage={eventsPage}
         onNext={loadNextPage}

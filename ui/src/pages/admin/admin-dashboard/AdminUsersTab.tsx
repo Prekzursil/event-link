@@ -23,6 +23,7 @@ import {
 import { formatDateTime } from '@/lib/utils';
 import type { UserRole } from '@/types';
 import { roleBadgeVariant } from './shared';
+import { AdminPagination, RoleSelectItems } from './adminComponents';
 import type { AdminDashboardController } from './useAdminDashboardController';
 
 type Props = Readonly<{
@@ -32,7 +33,6 @@ type Props = Readonly<{
 type Controller = Props['controller'];
 type UserRecord = Controller['users'][number];
 type UsersCopy = Controller['t']['adminDashboard']['users'];
-type PaginationCopy = Controller['t']['adminDashboard']['pagination'];
 
 type UserRowProps = Readonly<{
   controller: Controller;
@@ -45,15 +45,6 @@ type UsersTableProps = Readonly<{
 }>;
 
 type UserStatusFilter = 'all' | 'active' | 'inactive';
-
-type UsersPaginationProps = Readonly<{
-  copy: PaginationCopy;
-  currentPage: number;
-  onNext: () => void;
-  onPrevious: () => void;
-  totalItems: number;
-  totalPages: number;
-}>;
 
 type UsersContentProps = Readonly<{
   controller: Controller;
@@ -96,9 +87,7 @@ function UserRoleSelect({
         <SelectValue />
       </SelectTrigger>
       <SelectContent>
-        <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-        <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-        <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+        <RoleSelectItems t={t} />
       </SelectContent>
     </Select>
   );
@@ -171,9 +160,7 @@ function UsersRoleFilter({
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="all">{usersCopy.all}</SelectItem>
-          <SelectItem value="student">{t.adminDashboard.roles.student}</SelectItem>
-          <SelectItem value="organizator">{t.adminDashboard.roles.organizer}</SelectItem>
-          <SelectItem value="admin">{t.adminDashboard.roles.admin}</SelectItem>
+          <RoleSelectItems t={t} />
         </SelectContent>
       </Select>
     </div>
@@ -257,32 +244,6 @@ function UsersTable({ controller, users }: UsersTableProps) {
   );
 }
 
-/** Render the shared pagination footer below the admin users table. */
-function UsersPagination({
-  copy,
-  currentPage,
-  onNext,
-  onPrevious,
-  totalItems,
-  totalPages,
-}: UsersPaginationProps) {
-  return (
-    <div className="mt-4 flex items-center justify-between">
-      <p className="text-sm text-muted-foreground">
-        {copy.page} {currentPage} / {totalPages} • {copy.total} {totalItems}
-      </p>
-      <div className="flex gap-2">
-        <Button variant="outline" size="sm" disabled={currentPage <= 1} onClick={onPrevious}>
-          {copy.prev}
-        </Button>
-        <Button variant="outline" size="sm" disabled={currentPage >= totalPages} onClick={onNext}>
-          {copy.next}
-        </Button>
-      </div>
-    </div>
-  );
-}
-
 /** Render the loading, empty, or populated results state for admin users. */
 function UsersContent({ controller, users }: UsersContentProps) {
   const { isLoadingUsers, loadUsers, t, totalUserPages, usersPage, usersTotal } = controller;
@@ -298,7 +259,7 @@ function UsersContent({ controller, users }: UsersContentProps) {
   return (
     <>
       <UsersTable controller={controller} users={users} />
-      <UsersPagination
+      <AdminPagination
         copy={t.adminDashboard.pagination}
         currentPage={usersPage}
         onNext={() => loadUsers(usersPage + 1)}
