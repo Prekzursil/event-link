@@ -1,4 +1,4 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import authService from '@/services/auth.service';
 import { Button } from '@/components/ui/button';
@@ -12,33 +12,23 @@ import {
   CardHeader,
   CardTitle,
 } from '@/components/ui/card';
-import { LoadingSpinner } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
 import type { AxiosError } from 'axios';
 import { useI18n } from '@/contexts/LanguageContext';
+import {
+  AuthCardHeader,
+  AuthPageShell,
+  AuthPasswordInput,
+  AuthSubmitButton,
+  PasswordRequirementsChecklist,
+} from './authComponents';
+import type { PasswordRequirement } from './authShared';
 
 interface ApiError {
   detail?: string;
 }
 
-type PasswordRequirement = {
-  label: string;
-  met: boolean;
-};
 type ResetStrings = ReturnType<typeof useI18n>['t']['auth']['resetAccessCode'];
-
-/** Center reset-password cards inside the shared auth page shell. */
-/**
- * Test helper: reset password page shell.
- */
-function ResetPasswordPageShell({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      {children}
-    </div>
-  );
-}
 
 /** Compare two access codes without exposing timing differences for early mismatches. */
 function constantTimeEquals(left: string, right: string): boolean {
@@ -90,45 +80,6 @@ function showToast(
   toast({ title, description, variant });
 }
 
-/** Render the inline password requirement checklist. */
-function ResetAccessCodeRequirements({
-  requirements,
-}: Readonly<{ requirements: PasswordRequirement[] }>) {
-  return (
-    <div className="space-y-1 pt-2">
-      {requirements.map((requirement) => (
-        <div
-          key={requirement.label}
-          className={`flex items-center gap-2 text-xs ${
-            requirement.met ? 'text-green-600' : 'text-muted-foreground'
-          }`}
-        >
-          <CheckCircle2
-            className={`h-3 w-3 ${requirement.met ? 'text-green-600' : 'text-muted-foreground'}`}
-          />
-          {requirement.label}
-        </div>
-      ))}
-    </div>
-  );
-}
-
-/** Render the icon and copy at the top of the reset-password form card. */
-function ResetPasswordCardHeader({
-  description,
-  title,
-}: Readonly<{ description: string; title: string }>) {
-  return (
-    <CardHeader className="space-y-1 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-        <Calendar className="h-6 w-6 text-primary" />
-      </div>
-      <CardTitle className="text-2xl">{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-  );
-}
-
 /** Render the invalid-link card content that sends users back to the request flow. */
 function ResetAccessCodeInvalidCard({
   invalidTitle,
@@ -165,13 +116,13 @@ function ResetAccessCodeInvalidLink({
   requestNewLink: string;
 }>) {
   return (
-    <ResetPasswordPageShell>
+    <AuthPageShell>
       <ResetAccessCodeInvalidCard
         invalidTitle={invalidTitle}
         invalidDescription={invalidDescription}
         requestNewLink={requestNewLink}
       />
-    </ResetPasswordPageShell>
+    </AuthPageShell>
   );
 }
 
@@ -204,31 +155,15 @@ function ResetAccessCodeFields(
     <>
       <div className="space-y-2">
         <Label htmlFor="password">{resetStrings.newAccessCodeLabel}</Label>
-        <div className="relative">
-          <Input
-            id="password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="••••••••"
-            value={password}
-            onChange={(event) => onPasswordChange(event.target.value)}
-            required
-            disabled={isLoading}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-            onClick={onToggleShowPassword}
-          >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            )}
-          </Button>
-        </div>
-        <ResetAccessCodeRequirements requirements={requirements} />
+        <AuthPasswordInput
+          disabled={isLoading}
+          id="password"
+          onChange={(event) => onPasswordChange(event.target.value)}
+          onToggleShowPassword={onToggleShowPassword}
+          showPassword={showPassword}
+          value={password}
+        />
+        <PasswordRequirementsChecklist requirements={requirements} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">{resetStrings.confirmAccessCodeLabel}</Label>
@@ -259,16 +194,11 @@ function ResetPasswordFormFooter({
 }>) {
   return (
     <CardFooter>
-      <Button type="submit" className="w-full" disabled={isLoading}>
-        {isLoading ? (
-          <>
-            <LoadingSpinner size="sm" className="mr-2" />
-            {resetStrings.submitting}
-          </>
-        ) : (
-          resetStrings.submit
-        )}
-      </Button>
+      <AuthSubmitButton
+        isLoading={isLoading}
+        submitLabel={resetStrings.submit}
+        submittingLabel={resetStrings.submitting}
+      />
     </CardFooter>
   );
 }
@@ -341,12 +271,9 @@ export function ResetPasswordPage() {
   }
 
   return (
-    <ResetPasswordPageShell>
+    <AuthPageShell>
       <Card className="w-full max-w-md">
-        <ResetPasswordCardHeader
-          title={resetStrings.title}
-          description={resetStrings.description}
-        />
+        <AuthCardHeader title={resetStrings.title} description={resetStrings.description} />
         <form onSubmit={handleSubmit}>
           <CardContent className="space-y-4">
             <ResetAccessCodeFields
@@ -364,6 +291,6 @@ export function ResetPasswordPage() {
           <ResetPasswordFormFooter isLoading={isLoading} resetStrings={resetStrings} />
         </form>
       </Card>
-    </ResetPasswordPageShell>
+    </AuthPageShell>
   );
 }

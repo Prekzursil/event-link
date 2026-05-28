@@ -1,29 +1,19 @@
 import { useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
-import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { LoadingSpinner } from '@/components/ui/loading';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
 import { useToast } from '@/hooks/use-toast';
-import { Calendar, Eye, EyeOff, CheckCircle2 } from 'lucide-react';
-import type { AxiosError } from 'axios';
 import { useI18n } from '@/contexts/LanguageContext';
-
-interface ApiError {
-  detail?: string;
-  error?: {
-    message?: string;
-  };
-}
+import {
+  AuthCardHeader,
+  AuthPageShell,
+  AuthPasswordInput,
+  AuthSubmitButton,
+  PasswordRequirementsChecklist,
+} from './authComponents';
+import { describeApiError } from './authShared';
 
 type RegisterTexts = ReturnType<typeof useI18n>['t']['auth']['register'];
 
@@ -80,12 +70,6 @@ function buildPasswordRequirementState(password: string): PasswordRequirementSta
   };
 }
 
-/** Extract the most useful message from an API-shaped auth error. */
-function describeApiError(error: unknown, fallback: string) {
-  const axiosError = error as AxiosError<ApiError>;
-  return axiosError.response?.data?.detail || axiosError.response?.data?.error?.message || fallback;
-}
-
 /** Render the access-code fields and password requirements on the register page. */
 function RegisterAccessCodeFields({
   formData,
@@ -101,46 +85,16 @@ function RegisterAccessCodeFields({
     <>
       <div className="space-y-2">
         <Label htmlFor="password">{texts.accessCodeLabel}</Label>
-        <div className="relative">
-          <Input
-            id="password"
-            name="password"
-            type={showPassword ? 'text' : 'password'}
-            placeholder="••••••••"
-            value={formData.password}
-            onChange={handleChange}
-            required
-            disabled={isLoading}
-          />
-          <Button
-            type="button"
-            variant="ghost"
-            size="icon"
-            className="absolute right-0 top-0 h-full px-3 hover:bg-transparent"
-            onClick={toggleShowPassword}
-          >
-            {showPassword ? (
-              <EyeOff className="h-4 w-4 text-muted-foreground" />
-            ) : (
-              <Eye className="h-4 w-4 text-muted-foreground" />
-            )}
-          </Button>
-        </div>
-        <div className="space-y-1 pt-2">
-          {passwordRequirements.map((req) => (
-            <div
-              key={req.label}
-              className={`flex items-center gap-2 text-xs ${
-                req.met ? 'text-green-600' : 'text-muted-foreground'
-              }`}
-            >
-              <CheckCircle2
-                className={`h-3 w-3 ${req.met ? 'text-green-600' : 'text-muted-foreground'}`}
-              />
-              {req.label}
-            </div>
-          ))}
-        </div>
+        <AuthPasswordInput
+          disabled={isLoading}
+          id="password"
+          name="password"
+          onChange={handleChange}
+          onToggleShowPassword={toggleShowPassword}
+          showPassword={showPassword}
+          value={formData.password}
+        />
+        <PasswordRequirementsChecklist requirements={passwordRequirements} />
       </div>
       <div className="space-y-2">
         <Label htmlFor="confirmPassword">{texts.confirmAccessCodeLabel}</Label>
@@ -159,46 +113,6 @@ function RegisterAccessCodeFields({
         )}
       </div>
     </>
-  );
-}
-
-/** Render the icon and copy at the top of the registration card. */
-function RegisterCardHeader({
-  description,
-  title,
-}: Readonly<{ description: string; title: string }>) {
-  return (
-    <CardHeader className="space-y-1 text-center">
-      <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-        <Calendar className="h-6 w-6 text-primary" />
-      </div>
-      <CardTitle className="text-2xl">{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-  );
-}
-
-/** Render the registration submit button and its loading state. */
-function RegisterSubmitButton({
-  isLoading,
-  submitLabel,
-  submittingLabel,
-}: Readonly<{
-  isLoading: boolean;
-  submitLabel: string;
-  submittingLabel: string;
-}>) {
-  return (
-    <Button type="submit" className="w-full" disabled={isLoading}>
-      {isLoading ? (
-        <>
-          <LoadingSpinner size="sm" className="mr-2" />
-          {submittingLabel}
-        </>
-      ) : (
-        submitLabel
-      )}
-    </Button>
   );
 }
 
@@ -273,7 +187,7 @@ function RegisterFormFooter({
 }>) {
   return (
     <CardFooter className="flex flex-col gap-4">
-      <RegisterSubmitButton
+      <AuthSubmitButton
         isLoading={isLoading}
         submitLabel={texts.submit}
         submittingLabel={texts.submitting}
@@ -296,7 +210,7 @@ function RegisterFormCard({
 }: RegisterFormCardProps) {
   return (
     <Card className="w-full max-w-md">
-      <RegisterCardHeader title={texts.title} description={texts.description} />
+      <AuthCardHeader title={texts.title} description={texts.description} />
       <form onSubmit={handleSubmit}>
         <CardContent className="space-y-4">
           <RegisterIdentityFields
@@ -396,9 +310,8 @@ export function RegisterPage() {
     }
   };
 
-  // skipcq: JS-0415 - the registration route intentionally keeps loading and form states together.
   return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
+    <AuthPageShell>
       <RegisterFormCard
         formData={formData}
         handleChange={handleChange}
@@ -409,6 +322,6 @@ export function RegisterPage() {
         texts={t.auth.register}
         toggleShowPassword={() => setShowPassword(!showPassword)}
       />
-    </div>
+    </AuthPageShell>
   );
 }

@@ -1,68 +1,21 @@
-import { useState, type ReactNode } from 'react';
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import authService from '@/services/auth.service';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { LoadingSpinner } from '@/components/ui/loading';
-import { Calendar, ArrowLeft, CheckCircle } from 'lucide-react';
+import { Card, CardContent, CardFooter } from '@/components/ui/card';
+import { ArrowLeft, CheckCircle } from 'lucide-react';
 import { useI18n } from '@/contexts/LanguageContext';
+import { AuthBrandIcon, AuthCardHeader, AuthPageShell, AuthSubmitButton } from './authComponents';
 
 type ForgotPasswordTexts = ReturnType<typeof useI18n>['t']['auth']['forgotAccessCode'];
-
-/** Center auth-page cards inside the shared route shell. */
-/**
- * Test helper: forgot password page shell.
- */
-function ForgotPasswordPageShell({ children }: Readonly<{ children: ReactNode }>) {
-  return (
-    <div className="flex min-h-[calc(100vh-8rem)] items-center justify-center px-4 py-12">
-      {children}
-    </div>
-  );
-}
-
-/** Render the shared card header used on the forgot-password flow. */
-function ForgotPasswordCardHeader({
-  description,
-  icon,
-  title,
-}: Readonly<{
-  description: ReactNode;
-  icon: ReactNode;
-  title: string;
-}>) {
-  return (
-    <CardHeader className="space-y-1 text-center">
-      {icon}
-      <CardTitle className="text-2xl">{title}</CardTitle>
-      <CardDescription>{description}</CardDescription>
-    </CardHeader>
-  );
-}
 
 /** Render the success-state icon shown after requesting a reset link. */
 function ForgotPasswordSuccessIcon() {
   return (
     <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
       <CheckCircle className="h-6 w-6 text-green-600" />
-    </div>
-  );
-}
-
-/** Render the default icon shown on the forgot-password request form. */
-function ForgotPasswordRequestIcon() {
-  return (
-    <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
-      <Calendar className="h-6 w-6 text-primary" />
     </div>
   );
 }
@@ -89,30 +42,6 @@ function ForgotPasswordInlineBackLink({ label }: Readonly<{ label: string }>) {
       <ArrowLeft className="mr-2 h-4 w-4" />
       {label}
     </Link>
-  );
-}
-
-/** Render the submit button and its loading state on the request form. */
-function ForgotPasswordSubmitButton({
-  isLoading,
-  submitLabel,
-  submittingLabel,
-}: Readonly<{
-  isLoading: boolean;
-  submitLabel: string;
-  submittingLabel: string;
-}>) {
-  return (
-    <Button type="submit" className="w-full" disabled={isLoading}>
-      {isLoading ? (
-        <>
-          <LoadingSpinner size="sm" className="mr-2" />
-          {submittingLabel}
-        </>
-      ) : (
-        submitLabel
-      )}
-    </Button>
   );
 }
 
@@ -154,7 +83,7 @@ function ForgotPasswordFormFooter({
 }>) {
   return (
     <CardFooter className="flex flex-col gap-4">
-      <ForgotPasswordSubmitButton
+      <AuthSubmitButton
         isLoading={isLoading}
         submitLabel={texts.submit}
         submittingLabel={texts.submitting}
@@ -174,7 +103,7 @@ function ForgotPasswordSubmittedCard({
 }>) {
   return (
     <Card className="w-full max-w-md">
-      <ForgotPasswordCardHeader
+      <AuthCardHeader
         icon={<ForgotPasswordSuccessIcon />}
         title={texts.submittedTitle}
         description={
@@ -207,8 +136,8 @@ function ForgotPasswordFormCard({
 }>) {
   return (
     <Card className="w-full max-w-md">
-      <ForgotPasswordCardHeader
-        icon={<ForgotPasswordRequestIcon />}
+      <AuthCardHeader
+        icon={<AuthBrandIcon />}
         title={texts.title}
         description={texts.description}
       />
@@ -252,14 +181,14 @@ export function ForgotPasswordPage() {
 
   if (isSubmitted) {
     return (
-      <ForgotPasswordPageShell>
+      <AuthPageShell>
         <ForgotPasswordSubmittedCard email={email} texts={t.auth.forgotAccessCode} />
-      </ForgotPasswordPageShell>
+      </AuthPageShell>
     );
   }
 
   return (
-    <ForgotPasswordPageShell>
+    <AuthPageShell>
       <ForgotPasswordFormCard
         email={email}
         isLoading={isLoading}
@@ -267,6 +196,6 @@ export function ForgotPasswordPage() {
         onSubmit={handleSubmit}
         texts={t.auth.forgotAccessCode}
       />
-    </ForgotPasswordPageShell>
+    </AuthPageShell>
   );
 }
