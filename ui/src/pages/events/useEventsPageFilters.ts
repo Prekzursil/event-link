@@ -45,19 +45,30 @@ function resolveSort(
   return isAuthenticated && role === 'student' && RECOMMENDATIONS_ENABLED ? 'recommended' : 'time';
 }
 
+/** Reads a string query parameter, defaulting to '' when absent or blank. */
+function readStringParam(searchParams: URLSearchParams, key: string): string {
+  return searchParams.get(key) || '';
+}
+
+/** Reads an integer query parameter, falling back to the provided default. */
+function readIntParam(searchParams: URLSearchParams, key: string, fallback: number): number {
+  return Number.parseInt(readStringParam(searchParams, key) || String(fallback), 10);
+}
+
 /** Derives filter inputs from the search parameters using simple fallbacks. */
 function readScalarFilters(searchParams: URLSearchParams) {
+  const str = (key: string) => readStringParam(searchParams, key);
   return {
-    search: searchParams.get('search') || '',
-    category: searchParams.get('category') || '',
-    start_date: searchParams.get('start_date') || '',
-    end_date: searchParams.get('end_date') || '',
-    city: searchParams.get('city') || '',
-    location: searchParams.get('location') || '',
-    tagsParam: searchParams.get('tags') || '',
-    sortParam: searchParams.get('sort') || '',
-    page: Number.parseInt(searchParams.get('page') || '1', 10),
-    page_size: Number.parseInt(searchParams.get('page_size') || '12', 10),
+    search: str('search'),
+    category: str('category'),
+    start_date: str('start_date'),
+    end_date: str('end_date'),
+    city: str('city'),
+    location: str('location'),
+    tagsParam: str('tags'),
+    sortParam: str('sort'),
+    page: readIntParam(searchParams, 'page', 1),
+    page_size: readIntParam(searchParams, 'page_size', 12),
   };
 }
 
@@ -131,12 +142,12 @@ export function useEventsPageFilters(options: UseFiltersOptions): EventsPageFilt
 
   const hasActiveFilters = Boolean(
     filters.search ||
-      filters.category ||
-      filters.start_date ||
-      filters.end_date ||
-      filters.city ||
-      filters.location ||
-      filters.tags.length > 0,
+    filters.category ||
+    filters.start_date ||
+    filters.end_date ||
+    filters.city ||
+    filters.location ||
+    filters.tags.length > 0,
   );
   const selectedDateRange = {
     from: parseQueryDate(filters.start_date),

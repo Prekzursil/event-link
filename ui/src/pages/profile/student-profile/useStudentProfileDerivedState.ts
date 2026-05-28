@@ -51,6 +51,24 @@ function groupInterestTags(allTags: Tag[]): InterestTagGroups {
   };
 }
 
+type PersonalizationDerived = Readonly<{
+  blockedOrganizers: PersonalizationSettings['blocked_organizers'];
+  currentPersonalization: PersonalizationSettings | null;
+  hiddenTags: PersonalizationSettings['hidden_tags'];
+}>;
+
+/** Normalize the personalization payload into its derived list fields. */
+function derivePersonalization(
+  personalization: PersonalizationSettings | null,
+): PersonalizationDerived {
+  const currentPersonalization = personalization ?? null;
+  return {
+    blockedOrganizers: currentPersonalization?.blocked_organizers ?? [],
+    currentPersonalization,
+    hiddenTags: currentPersonalization?.hidden_tags ?? [],
+  };
+}
+
 /** Compute the memoized option collections derived from the current profile state. */
 function buildDerivedCollections({
   language,
@@ -61,15 +79,12 @@ function buildDerivedCollections({
   universityCatalog,
 }: Omit<DerivedStateArgs, 'allTags'>): DerivedCollections {
   const selectedUniversity = findSelectedUniversity(university, universityCatalog);
-  const currentPersonalization = personalization ?? null;
 
   return {
-    blockedOrganizers: currentPersonalization?.blocked_organizers ?? [],
+    ...derivePersonalization(personalization),
     cityOptions: buildCityOptions(universityCatalog, language),
     currentNotificationPreferences: notificationPrefs ?? null,
-    currentPersonalization,
     facultyOptions: selectedUniversity?.faculties ?? [],
-    hiddenTags: currentPersonalization?.hidden_tags ?? [],
     selectedUniversity,
     studyYearOptions: buildStudyYearOptions(studyLevel, MAX_YEARS_BY_LEVEL),
   };
