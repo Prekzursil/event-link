@@ -2,10 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderLanguageRoute } from './page-test-helpers';
-import {
-  AdminDashboardPage,
-  getMegaPagesSmokeFixtures,
-} from './mega-pages-smoke.shared';
+import { AdminDashboardPage, getMegaPagesSmokeFixtures } from './mega-pages-smoke.shared';
 
 const { adminServiceMock } = getMegaPagesSmokeFixtures();
 

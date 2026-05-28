@@ -1,50 +1,50 @@
-import React from 'react'
+import React from 'react';
 
 type SelectContextValue = {
-  onValueChange?: (value: string) => void
-  disabled?: boolean
-}
+  onValueChange?: (value: string) => void;
+  disabled?: boolean;
+};
 
 type SelectProps = {
-  children: React.ReactNode
-  onValueChange?: (value: string) => void
-  disabled?: boolean
-}
+  children: React.ReactNode;
+  onValueChange?: (value: string) => void;
+  disabled?: boolean;
+};
 
 type SelectValueProps = {
-  placeholder?: string
-}
+  placeholder?: string;
+};
 
 type SelectContentProps = {
-  children: React.ReactNode
-}
+  children: React.ReactNode;
+};
 
 type SelectItemProps = {
-  value: string
-  children: React.ReactNode
-}
+  value: string;
+  children: React.ReactNode;
+};
 
 type DropdownMenuItemProps = {
-  children: React.ReactNode
-  onClick?: () => void
-  onSelect?: () => void
-  disabled?: boolean
-}
+  children: React.ReactNode;
+  onClick?: () => void;
+  onSelect?: () => void;
+  disabled?: boolean;
+};
 
 type CheckboxProps = {
-  checked?: boolean
-  disabled?: boolean
-  onCheckedChange?: (value: boolean) => void
-}
+  checked?: boolean;
+  disabled?: boolean;
+  onCheckedChange?: (value: boolean) => void;
+};
 
 type CalendarRange = {
-  from?: Date
-  to?: Date
-}
+  from?: Date;
+  to?: Date;
+};
 
 type CalendarProps = {
-  onSelect?: (range: CalendarRange) => void
-}
+  onSelect?: (range: CalendarRange) => void;
+};
 
 /**
  * Create test doubles for the select primitives used across page-level tests.
@@ -55,16 +55,16 @@ type CalendarProps = {
  * Test helper: create select mock module.
  */
 export function createSelectMockModule() {
-  const SelectContext = React.createContext<SelectContextValue>({})
+  const SelectContext = React.createContext<SelectContextValue>({});
 
   /** Provide select context state to descendant mock controls. */
   function Select({ children, onValueChange, disabled }: Readonly<SelectProps>) {
     const selectContextValue = React.useMemo(
       () => ({ onValueChange, disabled }),
       [disabled, onValueChange],
-    )
+    );
 
-    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>
+    return <SelectContext.Provider value={selectContextValue}>{children}</SelectContext.Provider>;
   }
 
   /** Render the interactive trigger button for the select mock. */
@@ -73,45 +73,49 @@ export function createSelectMockModule() {
       <button type="button" {...props}>
         {children}
       </button>
-    )
+    );
   }
 
   /** Render the current value or placeholder for the select mock. */
   function SelectValue({ placeholder }: Readonly<SelectValueProps>) {
-    return <span>{placeholder ?? 'value'}</span>
+    return <span>{placeholder ?? 'value'}</span>;
   }
 
   /** Render the option list container for the select mock. */
   function SelectContent({ children }: Readonly<SelectContentProps>) {
-    return <div>{children}</div>
+    return <div>{children}</div>;
   }
 
   /** Render one selectable option in the select mock. */
   function SelectItem({ value, children }: Readonly<SelectItemProps>) {
-    const context = React.useContext(SelectContext)
+    const context = React.useContext(SelectContext);
     return (
-      <button type="button" disabled={context.disabled} onClick={() => context.onValueChange?.(value)}>
+      <button
+        type="button"
+        disabled={context.disabled}
+        onClick={() => context.onValueChange?.(value)}
+      >
         {children}
       </button>
-    )
+    );
   }
 
-  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem }
+  return { Select, SelectTrigger, SelectValue, SelectContent, SelectItem };
 }
 
 /** Render the dropdown-menu container used across page-level tests. */
 function DropdownMenuMock({ children }: Readonly<SelectContentProps>) {
-  return <div>{children}</div>
+  return <div>{children}</div>;
 }
 
 /** Render the dropdown trigger used across page-level tests. */
 function DropdownMenuTriggerMock({ children }: Readonly<SelectContentProps>) {
-  return React.isValidElement(children) ? children : <span>{children}</span>
+  return React.isValidElement(children) ? children : <span>{children}</span>;
 }
 
 /** Render the dropdown content wrapper used across page-level tests. */
 function DropdownMenuContentMock({ children }: Readonly<SelectContentProps>) {
-  return <div>{children}</div>
+  return <div>{children}</div>;
 }
 
 /** Render one actionable dropdown menu item for page-level tests. */
@@ -126,23 +130,23 @@ function DropdownMenuItemMock({
       type="button"
       disabled={disabled}
       onClick={() => {
-        onSelect?.()
-        onClick?.()
+        onSelect?.();
+        onClick?.();
       }}
     >
       {children}
     </button>
-  )
+  );
 }
 
 /** Render a dropdown label container for page-level tests. */
 function DropdownMenuLabelMock({ children }: Readonly<SelectContentProps>) {
-  return <div>{children}</div>
+  return <div>{children}</div>;
 }
 
 /** Render a dropdown separator for page-level tests. */
 function DropdownMenuSeparatorMock() {
-  return <hr />
+  return <hr />;
 }
 
 /**
@@ -158,7 +162,7 @@ export function createDropdownMenuMockModule() {
     DropdownMenuItem: DropdownMenuItemMock,
     DropdownMenuLabel: DropdownMenuLabelMock,
     DropdownMenuSeparator: DropdownMenuSeparatorMock,
-  }
+  };
 }
 
 /** Render a checkbox primitive that toggles boolean state in tests. */
@@ -176,7 +180,7 @@ function CheckboxMock({
       onChange={() => onCheckedChange?.(!checked)}
       {...rest}
     />
-  )
+  );
 }
 
 /**
@@ -187,7 +191,7 @@ function CheckboxMock({
 export function createCheckboxMockModule() {
   return {
     Checkbox: CheckboxMock,
-  }
+  };
 }
 
 /** Render a calendar primitive that emits a fixed date range in tests. */
@@ -209,7 +213,7 @@ function CalendarMock({ onSelect }: Readonly<CalendarProps>) {
         Clear range
       </button>
     </div>
-  )
+  );
 }
 
 /**
@@ -220,5 +224,5 @@ function CalendarMock({ onSelect }: Readonly<CalendarProps>) {
 export function createCalendarMockModule() {
   return {
     Calendar: CalendarMock,
-  }
+  };
 }

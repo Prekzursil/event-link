@@ -94,7 +94,9 @@ function EventMetaGrid({ event, language, t }: Pick<Props, 'event' | 'language' 
           <MapPin className="h-5 w-5 text-primary" />
           <div>
             <p className="text-sm text-muted-foreground">{t.eventDetail.locationLabel}</p>
-            <p className="font-medium">{[event.city, event.location].filter(Boolean).join(' • ')}</p>
+            <p className="font-medium">
+              {[event.city, event.location].filter(Boolean).join(' • ')}
+            </p>
           </div>
         </div>
       )}

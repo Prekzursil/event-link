@@ -1,11 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
 
-import {
-  defineMutableValue,
-  renderLanguageRoute,
-  requireElement,
-} from './page-test-helpers';
+import { defineMutableValue, renderLanguageRoute, requireElement } from './page-test-helpers';
 import { EventDetailPage, getEventDetailFixtures } from './event-detail-branches.shared';
 
 const { authState, eventServiceMock, navigateSpy, toastSpy } = getEventDetailFixtures();

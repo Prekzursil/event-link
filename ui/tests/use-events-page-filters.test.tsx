@@ -123,9 +123,7 @@ describe('useEventsPageFilters', () => {
         }),
       {
         wrapper: ({ children }) => (
-          <MemoryRouter
-            initialEntries={['/events?start_date=2030-05-01&end_date=2030-05-10']}
-          >
+          <MemoryRouter initialEntries={['/events?start_date=2030-05-01&end_date=2030-05-10']}>
             {children}
           </MemoryRouter>
         ),

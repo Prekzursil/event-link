@@ -92,7 +92,6 @@ type ParticipantsPaginationProps = Readonly<{
   totalPages: number;
 }>;
 
-
 /** Render the organizer summary header with counts and participant actions. */
 function ParticipantsOverviewHeader({
   attendedCount,
@@ -115,7 +114,8 @@ function ParticipantsOverviewHeader({
       <div className="flex items-center gap-4">
         <Badge variant="outline">
           {participantData.seats_taken}
-          {participantData.max_seats && ` / ${participantData.max_seats}`} {t.participants.registeredSuffix}
+          {participantData.max_seats && ` / ${participantData.max_seats}`}{' '}
+          {t.participants.registeredSuffix}
         </Badge>
         <Badge variant="secondary">
           {attendedCount} {t.participants.attendedSuffix}
@@ -226,7 +226,9 @@ function ParticipantsLoadingState({ t }: Readonly<{ t: ParticipantsTexts }>) {
         <CardHeader>
           <ParticipantsLoadingHeader />
         </CardHeader>
-        <CardContent><ParticipantsLoadingRows /></CardContent>
+        <CardContent>
+          <ParticipantsLoadingRows />
+        </CardContent>
       </Card>
       <span className="sr-only">{t.participants.title}</span>
     </div>
@@ -362,7 +364,12 @@ function ParticipantsTableBodyContent({
   updatingAttendance,
 }: Pick<
   ParticipantsTableProps,
-  'data' | 'handleAttendanceChange' | 'isLoading' | 'language' | 'skeletonRowKeys' | 'updatingAttendance'
+  | 'data'
+  | 'handleAttendanceChange'
+  | 'isLoading'
+  | 'language'
+  | 'skeletonRowKeys'
+  | 'updatingAttendance'
 >) {
   return (
     <TableBody>
@@ -501,7 +508,11 @@ function ParticipantsPagination({
     <div className="mt-4 flex items-center justify-between">
       <div className="flex items-center gap-2">
         <span className="text-sm text-muted-foreground">{t.participants.perPage}</span>
-        <ParticipantsPageSizeSelect pageSize={pageSize} setPage={setPage} setPageSize={setPageSize} />
+        <ParticipantsPageSizeSelect
+          pageSize={pageSize}
+          setPage={setPage}
+          setPageSize={setPageSize}
+        />
       </div>
       <ParticipantsPageButtons page={page} setPage={setPage} t={t} totalPages={totalPages} />
     </div>

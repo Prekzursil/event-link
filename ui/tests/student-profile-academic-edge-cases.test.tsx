@@ -37,9 +37,7 @@ it('covers StudentProfilePage sparse fallbacks and academic edge branches', asyn
       ],
     }),
   );
-  eventServiceMock.getNotificationPreferences.mockResolvedValueOnce(
-    makeNotificationPreferences(),
-  );
+  eventServiceMock.getNotificationPreferences.mockResolvedValueOnce(makeNotificationPreferences());
   eventServiceMock.getUniversityCatalog.mockResolvedValueOnce([
     { name: 'UTCN', city: 'Cluj', faculties: ['Automatica'] },
     { name: 'No City University', city: '', faculties: ['Letters'] },
@@ -114,12 +112,8 @@ it('covers StudentProfilePage sparse fallbacks and academic edge branches', asyn
       study_year: 2,
     }),
   );
-  eventServiceMock.getPersonalizationSettings.mockResolvedValueOnce(
-    makePersonalizationSettings(),
-  );
-  eventServiceMock.getNotificationPreferences.mockResolvedValueOnce(
-    makeNotificationPreferences(),
-  );
+  eventServiceMock.getPersonalizationSettings.mockResolvedValueOnce(makePersonalizationSettings());
+  eventServiceMock.getNotificationPreferences.mockResolvedValueOnce(makeNotificationPreferences());
   eventServiceMock.getUniversityCatalog.mockResolvedValueOnce([
     { name: 'UTCN', city: 'Cluj', faculties: ['Automatica'] },
     { name: 'No Faculty University', city: 'Iasi', faculties: [] },

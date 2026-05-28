@@ -95,21 +95,18 @@ export function useStudentProfileDerivedState({
     hiddenTags,
     selectedUniversity,
     studyYearOptions,
-  } = useMemo(() => buildDerivedCollections({
-    language,
-    notificationPrefs,
-    personalization,
-    studyLevel,
-    university,
-    universityCatalog,
-  }), [
-    language,
-    notificationPrefs,
-    personalization,
-    studyLevel,
-    university,
-    universityCatalog,
-  ]);
+  } = useMemo(
+    () =>
+      buildDerivedCollections({
+        language,
+        notificationPrefs,
+        personalization,
+        studyLevel,
+        university,
+        universityCatalog,
+      }),
+    [language, notificationPrefs, personalization, studyLevel, university, universityCatalog],
+  );
 
   return {
     blockedOrganizers,

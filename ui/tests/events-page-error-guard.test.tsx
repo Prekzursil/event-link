@@ -2,11 +2,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import { renderLanguageRoute } from './page-test-helpers';
-import {
-  EventsPage,
-  getEventPagesFixtures,
-  makeEvent,
-} from './events-form-and-events-page.shared';
+import { EventsPage, getEventPagesFixtures, makeEvent } from './events-form-and-events-page.shared';
 
 const { authState, eventServiceMock, toastSpy } = getEventPagesFixtures();
 

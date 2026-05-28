@@ -29,13 +29,8 @@ const eventPagesFixtures = vi.hoisted(() => ({
   },
 }));
 
-const {
-  toastSpy,
-  navigateSpy,
-  recordInteractionsSpy,
-  eventServiceMock,
-  authState,
-} = eventPagesFixtures;
+const { toastSpy, navigateSpy, recordInteractionsSpy, eventServiceMock, authState } =
+  eventPagesFixtures;
 
 vi.mock('@/services/event.service', () => ({ default: eventServiceMock }));
 vi.mock('@/services/analytics.service', () => ({ recordInteractions: recordInteractionsSpy }));
@@ -99,7 +94,10 @@ export function getEventPagesFixtures() {
 /**
  * Returns the form value or fails loudly when absent.
  */
-export function requireForm(buttonName: RegExp, screen: typeof import('@testing-library/react').screen) {
+export function requireForm(
+  buttonName: RegExp,
+  screen: typeof import('@testing-library/react').screen,
+) {
   const form = screen.getByRole('button', { name: buttonName }).closest('form');
   if (!(form instanceof HTMLFormElement)) {
     throw new TypeError(`Expected a form for ${buttonName.toString()}`);
@@ -140,18 +138,26 @@ beforeEach(() => {
   authState.isAuthenticated = true;
   authState.user = { id: 1, role: 'student', email: 'student@test.local' };
 
-  eventServiceMock.getEvents.mockImplementation((filters: { sort?: string; page_size?: number }) => {
-    if (filters?.sort === 'recommended' && filters?.page_size === 4) {
+  eventServiceMock.getEvents.mockImplementation(
+    (filters: { sort?: string; page_size?: number }) => {
+      if (filters?.sort === 'recommended' && filters?.page_size === 4) {
+        return Promise.resolve({
+          items: [makeEvent(90, 'Recommended 90')],
+          total: 1,
+          page: 1,
+          page_size: 4,
+          total_pages: 1,
+        });
+      }
       return Promise.resolve({
-        items: [makeEvent(90, 'Recommended 90')],
+        items: [makeEvent(1)],
         total: 1,
         page: 1,
-        page_size: 4,
+        page_size: 12,
         total_pages: 1,
       });
-    }
-    return Promise.resolve({ items: [makeEvent(1)], total: 1, page: 1, page_size: 12, total_pages: 1 });
-  });
+    },
+  );
   eventServiceMock.getFavorites.mockResolvedValue({ items: [makeEvent(90, 'Recommended 90')] });
   eventServiceMock.addToFavorites.mockResolvedValue();
   eventServiceMock.removeFromFavorites.mockResolvedValue();
@@ -160,7 +166,15 @@ beforeEach(() => {
     suggested_category: 'Technical',
     suggested_city: 'Cluj',
     suggested_tags: ['AI', 'Campus'],
-    duplicates: [{ id: 200, title: 'Duplicate', start_time: new Date().toISOString(), city: 'Cluj', similarity: 0.95 }],
+    duplicates: [
+      {
+        id: 200,
+        title: 'Duplicate',
+        start_time: new Date().toISOString(),
+        city: 'Cluj',
+        similarity: 0.95,
+      },
+    ],
     moderation_score: 0.1,
     moderation_flags: ['potential_spam'],
     moderation_status: 'flagged',

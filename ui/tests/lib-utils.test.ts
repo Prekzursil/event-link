@@ -126,7 +126,10 @@ describe('lib helpers', () => {
 
     Object.defineProperty(globalThis, 'window', { configurable: true, value: originalWindow });
     Object.defineProperty(globalThis, 'document', { configurable: true, value: originalDocument });
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: originalNavigator });
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
 
     Object.defineProperty(globalThis, 'navigator', {
       configurable: true,
@@ -146,7 +149,10 @@ describe('lib helpers', () => {
     });
     expect(getSystemLanguage()).toBe('ro');
 
-    Object.defineProperty(globalThis, 'navigator', { configurable: true, value: originalNavigator });
+    Object.defineProperty(globalThis, 'navigator', {
+      configurable: true,
+      value: originalNavigator,
+    });
   });
 
   it('covers formatting utilities and category label lookup', () => {

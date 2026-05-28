@@ -2,14 +2,10 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import { getEventDetailFixtures } from './event-detail-branches.shared';
-import {
-  makeEvent,
-  renderEventDetail,
-} from './event-detail-owner-preferences.shared';
+import { makeEvent, renderEventDetail } from './event-detail-owner-preferences.shared';
 import { requireElement } from './page-test-helpers';
 
-const { eventServiceMock, recordInteractionsSpy, toastSpy } =
-  getEventDetailFixtures();
+const { eventServiceMock, recordInteractionsSpy, toastSpy } = getEventDetailFixtures();
 
 it('covers favorite removal and hide-tag success and error branches', async () => {
   eventServiceMock.getEvent.mockResolvedValueOnce(

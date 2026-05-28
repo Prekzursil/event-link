@@ -2,10 +2,7 @@ import { fireEvent, screen } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import { renderLanguageRoute } from './page-test-helpers';
-import {
-  EventFormPage,
-  getEventPagesFixtures,
-} from './events-form-and-events-page.shared';
+import { EventFormPage, getEventPagesFixtures } from './events-form-and-events-page.shared';
 
 const { navigateSpy } = getEventPagesFixtures();
 

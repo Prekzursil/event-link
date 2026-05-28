@@ -56,7 +56,7 @@ export function EventCard({
       size="icon"
       className={cn(
         'absolute right-2 top-2 bg-background/80 backdrop-blur-sm hover:bg-background',
-        isFavorite && 'text-red-500'
+        isFavorite && 'text-red-500',
       )}
       onClick={handleFavoriteClick}
     >
@@ -87,7 +87,7 @@ export function EventCard({
           alt={event.title}
           className={cn(
             'h-full w-full object-cover transition-transform group-hover:scale-105',
-            isPast && 'grayscale-[30%]'
+            isPast && 'grayscale-[30%]',
           )}
           onError={(e) => {
             (e.target as HTMLImageElement).src =
@@ -155,9 +155,7 @@ export function EventCard({
             {getEventCategoryLabel(event.category, language)}
           </Badge>
         )}
-        <h3 className="line-clamp-2 text-lg font-semibold leading-tight">
-          {event.title}
-        </h3>
+        <h3 className="line-clamp-2 text-lg font-semibold leading-tight">{event.title}</h3>
       </CardHeader>
 
       <CardContent className="space-y-2 pb-2">
@@ -178,10 +176,7 @@ export function EventCard({
 
   return (
     <Card
-      className={cn(
-        'group overflow-hidden transition-all hover:shadow-lg',
-        isPast && 'opacity-75'
-      )}
+      className={cn('group overflow-hidden transition-all hover:shadow-lg', isPast && 'opacity-75')}
     >
       {cardLink}
     </Card>

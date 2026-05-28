@@ -6,7 +6,9 @@ import { renderLanguageRoute } from './page-test-helpers';
 import { getHighImpactPageFixtures } from './high-impact-pages-coverage.fixtures';
 
 const { authState, eventServiceMock } = getHighImpactPageFixtures();
-const { useStudentProfileController } = await import('@/pages/profile/student-profile/useStudentProfileController');
+const { useStudentProfileController } = await import(
+  '@/pages/profile/student-profile/useStudentProfileController'
+);
 
 /** Capture the loaded student-profile controller so guard methods can be exercised directly. */
 /**

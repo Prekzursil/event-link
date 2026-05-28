@@ -15,76 +15,66 @@ describe('main entry bootstrap', () => {
     });
   });
 
-  it(
-    'covers main.tsx bootstrap',
-    async () => {
-      vi.resetModules();
+  it('covers main.tsx bootstrap', async () => {
+    vi.resetModules();
 
-      document.body.innerHTML = '<div id="root"></div>';
+    document.body.innerHTML = '<div id="root"></div>';
 
-      const renderSpy = vi.fn();
-      const createRootSpy = vi.fn(() => ({ render: renderSpy }));
-      const applyThemePreferenceSpy = vi.fn();
-      const getStoredThemePreferenceSpy = vi.fn(() => 'dark');
+    const renderSpy = vi.fn();
+    const createRootSpy = vi.fn(() => ({ render: renderSpy }));
+    const applyThemePreferenceSpy = vi.fn();
+    const getStoredThemePreferenceSpy = vi.fn(() => 'dark');
 
-      vi.doMock('react-dom/client', () => ({
-        createRoot: createRootSpy,
-      }));
+    vi.doMock('react-dom/client', () => ({
+      createRoot: createRootSpy,
+    }));
 
-      vi.doMock('@/lib/theme', () => ({
-        applyThemePreference: applyThemePreferenceSpy,
-        getStoredThemePreference: getStoredThemePreferenceSpy,
-      }));
+    vi.doMock('@/lib/theme', () => ({
+      applyThemePreference: applyThemePreferenceSpy,
+      getStoredThemePreference: getStoredThemePreferenceSpy,
+    }));
 
-      vi.doMock('../src/App.tsx', () => ({
-        default: () => null,
-      }));
+    vi.doMock('../src/App.tsx', () => ({
+      default: () => null,
+    }));
 
-      vi.doMock('../src/index.css', () => ({}));
+    vi.doMock('../src/index.css', () => ({}));
 
-      await import('../src/main.tsx');
+    await import('../src/main.tsx');
 
-      expect(getStoredThemePreferenceSpy).toHaveBeenCalledTimes(1);
-      expect(applyThemePreferenceSpy).toHaveBeenCalledWith('dark');
-      expect(createRootSpy).toHaveBeenCalledTimes(1);
-      expect(renderSpy).toHaveBeenCalledTimes(1);
-    },
-    30000,
-  );
+    expect(getStoredThemePreferenceSpy).toHaveBeenCalledTimes(1);
+    expect(applyThemePreferenceSpy).toHaveBeenCalledWith('dark');
+    expect(createRootSpy).toHaveBeenCalledTimes(1);
+    expect(renderSpy).toHaveBeenCalledTimes(1);
+  }, 30000);
 
-  it(
-    'throws when the root element is missing',
-    async () => {
-      vi.resetModules();
+  it('throws when the root element is missing', async () => {
+    vi.resetModules();
 
-      document.body.innerHTML = '';
+    document.body.innerHTML = '';
 
-      const createRootSpy = vi.fn();
-      const applyThemePreferenceSpy = vi.fn();
-      const getStoredThemePreferenceSpy = vi.fn(() => 'dark');
+    const createRootSpy = vi.fn();
+    const applyThemePreferenceSpy = vi.fn();
+    const getStoredThemePreferenceSpy = vi.fn(() => 'dark');
 
-      vi.doMock('react-dom/client', () => ({
-        createRoot: createRootSpy,
-      }));
+    vi.doMock('react-dom/client', () => ({
+      createRoot: createRootSpy,
+    }));
 
-      vi.doMock('@/lib/theme', () => ({
-        applyThemePreference: applyThemePreferenceSpy,
-        getStoredThemePreference: getStoredThemePreferenceSpy,
-      }));
+    vi.doMock('@/lib/theme', () => ({
+      applyThemePreference: applyThemePreferenceSpy,
+      getStoredThemePreference: getStoredThemePreferenceSpy,
+    }));
 
-      vi.doMock('../src/App.tsx', () => ({
-        default: () => null,
-      }));
+    vi.doMock('../src/App.tsx', () => ({
+      default: () => null,
+    }));
 
-      vi.doMock('../src/index.css', () => ({}));
+    vi.doMock('../src/index.css', () => ({}));
 
-      await expect(import('../src/main.tsx')).rejects.toThrow(
-        'Missing root element',
-      );
-      expect(getStoredThemePreferenceSpy).toHaveBeenCalledTimes(1);
-      expect(applyThemePreferenceSpy).toHaveBeenCalledWith('dark');
-      expect(createRootSpy).not.toHaveBeenCalled();
-    },
-    30000,
-  );
+    await expect(import('../src/main.tsx')).rejects.toThrow('Missing root element');
+    expect(getStoredThemePreferenceSpy).toHaveBeenCalledTimes(1);
+    expect(applyThemePreferenceSpy).toHaveBeenCalledWith('dark');
+    expect(createRootSpy).not.toHaveBeenCalled();
+  }, 30000);
 });

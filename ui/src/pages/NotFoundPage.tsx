@@ -31,9 +31,7 @@ export function NotFoundPage() {
         <CardContent className="pt-6 text-center">
           <SearchX className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
           <h1 className="mb-2 text-xl font-semibold">{t.pages.notFound.title}</h1>
-          <p className="mb-6 text-muted-foreground">
-            {t.pages.notFound.description}
-          </p>
+          <p className="mb-6 text-muted-foreground">{t.pages.notFound.description}</p>
           {pageAction}
         </CardContent>
       </Card>

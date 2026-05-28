@@ -2,11 +2,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { defineMutableValue, renderLanguageRoute, requireElement } from './page-test-helpers';
-import {
-  EventsPage,
-  getEventPagesFixtures,
-  makeEvent,
-} from './events-form-and-events-page.shared';
+import { EventsPage, getEventPagesFixtures, makeEvent } from './events-form-and-events-page.shared';
 
 const { eventServiceMock, recordInteractionsSpy } = getEventPagesFixtures();
 
@@ -39,18 +35,19 @@ describe('events page filter branches', () => {
     await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
     await new Promise((resolve) => setTimeout(resolve, 450));
     expect(
-      recordInteractionsSpy.mock.calls.some(([payload]) =>
-        Array.isArray(payload) &&
-        payload.some(
-          (item: {
-            interaction_type?: string;
-            meta?: { category?: string; city?: string; location?: string };
-          }) =>
-            item?.interaction_type === 'search' &&
-            item.meta?.category === undefined &&
-            item.meta?.city === undefined &&
-            item.meta?.location === undefined,
-        ),
+      recordInteractionsSpy.mock.calls.some(
+        ([payload]) =>
+          Array.isArray(payload) &&
+          payload.some(
+            (item: {
+              interaction_type?: string;
+              meta?: { category?: string; city?: string; location?: string };
+            }) =>
+              item?.interaction_type === 'search' &&
+              item.meta?.category === undefined &&
+              item.meta?.city === undefined &&
+              item.meta?.location === undefined,
+          ),
       ),
     ).toBe(true);
 
@@ -72,18 +69,19 @@ describe('events page filter branches', () => {
     );
     await new Promise((resolve) => setTimeout(resolve, 450));
     expect(
-      recordInteractionsSpy.mock.calls.some(([payload]) =>
-        Array.isArray(payload) &&
-        payload.some(
-          (item: {
-            interaction_type?: string;
-            meta?: { category?: string; city?: string; location?: string };
-          }) =>
-            item?.interaction_type === 'filter' &&
-            item.meta?.category === undefined &&
-            item.meta?.city === 'Cluj' &&
-            item.meta?.location === undefined,
-        ),
+      recordInteractionsSpy.mock.calls.some(
+        ([payload]) =>
+          Array.isArray(payload) &&
+          payload.some(
+            (item: {
+              interaction_type?: string;
+              meta?: { category?: string; city?: string; location?: string };
+            }) =>
+              item?.interaction_type === 'filter' &&
+              item.meta?.category === undefined &&
+              item.meta?.city === 'Cluj' &&
+              item.meta?.location === undefined,
+          ),
       ),
     ).toBe(true);
 
@@ -123,18 +121,32 @@ describe('events page filter branches', () => {
 
   it('covers recommendation panel fallback and cleanup branches', async () => {
     let resolveRecommended:
-      | ((value: { items: ReturnType<typeof makeEvent>[]; total: number; page: number; page_size: number; total_pages: number }) => void)
+      | ((value: {
+          items: ReturnType<typeof makeEvent>[];
+          total: number;
+          page: number;
+          page_size: number;
+          total_pages: number;
+        }) => void)
       | undefined;
     let rejectFavorites: ((reason?: unknown) => void) | undefined;
 
-    eventServiceMock.getEvents.mockImplementation(async (filters: { sort?: string; page_size?: number }) => {
-      if (filters?.sort === 'recommended' && filters?.page_size === 4) {
-        return await new Promise((resolve) => {
-          resolveRecommended = resolve as typeof resolveRecommended;
-        });
-      }
-      return { items: [makeEvent(41, 'Cleanup event')], total: 1, page: 1, page_size: 12, total_pages: 1 };
-    });
+    eventServiceMock.getEvents.mockImplementation(
+      async (filters: { sort?: string; page_size?: number }) => {
+        if (filters?.sort === 'recommended' && filters?.page_size === 4) {
+          return await new Promise((resolve) => {
+            resolveRecommended = resolve as typeof resolveRecommended;
+          });
+        }
+        return {
+          items: [makeEvent(41, 'Cleanup event')],
+          total: 1,
+          page: 1,
+          page_size: 12,
+          total_pages: 1,
+        };
+      },
+    );
     eventServiceMock.getFavorites.mockReturnValueOnce(
       new Promise((_, reject) => {
         rejectFavorites = reject;
@@ -155,18 +167,20 @@ describe('events page filter branches', () => {
     await Promise.resolve();
 
     cleanup();
-    eventServiceMock.getEvents.mockImplementation((filters: { sort?: string; page_size?: number }) => {
-      if (filters?.sort === 'recommended' && filters?.page_size === 4) {
-        return Promise.reject(new Error('recommended-panel-fail'));
-      }
-      return Promise.resolve({
-        items: [makeEvent(42, 'Fallback event')],
-        total: 1,
-        page: 1,
-        page_size: 12,
-        total_pages: 1,
-      });
-    });
+    eventServiceMock.getEvents.mockImplementation(
+      (filters: { sort?: string; page_size?: number }) => {
+        if (filters?.sort === 'recommended' && filters?.page_size === 4) {
+          return Promise.reject(new Error('recommended-panel-fail'));
+        }
+        return Promise.resolve({
+          items: [makeEvent(42, 'Fallback event')],
+          total: 1,
+          page: 1,
+          page_size: 12,
+          total_pages: 1,
+        });
+      },
+    );
     eventServiceMock.getFavorites.mockRejectedValueOnce(new Error('favorites-panel-fail'));
 
     renderLanguageRoute('/events', '/events', <EventsPage />);

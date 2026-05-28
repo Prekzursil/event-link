@@ -30,4 +30,3 @@ export async function recordInteractions(events: InteractionEventIn[]): Promise<
     // best-effort only
   }
 }
-

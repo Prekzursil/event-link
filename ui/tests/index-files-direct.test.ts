@@ -2,9 +2,19 @@ import { describe, expect, it } from 'vitest';
 
 import { Layout, Navbar, Footer } from '../src/components/layout/index';
 import { AdminDashboardPage } from '../src/pages/admin/index';
-import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from '../src/pages/auth/index';
+import {
+  LoginPage,
+  RegisterPage,
+  ForgotPasswordPage,
+  ResetPasswordPage,
+} from '../src/pages/auth/index';
 import { EventsPage, EventDetailPage } from '../src/pages/events/index';
-import { OrganizerDashboardPage, EventFormPage, ParticipantsPage, OrganizerProfilePage } from '../src/pages/organizer/index';
+import {
+  OrganizerDashboardPage,
+  EventFormPage,
+  ParticipantsPage,
+  OrganizerProfilePage,
+} from '../src/pages/organizer/index';
 import { StudentProfilePage } from '../src/pages/profile/index';
 
 describe('direct index imports', () => {

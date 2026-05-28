@@ -42,13 +42,8 @@ const eventDetailFixtures = vi.hoisted(() => ({
   navigateSpy: vi.fn(),
 }));
 
-const {
-  eventServiceMock,
-  recordInteractionsSpy,
-  authState,
-  toastSpy,
-  navigateSpy,
-} = eventDetailFixtures;
+const { eventServiceMock, recordInteractionsSpy, authState, toastSpy, navigateSpy } =
+  eventDetailFixtures;
 
 vi.mock('@/services/event.service', () => ({ default: eventServiceMock }));
 vi.mock('@/services/analytics.service', () => ({ recordInteractions: recordInteractionsSpy }));

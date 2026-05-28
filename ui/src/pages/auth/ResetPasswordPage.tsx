@@ -56,10 +56,7 @@ function constantTimeEquals(left: string, right: string): boolean {
 function containsAsciiLetter(value: string): boolean {
   return Array.from(value).some((character) => {
     const codePoint = Number(character.codePointAt(0));
-    return (
-      (codePoint >= 65 && codePoint <= 90) ||
-      (codePoint >= 97 && codePoint <= 122)
-    );
+    return (codePoint >= 65 && codePoint <= 90) || (codePoint >= 97 && codePoint <= 122);
   });
 }
 
@@ -117,7 +114,10 @@ function ResetAccessCodeRequirements({
 }
 
 /** Render the icon and copy at the top of the reset-password form card. */
-function ResetPasswordCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
+function ResetPasswordCardHeader({
+  description,
+  title,
+}: Readonly<{ description: string; title: string }>) {
   return (
     <CardHeader className="space-y-1 text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -176,17 +176,19 @@ function ResetAccessCodeInvalidLink({
 }
 
 /** Render the password and confirmation fields for the reset-password form. */
-function ResetAccessCodeFields(props: Readonly<{
-  confirmPassword: string;
-  isLoading: boolean;
-  onConfirmPasswordChange: (value: string) => void;
-  onPasswordChange: (value: string) => void;
-  onToggleShowPassword: () => void;
-  password: string;
-  requirements: PasswordRequirement[];
-  resetStrings: ResetStrings;
-  showPassword: boolean;
-}>) {
+function ResetAccessCodeFields(
+  props: Readonly<{
+    confirmPassword: string;
+    isLoading: boolean;
+    onConfirmPasswordChange: (value: string) => void;
+    onPasswordChange: (value: string) => void;
+    onToggleShowPassword: () => void;
+    password: string;
+    requirements: PasswordRequirement[];
+    resetStrings: ResetStrings;
+    showPassword: boolean;
+  }>,
+) {
   const {
     confirmPassword,
     isLoading,
@@ -290,12 +292,22 @@ export function ResetPasswordPage() {
     e.preventDefault();
 
     if (!constantTimeEquals(password, confirmPassword)) {
-      showToast(toast, resetStrings.accessCodeMismatchTitle, resetStrings.accessCodeMismatchDescription, 'destructive');
+      showToast(
+        toast,
+        resetStrings.accessCodeMismatchTitle,
+        resetStrings.accessCodeMismatchDescription,
+        'destructive',
+      );
       return;
     }
 
     if (!passwordRequirements.every((req) => req.met)) {
-      showToast(toast, resetStrings.accessCodeInvalidTitle, resetStrings.accessCodeInvalidDescription, 'destructive');
+      showToast(
+        toast,
+        resetStrings.accessCodeInvalidTitle,
+        resetStrings.accessCodeInvalidDescription,
+        'destructive',
+      );
       return;
     }
 

@@ -104,9 +104,9 @@ export function FavoritesPage() {
     loadFavorites();
   }, [loadFavorites]);
 
-/**
- * Handles the favorite toggle event.
- */
+  /**
+   * Handles the favorite toggle event.
+   */
   const handleFavoriteToggle = async (eventId: number, shouldFavorite: boolean) => {
     try {
       if (shouldFavorite) {

@@ -49,7 +49,9 @@ export function EventSuggestionPanel({ controller }: Props) {
 
       <div className="grid gap-3 sm:grid-cols-2">
         <div>
-          <div className="text-xs font-medium text-muted-foreground">{t.eventForm.suggestedCategory}</div>
+          <div className="text-xs font-medium text-muted-foreground">
+            {t.eventForm.suggestedCategory}
+          </div>
           <div className="text-sm">
             {suggestion.suggested_category
               ? getEventCategoryLabel(suggestion.suggested_category, language)
@@ -57,7 +59,9 @@ export function EventSuggestionPanel({ controller }: Props) {
           </div>
         </div>
         <div>
-          <div className="text-xs font-medium text-muted-foreground">{t.eventForm.suggestedCity}</div>
+          <div className="text-xs font-medium text-muted-foreground">
+            {t.eventForm.suggestedCity}
+          </div>
           <div className="text-sm">{suggestion.suggested_city || t.eventForm.suggestionNone}</div>
         </div>
       </div>
@@ -79,12 +83,20 @@ export function EventSuggestionPanel({ controller }: Props) {
 
       {suggestion.duplicates.length > 0 && (
         <div>
-          <div className="text-xs font-medium text-muted-foreground">{t.eventForm.duplicatesTitle}</div>
+          <div className="text-xs font-medium text-muted-foreground">
+            {t.eventForm.duplicatesTitle}
+          </div>
           <div className="mt-2 space-y-2">
             {suggestion.duplicates.slice(0, 5).map((duplicate) => (
-              <div key={duplicate.id} className="flex items-center justify-between gap-3 rounded-md border bg-background p-3">
+              <div
+                key={duplicate.id}
+                className="flex items-center justify-between gap-3 rounded-md border bg-background p-3"
+              >
                 <div className="min-w-0">
-                  <Link to={`/events/${duplicate.id}`} className="truncate text-sm font-medium hover:underline">
+                  <Link
+                    to={`/events/${duplicate.id}`}
+                    className="truncate text-sm font-medium hover:underline"
+                  >
                     {duplicate.title}
                   </Link>
                   <div className="text-xs text-muted-foreground">

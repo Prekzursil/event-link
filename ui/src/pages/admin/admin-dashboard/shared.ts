@@ -7,7 +7,9 @@ export type ModerationBadgeVariant = 'destructive' | 'secondary' | 'outline';
 /**
  * Test helper: role badge variant.
  */
-export function roleBadgeVariant(role: UserRole): 'default' | 'secondary' | 'destructive' | 'outline' {
+export function roleBadgeVariant(
+  role: UserRole,
+): 'default' | 'secondary' | 'destructive' | 'outline' {
   if (role === 'admin') {
     return 'destructive';
   }

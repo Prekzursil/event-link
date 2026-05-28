@@ -1,5 +1,11 @@
 import { expect, test } from '@playwright/test';
-import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, setLanguagePreference } from './utils';
+import {
+  clearAuth,
+  DEFAULT_E2E_CODE,
+  formatDateTimeLocal,
+  login,
+  setLanguagePreference,
+} from './utils';
 
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
@@ -100,5 +106,3 @@ test('personalization controls: hide tag + block organizer', async ({ page }) =>
   await page.getByPlaceholder('Search events...').fill(title);
   await expect(page.getByRole('heading', { name: title })).toHaveCount(0);
 });
-
-
