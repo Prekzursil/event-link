@@ -4,7 +4,6 @@ from __future__ import annotations
 
 from app import models
 
-
 SECRET_FIELD = "pass" + "word"
 CONFIRM_SECRET_FIELD = "confirm_" + SECRET_FIELD
 NEW_SECRET_FIELD = "new_" + SECRET_FIELD

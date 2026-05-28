@@ -7,13 +7,14 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from app import models
 from recompute_ml_test_helpers import (
     _load_script_module,
     _make_event,
     _run_main,
     _seed_training_rows,
 )
+
+from app import models
 
 
 class _SessionContext:
@@ -86,7 +87,7 @@ def _install_sparse_query_interceptor(
 
 
 def _seed_sparse_positive_rows(db_session, *, now: datetime):
-    """Seeds the sparse-positive rows and returns the updated student/candidate context."""
+    """Seeds sparse-positive rows and returns the student/candidate context."""
     student, candidate = _seed_training_rows(db_session)
     organizer = candidate.owner
     assert organizer is not None

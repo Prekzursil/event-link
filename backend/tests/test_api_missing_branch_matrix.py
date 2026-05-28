@@ -9,7 +9,6 @@ from fastapi import HTTPException
 
 from app import api, auth, models, schemas
 
-
 _ACCESS_CODE_FIELD = "pass" + "word"
 _NEW_ACCESS_CODE_FIELD = "new_" + _ACCESS_CODE_FIELD
 _CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD

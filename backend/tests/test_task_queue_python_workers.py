@@ -13,7 +13,6 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app import auth, models, task_queue
 from task_queue_test_support import (
     mk_job,
     raise_assertion,
@@ -21,9 +20,11 @@ from task_queue_test_support import (
     unexpected_enqueue,
 )
 
+from app import auth, models, task_queue
+
 
 def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
-    """Verifies execute python script handles success timeout and exceptions behavior."""
+    """Verifies execute-python-script handles success, timeout and exceptions."""
     script_ok = tmp_path / "ok.py"
     script_ok.write_text("print('ok')\nraise SystemExit(0)\n", encoding="utf-8")
     result_ok = task_queue._execute_python_script(
@@ -62,7 +63,7 @@ def test_execute_python_script_handles_success_timeout_and_exceptions(tmp_path):
 
 
 def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path):
-    """Verifies run python entrypoint worker restores env and reports failures behavior."""
+    """Verifies python-entrypoint worker restores env and reports failures."""
 
     class _Queue:
         """Queue value object used in the surrounding module."""

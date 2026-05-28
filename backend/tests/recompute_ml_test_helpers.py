@@ -10,7 +10,6 @@ from pathlib import Path
 
 from app import models
 
-
 _HASH_FIELD = "pass" + "word_hash"
 
 

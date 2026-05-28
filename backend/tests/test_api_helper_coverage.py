@@ -15,9 +15,9 @@ from types import SimpleNamespace
 import pytest
 from fastapi import HTTPException, Request
 
-from app import api, auth, models, schemas
 from api_coverage_helpers import _build_published_event
 
+from app import api, auth, models, schemas
 
 _ACCESS_CODE_FIELD = "pass" + "word"
 _CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
@@ -136,7 +136,6 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
         "alembic",
         SimpleNamespace(command=fake_command, config=fake_config),
     )
-
 
 
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
@@ -487,7 +486,6 @@ def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpe
         headers=headers,
     )
     assert filling_fast.status_code == 201
-
 
 
 def test_register_route_rejects_mismatched_confirmation(monkeypatch):

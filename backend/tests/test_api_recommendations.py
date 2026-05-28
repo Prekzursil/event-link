@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from app import models
 from api_test_support import DEFAULT_ORG_CODE
+
+from app import models
 
 
 def _ml_cache_context(helpers, *, email: str, generated_at: datetime | None = None):

@@ -12,10 +12,11 @@ from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
 
 import pytest
-from app import schemas
 
 from api_branch_extra_helpers import ScalarDb, api, auth_header, event_payload, models
 from api_coverage_helpers import _build_published_event
+
+from app import schemas
 
 
 def _serializer_edge_event():
@@ -101,15 +102,20 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
 
 
 def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatch):
-    """Verifies serializers cache fresh and create event optional start time behavior."""
+    """Verifies serializers cache fresh and create-event optional start time."""
     event = _serializer_edge_event()
     _assert_serializer_defaults(event)
 
     now = datetime.now(timezone.utc)
-    assert api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now) is True
+    assert (
+        api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now)
+        is True
+    )
     assert (
         api._recommendations_cache_is_fresh(
-            db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now,
+            db=ScalarDb(now.replace(tzinfo=None)),
+            user_id=1,
+            now=now,
         )
         is True
     )
@@ -117,7 +123,7 @@ def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatc
 
 
 def test_events_and_public_events_include_past_and_optional_detail_user(helpers):
-    """Verifies events and public events include past and optional detail user behavior."""
+    """Verifies events/public events include past and optional detail user."""
     client = helpers["client"]
     db = helpers["db"]
     helpers["make_organizer"]("include-past-org@test.ro", "organizer-fixture-A1")
@@ -287,9 +293,7 @@ def _assert_registration_email_uses_profile_language(
 def test_explicit_language_paths_for_lists_detail_recommendations_and_registration(
     helpers, monkeypatch
 ):
-    """Verifies explicit language paths for lists detail recommendations and registration
-    behavior.
-    """
+    """Verifies explicit language paths across list/detail/recs/registration."""
     client, student_token, _first_id, second_id, register_id = (
         _explicit_language_context(helpers)
     )
@@ -511,7 +515,7 @@ def test_forgot_password_uses_stored_language_preference(helpers, monkeypatch):
 
 
 def test_update_event_allows_blank_cover_url_without_content_recompute(helpers):
-    """Verifies update event allows blank cover url without content recompute behavior."""
+    """Verifies update event allows blank cover url without content recompute."""
     client = helpers["client"]
     helpers["make_organizer"]("blank-cover-org@test.ro", "organizer-fixture-A1")
     organizer_token = helpers["login"](
@@ -570,9 +574,7 @@ def test_organizer_suggest_event_skips_date_filter_when_normalized_start_is_none
 
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
-    """Verifies recommendation reason map empty and invalid dwell seconds do not query db
-    behavior.
-    """
+    """Verifies recommendation reason map empty/invalid dwell seconds skip db."""
 
     class _NoQueryDb:
         """No Query Db value object used in the surrounding module."""

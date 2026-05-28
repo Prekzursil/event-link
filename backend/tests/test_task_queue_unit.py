@@ -13,12 +13,13 @@ from types import SimpleNamespace
 
 import pytest
 
-from app import auth, models, task_queue
 from task_queue_test_support import (
     mk_job,
     raise_assertion,
     unexpected_enqueue,
 )
+
+from app import auth, models, task_queue
 
 
 def test_unexpected_enqueue_guard_raises() -> None:
@@ -372,7 +373,7 @@ def test_apply_personalization_exclusions_applies_both_filters():
 
 
 def test_apply_personalization_exclusions_returns_query_when_sets_empty():
-    """Verifies apply personalization exclusions returns query when sets empty behavior."""
+    """Verifies apply-personalization-exclusions returns query when sets empty."""
 
     class _Query:
         """Minimal query stub that counts how many times filter() was called."""

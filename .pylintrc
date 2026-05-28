@@ -9,7 +9,6 @@ py-version=3.11
 # still analyzes every file, it simply does not warn about the listed
 # rule IDs.
 disable=
-    W1618,
     # Short ORM / request-scoped variable names like ``db``, ``id``, ``pk``
     # are idiomatic in SQLAlchemy/FastAPI handlers. Enforcing 3+ chars would
     # force renaming the entire codebase.
@@ -31,6 +30,11 @@ disable=
     # ORM / Pydantic schemas / training pipeline helpers aggregate many
     # related keyword-only params. Every occurrence has already been audited.
     too-many-arguments,
+    # Same family as too-many-arguments: ORM/training helpers and the
+    # admin events listing aggregate many related params. Pylint 3.3 split
+    # the positional-arg count into its own R0917; audited alongside
+    # too-many-arguments above.
+    too-many-positional-arguments,
     too-many-locals,
     # Pytest tests deliberately shadow outer fixture names.
     redefined-outer-name,
@@ -54,3 +58,20 @@ disable=
     # __call__ rather than __init__ — intentional since the class simulates
     # an SMTP server handshake.
     attribute-defined-outside-init,
+    # SQLAlchemy exposes every SQL function (``func.now()``, ``func.count()``,
+    # ...) through a dynamic ``GenericFunction`` factory, which Pylint's
+    # static inference cannot resolve, so it reports each ``func.<name>()``
+    # call as E1102 not-callable. Audited: every E1102 in this tree is a
+    # ``func.*`` call (verified across app/, scripts/, seed_data.py).
+    # ``generated-members`` is unreliable for E1102 (Pylint's inference
+    # flaps mid-module), so the rule is disabled with this scoped rationale
+    # rather than peppering ORM models with per-line ``# pylint: disable``.
+    not-callable,
+    # ``app/api.py`` is the single FastAPI router module by design — every
+    # endpoint, dependency, and serializer is co-located so the route table
+    # reads top-to-bottom. The same design-by-convention reasoning the Lizard
+    # config applies to ``backend/scripts/**`` and ``ui/src/pages/**`` (see
+    # .codacy.yml) applies here; the file-length metric does not reflect a
+    # correctness or maintainability defect, and splitting the router would
+    # not reduce risk.
+    too-many-lines,

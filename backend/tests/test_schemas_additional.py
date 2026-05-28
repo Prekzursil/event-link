@@ -7,7 +7,6 @@ from pydantic import ValidationError
 
 from app import schemas
 
-
 _ACCESS_CODE_FIELD = "pass" + "word"
 _CONFIRM_ACCESS_CODE_FIELD = "confirm_" + _ACCESS_CODE_FIELD
 _RESET_LINK_FIELD = "to" + "ken"

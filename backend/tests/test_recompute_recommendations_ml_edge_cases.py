@@ -9,7 +9,6 @@ from datetime import datetime, timezone
 
 import pytest
 
-from app import models
 from recompute_ml_test_helpers import (
     _build_helper_user_and_events,
     _load_script_module,
@@ -18,6 +17,8 @@ from recompute_ml_test_helpers import (
     _refresh_all,
     _run_main,
 )
+
+from app import models
 
 
 def _build_edge_training_entities(now: datetime):
@@ -345,7 +346,7 @@ def _assert_edge_training_results(
 def test_main_training_edge_rows_cover_sparse_paths_and_existing_model_update(
     monkeypatch, db_session, capsys
 ) -> None:
-    """Exercises main training edge rows cover sparse paths and existing model update."""
+    """Exercises training edge rows: sparse paths and existing model update."""
     module = _load_script_module()
     now = datetime.now(timezone.utc)
     monkeypatch.setenv("DATABASE_URL", str(db_session.bind.url))

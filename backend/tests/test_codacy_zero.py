@@ -208,9 +208,7 @@ def test_wait_for_branch_analysis_uses_latest_branch_head(
 def test_wait_for_branch_analysis_reports_open_issues_once_current_commit_is_ready(
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """Verifies wait for branch analysis reports open issues once current commit is ready
-    behavior.
-    """
+    """Verifies branch-analysis wait reports open issues once commit is ready."""
     module = _load_module()
 
     monkeypatch.setattr(

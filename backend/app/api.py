@@ -274,14 +274,16 @@ _CATEGORY_KEYWORDS: dict[str, list[str]] = {
 def _suggest_category_from_text(content: str) -> str | None:
     """Infer the most likely event category from free-form text."""
     lowered = (content or "").lower()
-    best: tuple[int, str] | None = None
+    best_score = 0
+    best_category: str | None = None
     for category, keywords in _CATEGORY_KEYWORDS.items():
         score = _keyword_match_count(lowered, keywords)
         if score <= 0:
             continue
-        if best is None or score > best[0]:
-            best = (score, category)
-    return best[1] if best else None
+        if score > best_score:
+            best_score = score
+            best_category = category
+    return best_category
 
 
 def _keyword_match_count(content: str, keywords: list[str]) -> int:
@@ -1462,9 +1464,7 @@ def refresh_token(payload: schemas.RefreshRequest):
             algorithms=[settings.algorithm],
         )
     except auth.ExpiredSignatureError as exc:
-        raise HTTPException(
-            status_code=401, detail="Refresh token expirat."
-        ) from exc
+        raise HTTPException(status_code=401, detail="Refresh token expirat.") from exc
     except auth.JWTError as exc:
         raise HTTPException(
             status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL
@@ -5317,9 +5317,7 @@ def health_check(db: DbSession):
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail="Database unavailable"
-        ) from exc
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
 
 @app.get("/api/events/{event_id}/ics", responses=_responses(404))

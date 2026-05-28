@@ -12,20 +12,31 @@ import pytest
 REPO_ROOT = Path(__file__).resolve().parents[2]
 UI_PACKAGE_JSON = REPO_ROOT / "ui" / "package.json"
 ANALYZER_REGRESSION_TARGETS = {
-    REPO_ROOT / "backend" / "app" / "api.py": [
+    REPO_ROOT
+    / "backend"
+    / "app"
+    / "api.py": [
         "payload.is_active",
         "user.is_active",
         "models.RecommenderModel.is_active",
     ],
-    REPO_ROOT / "backend" / "app" / "task_queue.py": [
+    REPO_ROOT
+    / "backend"
+    / "app"
+    / "task_queue.py": [
         "models.RecommenderModel.is_active",
         "active.is_active",
         "previous.is_active",
     ],
-    REPO_ROOT / "backend" / "main.py": [
+    REPO_ROOT
+    / "backend"
+    / "main.py": [
         ".is_unspecified",
     ],
-    REPO_ROOT / "backend" / "scripts" / "recompute_recommendations_ml.py": [
+    REPO_ROOT
+    / "backend"
+    / "scripts"
+    / "recompute_recommendations_ml.py": [
         "models.RecommenderModel.is_active",
         "existing_model.is_active",
     ],
@@ -77,7 +88,7 @@ def test_ui_package_versions_are_exact_reports_offenders(
 def test_no_current_is_prefix_attribute_regressions_reports_offenders(
     tmp_path: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    """Verifies no current is prefix attribute regressions reports offenders behavior."""
+    """Verifies no current ``is`` prefix attribute regressions report offenders."""
     module_path = tmp_path / "backend" / "app" / "api.py"
     module_path.parent.mkdir(parents=True)
     module_path.write_text("payload.is_active = True\n", encoding="utf-8")

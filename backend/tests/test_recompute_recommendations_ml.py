@@ -12,7 +12,6 @@ from pathlib import Path
 
 import pytest
 
-from app import models
 from recompute_ml_test_helpers import (
     _build_helper_user_and_events,
     _load_script_module,
@@ -21,6 +20,8 @@ from recompute_ml_test_helpers import (
     _seed_training_rows,
     _warning_path_query_error,
 )
+
+from app import models
 
 
 def test_helper_rng_and_normalize_primitives() -> None:
@@ -308,8 +309,13 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(
 
     assert (
         _run_main(
-            module, monkeypatch, "--dry-run", "--user-id", str(student.id),
-            "--top-n", "2",
+            module,
+            monkeypatch,
+            "--dry-run",
+            "--user-id",
+            str(student.id),
+            "--top-n",
+            "2",
         )
         == 0
     )
@@ -399,7 +405,9 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
         == "Near you"
     )
     assert (
-        module._reason_for(user=weighted_city_user, event=weighted_city_event, lang="en")
+        module._reason_for(
+            user=weighted_city_user, event=weighted_city_event, lang="en"
+        )
         == "Near you"
     )
     assert (

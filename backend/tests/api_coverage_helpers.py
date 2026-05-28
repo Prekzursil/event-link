@@ -11,7 +11,6 @@ from types import SimpleNamespace
 
 from app import api, auth, models
 
-
 ACCESS_CODE_FIELD = "pass" + "word"
 CONFIRM_ACCESS_CODE_FIELD = "confirm_" + ACCESS_CODE_FIELD
 MUTATION_OWNER_EMAIL = "mut-owner@test.ro"

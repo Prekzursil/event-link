@@ -1,9 +1,10 @@
 """Tests for the api behavior."""
 
-from app import models
 from api_test_support import (
     DEFAULT_ORG_CODE,
 )
+
+from app import models
 
 
 def test_event_creation_and_capacity_enforced(helpers):

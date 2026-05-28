@@ -2,13 +2,14 @@
 
 from __future__ import annotations
 
-from app import models
 from api_test_support import (
     DEFAULT_ADMIN_CODE,
     DEFAULT_ORG_CODE,
     DEFAULT_STUDENT_CODE,
     SECRET_FIELD,
 )
+
+from app import models
 
 
 def test_delete_soft_deletes_event_and_registrations(helpers):

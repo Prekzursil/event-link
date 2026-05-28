@@ -147,8 +147,13 @@ def _seed_record_interactions_context(helpers, monkeypatch):
     _configure_record_interactions_settings(monkeypatch)
     captured_jobs = _install_enqueue_capture(monkeypatch)
     return SimpleNamespace(
-        client=client, db=db, student=student, student_token=student_token,
-        visible_tag=visible_tag, hidden_tag=hidden_tag, event=event,
+        client=client,
+        db=db,
+        student=student,
+        student_token=student_token,
+        visible_tag=visible_tag,
+        hidden_tag=hidden_tag,
+        event=event,
         payload=_record_interactions_payload(int(event.id)),
         captured_jobs=captured_jobs,
     )

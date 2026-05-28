@@ -33,7 +33,8 @@ def test_planned_tool_payload_disables_legacy_tools():
 
     assert payload == {"enabled": False}
     assert notes == [
-        "ESLint: configuration file not detected by Codacy; skipping config-file mode request"
+        "ESLint: configuration file not detected by Codacy;"
+        " skipping config-file mode request"
     ]
 
 
@@ -48,10 +49,11 @@ def test_planned_tool_payload_disables_lizard_for_test_noise_control():
 
 
 def test_planned_tool_payload_enables_configuration_file_when_available():
-    """Verifies planned tool payload enables configuration file when available behavior."""
+    """Verifies planned tool payload enables configuration file when available."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("ESLint9",
+    payload, notes = module._planned_tool_payload(
+        "ESLint9",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -71,7 +73,8 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
     """
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("ESLint",
+    payload, notes = module._planned_tool_payload(
+        "ESLint",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -87,7 +90,8 @@ def test_planned_tool_payload_skips_missing_configuration_files():
     """Verifies planned tool payload skips missing configuration files behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("Stylelint",
+    payload, notes = module._planned_tool_payload(
+        "Stylelint",
         {
             "isEnabled": True,
             "hasConfigurationFile": False,
@@ -97,19 +101,17 @@ def test_planned_tool_payload_skips_missing_configuration_files():
 
     assert payload is None
     assert notes == [
-        "Stylelint: configuration file not detected by Codacy; skipping config-file mode request"
+        "Stylelint: configuration file not detected by Codacy;"
+        " skipping config-file mode request"
     ]
 
 
-def test_planned_tool_payload_enables_prospector_configuration_file_when_available() -> (
-    None
-):
-    """Verifies planned tool payload enables prospector configuration file when available
-    behavior.
-    """
+def test_planned_tool_payload_enables_prospector_config_file_when_available() -> None:
+    """Verifies planned payload enables prospector config file when available."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("Prospector",
+    payload, notes = module._planned_tool_payload(
+        "Prospector",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -259,14 +261,13 @@ def test_sync_tool_settings_retries_config_mode_when_standard_blocks_disable():
         {"useConfigurationFile": True},
     ]
     assert notes == [
-        "ESLint: managed by Codacy standard; retrying config-file mode without disable request"
+        "ESLint: managed by Codacy standard;"
+        " retrying config-file mode without disable request"
     ]
 
 
-def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_config_retry():
-    """Verifies sync tool settings skips standard managed disable conflicts without config retry
-    behavior.
-    """
+def test_sync_tool_settings_skips_standard_managed_conflicts_without_retry():
+    """Verifies sync skips standard managed disable conflicts without config retry."""
     module = _load_module()
 
     tools_by_name = {
@@ -307,7 +308,7 @@ def test_sync_tool_settings_skips_standard_managed_disable_conflicts_without_con
 
 
 def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None:
-    """Verifies apply reanalysis if clean treats forbidden reanalysis as note behavior."""
+    """Verifies apply-reanalysis-if-clean treats forbidden reanalysis as note."""
     module = _load_module()
 
     def fake_reanalyze_commit(**_kwargs):
@@ -338,5 +339,6 @@ def test_apply_reanalysis_if_clean_treats_forbidden_reanalysis_as_note() -> None
 
     assert failures == []
     assert notes == [
-        "Codacy reanalysis not authorized for this token; waiting for normal Codacy analysis"
+        "Codacy reanalysis not authorized for this token;"
+        " waiting for normal Codacy analysis"
     ]

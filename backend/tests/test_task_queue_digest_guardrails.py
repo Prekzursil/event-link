@@ -13,7 +13,6 @@ from types import SimpleNamespace
 
 import pytest
 
-from app import auth, models, task_queue
 from task_queue_test_support import (
     ChainQuery,
     FakeFillingFastDb,
@@ -29,6 +28,8 @@ from task_queue_test_support import (
     seed_weekly_digest_fixture,
     unexpected_enqueue,
 )
+
+from app import auth, models, task_queue
 
 
 def test_send_weekly_digest_skips_and_handles_system_language(monkeypatch, db_session):
@@ -132,7 +133,7 @@ def test_send_weekly_digest_counts_eligible_users_when_no_events(
 def test_send_weekly_digest_filters_blocked_organizers_and_hidden_tags(
     db_session, monkeypatch
 ):
-    """Verifies send weekly digest filters blocked organizers and hidden tags behavior."""
+    """Verifies weekly digest filters blocked organizers and hidden tags."""
     users, event = seed_weekly_digest_fixture(db_session)
     active_user = users["active"]
     organizer = event.owner
@@ -305,7 +306,7 @@ def test_guardrails_reports_no_previous_model_without_inactive_model(
 def test_send_filling_fast_alerts_branch_matrix_counts_and_exclusions(
     monkeypatch, db_session
 ):
-    """Verifies send filling fast alerts branch matrix counts and exclusions behavior."""
+    """Verifies filling-fast alerts branch matrix counts and exclusions."""
     setup = seed_filling_fast_branch_matrix(db_session)
     enqueued = []
     langs = []

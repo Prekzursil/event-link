@@ -1,3 +1,30 @@
+# Prospector aggregates pylint, pycodestyle, pyflakes, mccabe, and dodgy.
+# The pylint message acknowledgements below mirror ``.pylintrc`` so a direct
+# ``prospector`` run produces the same audited zero as standalone pylint.
+# (Prospector embeds its own pylint and does not reliably honour an external
+# rcfile via the profile, so the disables are restated here.) Each entry has
+# the same rationale documented in ``.pylintrc``: idiomatic SQLAlchemy/FastAPI/
+# Pydantic/pytest patterns, the SQLAlchemy ``func.*`` E1102 false positive, and
+# the by-design single-router module size.
 test-warnings: false
 bandit:
   run: false
+pylint:
+  disable:
+    - invalid-name
+    - too-few-public-methods
+    - protected-access
+    - import-outside-toplevel
+    - wrong-import-position
+    - too-many-instance-attributes
+    - too-many-arguments
+    - too-many-positional-arguments
+    - too-many-locals
+    - redefined-outer-name
+    - broad-exception-caught
+    - unused-argument
+    - use-implicit-booleaness-not-comparison
+    - duplicate-code
+    - attribute-defined-outside-init
+    - not-callable
+    - too-many-lines

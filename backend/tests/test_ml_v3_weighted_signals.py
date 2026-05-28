@@ -93,7 +93,7 @@ def _post_weighted_learning_interaction(helpers):
 
 
 def test_online_learning_updates_weighted_tag_category_city_with_decay(helpers):
-    """Verifies online learning updates weighted tag category city with decay behavior."""
+    """Verifies online learning updates weighted tag/category/city with decay."""
     db, student, tag = _post_weighted_learning_interaction(helpers)
 
     updated = (

@@ -89,7 +89,8 @@ def test_build_github_commit_urls_use_fixed_host() -> None:
     )
 
     assert checks_url == (
-        "https://api.github.com/repos/Prekzursil/event-link/commits/abcdef1/check-runs?per_page=50"
+        "https://api.github.com/repos/Prekzursil/event-link"
+        "/commits/abcdef1/check-runs?per_page=50"
     )
     assert (
         status_url
@@ -168,7 +169,7 @@ def test_request_https_json_uses_urllib_request(
             return [("X-Hits", "5"), ("Content-Type", "application/json")]
 
     class _FakeOpener:
-        """Stand-in urllib opener that records each request and returns _FakeResponse."""
+        """Stand-in urllib opener recording requests, returning _FakeResponse."""
 
         @staticmethod
         def open(request, timeout=None):
@@ -202,7 +203,10 @@ def test_request_https_json_uses_urllib_request(
     assert status == 206
     assert calls["request"] == {
         "method": "POST",
-        "url": "https://api.github.com/repos/Prekzursil/event-link/check-runs?per_page=1",
+        "url": (
+            "https://api.github.com/repos/Prekzursil/event-link"
+            "/check-runs?per_page=1"
+        ),
         "body": b"{}",
         "headers": {"Accept": "application/json"},
     }

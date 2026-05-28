@@ -18,7 +18,7 @@ from api_branch_extra_helpers import api, auth_header, event_payload, models, sc
 
 
 def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypatch):
-    """Verifies record interactions refresh interval with aware cache enqueues behavior."""
+    """Verifies refresh interval with aware cache enqueues."""
     request = Request(
         {
             "type": "http",
@@ -124,12 +124,10 @@ def test_record_interactions_refresh_interval_with_aware_cache_enqueues(monkeypa
     ]
 
 
-def test_record_interactions_search_only_invalid_meta_skips_event_lookup_and_learning_updates(
+def test_record_interactions_search_invalid_meta_skips_lookup_and_learning(
     helpers, monkeypatch
 ):
-    """Verifies record interactions search only invalid meta skips event lookup and learning updates
-    behavior.
-    """
+    """Verifies search-only invalid meta skips event lookup and learning updates."""
     client = helpers["client"]
     db = helpers["db"]
     student_token = helpers["register_student"]("invalid-search-only@test.ro")
@@ -273,7 +271,7 @@ def _enable_realtime_refresh_without_rate_limit(monkeypatch):
 
 
 def _low_signal_interaction_payload(event_id: int):
-    """Returns an ``InteractionBatchIn`` with impression+dwell rows below the refresh threshold."""
+    """Returns ``InteractionBatchIn`` with rows below the refresh threshold."""
     return schemas.InteractionBatchIn.model_construct(
         events=[
             schemas.InteractionEventIn.model_construct(
@@ -442,9 +440,7 @@ def test_record_interactions_direct_fake_db_covers_aware_rows(monkeypatch):
 
 
 def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_db():
-    """Verifies recommendation reason map empty and invalid dwell seconds do not query db
-    behavior.
-    """
+    """Verifies recommendation reason map empty/invalid dwell seconds skip db."""
 
     class _NoQueryDb:
         """No Query Db value object used in the surrounding module."""

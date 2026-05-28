@@ -64,9 +64,8 @@ def _public_pr_responses() -> dict[str, dict[str, dict[str, int]]]:
         "https://deepscan.io/api/teams/29074/projects/31139/pulls/2297171": {
             "data": {"ownerBid": 1009136, "headAid": 3694745}
         },
-        "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745": {
-            "data": {"outstandingDefectCount": 1}
-        },
+        "https://deepscan.io/api/teams/29074/projects/31139"
+        "/branches/1009136/analyses/3694745": {"data": {"outstandingDefectCount": 1}},
     }
 
 
@@ -135,8 +134,8 @@ def test_resolve_open_issues_uses_public_pr_analysis(
             {
                 "context": "DeepScan",
                 "target_url": (
-                    "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139&bid=1008135"
-                    "&subview=pull-request&prid=2297171"
+                    "https://deepscan.io/dashboard/#view=project&tid=29074&pid=31139"
+                    "&bid=1008135&subview=pull-request&prid=2297171"
                 ),
             }
         )
@@ -179,7 +178,8 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
         """Return a failing public DeepScan issue count."""
         return (
             2,
-            "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745",
+            "https://deepscan.io/api/teams/29074/projects/31139"
+            "/branches/1009136/analyses/3694745",
         )
 
     status, open_issues, findings, source_url = module._evaluate_deepscan(
@@ -195,8 +195,8 @@ def test_evaluate_deepscan_fails_when_public_count_is_nonzero() -> None:
     assert status == "fail"
     assert open_issues == 2
     assert (
-        source_url
-        == "https://deepscan.io/api/teams/29074/projects/31139/branches/1009136/analyses/3694745"
+        source_url == "https://deepscan.io/api/teams/29074/projects/31139"
+        "/branches/1009136/analyses/3694745"
     )
     assert findings == ["DeepScan reports 2 open issues (expected 0)."]
 
@@ -241,7 +241,8 @@ def test_resolve_open_issues_falls_back_to_deepsource_statuses(
         1,
         target_url,
         [
-            "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"
+            "DeepSource: JavaScript: Analysis failed:"
+            " Blocking issues or failing metrics found"
         ],
     )
 
@@ -279,7 +280,8 @@ def test_evaluate_deepscan_uses_provider_findings_when_present() -> None:
         "49f1d1ef-93f4-4852-98c7-fe6163d29263/javascript/"
     )
     assert findings == [
-        "DeepSource: JavaScript: Analysis failed: Blocking issues or failing metrics found"
+        "DeepSource: JavaScript: Analysis failed:"
+        " Blocking issues or failing metrics found"
     ]
 
 
@@ -393,7 +395,8 @@ def test_evaluate_deepscan_fails_when_provider_analysis_is_still_pending() -> No
         """Return a provider payload that never reaches completion."""
         return (
             0,
-            "https://app.deepsource.com/gh/Prekzursil/event-link/run/pending/javascript/",
+            "https://app.deepsource.com/gh/Prekzursil/event-link"
+            "/run/pending/javascript/",
             ["DeepSource analysis is still in progress."],
         )
 

@@ -50,7 +50,9 @@ def test_event_moderation_flags_are_exposed_in_admin_events(client, helpers):
         headers=org_headers,
         json={
             "title": "Giveaway",
-            "description": "Win free money now! Visit https://bit.ly/scam and send OTP.",
+            "description": (
+                "Win free money now! Visit https://bit.ly/scam and send OTP."
+            ),
             "category": "Social",
             "start_time": helpers["future_time"](days=10),
             "city": "Cluj",

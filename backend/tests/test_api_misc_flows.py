@@ -1,6 +1,5 @@
 """Tests for the api misc flows behavior."""
 
-from app import models
 from api_test_support import (
     CONFIRM_SECRET_FIELD,
     DEFAULT_ORG_CODE,
@@ -12,6 +11,8 @@ from api_test_support import (
     RESET_RECORD,
     SECRET_FIELD,
 )
+
+from app import models
 
 
 def test_health_endpoint(helpers):
