@@ -3,6 +3,10 @@ codecov:
 
 ignore:
   # Config & lint declarations (not executable source).
+  - .guardrails.yml
+  - .guardrails.yaml
+  - .deepsource.toml
+  - ".qlty/**"
   - .bandit
   - .codacy.yml
   - .eslintrc.cjs
