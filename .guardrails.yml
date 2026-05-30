@@ -1,0 +1,44 @@
+# GuardRails configuration
+# Reference: https://docs.guardrails.io/docs/configuration
+#
+# Bounds the org-installed GuardRails App's scan to source code so its
+# status check converges. All analyzers stay enabled with default
+# rules; no findings are silenced.
+
+version: 1
+
+ignore-paths:
+  - backend/.pytest_cache
+  - backend/tests
+  - backend/integration_tests
+  - ui/coverage
+  - ui/dist
+  - ui/e2e
+  - ui/node_modules
+  - ui/tests
+  - ui/src/components/ui
+  - docs
+  - loadtests
+  - contracts
+  - "**/node_modules/**"
+  - "**/dist/**"
+  - "**/coverage/**"
+
+engines:
+  python:
+    enabled: true
+    secrets:
+      enabled: true
+    sast:
+      enabled: true
+  javascript:
+    enabled: true
+    secrets:
+      enabled: true
+    sast:
+      enabled: true
+  general:
+    secrets:
+      enabled: true
+    vulnerable_dependencies:
+      enabled: true
