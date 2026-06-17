@@ -1,0 +1,27 @@
+# osv-scanner configuration for the lean dependency gate (pinned tool: osv-scanner 2.3.8).
+# The gate runs osv-scanner over the lockfiles and must report 0 actionable CVEs.
+#
+# POLICY: ignore entries are allowed ONLY for a genuinely-unfixable vuln (no
+# non-breaking upgrade) OR one that is provably not reachable in THIS product,
+# each with a reason + dated review note (greppable). We do NOT use a baseline
+# file — clean-zero is reached by upgrading where a safe fix exists, and only by
+# a reasoned per-CVE ignore where it does not.
+#
+# Lockfiles scanned (recursive from repo root):
+#   - backend/requirements.txt      (FastAPI/SQLAlchemy Python backend deps)
+#   - backend/requirements-dev.txt  (Python backend dev/test deps)
+#   - ui/package-lock.json          (React/Vite TypeScript UI npm tree)
+#
+# ---------------------------------------------------------------------------
+# OPEN GAP (2026-06-17): osv-scanner currently reports actionable CVEs with
+# fixed versions AVAILABLE across both ecosystems (axios, react-router, vite,
+# vitest, esbuild, form-data, ws, @babel/core, js-yaml [npm] and starlette,
+# python-multipart, pyjwt, pygments, mako, idna, cryptography [PyPI]). Per the
+# clean-zero policy these are cleared by UPGRADING (most have non-major fixes,
+# e.g. axios 1.15.0 -> 1.16.0), NOT by suppression. The dependency upgrades are
+# deliberately deferred out of this additive config PR (they touch lockfiles and
+# require a full test run); this is why the lean `quality` deps gate is red and
+# the PR is opened as a DRAFT. Add a dated, reasoned IgnoredVulns entry below
+# only for a future vuln that is genuinely unfixable or provably unreachable —
+# do NOT use ignores to paper over an available upgrade.
+# ---------------------------------------------------------------------------

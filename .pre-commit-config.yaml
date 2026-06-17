@@ -1,40 +1,68 @@
-repos:
-  - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v4.6.0
-    hooks:
-      - id: check-merge-conflict
-      - id: check-yaml
-      - id: check-toml
-      - id: check-json
-      - id: end-of-file-fixer
-      - id: trailing-whitespace
+# Lean quality gates — local auto-fixers + fast checks.
+# `pre-commit run --all-files` is the gate-1/gate-5 entrypoint used by the lean
+# CI (.github/workflows/quality.yml -> QZP reusable-quality.yml). Every rev is
+# pinned; bump versions here together with the QZP lean charter.
+#
+# Charter lane 1 (lint+format+imports, AUTOFIX): Ruff [py] + Oxlint + format [ts/js].
+# Charter lane 5 (secrets): gitleaks over the working tree.
+# (black / eslint-classic / prettier-as-gate are retired by the lean charter;
+#  ruff-format and oxlint replace them as the single deterministic local tools.)
+minimum_pre_commit_version: "3.5.0"
 
+default_language_version:
+  python: python3
+
+exclude: |-
+  (?x)^(
+    node_modules/|
+    ui/node_modules/|
+    ui/dist/|
+    dist/|
+    build/|
+    out/|
+    vendor/|
+    \.venv/|
+    backend/\.venv/|
+    .*\.egg-info/|
+    backend/alembic/versions/
+  )
+
+repos:
+  # --- Gate 1: Python lint + format (ruff 0.15.17) ---
   - repo: https://github.com/astral-sh/ruff-pre-commit
-    rev: v0.8.6
+    rev: v0.15.17
     hooks:
       - id: ruff
-        args: [--config, backend/pyproject.toml]
-        files: ^backend/
+        name: ruff (lint --fix)
+        args: ["--fix", "--config", "backend/pyproject.toml"]
+        files: '^backend/.*\.py$'
+      - id: ruff-format
+        name: ruff (format)
+        args: ["--config", "backend/pyproject.toml"]
+        files: '^backend/.*\.py$'
 
-  - repo: https://github.com/psf/black
-    rev: 24.10.0
+  # --- Gate 1: JS/TS lint (oxlint 1.69.0 mirror) ---
+  - repo: https://github.com/oxc-project/mirrors-oxlint
+    rev: v1.69.0
     hooks:
-      - id: black
-        args: [--config, backend/pyproject.toml]
-        files: ^backend/
+      - id: oxlint
+        name: oxlint (ui)
+        args: ["--fix", "--deny-warnings"]
+        files: '^ui/src/.*\.(ts|tsx|js|jsx)$'
 
-  - repo: local
+  # --- Gate 1: JS/TS format (Biome 2.5.0, format-only) ---
+  - repo: https://github.com/biomejs/pre-commit
+    rev: v2.5.0
     hooks:
-      - id: ui-format-check
-        name: ui format:check (prettier)
-        entry: bash -lc "cd ui && npm run format:check"
-        language: system
-        pass_filenames: false
-        files: ^ui/
+      - id: biome-format
+        name: biome (format)
+        additional_dependencies: ["@biomejs/biome@2.5.0"]
+        files: '^ui/src/.*\.(ts|tsx|js|jsx|css|json)$'
 
-      - id: ui-lint
-        name: ui lint (eslint)
-        entry: bash -lc "cd ui && npm run lint"
-        language: system
-        pass_filenames: false
-        files: ^ui/
+  # --- Gate 5: secrets (gitleaks 8.30.1) ---
+  - repo: https://github.com/gitleaks/gitleaks
+    rev: v8.30.1
+    hooks:
+      - id: gitleaks
+        name: gitleaks (secrets)
+        args: ["--config", ".gitleaks.toml"]

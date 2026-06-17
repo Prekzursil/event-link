@@ -264,17 +264,23 @@ def _collect_guardrail_metrics(db: Session, config) -> dict[str, Any]:
     impressions = _load_impression_counts(db=db, start=start)
     clicks, click_by_user_event = _load_click_counts(db=db, start=start)
     conversions = _load_conversion_counts(
-        db=db, start=start, click_by_user_event=click_by_user_event,
+        db=db,
+        start=start,
+        click_by_user_event=click_by_user_event,
         window=config.click_to_register_window,
     )
     return _guardrail_result(
-        config=config, impressions=impressions,
-        clicks=clicks, conversions=conversions,
+        config=config,
+        impressions=impressions,
+        clicks=clicks,
+        conversions=conversions,
     )
 
 
 def _resolve_threshold_action(
-    result: dict[str, Any], *, config,
+    result: dict[str, Any],
+    *,
+    config,
 ) -> dict[str, Any] | None:
     """Returns the short-circuit result dict when thresholds hold, else ``None``."""
     ctr_ok, conv_ok = _guardrail_threshold_status(result, config=config)
@@ -324,7 +330,10 @@ def evaluate_personalization_guardrails(
         result["action"] = "no_previous_model"
         return result
     return _rollback_guardrail_model(
-        db=db, active=active, previous=previous,
+        db=db,
+        active=active,
+        previous=previous,
         enqueue_job_fn=enqueue_job_fn,
-        recompute_job_type=recompute_job_type, result=result,
+        recompute_job_type=recompute_job_type,
+        result=result,
     )

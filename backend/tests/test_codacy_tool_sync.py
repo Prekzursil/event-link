@@ -51,7 +51,8 @@ def test_planned_tool_payload_enables_configuration_file_when_available():
     """Verifies planned tool payload enables configuration file when available behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("ESLint9",
+    payload, notes = module._planned_tool_payload(
+        "ESLint9",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -71,7 +72,8 @@ def test_planned_tool_payload_enables_legacy_config_when_legacy_tool_is_present(
     """
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("ESLint",
+    payload, notes = module._planned_tool_payload(
+        "ESLint",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,
@@ -87,7 +89,8 @@ def test_planned_tool_payload_skips_missing_configuration_files():
     """Verifies planned tool payload skips missing configuration files behavior."""
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("Stylelint",
+    payload, notes = module._planned_tool_payload(
+        "Stylelint",
         {
             "isEnabled": True,
             "hasConfigurationFile": False,
@@ -109,7 +112,8 @@ def test_planned_tool_payload_enables_prospector_configuration_file_when_availab
     """
     module = _load_module()
 
-    payload, notes = module._planned_tool_payload("Prospector",
+    payload, notes = module._planned_tool_payload(
+        "Prospector",
         {
             "isEnabled": True,
             "hasConfigurationFile": True,

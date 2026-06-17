@@ -106,10 +106,15 @@ def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatc
     _assert_serializer_defaults(event)
 
     now = datetime.now(timezone.utc)
-    assert api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now) is True
+    assert (
+        api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now)
+        is True
+    )
     assert (
         api._recommendations_cache_is_fresh(
-            db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now,
+            db=ScalarDb(now.replace(tzinfo=None)),
+            user_id=1,
+            now=now,
         )
         is True
     )

@@ -1462,9 +1462,7 @@ def refresh_token(payload: schemas.RefreshRequest):
             algorithms=[settings.algorithm],
         )
     except auth.ExpiredSignatureError as exc:
-        raise HTTPException(
-            status_code=401, detail="Refresh token expirat."
-        ) from exc
+        raise HTTPException(status_code=401, detail="Refresh token expirat.") from exc
     except auth.JWTError as exc:
         raise HTTPException(
             status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL
@@ -5317,9 +5315,7 @@ def health_check(db: DbSession):
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail="Database unavailable"
-        ) from exc
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
 
 @app.get("/api/events/{event_id}/ics", responses=_responses(404))

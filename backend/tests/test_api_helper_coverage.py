@@ -138,7 +138,6 @@ def _install_fake_alembic(monkeypatch, upgraded: list[str]) -> None:
     )
 
 
-
 def test_check_configuration_required_values_and_email_toggle(monkeypatch):
     """Configuration validation should fail fast and disable misconfigured email."""
     monkeypatch.setattr(api.settings, "database_url", "", raising=False)
@@ -487,7 +486,6 @@ def test_admin_personalization_queue_endpoints_return_created(monkeypatch, helpe
         headers=headers,
     )
     assert filling_fast.status_code == 201
-
 
 
 def test_register_route_rejects_mismatched_confirmation(monkeypatch):
