@@ -37,7 +37,9 @@ export const authService = {
   },
 
   async updateLanguagePreference(languagePreference: LanguagePreference): Promise<User> {
-    const response = await api.put<User>('/api/me/language', { language_preference: languagePreference });
+    const response = await api.put<User>('/api/me/language', {
+      language_preference: languagePreference,
+    });
     return response.data;
   },
 
@@ -60,10 +62,13 @@ export const authService = {
     } else {
       localStorage.removeItem('refresh_token');
     }
-    localStorage.setItem('user', JSON.stringify({
-      id: data.user_id,
-      role: data.role,
-    }));
+    localStorage.setItem(
+      'user',
+      JSON.stringify({
+        id: data.user_id,
+        role: data.role,
+      }),
+    );
   },
 
   logout(): void {

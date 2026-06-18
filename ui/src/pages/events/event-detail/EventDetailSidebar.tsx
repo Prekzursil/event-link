@@ -1,7 +1,13 @@
 import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Separator } from '@/components/ui/separator';
 import type { EventDetail } from '@/types';
 import {
@@ -51,7 +57,9 @@ function RegistrationActions(props: RegistrationActionsProps) {
     return (
       <>
         <div className="rounded-lg bg-green-50 p-4 text-center dark:bg-green-900/20">
-          <p className="font-medium text-green-700 dark:text-green-400">{t.eventDetail.registeredOk}</p>
+          <p className="font-medium text-green-700 dark:text-green-400">
+            {t.eventDetail.registeredOk}
+          </p>
         </div>
         <Button
           variant="secondary"
@@ -62,7 +70,12 @@ function RegistrationActions(props: RegistrationActionsProps) {
           {isResendingEmail ? t.eventDetail.resendingEmail : t.eventDetail.resendEmail}
         </Button>
         {!isPast && (
-          <Button variant="outline" className="w-full" onClick={onUnregister} disabled={isRegistering}>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={onUnregister}
+            disabled={isRegistering}
+          >
             {t.eventDetail.unregister}
           </Button>
         )}
@@ -221,7 +234,10 @@ function OrganizerPanel({ event, t }: Pick<Props, 'event' | 't'>) {
   return (
     <div className="rounded-xl border p-6">
       <h3 className="mb-4 text-lg font-semibold">{t.eventDetail.organizerTitle}</h3>
-      <Link to={`/organizers/${event.owner_id}`} className="flex items-center gap-3 hover:underline">
+      <Link
+        to={`/organizers/${event.owner_id}`}
+        className="flex items-center gap-3 hover:underline"
+      >
         <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary/10">
           <User className="h-5 w-5 text-primary" />
         </div>
@@ -264,7 +280,12 @@ function HideTagControls({
             ))}
           </SelectContent>
         </Select>
-        <Button type="button" variant="outline" onClick={onHideTag} disabled={!hideTagId || isHidingTag}>
+        <Button
+          type="button"
+          variant="outline"
+          onClick={onHideTag}
+          disabled={!hideTagId || isHidingTag}
+        >
           <EyeOff className="mr-2 h-4 w-4" />
           {isHidingTag ? t.personalization.hiding : t.personalization.hideTagAction}
         </Button>
@@ -325,7 +346,9 @@ function PersonalizationPanel({
           className="w-full justify-start"
         >
           <UserX className="mr-2 h-4 w-4" />
-          {isBlockingOrganizer ? t.personalization.blockingOrganizer : t.personalization.blockOrganizerAction}
+          {isBlockingOrganizer
+            ? t.personalization.blockingOrganizer
+            : t.personalization.blockOrganizerAction}
         </Button>
 
         <Link to="/profile" className="text-sm text-primary hover:underline">

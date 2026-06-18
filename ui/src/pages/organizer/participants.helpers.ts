@@ -48,9 +48,7 @@ export function participantRowsWithAttendance(
   participantId: number,
   attended: boolean,
 ) {
-  return participants.map((entry) =>
-    entry.id === participantId ? { ...entry, attended } : entry,
-  );
+  return participants.map((entry) => (entry.id === participantId ? { ...entry, attended } : entry));
 }
 
 /** Add or remove a participant identifier from the in-flight attendance set. */
@@ -81,39 +79,29 @@ export function loadParticipantsPage(
 
 /** Optimistically toggle attendee presence and roll back the row on failure. */
 export async function mutateAttendance(args: AttendanceMutationArgs) {
-  const {
-    attended,
-    currentData,
-    eventId,
-    participant,
-    setData,
-    setUpdatingAttendance,
-    t,
-    toast,
-  } = args;
+  const { attended, currentData, eventId, participant, setData, setUpdatingAttendance, t, toast } =
+    args;
   const participantId = participant.id;
   const previous = participant.attended;
 
   setUpdatingAttendance((value) => toggledParticipantSet(value, participantId, true));
   setData({
     ...currentData,
-    participants: participantRowsWithAttendance(
-      currentData.participants, participantId, attended,
-    ),
+    participants: participantRowsWithAttendance(currentData.participants, participantId, attended),
   });
   try {
     await eventService.updateParticipantAttendance(eventId, participantId, attended);
     toast({
       title: t.common.success,
-      description: attended
-        ? t.participants.attendanceConfirmed
-        : t.participants.attendanceCleared,
+      description: attended ? t.participants.attendanceConfirmed : t.participants.attendanceCleared,
     });
   } catch {
     setData({
       ...currentData,
       participants: participantRowsWithAttendance(
-        currentData.participants, participantId, previous,
+        currentData.participants,
+        participantId,
+        previous,
       ),
     });
     toast({
@@ -133,11 +121,7 @@ export function escapeCsv(value: string) {
 
 /** Build the exported participant CSV filename from the event title. */
 export function csvFilename(title: string, t: ParticipantsTexts) {
-  return `${t.participants.csvFilePrefix}-${title
-    .trim()
-    .split(' ')
-    .filter(Boolean)
-    .join('-')}.csv`;
+  return `${t.participants.csvFilePrefix}-${title.trim().split(' ').filter(Boolean).join('-')}.csv`;
 }
 
 /** Create and trigger the CSV export for the currently loaded participants. */
@@ -169,11 +153,7 @@ export function downloadParticipantsCsv(
 }
 
 /** Validate the organizer email draft before sending it to the backend. */
-export function validateEmailDraft(
-  subject: string,
-  message: string,
-  t: ParticipantsTexts,
-) {
+export function validateEmailDraft(subject: string, message: string, t: ParticipantsTexts) {
   if (!subject.trim()) {
     return t.participants.emailMissingSubject;
   }
@@ -212,9 +192,7 @@ export async function sendParticipantsEmail({
     );
     toast({
       title: t.common.success,
-      description: t.participants.emailSuccess.replace(
-        '{count}', String(response.recipients),
-      ),
+      description: t.participants.emailSuccess.replace('{count}', String(response.recipients)),
     });
     onSuccess();
   } catch {

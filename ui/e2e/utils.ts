@@ -20,7 +20,8 @@ const resetKeyField = tokenFragment;
 const accessStorageKey = `access_${tokenFragment}`;
 const refreshStorageKey = `refresh_${tokenFragment}`;
 const DOCKER_CANDIDATES = ['/usr/bin/docker', '/usr/local/bin/docker'] as const;
-const dockerBinary = DOCKER_CANDIDATES.find((candidate) => existsSync(candidate)) ?? DOCKER_CANDIDATES[0];
+const dockerBinary =
+  DOCKER_CANDIDATES.find((candidate) => existsSync(candidate)) ?? DOCKER_CANDIDATES[0];
 
 /** Resolve the repository root from the Playwright utilities directory. */
 export function repoRoot(): string {
@@ -40,11 +41,14 @@ export async function clearAuth(page: Page) {
   if (page.url() === 'about:blank') {
     await page.goto('/');
   }
-  await page.evaluate(([accessKey, refreshKey]) => {
-    globalThis.localStorage.removeItem(accessKey);
-    globalThis.localStorage.removeItem(refreshKey);
-    globalThis.localStorage.removeItem('user');
-  }, [accessStorageKey, refreshStorageKey]);
+  await page.evaluate(
+    ([accessKey, refreshKey]) => {
+      globalThis.localStorage.removeItem(accessKey);
+      globalThis.localStorage.removeItem(refreshKey);
+      globalThis.localStorage.removeItem('user');
+    },
+    [accessStorageKey, refreshStorageKey],
+  );
 }
 
 /** Sign in with the given email and access code. */
@@ -52,17 +56,23 @@ export async function login(page: Page, email: string, accessCode: string) {
   await page.goto('/login');
   await page.locator('#email').fill(email);
   await page.locator(credentialInputSelector).fill(accessCode);
-  await Promise.all([
-    page.waitForURL(/\/($|\?)/),
-    page.locator('button[type="submit"]').click(),
-  ]);
+  await Promise.all([page.waitForURL(/\/($|\?)/), page.locator('button[type="submit"]').click()]);
 
-  await expect.poll(() => page.evaluate((key) => globalThis.localStorage.getItem(key), accessStorageKey)).not.toBeNull();
-  await expect.poll(() => page.evaluate(() => globalThis.localStorage.getItem('user'))).not.toBeNull();
+  await expect
+    .poll(() => page.evaluate((key) => globalThis.localStorage.getItem(key), accessStorageKey))
+    .not.toBeNull();
+  await expect
+    .poll(() => page.evaluate(() => globalThis.localStorage.getItem('user')))
+    .not.toBeNull();
 }
 
 /** Register a student user through the public sign-up flow. */
-export async function registerStudent(page: Page, email: string, accessCode: string, fullName = 'E2E Student') {
+export async function registerStudent(
+  page: Page,
+  email: string,
+  accessCode: string,
+  fullName = 'E2E Student',
+) {
   await page.goto('/register');
   await page.locator('#fullName').fill(fullName);
   await page.locator('#email').fill(email);
@@ -108,7 +118,9 @@ export async function fetchLatestResetLinkCode(email: string): Promise<string> {
   }
 
   if (!hasDockerCompose()) {
-    throw new Error('docker compose is required to fetch the reset link code from the test database');
+    throw new Error(
+      'docker compose is required to fetch the reset link code from the test database',
+    );
   }
 
   const sql = `

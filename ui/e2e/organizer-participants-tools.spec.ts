@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, DEFAULT_E2E_CODE, expectPathname, formatDateTimeLocal, login, setLanguagePreference } from './utils';
+import {
+  clearAuth,
+  DEFAULT_E2E_CODE,
+  expectPathname,
+  formatDateTimeLocal,
+  login,
+  setLanguagePreference,
+} from './utils';
 
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
@@ -79,11 +86,9 @@ test('organizer participants tools: attendance + CSV export + email', async ({ p
 
   await page.getByRole('button', { name: 'Email participants' }).click();
   await page.locator('#email-subject').fill('E2E Participants email');
-  await page.locator('#email-message').fill('Hello participants! This is an automated E2E test message.');
+  await page
+    .locator('#email-message')
+    .fill('Hello participants! This is an automated E2E test message.');
   await page.getByRole('button', { name: 'Send' }).click();
   await expect(page.getByText('Email sent to 1 participants.').first()).toBeVisible();
 });
-
-
-
-

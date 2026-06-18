@@ -96,9 +96,7 @@ export function OrganizerDashboardPage() {
     try {
       await eventService.bulkUpdateEventStatus(Array.from(selectedEventIds), status);
       setEvents((prev) =>
-        prev.map((event) => (
-          selectedEventIds.has(event.id) ? { ...event, status } : event
-        ))
+        prev.map((event) => (selectedEventIds.has(event.id) ? { ...event, status } : event)),
       );
       setSelectedEventIds(new Set());
       toast({

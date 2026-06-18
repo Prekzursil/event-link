@@ -31,9 +31,7 @@ export function ForbiddenPage() {
         <CardContent className="pt-6 text-center">
           <ShieldAlert className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
           <h1 className="mb-2 text-xl font-semibold">{t.pages.forbidden.title}</h1>
-          <p className="mb-6 text-muted-foreground">
-            {t.pages.forbidden.description}
-          </p>
+          <p className="mb-6 text-muted-foreground">{t.pages.forbidden.description}</p>
           {pageAction}
         </CardContent>
       </Card>

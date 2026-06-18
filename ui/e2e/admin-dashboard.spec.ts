@@ -1,5 +1,12 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, registerStudent, setLanguagePreference } from './utils';
+import {
+  clearAuth,
+  DEFAULT_E2E_CODE,
+  formatDateTimeLocal,
+  login,
+  registerStudent,
+  setLanguagePreference,
+} from './utils';
 
 const ADMIN = { email: 'admin@test.com', code: DEFAULT_E2E_CODE };
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
@@ -102,10 +109,7 @@ test('admin dashboard: user management + event moderation', async ({ page }) => 
     await applyButton.click();
     await expect(applyButton).toBeEnabled();
   };
-  await waitForAdminEventRow(
-    applyFilters,
-    async () => (await eventRow.count()) > 0,
-  );
+  await waitForAdminEventRow(applyFilters, async () => (await eventRow.count()) > 0);
   await expect(eventRow).toBeVisible();
   await expect(eventRow.getByText('Flagged')).toBeVisible();
   await eventRow.getByRole('button', { name: 'Mark reviewed' }).click();

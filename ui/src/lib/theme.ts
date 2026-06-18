@@ -47,7 +47,9 @@ export function applyThemePreference(preference: ThemePreference) {
 }
 
 /** Subscribe to operating-system theme changes when media queries are available. */
-export function subscribeToSystemThemeChanges(onResolvedThemeChange: (theme: 'light' | 'dark') => void) {
+export function subscribeToSystemThemeChanges(
+  onResolvedThemeChange: (theme: 'light' | 'dark') => void,
+) {
   const browserWindow = globalThis.window;
   if (!browserWindow?.matchMedia) return noopUnsubscribe;
 

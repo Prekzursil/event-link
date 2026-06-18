@@ -35,37 +35,51 @@ export function useStudentProfileAppearanceHandlers({
   const [isSavingTheme, setIsSavingTheme] = useState<boolean>(false);
   const [isSavingLanguage, setIsSavingLanguage] = useState<boolean>(false);
 
-  const handleThemeChange = useCallback(async (nextPreference: ThemePreference) => {
-    const previous = themePreference;
-    setThemePreference(nextPreference);
-    setIsSavingTheme(true);
-    try {
-      await authService.updateThemePreference(nextPreference);
-      await refreshUser();
-      toast({ title: t.theme.savedTitle, description: t.theme.savedDescription });
-    } catch {
-      setThemePreference(previous);
-      toast({ title: t.theme.saveErrorTitle, description: t.theme.saveErrorDescription, variant: 'destructive' });
-    } finally {
-      setIsSavingTheme(false);
-    }
-  }, [refreshUser, setThemePreference, t, themePreference, toast]);
+  const handleThemeChange = useCallback(
+    async (nextPreference: ThemePreference) => {
+      const previous = themePreference;
+      setThemePreference(nextPreference);
+      setIsSavingTheme(true);
+      try {
+        await authService.updateThemePreference(nextPreference);
+        await refreshUser();
+        toast({ title: t.theme.savedTitle, description: t.theme.savedDescription });
+      } catch {
+        setThemePreference(previous);
+        toast({
+          title: t.theme.saveErrorTitle,
+          description: t.theme.saveErrorDescription,
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSavingTheme(false);
+      }
+    },
+    [refreshUser, setThemePreference, t, themePreference, toast],
+  );
 
-  const handleLanguageChange = useCallback(async (nextPreference: LanguagePreference) => {
-    const previous = languagePreference;
-    setLanguagePreference(nextPreference);
-    setIsSavingLanguage(true);
-    try {
-      await authService.updateLanguagePreference(nextPreference);
-      await refreshUser();
-      toast({ title: t.language.savedTitle, description: t.language.savedDescription });
-    } catch {
-      setLanguagePreference(previous);
-      toast({ title: t.language.saveErrorTitle, description: t.language.saveErrorDescription, variant: 'destructive' });
-    } finally {
-      setIsSavingLanguage(false);
-    }
-  }, [languagePreference, refreshUser, setLanguagePreference, t, toast]);
+  const handleLanguageChange = useCallback(
+    async (nextPreference: LanguagePreference) => {
+      const previous = languagePreference;
+      setLanguagePreference(nextPreference);
+      setIsSavingLanguage(true);
+      try {
+        await authService.updateLanguagePreference(nextPreference);
+        await refreshUser();
+        toast({ title: t.language.savedTitle, description: t.language.savedDescription });
+      } catch {
+        setLanguagePreference(previous);
+        toast({
+          title: t.language.saveErrorTitle,
+          description: t.language.saveErrorDescription,
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSavingLanguage(false);
+      }
+    },
+    [languagePreference, refreshUser, setLanguagePreference, t, toast],
+  );
 
   return {
     handleLanguageChange,

@@ -43,8 +43,14 @@ function optimisticRegistrationEvent(event: EventDetail, nextRegistered: boolean
 }
 
 /** Record event-detail interactions without surfacing analytics failures. */
-function recordEventDetailInteraction(eventId: number, interactionType: InteractionType, meta?: Record<string, unknown>) {
-  swallowPromise(recordInteractions([{ interaction_type: interactionType, event_id: eventId, meta }]));
+function recordEventDetailInteraction(
+  eventId: number,
+  interactionType: InteractionType,
+  meta?: Record<string, unknown>,
+) {
+  swallowPromise(
+    recordInteractions([{ interaction_type: interactionType, event_id: eventId, meta }]),
+  );
 }
 
 /** Compute the display flags derived from the loaded event payload. */
@@ -104,20 +110,23 @@ export function useEventDetailController() {
   }, [loadEvent]);
 
   const eventId = event?.id;
-  useEffect(function trackEventDwellEffect() {
-    if (!eventId) {
-      return undefined;
-    }
-    const trackedEventId = eventId;
-    const startedAt = Date.now();
-    recordEventDetailInteraction(trackedEventId, 'view', { source: 'event_detail' });
-    /** Persist dwell-time analytics when the event detail view unmounts. */
-    function trackDwellOnCleanup(): void {
-      const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
-      recordEventDetailInteraction(trackedEventId, 'dwell', { source: 'event_detail', seconds });
-    }
-    return trackDwellOnCleanup;
-  }, [eventId]);
+  useEffect(
+    function trackEventDwellEffect() {
+      if (!eventId) {
+        return undefined;
+      }
+      const trackedEventId = eventId;
+      const startedAt = Date.now();
+      recordEventDetailInteraction(trackedEventId, 'view', { source: 'event_detail' });
+      /** Persist dwell-time analytics when the event detail view unmounts. */
+      function trackDwellOnCleanup(): void {
+        const seconds = Math.max(0, Math.round((Date.now() - startedAt) / 1000));
+        recordEventDetailInteraction(trackedEventId, 'dwell', { source: 'event_detail', seconds });
+      }
+      return trackDwellOnCleanup;
+    },
+    [eventId],
+  );
 
   const handleRequireAuth = useCallback(() => {
     navigate('/login', { state: { from: { pathname: `/events/${id}` } } });
@@ -268,7 +277,9 @@ export function useEventDetailController() {
     if (!event) {
       return;
     }
-    window.open(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/events/${event.id}/ics`);
+    window.open(
+      `${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/events/${event.id}/ics`,
+    );
   }, [event]);
 
   const handleClone = useCallback(async () => {
@@ -349,10 +360,31 @@ export function useEventDetailController() {
   const { isPast, isFull } = useMemo(() => eventDetailStatus(event), [event]);
 
   return createEventDetailController({
-    event, handleBlockOrganizer, handleClone, handleExportCalendar, handleFavorite, handleHideTag,
-    handleRegister, handleResendRegistrationEmail, handleShare, handleUnregister, hideTagId,
-    isBlockingOrganizer, isCloning, isFavoriting, isFull, isHidingTag, isLoading, isPast,
-    isRegistering, isResendingEmail, isStudent, language, navigate, setHideTagId, t,
+    event,
+    handleBlockOrganizer,
+    handleClone,
+    handleExportCalendar,
+    handleFavorite,
+    handleHideTag,
+    handleRegister,
+    handleResendRegistrationEmail,
+    handleShare,
+    handleUnregister,
+    hideTagId,
+    isBlockingOrganizer,
+    isCloning,
+    isFavoriting,
+    isFull,
+    isHidingTag,
+    isLoading,
+    isPast,
+    isRegistering,
+    isResendingEmail,
+    isStudent,
+    language,
+    navigate,
+    setHideTagId,
+    t,
   });
 }
 

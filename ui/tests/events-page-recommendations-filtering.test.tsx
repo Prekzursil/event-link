@@ -1,11 +1,7 @@
 import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
-import {
-  EventsPage,
-  getEventPagesFixtures,
-  makeEvent,
-} from './events-form-and-events-page.shared';
+import { EventsPage, getEventPagesFixtures, makeEvent } from './events-form-and-events-page.shared';
 import { renderLanguageRoute } from './page-test-helpers';
 
 const { eventServiceMock, recordInteractionsSpy } = getEventPagesFixtures();
@@ -35,9 +31,10 @@ it('covers filter tracking for pre-filled event filters', async () => {
   renderLanguageRoute('/events?category=Technical&sort=time', '/events', <EventsPage />);
   await screen.findByText(/Event 11/i);
   await waitFor(() => {
-    const hasFilterPayload = recordInteractionsSpy.mock.calls.some(([payload]) =>
-      Array.isArray(payload) &&
-      payload.some((item: { interaction_type?: string }) => item?.interaction_type === 'filter'),
+    const hasFilterPayload = recordInteractionsSpy.mock.calls.some(
+      ([payload]) =>
+        Array.isArray(payload) &&
+        payload.some((item: { interaction_type?: string }) => item?.interaction_type === 'filter'),
     );
     expect(hasFilterPayload).toBe(true);
   });

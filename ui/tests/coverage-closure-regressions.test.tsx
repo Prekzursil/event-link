@@ -12,42 +12,38 @@ import {
   setEnglishPreference,
 } from './page-test-helpers';
 
-const {
-  authState,
-  eventServiceMock,
-  navigateSpy,
-  recordInteractionsSpy,
-  toastSpy,
-} = vi.hoisted(() => ({
-  authState: {
-    isAuthenticated: true,
-    isOrganizer: false,
-    isAdmin: false,
-    isLoading: false,
-    user: { id: 1, role: 'student', email: 'student@test.local' },
-    logout: vi.fn(),
-    refreshUser: vi.fn(),
-  },
-  eventServiceMock: {
-    addToFavorites: vi.fn(),
-    blockOrganizer: vi.fn(),
-    cloneEvent: vi.fn(),
-    createEvent: vi.fn(),
-    getEvent: vi.fn(),
-    getEvents: vi.fn(),
-    getFavorites: vi.fn(),
-    hideTag: vi.fn(),
-    registerForEvent: vi.fn(),
-    removeFromFavorites: vi.fn(),
-    resendRegistrationEmail: vi.fn(),
-    suggestEvent: vi.fn(),
-    unregisterFromEvent: vi.fn(),
-    updateEvent: vi.fn(),
-  },
-  navigateSpy: vi.fn(),
-  recordInteractionsSpy: vi.fn(),
-  toastSpy: vi.fn(),
-}));
+const { authState, eventServiceMock, navigateSpy, recordInteractionsSpy, toastSpy } = vi.hoisted(
+  () => ({
+    authState: {
+      isAuthenticated: true,
+      isOrganizer: false,
+      isAdmin: false,
+      isLoading: false,
+      user: { id: 1, role: 'student', email: 'student@test.local' },
+      logout: vi.fn(),
+      refreshUser: vi.fn(),
+    },
+    eventServiceMock: {
+      addToFavorites: vi.fn(),
+      blockOrganizer: vi.fn(),
+      cloneEvent: vi.fn(),
+      createEvent: vi.fn(),
+      getEvent: vi.fn(),
+      getEvents: vi.fn(),
+      getFavorites: vi.fn(),
+      hideTag: vi.fn(),
+      registerForEvent: vi.fn(),
+      removeFromFavorites: vi.fn(),
+      resendRegistrationEmail: vi.fn(),
+      suggestEvent: vi.fn(),
+      unregisterFromEvent: vi.fn(),
+      updateEvent: vi.fn(),
+    },
+    navigateSpy: vi.fn(),
+    recordInteractionsSpy: vi.fn(),
+    toastSpy: vi.fn(),
+  }),
+);
 
 vi.mock('@/services/event.service', () => ({ default: eventServiceMock }));
 vi.mock('@/services/analytics.service', () => ({ recordInteractions: recordInteractionsSpy }));
@@ -117,13 +113,7 @@ function makeEventDetail(overrides: Partial<EventDetail> = {}): EventDetail {
 function EventDetailOverviewHarness({ event }: Readonly<{ event: EventDetail }>) {
   const { language, t } = useI18n();
   return (
-    <EventDetailOverview
-      event={event}
-      isPast={false}
-      isFull={false}
-      language={language}
-      t={t}
-    />
+    <EventDetailOverview event={event} isPast={false} isFull={false} language={language} t={t} />
   );
 }
 
@@ -137,13 +127,17 @@ function EventDetailControllerHarness() {
     <>
       <button onClick={() => swallowPromise(controller.handleRegister())}>register</button>
       <button onClick={() => swallowPromise(controller.handleUnregister())}>unregister</button>
-      <button onClick={() => swallowPromise(controller.handleResendRegistrationEmail())}>resend-email</button>
+      <button onClick={() => swallowPromise(controller.handleResendRegistrationEmail())}>
+        resend-email
+      </button>
       <button onClick={() => swallowPromise(controller.handleFavorite())}>favorite</button>
       <button onClick={() => swallowPromise(controller.handleShare())}>share</button>
       <button onClick={() => swallowPromise(controller.handleExportCalendar())}>export</button>
       <button onClick={() => swallowPromise(controller.handleClone())}>clone</button>
       <button onClick={() => swallowPromise(controller.handleHideTag())}>hide-tag</button>
-      <button onClick={() => swallowPromise(controller.handleBlockOrganizer())}>block-organizer</button>
+      <button onClick={() => swallowPromise(controller.handleBlockOrganizer())}>
+        block-organizer
+      </button>
     </>
   );
 }
@@ -285,22 +279,14 @@ describe('coverage closure regressions', () => {
   it('covers the admin users previous-page handler', () => {
     const loadUsers = vi.fn();
 
-    renderLanguageRoute(
-      '/admin',
-      '/admin',
-      <AdminUsersTabHarness loadUsers={loadUsers} />,
-    );
+    renderLanguageRoute('/admin', '/admin', <AdminUsersTabHarness loadUsers={loadUsers} />);
 
     fireEvent.click(screen.getByRole('button', { name: /back/i }));
     expect(loadUsers).toHaveBeenCalledWith(1);
   });
 
   it('covers admin event moderation flag truncation', () => {
-    renderLanguageRoute(
-      '/admin',
-      '/admin',
-      <AdminEventsTabHarness />,
-    );
+    renderLanguageRoute('/admin', '/admin', <AdminEventsTabHarness />);
 
     expect(screen.getByText('flag-1, flag-2, flag-3…')).toBeInTheDocument();
     expect(screen.queryByText('flag-1, flag-2, flag-3')).not.toBeInTheDocument();

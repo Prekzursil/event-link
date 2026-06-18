@@ -1,6 +1,14 @@
 import { Link } from 'react-router-dom';
 import { isPast } from 'date-fns';
-import { ArrowLeft, Building2, Calendar, CalendarDays, ExternalLink, History, Mail } from 'lucide-react';
+import {
+  ArrowLeft,
+  Building2,
+  Calendar,
+  CalendarDays,
+  ExternalLink,
+  History,
+  Mail,
+} from 'lucide-react';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -95,7 +103,12 @@ function OrganizerContactLinks({ email, website, websiteLabel }: OrganizerContac
       {website ? (
         <div className="flex items-center gap-2 text-sm text-muted-foreground">
           <ExternalLink className="h-4 w-4" />
-          <a href={website} target="_blank" rel="noopener noreferrer" className="hover:text-primary">
+          <a
+            href={website}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-primary"
+          >
             {websiteLabel}
           </a>
         </div>
@@ -168,7 +181,9 @@ function NotFoundState({ controller }: Props) {
       <Card className="mx-auto max-w-md">
         <CardContent className="pt-6 text-center">
           <Building2 className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-          <h2 className="mb-2 text-xl font-semibold">{controller.t.organizerProfile.notFoundTitle}</h2>
+          <h2 className="mb-2 text-xl font-semibold">
+            {controller.t.organizerProfile.notFoundTitle}
+          </h2>
           <p className="mb-4 text-muted-foreground">
             {controller.hasError
               ? controller.t.organizerProfile.loadErrorDescription
@@ -217,7 +232,11 @@ function EventsGrid({ events, showPastState = false }: EventsGridProps) {
   return (
     <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
       {events.map((event) => (
-        <EventCard key={event.id} event={event} isPast={showPastState || isPast(new Date(event.start_time))} />
+        <EventCard
+          key={event.id}
+          event={event}
+          isPast={showPastState || isPast(new Date(event.start_time))}
+        />
       ))}
     </div>
   );

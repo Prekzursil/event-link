@@ -59,10 +59,7 @@ export function EventsActiveFilters({
     return (
       <Badge key={key} variant="secondary" className="gap-1">
         {label}
-        <X
-          className="h-3 w-3 cursor-pointer"
-          onClick={() => onUpdateFilter(clearPatches[key])}
-        />
+        <X className="h-3 w-3 cursor-pointer" onClick={() => onUpdateFilter(clearPatches[key])} />
       </Badge>
     );
   }
@@ -70,8 +67,7 @@ export function EventsActiveFilters({
   return (
     <div className="flex flex-wrap items-center gap-2">
       <span className="text-sm text-muted-foreground">{labels.activeFilters}</span>
-      {filters.search &&
-        renderChip('search', `${labels.filterSearch}: ${filters.search}`)}
+      {filters.search && renderChip('search', `${labels.filterSearch}: ${filters.search}`)}
       {filters.category &&
         renderChip('category', getEventCategoryLabel(filters.category, language))}
       {filters.start_date &&
@@ -83,8 +79,7 @@ export function EventsActiveFilters({
           </>,
         )}
       {filters.city && renderChip('city', `${labels.filterCity}: ${filters.city}`)}
-      {filters.location &&
-        renderChip('location', `${labels.filterLocation}: ${filters.location}`)}
+      {filters.location && renderChip('location', `${labels.filterLocation}: ${filters.location}`)}
       <Button variant="ghost" size="sm" onClick={onClearAll}>
         {labels.clearAll}
       </Button>

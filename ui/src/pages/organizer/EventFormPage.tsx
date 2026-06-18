@@ -25,7 +25,11 @@ export function EventFormPage() {
 
       <Card>
         <CardHeader className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
-          <CardTitle>{controller.isEditing ? controller.t.eventForm.editTitle : controller.t.eventForm.createTitle}</CardTitle>
+          <CardTitle>
+            {controller.isEditing
+              ? controller.t.eventForm.editTitle
+              : controller.t.eventForm.createTitle}
+          </CardTitle>
           <Button
             type="button"
             variant="outline"
@@ -33,7 +37,9 @@ export function EventFormPage() {
             disabled={controller.isSuggesting || !controller.formData.title.trim()}
           >
             <Sparkles className="mr-2 h-4 w-4" />
-            {controller.isSuggesting ? controller.t.eventForm.suggesting : controller.t.eventForm.suggestButton}
+            {controller.isSuggesting
+              ? controller.t.eventForm.suggesting
+              : controller.t.eventForm.suggestButton}
           </Button>
         </CardHeader>
         <CardContent>

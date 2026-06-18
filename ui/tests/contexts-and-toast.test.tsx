@@ -1,5 +1,13 @@
 import React from 'react';
-import { act, cleanup, fireEvent, render, renderHook, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  cleanup,
+  fireEvent,
+  render,
+  renderHook,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 
 const { authServiceMock } = vi.hoisted(() => ({
@@ -61,11 +69,15 @@ function CombinedConsumer() {
   return (
     <div>
       <div data-testid="auth-state">{String(auth.isAuthenticated)}</div>
-      <div data-testid="role-state">{String(auth.isOrganizer)}|{String(auth.isAdmin)}</div>
+      <div data-testid="role-state">
+        {String(auth.isOrganizer)}|{String(auth.isAdmin)}
+      </div>
       <div data-testid="language">{i18n.language}</div>
       <div data-testid="theme">{theme.resolvedTheme}</div>
       <button onClick={() => auth.login('x@test.ro', DEMO_ENTRY_CODE)}>login</button>
-      <button onClick={() => auth.register('x@test.ro', DEMO_ENTRY_CODE, DEMO_ENTRY_CODE, 'X')}>register</button>
+      <button onClick={() => auth.register('x@test.ro', DEMO_ENTRY_CODE, DEMO_ENTRY_CODE, 'X')}>
+        register
+      </button>
       <button onClick={() => auth.refreshUser()}>refresh</button>
       <button onClick={() => auth.logout()}>logout</button>
       <button onClick={() => i18n.setPreference('en')}>lang-en</button>
@@ -105,11 +117,16 @@ describe('contexts and toast hook', () => {
   });
 
   it('throws when hooks are used outside providers', () => {
-    expect(() => render(<AuthOnlyConsumer />)).toThrow('useAuth must be used within an AuthProvider');
-    expect(() => render(<LanguageOnlyConsumer />)).toThrow('useI18n must be used within a LanguageProvider');
-    expect(() => render(<ThemeOnlyConsumer />)).toThrow('useTheme must be used within a ThemeProvider');
+    expect(() => render(<AuthOnlyConsumer />)).toThrow(
+      'useAuth must be used within an AuthProvider',
+    );
+    expect(() => render(<LanguageOnlyConsumer />)).toThrow(
+      'useI18n must be used within a LanguageProvider',
+    );
+    expect(() => render(<ThemeOnlyConsumer />)).toThrow(
+      'useTheme must be used within a ThemeProvider',
+    );
   });
-
 
   it('covers ThemeProvider system change subscription callback path', async () => {
     let systemListener: (() => void) | null = null;
@@ -168,7 +185,10 @@ describe('contexts and toast hook', () => {
     act(() => {
       fireEvent.click(screen.getByText('login'));
     });
-    expect(authServiceMock.login).toHaveBeenCalledWith({ email: 'x@test.ro', [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE });
+    expect(authServiceMock.login).toHaveBeenCalledWith({
+      email: 'x@test.ro',
+      [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
+    });
 
     act(() => {
       fireEvent.click(screen.getByText('register'));
@@ -254,13 +274,23 @@ describe('contexts and toast hook', () => {
     expect(dismissedOne.toasts[0].open).toBe(false);
 
     const dismissedAll = reducer(
-      { toasts: [{ id: '1', open: true }, { id: '2', open: true }] } as never,
+      {
+        toasts: [
+          { id: '1', open: true },
+          { id: '2', open: true },
+        ],
+      } as never,
       { type: 'DISMISS_TOAST' } as never,
     );
     expect(dismissedAll.toasts.every((item) => item.open === false)).toBe(true);
 
     const removedOne = reducer(
-      { toasts: [{ id: '1', open: false }, { id: '2', open: false }] } as never,
+      {
+        toasts: [
+          { id: '1', open: false },
+          { id: '2', open: false },
+        ],
+      } as never,
       { type: 'REMOVE_TOAST', toastId: '1' } as never,
     );
     expect(removedOne.toasts).toHaveLength(1);
@@ -327,7 +357,9 @@ describe('contexts and toast hook', () => {
     act(() => {
       explicitBranchToastId = result.current.toast({ title: 'branch-check' }).id;
     });
-    const explicitBranchToast = result.current.toasts.find((item) => item.id === explicitBranchToastId);
+    const explicitBranchToast = result.current.toasts.find(
+      (item) => item.id === explicitBranchToastId,
+    );
     expect(explicitBranchToast).toBeDefined();
     act(() => {
       explicitBranchToast?.onOpenChange?.(true);

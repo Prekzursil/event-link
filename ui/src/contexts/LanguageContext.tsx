@@ -23,8 +23,12 @@ const LanguageContext = createContext<LanguageContextType | null>(null);
  * Test helper: language provider.
  */
 export function LanguageProvider({ children }: Readonly<{ children: ReactNode }>) {
-  const [preference, setPreference] = useState<LanguagePreference>(() => getStoredLanguagePreference());
-  const [language, setLanguage] = useState<ResolvedLanguage>(() => resolveLanguage(getStoredLanguagePreference()));
+  const [preference, setPreference] = useState<LanguagePreference>(() =>
+    getStoredLanguagePreference(),
+  );
+  const [language, setLanguage] = useState<ResolvedLanguage>(() =>
+    resolveLanguage(getStoredLanguagePreference()),
+  );
 
   useEffect(() => {
     storeLanguagePreference(preference);

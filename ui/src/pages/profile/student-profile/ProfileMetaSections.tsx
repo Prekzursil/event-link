@@ -91,7 +91,10 @@ function BlockedOrganizersPanel({
       ) : (
         <div className="space-y-2">
           {blockedOrganizers.map((organizer) => (
-            <div key={organizer.id} className="flex items-center justify-between gap-3 rounded-lg border p-3">
+            <div
+              key={organizer.id}
+              className="flex items-center justify-between gap-3 rounded-lg border p-3"
+            >
               <div className="min-w-0">
                 <div className="truncate text-sm font-medium">
                   {organizer.org_name || organizer.full_name || organizer.email}
@@ -129,11 +132,7 @@ function NotificationPreferenceRow({
         <div className="text-sm font-medium">{label}</div>
         <div className="text-xs text-muted-foreground">{description}</div>
       </div>
-      <Checkbox
-        checked={checked}
-        disabled={disabled}
-        onCheckedChange={onCheckedChange}
-      />
+      <Checkbox checked={checked} disabled={disabled} onCheckedChange={onCheckedChange} />
     </div>
   );
 }
@@ -185,7 +184,8 @@ export function PersonalizationSection({
             label={t.notifications.weeklyDigestLabel}
             onCheckedChange={
               notificationPrefs
-                ? (checked) => onNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
+                ? (checked) =>
+                    onNotificationPreferenceChange({ email_digest_enabled: Boolean(checked) })
                 : undefined
             }
           />

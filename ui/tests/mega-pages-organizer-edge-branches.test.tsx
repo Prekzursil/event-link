@@ -64,9 +64,7 @@ async function coverOrganizerAndParticipantsCallbackEdgeBranches() {
   expect(eventServiceMock.deleteEvent).toHaveBeenLastCalledWith(3);
 
   cleanup();
-  eventServiceMock.getEventParticipants.mockRejectedValueOnce(
-    new Error('participants-load-fail'),
-  );
+  eventServiceMock.getEventParticipants.mockRejectedValueOnce(new Error('participants-load-fail'));
   renderLanguageRoute(
     '/organizer/events/3/participants',
     '/organizer/events/:id/participants',

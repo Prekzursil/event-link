@@ -169,7 +169,10 @@ export const makeEvent = (id: number, startOffsetDays: number) => {
     location: 'Main Hall',
     max_seats: 50,
     seats_taken: 5,
-    tags: [{ id: 1, name: 'Tech' }, { id: 2, name: 'Community' }],
+    tags: [
+      { id: 1, name: 'Tech' },
+      { id: 2, name: 'Community' },
+    ],
     status: 'published',
     cover_url: '',
     recommendation_reason: 'Popular in your area',

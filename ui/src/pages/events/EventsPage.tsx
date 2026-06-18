@@ -24,14 +24,7 @@ import { LoadingPage } from '@/components/ui/loading';
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/contexts/AuthContext';
 import { useI18n } from '@/contexts/LanguageContext';
-import {
-  Search,
-  Filter,
-  CalendarIcon,
-  ChevronLeft,
-  ChevronRight,
-  Sparkles,
-} from 'lucide-react';
+import { Search, Filter, CalendarIcon, ChevronLeft, ChevronRight, Sparkles } from 'lucide-react';
 import { getDateFnsLocale } from '@/lib/language';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 import { EventsActiveFilters } from './EventsActiveFilters';
@@ -129,7 +122,10 @@ function buildEventsListInteractions(
 }
 
 /** Load the recommendation rail and the favorite set needed to decorate it. */
-async function loadRecommendationPanel(): Promise<{ recommendations: Event[]; favoriteIds: Set<number> }> {
+async function loadRecommendationPanel(): Promise<{
+  recommendations: Event[];
+  favoriteIds: Set<number>;
+}> {
   const [recommendationsResult, favoritesResult] = await Promise.allSettled([
     eventService.getEvents({ page: 1, page_size: 4, sort: 'recommended' }),
     eventService.getFavorites(),
@@ -267,29 +263,27 @@ export function EventsPage() {
   });
 
   useEffect(() => {
-    return syncEventsList(
-      {
-        filters,
-        onLoaded: (response) => {
-          setEvents(response.items);
-          setTotalEvents(response.total);
-          setTotalPages(Math.ceil(response.total / filters.page_size));
-        },
-        onError: () => {
-          toast({
-            title: t.events.loadErrorTitle,
-            description: t.events.loadErrorDescription,
-            variant: 'destructive',
-          });
-        },
-        onStarted: () => {
-          setIsLoading(true);
-        },
-        onSettled: () => {
-          setIsLoading(false);
-        },
+    return syncEventsList({
+      filters,
+      onLoaded: (response) => {
+        setEvents(response.items);
+        setTotalEvents(response.total);
+        setTotalPages(Math.ceil(response.total / filters.page_size));
       },
-    );
+      onError: () => {
+        toast({
+          title: t.events.loadErrorTitle,
+          description: t.events.loadErrorDescription,
+          variant: 'destructive',
+        });
+      },
+      onStarted: () => {
+        setIsLoading(true);
+      },
+      onSettled: () => {
+        setIsLoading(false);
+      },
+    });
   }, [filters, toast, t]);
 
   useEffect(() => {
@@ -388,9 +382,7 @@ export function EventsPage() {
       <div className="flex flex-col items-center justify-center py-16 text-center">
         <Filter className="mb-4 h-12 w-12 text-muted-foreground" />
         <h3 className="text-lg font-semibold">{t.events.noResultsTitle}</h3>
-        <p className="mt-2 text-muted-foreground">
-          {t.events.noResultsDescription}
-        </p>
+        <p className="mt-2 text-muted-foreground">{t.events.noResultsDescription}</p>
         {hasActiveFilters && (
           <Button variant="outline" className="mt-4" onClick={clearFilters}>
             {t.events.clearFilters}
@@ -452,9 +444,7 @@ export function EventsPage() {
   const pageHeaderSection = (
     <div className="mb-8">
       <h1 className="text-3xl font-bold">{t.events.title}</h1>
-      <p className="mt-2 text-muted-foreground">
-        {t.events.subtitle}
-      </p>
+      <p className="mt-2 text-muted-foreground">{t.events.subtitle}</p>
     </div>
   );
 
@@ -492,10 +482,7 @@ export function EventsPage() {
   );
 
   const categoryFilter = (
-    <Select
-      value={filters.category || ALL_CATEGORIES_VALUE}
-      onValueChange={handleCategoryChange}
-    >
+    <Select value={filters.category || ALL_CATEGORIES_VALUE} onValueChange={handleCategoryChange}>
       <SelectTrigger className="w-full sm:w-[180px]">
         <SelectValue placeholder={t.events.categoryPlaceholder} />
       </SelectTrigger>

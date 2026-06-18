@@ -69,29 +69,44 @@ export const adminService = {
   },
 
   async reviewEventModeration(eventId: number): Promise<{ status: string }> {
-    const response = await api.post<{ status: string }>(`/api/admin/events/${eventId}/moderation/review`);
+    const response = await api.post<{ status: string }>(
+      `/api/admin/events/${eventId}/moderation/review`,
+    );
     return response.data;
   },
 
   async getPersonalizationMetrics(days = 30): Promise<PersonalizationMetricsResponse> {
     const params = new URLSearchParams();
     params.append('days', days.toString());
-    const response = await api.get<PersonalizationMetricsResponse>(`/api/admin/personalization/metrics?${params.toString()}`);
+    const response = await api.get<PersonalizationMetricsResponse>(
+      `/api/admin/personalization/metrics?${params.toString()}`,
+    );
     return response.data;
   },
 
-  async enqueueRecommendationsRetrain(payload?: Record<string, unknown>): Promise<EnqueuedJobResponse> {
-    const response = await api.post<EnqueuedJobResponse>('/api/admin/personalization/retrain', payload ?? {});
+  async enqueueRecommendationsRetrain(
+    payload?: Record<string, unknown>,
+  ): Promise<EnqueuedJobResponse> {
+    const response = await api.post<EnqueuedJobResponse>(
+      '/api/admin/personalization/retrain',
+      payload ?? {},
+    );
     return response.data;
   },
 
   async enqueueWeeklyDigest(payload?: Record<string, unknown>): Promise<EnqueuedJobResponse> {
-    const response = await api.post<EnqueuedJobResponse>('/api/admin/notifications/weekly-digest', payload ?? {});
+    const response = await api.post<EnqueuedJobResponse>(
+      '/api/admin/notifications/weekly-digest',
+      payload ?? {},
+    );
     return response.data;
   },
 
   async enqueueFillingFast(payload?: Record<string, unknown>): Promise<EnqueuedJobResponse> {
-    const response = await api.post<EnqueuedJobResponse>('/api/admin/notifications/filling-fast', payload ?? {});
+    const response = await api.post<EnqueuedJobResponse>(
+      '/api/admin/notifications/filling-fast',
+      payload ?? {},
+    );
     return response.data;
   },
 };

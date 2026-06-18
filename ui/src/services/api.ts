@@ -24,7 +24,7 @@ api.interceptors.request.use(
     config.headers = headers;
     return config;
   },
-  (error) => Promise.reject(error)
+  (error) => Promise.reject(error),
 );
 
 // Response interceptor for token refresh
@@ -67,7 +67,7 @@ api.interceptors.response.use(
     }
 
     throw error;
-  }
+  },
 );
 
 export default api;

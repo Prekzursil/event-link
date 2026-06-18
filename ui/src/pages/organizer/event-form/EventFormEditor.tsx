@@ -4,7 +4,13 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { EVENT_CATEGORIES, getEventCategoryLabel } from '@/lib/eventCategories';
 import type { EventFormController } from './useEventFormController';
@@ -160,7 +166,12 @@ function VenueFields({ controller }: Props) {
           type="number"
           min="1"
           value={formData.max_seats || ''}
-          onChange={(event) => updateField('max_seats', event.target.value ? Number.parseInt(event.target.value, 10) : undefined)}
+          onChange={(event) =>
+            updateField(
+              'max_seats',
+              event.target.value ? Number.parseInt(event.target.value, 10) : undefined,
+            )
+          }
           placeholder={t.eventForm.placeholders.maxSeatsExample}
           required
         />
@@ -255,7 +266,12 @@ function FormActions({ controller }: Props) {
 export function EventFormEditor({ controller }: Props) {
   // skipcq: JS-0415 - the event form editor intentionally composes the field groups in one editor layout.
   return (
-    <form onSubmit={controller.handleSubmit as unknown as (event: React.FormEvent<HTMLFormElement>) => void} className="space-y-6">
+    <form
+      onSubmit={
+        controller.handleSubmit as unknown as (event: React.FormEvent<HTMLFormElement>) => void
+      }
+      className="space-y-6"
+    >
       <TitleDescriptionFields controller={controller} />
       <CategoryStatusFields controller={controller} />
       <ScheduleFields controller={controller} />

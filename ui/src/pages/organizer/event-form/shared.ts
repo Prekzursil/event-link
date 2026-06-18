@@ -113,7 +113,11 @@ export function applySuggestionToFormData(
     ...formData,
     category: formData.category || suggestion.suggested_category || '',
     city: formData.city || suggestion.suggested_city || '',
-    tags: Array.from(new Set([...formData.tags, ...suggestion.suggested_tags].map((tag) => tag.trim()).filter(Boolean))),
+    tags: Array.from(
+      new Set(
+        [...formData.tags, ...suggestion.suggested_tags].map((tag) => tag.trim()).filter(Boolean),
+      ),
+    ),
   };
 }
 

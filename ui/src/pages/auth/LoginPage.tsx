@@ -54,11 +54,7 @@ type LoginFormCardProps = Readonly<{
  */
 function describeApiError(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>;
-  return (
-    axiosError.response?.data?.detail ||
-    axiosError.response?.data?.error?.message ||
-    fallback
-  );
+  return axiosError.response?.data?.detail || axiosError.response?.data?.error?.message || fallback;
 }
 
 /** Render the access-code field used on the login screen. */
@@ -74,10 +70,7 @@ function LoginAccessCodeField({
     <div className="space-y-2">
       <div className="flex items-center justify-between">
         <Label htmlFor="password">{texts.accessCodeLabel}</Label>
-        <Link
-          to="/forgot-password"
-          className="text-sm text-primary hover:underline"
-        >
+        <Link to="/forgot-password" className="text-sm text-primary hover:underline">
           {texts.forgotAccessCode}
         </Link>
       </div>
@@ -207,10 +200,7 @@ function LoginFormFooter({
         submitLabel={texts.submit}
         submittingLabel={texts.submitting}
       />
-      <LoginFooterHint
-        label={texts.noAccount}
-        linkLabel={texts.registerLink}
-      />
+      <LoginFooterHint label={texts.noAccount} linkLabel={texts.registerLink} />
     </CardFooter>
   );
 }

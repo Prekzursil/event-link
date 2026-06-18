@@ -1,14 +1,9 @@
 import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
-import {
-  ParticipantsPage,
-  getMegaPageFixtures,
-} from './mega-pages-branches.fixtures';
+import { ParticipantsPage, getMegaPageFixtures } from './mega-pages-branches.fixtures';
 import { renderLanguageRoute } from './page-test-helpers';
-import {
-  makeParticipant,
-} from './page-test-data';
+import { makeParticipant } from './page-test-data';
 
 const { eventServiceMock } = getMegaPageFixtures();
 
@@ -37,7 +32,13 @@ it('covers participants route guards and populated display branches', async () =
     <ParticipantsPage />,
   );
   await waitFor(() =>
-    expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 1, 20, 'registration_time', 'asc'),
+    expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(
+      3,
+      1,
+      20,
+      'registration_time',
+      'asc',
+    ),
   );
   expect(screen.getByText('-')).toBeInTheDocument();
 
@@ -68,7 +69,13 @@ it('covers participants export, sorting, and empty-state branches', async () => 
     <ParticipantsPage />,
   );
   await waitFor(() =>
-    expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(3, 1, 20, 'registration_time', 'asc'),
+    expect(eventServiceMock.getEventParticipants).toHaveBeenCalledWith(
+      3,
+      1,
+      20,
+      'registration_time',
+      'asc',
+    ),
   );
   fireEvent.click(screen.getByRole('button', { name: /Export CSV/i }));
   expect(URL.createObjectURL).toHaveBeenCalled();
