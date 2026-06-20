@@ -2,7 +2,7 @@
 
 from datetime import datetime, timedelta, timezone
 from typing import Optional
-import bcrypt
+import bcrypt  # pyright: ignore[reportMissingImports]  # runtime dep, no bundled stubs
 import jwt
 from jwt import ExpiredSignatureError, InvalidTokenError
 from fastapi import Depends, HTTPException, status
@@ -66,7 +66,7 @@ def get_current_user(
             token, settings.secret_key, algorithms=[settings.algorithm]
         )
         user_id = payload.get("sub")
-        email: str = payload.get("email")
+        email: str | None = payload.get("email")
         role = payload.get("role")
         if user_id is None or role is None:
             raise credentials_exception

@@ -13,7 +13,7 @@ import pathlib
 import re
 import sys
 
-import libcst as cst
+import libcst as cst  # pyright: ignore[reportMissingImports]  # dev-only codemod dep
 
 
 SKIP_TOKENS = (

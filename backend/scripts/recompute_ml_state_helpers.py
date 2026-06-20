@@ -3,9 +3,11 @@
 
 from __future__ import annotations
 
+import argparse
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
+from types import ModuleType
 
 from recompute_ml_interactions import _load_interaction_signals
 from recompute_ml_loading import (
@@ -358,10 +360,10 @@ class _RecommendationBuildState:
     eligible_event_ids: list[int]
     events: dict[int, _EventFeatures]
     weights: list[float]
-    args: object
+    args: argparse.Namespace
     model_version: str
     now: datetime
-    models: object
+    models: ModuleType
 
 
 @dataclass(frozen=True)

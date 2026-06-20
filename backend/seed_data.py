@@ -12,7 +12,9 @@ Usage:
 import os
 from secrets import SystemRandom
 from datetime import datetime, timedelta, timezone
-from passlib.context import CryptContext
+from passlib.context import (  # pyright: ignore[reportMissingImports]  # runtime dep, no bundled stubs
+    CryptContext,
+)
 from sqlalchemy import func, select
 from app.database import SessionLocal
 from app.models import (
