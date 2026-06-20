@@ -1,0 +1,13 @@
+{
+  "typeCheckingMode": "standard",
+  "include": ["backend", "scripts"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "backend/alembic/versions",
+    "ui"
+  ]
+}
