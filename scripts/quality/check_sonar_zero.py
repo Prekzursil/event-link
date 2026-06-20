@@ -217,8 +217,10 @@ def _status_issue_count(status: dict[str, Any]) -> int:
 
 def _summary_from_entry(entry: dict[str, Any]) -> tuple[int, str, str]:
     """Implements the summary from entry helper."""
-    status = entry.get("status") if isinstance(entry.get("status"), dict) else {}
-    commit = entry.get("commit") if isinstance(entry.get("commit"), dict) else {}
+    raw_status = entry.get("status")
+    status: dict[str, Any] = raw_status if isinstance(raw_status, dict) else {}
+    raw_commit = entry.get("commit")
+    commit: dict[str, Any] = raw_commit if isinstance(raw_commit, dict) else {}
     return (
         _status_issue_count(status),
         str(status.get("qualityGateStatus") or "UNKNOWN"),
@@ -403,7 +405,7 @@ def _evaluate_sonar(
     timeout_seconds: int,
     poll_seconds: int,
     findings: list[str],
-) -> tuple[str, int | None, str | None, list[str]]:
+) -> tuple[str, int | None, str | None, int | None, list[str]]:
     """Implements the evaluate sonar helper."""
     if findings:
         return "fail", None, None, None, findings

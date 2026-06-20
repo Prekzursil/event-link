@@ -359,8 +359,9 @@ def _sync_tool_settings(
     tool_changes: list[dict[str, Any]] = []
 
     for tool_name, tool in sorted(tools_by_name.items()):
-        settings = (
-            tool.get("settings") if isinstance(tool.get("settings"), dict) else {}
+        raw_settings = tool.get("settings")
+        settings: dict[str, Any] = (
+            raw_settings if isinstance(raw_settings, dict) else {}
         )
         payload, tool_notes = _planned_tool_payload(tool_name, settings)
         notes.extend(tool_notes)

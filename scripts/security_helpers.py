@@ -7,6 +7,7 @@ import json
 import re
 import urllib.error
 import urllib.request
+import urllib.response
 from pathlib import Path
 from urllib.parse import ParseResult, urlencode, urlparse, urlunparse
 
@@ -218,7 +219,7 @@ def request_https_json(
         status_value = getattr(response, "status", None)
         if status_value is None:
             status_value = response.getcode()
-        return payload, response_headers, int(status_value)
+        return payload, response_headers, int(status_value or 0)
     finally:
         close = getattr(response, "close", None)
         if callable(close):
