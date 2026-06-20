@@ -13,15 +13,15 @@
 #   - ui/package-lock.json          (React/Vite TypeScript UI npm tree)
 #
 # ---------------------------------------------------------------------------
-# OPEN GAP (2026-06-17): osv-scanner currently reports actionable CVEs with
-# fixed versions AVAILABLE across both ecosystems (axios, react-router, vite,
-# vitest, esbuild, form-data, ws, @babel/core, js-yaml [npm] and starlette,
-# python-multipart, pyjwt, pygments, mako, idna, cryptography [PyPI]). Per the
-# clean-zero policy these are cleared by UPGRADING (most have non-major fixes,
-# e.g. axios 1.15.0 -> 1.16.0), NOT by suppression. The dependency upgrades are
-# deliberately deferred out of this additive config PR (they touch lockfiles and
-# require a full test run); this is why the lean `quality` deps gate is red and
-# the PR is opened as a DRAFT. Add a dated, reasoned IgnoredVulns entry below
-# only for a future vuln that is genuinely unfixable or provably unreachable —
-# do NOT use ignores to paper over an available upgrade.
+# GAP CLOSED (2026-06-20): the actionable CVEs noted earlier (axios,
+# react-router, vite, vitest, esbuild, form-data, ws, @babel/core, js-yaml
+# [npm] and starlette, python-multipart, pyjwt, pygments, mako, idna,
+# cryptography [PyPI]) were cleared by UPGRADING the lockfiles (commit
+# df0045d "fix(deps): upgrade Python + npm deps to clear osv-scanner CVEs"),
+# NOT by suppression. osv-scanner 2.3.8 over backend/requirements.txt,
+# backend/requirements-dev.txt and ui/package-lock.json now reports
+# "No issues found" — the lean `quality` deps gate is clean-zero with no
+# IgnoredVulns entries. Add a dated, reasoned IgnoredVulns entry below only
+# for a future vuln that is genuinely unfixable or provably unreachable — do
+# NOT use ignores to paper over an available upgrade.
 # ---------------------------------------------------------------------------
