@@ -1,7 +1,7 @@
 """FastAPI application and endpoint handlers for Event Link."""
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated, Any, List, Optional, TypedDict, TypeGuard, cast
+from typing import Annotated, Any, List, Optional, TypedDict, TypeGuard, cast, overload
 from contextlib import asynccontextmanager
 import time
 import re
@@ -23,7 +23,10 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import case, func, text
+from collections.abc import Sequence
+
+from sqlalchemy import CursorResult, Row, case, func, text
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import Session, joinedload
 
 from . import auth, models, schemas
@@ -383,6 +386,14 @@ def _ensure_future_date(start_time: datetime) -> None:
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Data evenimentului nu poate fi în trecut.",
         )
+
+
+@overload
+def _normalize_dt(value: datetime) -> datetime: ...
+
+
+@overload
+def _normalize_dt(value: None) -> None: ...
 
 
 def _normalize_dt(value: Optional[datetime]) -> Optional[datetime]:
@@ -1782,8 +1793,8 @@ def _recommended_event_items(
     request: Request,
     current_user: models.User,
     db: Session,
-    events: list[tuple[models.Event, int]],
-) -> list[dict[str, object]]:
+    events: Sequence[Row[tuple[models.Event, int]]],
+) -> list[schemas.EventResponse]:
     """Serialize event rows while attaching the localized recommendation reason."""
     lang = _preferred_lang(request=request, user=current_user)
     user_city = _normalized_user_city(current_user)
@@ -2302,9 +2313,11 @@ def _apply_online_learning(
     db.commit()
 
 
-def _online_learning_enabled_for_user(user: models.User | None) -> bool:
+def _online_learning_enabled_for_user(
+    user: models.User | None,
+) -> TypeGuard[models.User]:
     """Return whether online learning should run for the current user."""
-    return bool(
+    return (
         user is not None
         and user.role == models.UserRole.student
         and settings.recommendations_online_learning_enabled
@@ -2412,15 +2425,18 @@ def _maybe_enqueue_realtime_recommendation_refresh(
         JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
     )  # noqa: PLC0415
 
+    # The guard above returns early unless current_user is an authenticated
+    # student, so current_user is guaranteed non-None here.
+    refresh_user = cast(models.User, current_user)
     enqueue_job(
         db,
         JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
         {
-            "user_id": int(current_user.id),
+            "user_id": int(refresh_user.id),
             "top_n": int(settings.recommendations_realtime_refresh_top_n),
             "skip_training": True,
         },
-        dedupe_key=str(int(current_user.id)),
+        dedupe_key=str(int(refresh_user.id)),
     )
 
 
@@ -3278,7 +3294,9 @@ def _serialize_profile(
         full_name=user.full_name,
         org_name=user.org_name,
         org_description=user.org_description,
-        org_logo_url=user.org_logo_url,
+        org_logo_url=(
+            schemas.HttpUrl(user.org_logo_url) if user.org_logo_url else None
+        ),
         org_website=user.org_website,
         events=events,
     )
@@ -3539,7 +3557,7 @@ def remove_hidden_tag(
             & (models.user_hidden_tags.c.tag_id == tag_id)
         )
     )
-    if not result.rowcount:
+    if not cast(CursorResult[Any], result).rowcount:
         raise HTTPException(status_code=404, detail="Eticheta nu este ascunsă.")
     _audit_log(
         db,
@@ -3615,7 +3633,7 @@ def remove_blocked_organizer(
             & (models.user_blocked_organizers.c.organizer_id == organizer_id)
         )
     )
-    if not result.rowcount:
+    if not cast(CursorResult[Any], result).rowcount:
         raise HTTPException(status_code=404, detail="Organizatorul nu este blocat.")
     _audit_log(
         db,
@@ -3729,7 +3747,7 @@ def _user_export_payload(user: models.User) -> dict[str, object]:
 
 
 def _registration_export_rows(
-    rows: list[tuple[models.Registration, models.Event]],
+    rows: Sequence[Row[tuple[models.Registration, models.Event]]],
 ) -> list[dict[str, object]]:
     """Serialize registration export rows with embedded event snapshots."""
     return [
@@ -3747,7 +3765,7 @@ def _registration_export_rows(
 
 
 def _favorite_export_rows(
-    rows: list[tuple[models.FavoriteEvent, models.Event]],
+    rows: Sequence[Row[tuple[models.FavoriteEvent, models.Event]]],
 ) -> list[dict[str, object]]:
     """Serialize favorite export rows with embedded event snapshots."""
     return [
@@ -3774,18 +3792,24 @@ def _organized_event_export_rows(
     event_ids = [e.id for e in events]
     if not event_ids:
         return []
-    reg_counts = dict(
-        db.query(models.Registration.event_id, func.count(models.Registration.id))
+    reg_counts: dict[int, int] = {
+        int(event_id): int(count)
+        for event_id, count in db.query(
+            models.Registration.event_id, func.count(models.Registration.id)
+        )
         .filter(models.Registration.event_id.in_(event_ids))
         .group_by(models.Registration.event_id)
         .all()
-    )
-    fav_counts = dict(
-        db.query(models.FavoriteEvent.event_id, func.count(models.FavoriteEvent.id))
+    }
+    fav_counts: dict[int, int] = {
+        int(event_id): int(count)
+        for event_id, count in db.query(
+            models.FavoriteEvent.event_id, func.count(models.FavoriteEvent.id)
+        )
         .filter(models.FavoriteEvent.event_id.in_(event_ids))
         .group_by(models.FavoriteEvent.event_id)
         .all()
-    )
+    }
     return [
         {
             **_serialize_event_for_export(ev),
@@ -3923,7 +3947,7 @@ def _participant_sort_column(sort_by: str):
 
 
 def _participant_response_items(
-    rows: list[tuple[models.User, datetime | None, bool | None]],
+    rows: Sequence[Row[tuple[models.User, datetime, bool]]],
 ) -> list[schemas.ParticipantResponse]:
     """Serialize participant query rows into response models."""
     return [
@@ -4653,9 +4677,9 @@ def _admin_user_filters(
     search: str | None,
     role: models.UserRole | None,
     is_active: bool | None,
-) -> list[object]:
+) -> list[ColumnElement[bool]]:
     """Build SQLAlchemy filters for the admin user list."""
-    filters: list[object] = []
+    filters: list[ColumnElement[bool]] = []
     user_is_active_attr = "is_active"
     if search:
         needle = f"%{search.strip().lower()}%"
@@ -4699,7 +4723,7 @@ def _admin_user_count_subqueries(db: Session):
 
 
 def _admin_user_response_from_row(
-    row: tuple[models.User, int, int, int],
+    row: Row[tuple[models.User, int, int, int]],
 ) -> schemas.AdminUserResponse:
     """Serialize an admin user query row into a response model."""
     user, registrations_count, attended_count, events_created_count = row
