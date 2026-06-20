@@ -51,7 +51,8 @@ def create_refresh_token(data: dict, expires_delta: Optional[timedelta] = None):
 
 
 def get_current_user(
-    token: str = Depends(oauth2_scheme), db: Session = Depends(database.get_db)
+    token: str | None = Depends(oauth2_scheme),
+    db: Session = Depends(database.get_db),
 ):
     """Returns the current user value."""
     credentials_exception = HTTPException(

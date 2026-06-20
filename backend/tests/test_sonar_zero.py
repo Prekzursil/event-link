@@ -70,7 +70,7 @@ def test_pull_request_summary_uses_scoped_status_counts() -> None:
         assert auth_header == "auth"
         return {"paging": {"total": 2}}
 
-    module._request_json = fake_request_json
+    setattr(module, "_request_json", fake_request_json)
 
     open_issues, quality_gate, open_hotspots, commit_sha = module._pull_request_summary(
         api_base="https://sonarcloud.io",

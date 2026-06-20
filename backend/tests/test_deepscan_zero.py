@@ -7,6 +7,7 @@ from __future__ import annotations
 
 import importlib.util
 import sys
+from collections.abc import Mapping
 from pathlib import Path
 
 import pytest
@@ -41,7 +42,9 @@ def _load_module():
     return module
 
 
-def _status_payload(*statuses: dict[str, object]) -> dict[str, list[dict[str, object]]]:
+def _status_payload(
+    *statuses: Mapping[str, object],
+) -> dict[str, list[Mapping[str, object]]]:
     """Build a compact GitHub combined-status payload for tests."""
     return {"statuses": list(statuses)}
 

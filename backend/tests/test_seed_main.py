@@ -104,7 +104,7 @@ def _load_seed_data_module(monkeypatch):
 
     fake_passlib = types.ModuleType("passlib")
     fake_context = types.ModuleType("passlib.context")
-    fake_context.CryptContext = _FakeCryptContext
+    setattr(fake_context, "CryptContext", _FakeCryptContext)
 
     monkeypatch.setitem(sys.modules, "passlib", fake_passlib)
     monkeypatch.setitem(sys.modules, "passlib.context", fake_context)
@@ -275,7 +275,7 @@ def test_seed_data_module_main_guard_executes(monkeypatch):
 
     fake_passlib = types.ModuleType("passlib")
     fake_context = types.ModuleType("passlib.context")
-    fake_context.CryptContext = _FakeCryptContext
+    setattr(fake_context, "CryptContext", _FakeCryptContext)
     monkeypatch.setitem(sys.modules, "passlib", fake_passlib)
     monkeypatch.setitem(sys.modules, "passlib.context", fake_context)
 

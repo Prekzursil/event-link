@@ -1,0 +1,35 @@
+# Root test/coverage configuration for the lean quality gate.
+#
+# The lean `quality` workflow runs `python -m pytest --cov --cov-branch
+# --cov-fail-under=100` from the REPOSITORY ROOT (it does not `cd backend`).
+# The backend's own pytest.ini lives under backend/, which the gate's
+# root-level config detection does not see, so without this file the gate
+# would fail with "Python source + tests present but no coverage config".
+#
+# This mirrors the proven backend run (ci.yml: `cd backend && pytest
+# --cov-fail-under=100`): same coverage scope (app, main, seed_data,
+# fixture_helpers) and the same import paths, just resolved from the root so
+# the single-job lean gate measures the real 100% line+branch suite.
+#
+# NOTE: intentionally no [project] table — this is config-only, so the gate's
+# dependency step still installs backend/requirements.txt and never tries to
+# `pip install .` the repository root.
+
+[tool.pytest.ini_options]
+addopts = "-q --disable-warnings"
+# `backend` makes `from app import ...` / `import main` resolve; `backend/tests`
+# makes the test-local helpers (api_*_helpers, fixture_helpers) importable, the
+# same way pytest's rootdir conftest insertion does inside backend/.
+pythonpath = ["backend", "backend/tests"]
+# Only the unit suite; backend/integration_tests self-skips without a live DB
+# (RUN_INTEGRATION_TESTS) and is excluded here so the root run stays hermetic.
+testpaths = ["backend/tests"]
+
+[tool.coverage.run]
+branch = true
+# Match backend/pytest.ini's --cov targets so `--cov` (no explicit target)
+# measures exactly the application code held to 100%.
+source = ["app", "main", "seed_data", "fixture_helpers"]
+
+[tool.coverage.report]
+show_missing = true

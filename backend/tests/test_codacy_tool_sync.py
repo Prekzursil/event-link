@@ -136,7 +136,7 @@ def test_request_codacy_preserves_query_string():
         request_args.update(kwargs)
         return None, {"x-test": "1"}, 204
 
-    module.request_https_json = fake_request_https_json
+    setattr(module, "request_https_json", fake_request_https_json)
 
     status, payload, raw = module._request_codacy(
         method="PATCH",

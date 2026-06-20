@@ -7,6 +7,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -221,7 +222,7 @@ def test_send_email_async_branches(monkeypatch, db_session):
     # background task path
     calls = []
     bg = SimpleNamespace(add_task=lambda fn, *args: calls.append((fn, args)))
-    email_service.send_email_async(bg, None, "to@test.ro", "Sub", "Body")
+    email_service.send_email_async(cast(Any, bg), None, "to@test.ro", "Sub", "Body")
     assert calls and calls[0][0] is email_service.send_email_now
 
 

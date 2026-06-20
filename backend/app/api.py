@@ -805,11 +805,9 @@ def _cached_recommendation_row_visible(
     *,
     event: models.Event,
     seats: int,
-    rec: models.UserRecommendation | None,
+    rec: models.UserRecommendation,
 ) -> bool:
     """Keep only cached recommendation rows that still point to visible events."""
-    if rec is None:
-        return False
     if event.max_seats is not None and seats >= event.max_seats:
         return False
     return True
@@ -1631,7 +1629,7 @@ def _audit_log(
     )
 
 
-def _is_admin(user: models.User) -> bool:
+def _is_admin(user: models.User | None) -> bool:
     """Return whether the supplied user has administrator privileges."""
     if not user:
         return False

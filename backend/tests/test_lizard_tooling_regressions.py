@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import lizard
 import pytest
+
+lizard = pytest.importorskip("lizard")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TARGET_LIMITS = {

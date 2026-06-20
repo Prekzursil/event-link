@@ -11,6 +11,7 @@ from __future__ import annotations
 import sys
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from fastapi import HTTPException, Request
@@ -502,9 +503,9 @@ def test_register_route_rejects_mismatched_confirmation(monkeypatch):
     }
     with pytest.raises(HTTPException) as register_exc:
         api.register(
-            schemas.StudentRegister.model_construct(**register_payload),
+            schemas.StudentRegister.model_construct(None, **register_payload),
             request=request,
-            db=register_db,
+            db=cast(Any, register_db),
         )
     assert register_exc.value.status_code == 400
     assert register_exc.value.detail == "Parolele nu se potrivesc."
@@ -534,8 +535,8 @@ def test_update_event_rejects_invalid_status(monkeypatch):
         api.update_event(
             1,
             schemas.EventUpdate.model_construct(status="invalid"),
-            db=event_db,
-            current_user=current_user,
+            db=cast(Any, event_db),
+            current_user=cast(Any, current_user),
         )
     assert status_exc.value.status_code == 400
     assert status_exc.value.detail == "Status invalid"
@@ -550,8 +551,8 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
             schemas.OrganizerBulkStatusUpdate.model_construct(
                 event_ids=[], status="draft"
             ),
-            db=None,
-            current_user=current_user,
+            db=cast(Any, None),
+            current_user=cast(Any, current_user),
         )
     assert bulk_status_exc.value.status_code == 400
     assert bulk_status_exc.value.detail == "Nu ați selectat niciun eveniment."
@@ -559,8 +560,8 @@ def test_bulk_organizer_routes_require_selected_events(monkeypatch):
     with pytest.raises(HTTPException) as bulk_tags_exc:
         api.organizer_bulk_update_tags(
             schemas.OrganizerBulkTagsUpdate.model_construct(event_ids=[], tags=[]),
-            db=None,
-            current_user=current_user,
+            db=cast(Any, None),
+            current_user=cast(Any, current_user),
         )
     assert bulk_tags_exc.value.status_code == 400
     assert bulk_tags_exc.value.detail == "Nu ați selectat niciun eveniment."
