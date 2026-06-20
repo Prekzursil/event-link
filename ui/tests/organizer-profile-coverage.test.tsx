@@ -12,13 +12,11 @@ const { eventServiceMock } = vi.hoisted(() => ({
 
 vi.mock('@/services/event.service', () => ({ default: eventServiceMock }));
 vi.mock('@/components/events/EventCard', () => ({
-  EventCard: ({
-    event,
-    isPast,
-  }: {
-    event: { id: number; title: string };
-    isPast?: boolean;
-  }) => <div data-testid={`organizer-event-${event.id}`}>{`${event.title}${isPast ? ' past' : ''}`}</div>,
+  EventCard: ({ event, isPast }: { event: { id: number; title: string }; isPast?: boolean }) => (
+    <div
+      data-testid={`organizer-event-${event.id}`}
+    >{`${event.title}${isPast ? ' past' : ''}`}</div>
+  ),
 }));
 
 import { OrganizerProfilePage } from '@/pages/organizer/OrganizerProfilePage';
@@ -74,13 +72,17 @@ describe('organizer profile coverage', () => {
     renderLanguageRoute('/organizers', '/organizers', <OrganizerProfilePage />);
     expect(eventServiceMock.getOrganizerProfile).not.toHaveBeenCalled();
     expect(await screen.findByText(/Organizer not found/i)).toBeInTheDocument();
-    expect(screen.getByText(/This organizer does not exist or is no longer available/i)).toBeInTheDocument();
+    expect(
+      screen.getByText(/This organizer does not exist or is no longer available/i),
+    ).toBeInTheDocument();
 
     cleanup();
     eventServiceMock.getOrganizerProfile.mockResolvedValueOnce(null);
     renderLanguageRoute('/organizers/7', '/organizers/:id', <OrganizerProfilePage />);
     await waitFor(() => expect(eventServiceMock.getOrganizerProfile).toHaveBeenCalledWith(7));
-    expect(await screen.findByText(/This organizer does not exist or is no longer available/i)).toBeInTheDocument();
+    expect(
+      await screen.findByText(/This organizer does not exist or is no longer available/i),
+    ).toBeInTheDocument();
   });
 
   it('covers display-name fallbacks and empty-tab states', async () => {

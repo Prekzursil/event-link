@@ -35,11 +35,21 @@ it('covers mobile dropdown option branches explicitly', async () => {
     'mobile panel',
   );
 
-  within(mobilePanel).getAllByRole('button', { name: /System|Sistem/i }).forEach((button) => fireEvent.click(button));
-  within(mobilePanel).getAllByRole('button', { name: /Light|Luminos/i }).forEach((button) => fireEvent.click(button));
-  within(mobilePanel).getAllByRole('button', { name: /Dark|Întunecat/i }).forEach((button) => fireEvent.click(button));
-  within(mobilePanel).getAllByRole('button', { name: /Romanian|Română/i }).forEach((button) => fireEvent.click(button));
-  within(mobilePanel).getAllByRole('button', { name: /^English$/i }).forEach((button) => fireEvent.click(button));
+  within(mobilePanel)
+    .getAllByRole('button', { name: /System|Sistem/i })
+    .forEach((button) => fireEvent.click(button));
+  within(mobilePanel)
+    .getAllByRole('button', { name: /Light|Luminos/i })
+    .forEach((button) => fireEvent.click(button));
+  within(mobilePanel)
+    .getAllByRole('button', { name: /Dark|Întunecat/i })
+    .forEach((button) => fireEvent.click(button));
+  within(mobilePanel)
+    .getAllByRole('button', { name: /Romanian|Română/i })
+    .forEach((button) => fireEvent.click(button));
+  within(mobilePanel)
+    .getAllByRole('button', { name: /^English$/i })
+    .forEach((button) => fireEvent.click(button));
 
   await waitFor(() => expect(authServiceMock.updateThemePreference).toHaveBeenCalled());
   await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalled());

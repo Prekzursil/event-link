@@ -65,9 +65,9 @@ def _tally_node_types(
     for node in ast.walk(tree):
         if isinstance(node, ast.ClassDef) and _missing(node):
             classes[stem] += 1
-        elif isinstance(
-            node, (ast.FunctionDef, ast.AsyncFunctionDef)
-        ) and _missing(node):
+        elif isinstance(node, (ast.FunctionDef, ast.AsyncFunctionDef)) and _missing(
+            node
+        ):
             functions[stem] += 1
 
 

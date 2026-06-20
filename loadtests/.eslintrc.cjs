@@ -10,4 +10,4 @@ module.exports = {
   settings: {
     'import/core-modules': ['k6', 'k6/http'],
   },
-}
+};

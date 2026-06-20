@@ -127,7 +127,7 @@ function AppRoutes() {
         <Route path="/events/:id" element={<EventDetailPage />} />
         <Route path="/organizers/:id" element={<OrganizerProfilePage />} />
         <Route path="/forbidden" element={<ForbiddenPage />} />
-        
+
         {/* Protected routes */}
         <Route
           path="/my-events"

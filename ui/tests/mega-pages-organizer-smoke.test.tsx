@@ -19,7 +19,11 @@ describe('mega pages organizer smoke', () => {
     expect(await screen.findByText(/Event 3/i)).toBeInTheDocument();
 
     cleanup();
-    renderLanguageRoute('/organizer/events/3/edit', '/organizer/events/:id/edit', <EventFormPage />);
+    renderLanguageRoute(
+      '/organizer/events/3/edit',
+      '/organizer/events/:id/edit',
+      <EventFormPage />,
+    );
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(3));
 
     cleanup();

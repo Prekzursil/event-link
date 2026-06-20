@@ -11,7 +11,9 @@ import {
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
 
-test('core flows: organizer create/edit, student register, organizer attendance, student unregister', async ({ page }) => {
+test('core flows: organizer create/edit, student register, organizer attendance, student unregister', async ({
+  page,
+}) => {
   await setLanguagePreference(page, 'en');
 
   // Organizer creates an event
@@ -99,8 +101,3 @@ test('core flows: organizer create/edit, student register, organizer attendance,
   await page.getByRole('button', { name: 'Unregister' }).click();
   await expect(page.getByRole('button', { name: 'Register for event' })).toBeVisible();
 });
-
-
-
-
-

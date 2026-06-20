@@ -69,9 +69,9 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
 
         def __init__(self) -> None:
             """Initializes the instance state."""
-            self.payload = None
+            self.payload: dict[str, object] | None = None
 
-        def put(self, value) -> None:
+        def put(self, value: dict[str, object]) -> None:
             """Implements the put helper."""
             self.payload = value
 
@@ -92,8 +92,9 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
             queue_ok,
         )
     assert excinfo.value.code == 0
+    assert queue_ok.payload is not None
     assert queue_ok.payload["returncode"] == 0
-    assert "worker-ok" in queue_ok.payload["stdout"]
+    assert "worker-ok" in str(queue_ok.payload["stdout"])
     assert os.environ.get("EVENT_LINK_QUEUE_FLAG") == original_flag
 
     script_fail = tmp_path / "fail_worker.py"
@@ -106,8 +107,9 @@ def test_run_python_entrypoint_worker_restores_env_and_reports_failures(tmp_path
         {"EVENT_LINK_QUEUE_TEMP": "worker-temp"},
         queue_fail,
     )
+    assert queue_fail.payload is not None
     assert queue_fail.payload["returncode"] == 1
-    assert "worker boom" in queue_fail.payload["stderr"]
+    assert "worker boom" in str(queue_fail.payload["stderr"])
     assert "EVENT_LINK_QUEUE_TEMP" not in os.environ
 
 

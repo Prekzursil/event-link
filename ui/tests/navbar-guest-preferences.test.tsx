@@ -1,10 +1,7 @@
 import { fireEvent, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
-import {
-  getEnabledButton,
-  getLayoutUiFixtures,
-} from './layout-and-ui-smoke.shared';
+import { getEnabledButton, getLayoutUiFixtures } from './layout-and-ui-smoke.shared';
 import { renderNavbar } from './navbar-smoke.helpers';
 
 const { authServiceMock } = getLayoutUiFixtures();

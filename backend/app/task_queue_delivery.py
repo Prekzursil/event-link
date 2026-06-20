@@ -9,10 +9,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from typing import Any, Callable
 
-from sqlalchemy import func
+from collections.abc import Sequence
+
+from sqlalchemy import Row, func
 from sqlalchemy.orm import Session
 
 from . import models
+
 # Re-exported for external modules that historically imported the
 # evaluator via app.task_queue_delivery; keep the alias here to avoid
 # churn downstream.
@@ -197,7 +200,7 @@ def send_weekly_digest(
 
 def _filling_fast_rows(
     db: Session, now: datetime
-) -> list[tuple[models.User, models.Event, int]]:
+) -> Sequence[Row[tuple[models.User, models.Event, int]]]:
     """Implements the filling fast rows helper."""
     seats_subquery = _seats_taken_subquery(db)
     return (
@@ -291,7 +294,7 @@ def _enqueue_filling_fast_email(
             notification_type="filling_fast",
             user_id=user_id,
             event_id=event_id,
-            meta={"available_seats": available, "max_seats": int(event.max_seats)},
+            meta={"available_seats": available, "max_seats": int(event.max_seats or 0)},
         )
     )
     enqueue_job_fn(

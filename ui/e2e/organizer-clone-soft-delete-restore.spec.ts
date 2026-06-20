@@ -1,5 +1,11 @@
 import { test, expect } from '@playwright/test';
-import { clearAuth, DEFAULT_E2E_CODE, formatDateTimeLocal, login, setLanguagePreference } from './utils';
+import {
+  clearAuth,
+  DEFAULT_E2E_CODE,
+  formatDateTimeLocal,
+  login,
+  setLanguagePreference,
+} from './utils';
 
 const ORGANIZER = { email: 'organizer@test.com', code: DEFAULT_E2E_CODE };
 const STUDENT = { email: 'student@test.com', code: DEFAULT_E2E_CODE };
@@ -102,4 +108,3 @@ test('organizer: duplicate event + soft-delete + admin restore', async ({ page }
   await page.getByPlaceholder('Search events...').fill(title);
   await expect(page.getByRole('heading', { name: title }).first()).toBeVisible();
 });
-

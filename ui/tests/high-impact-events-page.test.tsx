@@ -25,7 +25,9 @@ it('covers EventsPage filter and pagination handlers with favorite removal error
   );
 
   await waitFor(() => expect(eventServiceMock.getEvents).toHaveBeenCalled());
-  expect(mediaAddEventListenerSpy.mock.calls.length + mediaAddListenerSpy.mock.calls.length).toBeGreaterThan(0);
+  expect(
+    mediaAddEventListenerSpy.mock.calls.length + mediaAddListenerSpy.mock.calls.length,
+  ).toBeGreaterThan(0);
 
   fireEvent.change(screen.getByPlaceholderText(/Search events/i), {
     target: { value: 'new query' },
@@ -153,10 +155,9 @@ it('covers EventsPage recommendation clicks and search/filter interaction payloa
   });
   const recommendationsSection = recommendationsHeading.closest('div')?.parentElement;
   fireEvent.click(
-    within(requireElement(recommendationsSection, 'recommendations section')).getByRole(
-      'button',
-      { name: /open-event-90/i },
-    ),
+    within(requireElement(recommendationsSection, 'recommendations section')).getByRole('button', {
+      name: /open-event-90/i,
+    }),
   );
   await waitFor(() =>
     expect(recordInteractionsSpy).toHaveBeenCalledWith(

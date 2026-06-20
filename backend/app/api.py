@@ -1,7 +1,7 @@
 """FastAPI application and endpoint handlers for Event Link."""
 
 from datetime import date, datetime, timedelta, timezone
-from typing import Annotated, List, Optional
+from typing import Annotated, Any, List, Optional, TypedDict, TypeGuard, cast, overload
 from contextlib import asynccontextmanager
 import time
 import re
@@ -23,7 +23,10 @@ from fastapi import (
 )
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse, Response
-from sqlalchemy import case, func, text
+from collections.abc import Sequence
+
+from sqlalchemy import CursorResult, Row, case, func, text
+from sqlalchemy.sql.elements import ColumnElement
 from sqlalchemy.orm import Session, joinedload
 
 from . import auth, models, schemas
@@ -135,7 +138,7 @@ _EVENT_NOT_FOUND_DETAIL = "Evenimentul nu există"
 _IS_ACTIVE_ATTR = "".join(("is_", "active"))
 
 
-def _responses(*status_codes: int) -> dict[int, dict[str, str]]:
+def _responses(*status_codes: int) -> dict[int | str, dict[str, Any]]:
     """Build a FastAPI response description map from shared error metadata."""
     return {
         code: {"description": _ERROR_RESPONSE_DESCRIPTIONS[code]}
@@ -385,6 +388,14 @@ def _ensure_future_date(start_time: datetime) -> None:
         )
 
 
+@overload
+def _normalize_dt(value: datetime) -> datetime: ...
+
+
+@overload
+def _normalize_dt(value: None) -> None: ...
+
+
 def _normalize_dt(value: Optional[datetime]) -> Optional[datetime]:
     """Normalize datetimes to timezone-aware UTC instances."""
     if not value:
@@ -525,9 +536,9 @@ def _serialize_event(
     )
 
 
-def _is_student_user(user: models.User | None) -> bool:
+def _is_student_user(user: models.User | None) -> TypeGuard[models.User]:
     """Check whether the optional authenticated user is a student."""
-    return bool(user is not None and user.role == models.UserRole.student)
+    return user is not None and user.role == models.UserRole.student
 
 
 def _preferred_lang(
@@ -778,7 +789,7 @@ def _rank_cached_recommendation_rows(
     ranked: list[tuple[int, models.Event, int, Optional[str]]] = []
     for ev, seats in rows:
         rec = rec_by_event_id.get(int(ev.id))
-        if not _cached_recommendation_row_visible(
+        if rec is None or not _cached_recommendation_row_visible(
             event=ev,
             seats=int(seats or 0),
             rec=rec,
@@ -794,11 +805,9 @@ def _cached_recommendation_row_visible(
     *,
     event: models.Event,
     seats: int,
-    rec: models.UserRecommendation | None,
+    rec: models.UserRecommendation,
 ) -> bool:
     """Keep only cached recommendation rows that still point to visible events."""
-    if rec is None:
-        return False
     if event.max_seats is not None and seats >= event.max_seats:
         return False
     return True
@@ -1462,9 +1471,7 @@ def refresh_token(payload: schemas.RefreshRequest):
             algorithms=[settings.algorithm],
         )
     except auth.ExpiredSignatureError as exc:
-        raise HTTPException(
-            status_code=401, detail="Refresh token expirat."
-        ) from exc
+        raise HTTPException(status_code=401, detail="Refresh token expirat.") from exc
     except auth.JWTError as exc:
         raise HTTPException(
             status_code=401, detail=_INVALID_REFRESH_TOKEN_DETAIL
@@ -1581,7 +1588,7 @@ _RATE_LIMIT_STORE: dict[str, list[float]] = {}
 
 def _enforce_rate_limit(
     action: str,
-    request: Request | None = None,
+    request: Request,
     limit: int = 20,
     window_seconds: int = 60,
     identifier: str | None = None,
@@ -1622,7 +1629,7 @@ def _audit_log(
     )
 
 
-def _is_admin(user: models.User) -> bool:
+def _is_admin(user: models.User | None) -> bool:
     """Return whether the supplied user has administrator privileges."""
     if not user:
         return False
@@ -1644,12 +1651,44 @@ def _ensure_registrations_enabled() -> None:
         )
 
 
+class _EventListSearchFilters(TypedDict):
+    """Free-text and date filters for the event listing API."""
+
+    search: Optional[str]
+    category: Optional[str]
+    start_date: Optional[date]
+    end_date: Optional[date]
+
+
+class _EventListTagFilters(TypedDict):
+    """Tag-based filters for the event listing API."""
+
+    tags: list[str]
+    tags_csv: Optional[str]
+
+
+class _EventListLocationFilters(TypedDict):
+    """Location and sorting filters for the event listing API."""
+
+    city: Optional[str]
+    location: Optional[str]
+    include_past: bool
+    sort: Optional[str]
+
+
+class _EventListPaginationFilters(TypedDict):
+    """Pagination parameters for the event listing API."""
+
+    page: int
+    page_size: int
+
+
 def _event_list_search_filters(
     search: Optional[str] = None,
     category: Optional[str] = None,
     start_date: Optional[date] = None,
     end_date: Optional[date] = None,
-) -> dict[str, Optional[str] | date]:
+) -> _EventListSearchFilters:
     """Collect the free-text and date filters for the event listing API."""
     return {
         "search": search,
@@ -1662,7 +1701,7 @@ def _event_list_search_filters(
 def _event_list_tag_filters(
     tags: Annotated[Optional[list[str]], Query()] = None,
     tags_csv: Optional[str] = None,
-) -> dict[str, list[str] | str | None]:
+) -> _EventListTagFilters:
     """Collect the tag-based filters for the event listing API."""
     return {
         "tags": tags or [],
@@ -1675,7 +1714,7 @@ def _event_list_location_filters(
     location: Optional[str] = None,
     include_past: bool = False,
     sort: Optional[str] = None,
-) -> dict[str, str | bool | None]:
+) -> _EventListLocationFilters:
     """Collect the location and sorting filters for the event listing API."""
     return {
         "city": city,
@@ -1688,7 +1727,7 @@ def _event_list_location_filters(
 def _event_list_pagination_filters(
     page: int = 1,
     page_size: int = 10,
-) -> dict[str, int]:
+) -> _EventListPaginationFilters:
     """Collect pagination parameters for the event listing API."""
     return {
         "page": page,
@@ -1698,19 +1737,19 @@ def _event_list_pagination_filters(
 
 def _build_event_list_query(
     search_filters: Annotated[
-        dict[str, Optional[str] | date],
+        _EventListSearchFilters,
         Depends(_event_list_search_filters),
     ],
     tag_filters: Annotated[
-        dict[str, list[str] | str | None],
+        _EventListTagFilters,
         Depends(_event_list_tag_filters),
     ],
     location_filters: Annotated[
-        dict[str, str | bool | None],
+        _EventListLocationFilters,
         Depends(_event_list_location_filters),
     ],
     pagination_filters: Annotated[
-        dict[str, int],
+        _EventListPaginationFilters,
         Depends(_event_list_pagination_filters),
     ],
 ) -> schemas.EventListQuery:
@@ -1732,10 +1771,13 @@ def _ordered_event_list_query(
     """Apply the deterministic ordering for the event list query."""
     if not use_recommended_sort:
         return query.order_by(models.Event.start_time.asc(), models.Event.id.asc())
+    # use_recommended_sort is only ever True for an authenticated student user
+    # (see _use_recommended_sort), so current_user is guaranteed non-None here.
+    recommended_user = cast(models.User, current_user)
     rec = models.UserRecommendation
     return query.outerjoin(
         rec,
-        (rec.user_id == current_user.id) & (rec.event_id == models.Event.id),
+        (rec.user_id == recommended_user.id) & (rec.event_id == models.Event.id),
     ).order_by(
         case((rec.rank.is_(None), 1), else_=0),
         rec.rank.asc(),
@@ -1749,8 +1791,8 @@ def _recommended_event_items(
     request: Request,
     current_user: models.User,
     db: Session,
-    events: list[tuple[models.Event, int]],
-) -> list[dict[str, object]]:
+    events: Sequence[Row[tuple[models.Event, int]]],
+) -> list[schemas.EventResponse]:
     """Serialize event rows while attaching the localized recommendation reason."""
     lang = _preferred_lang(request=request, user=current_user)
     user_city = _normalized_user_city(current_user)
@@ -2269,9 +2311,11 @@ def _apply_online_learning(
     db.commit()
 
 
-def _online_learning_enabled_for_user(user: models.User | None) -> bool:
+def _online_learning_enabled_for_user(
+    user: models.User | None,
+) -> TypeGuard[models.User]:
     """Return whether online learning should run for the current user."""
-    return bool(
+    return (
         user is not None
         and user.role == models.UserRole.student
         and settings.recommendations_online_learning_enabled
@@ -2379,15 +2423,18 @@ def _maybe_enqueue_realtime_recommendation_refresh(
         JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
     )  # noqa: PLC0415
 
+    # The guard above returns early unless current_user is an authenticated
+    # student, so current_user is guaranteed non-None here.
+    refresh_user = cast(models.User, current_user)
     enqueue_job(
         db,
         JOB_TYPE_REFRESH_USER_RECOMMENDATIONS_ML,
         {
-            "user_id": int(current_user.id),
+            "user_id": int(refresh_user.id),
             "top_n": int(settings.recommendations_realtime_refresh_top_n),
             "skip_training": True,
         },
-        dedupe_key=str(int(current_user.id)),
+        dedupe_key=str(int(refresh_user.id)),
     )
 
 
@@ -3245,7 +3292,9 @@ def _serialize_profile(
         full_name=user.full_name,
         org_name=user.org_name,
         org_description=user.org_description,
-        org_logo_url=user.org_logo_url,
+        org_logo_url=(
+            schemas.HttpUrl(user.org_logo_url) if user.org_logo_url else None
+        ),
         org_website=user.org_website,
         events=events,
     )
@@ -3506,7 +3555,7 @@ def remove_hidden_tag(
             & (models.user_hidden_tags.c.tag_id == tag_id)
         )
     )
-    if not result.rowcount:
+    if not cast(CursorResult[Any], result).rowcount:
         raise HTTPException(status_code=404, detail="Eticheta nu este ascunsă.")
     _audit_log(
         db,
@@ -3582,7 +3631,7 @@ def remove_blocked_organizer(
             & (models.user_blocked_organizers.c.organizer_id == organizer_id)
         )
     )
-    if not result.rowcount:
+    if not cast(CursorResult[Any], result).rowcount:
         raise HTTPException(status_code=404, detail="Organizatorul nu este blocat.")
     _audit_log(
         db,
@@ -3696,7 +3745,7 @@ def _user_export_payload(user: models.User) -> dict[str, object]:
 
 
 def _registration_export_rows(
-    rows: list[tuple[models.Registration, models.Event]],
+    rows: Sequence[Row[tuple[models.Registration, models.Event]]],
 ) -> list[dict[str, object]]:
     """Serialize registration export rows with embedded event snapshots."""
     return [
@@ -3714,7 +3763,7 @@ def _registration_export_rows(
 
 
 def _favorite_export_rows(
-    rows: list[tuple[models.FavoriteEvent, models.Event]],
+    rows: Sequence[Row[tuple[models.FavoriteEvent, models.Event]]],
 ) -> list[dict[str, object]]:
     """Serialize favorite export rows with embedded event snapshots."""
     return [
@@ -3741,18 +3790,24 @@ def _organized_event_export_rows(
     event_ids = [e.id for e in events]
     if not event_ids:
         return []
-    reg_counts = dict(
-        db.query(models.Registration.event_id, func.count(models.Registration.id))
+    reg_counts: dict[int, int] = {
+        int(event_id): int(count)
+        for event_id, count in db.query(
+            models.Registration.event_id, func.count(models.Registration.id)
+        )
         .filter(models.Registration.event_id.in_(event_ids))
         .group_by(models.Registration.event_id)
         .all()
-    )
-    fav_counts = dict(
-        db.query(models.FavoriteEvent.event_id, func.count(models.FavoriteEvent.id))
+    }
+    fav_counts: dict[int, int] = {
+        int(event_id): int(count)
+        for event_id, count in db.query(
+            models.FavoriteEvent.event_id, func.count(models.FavoriteEvent.id)
+        )
         .filter(models.FavoriteEvent.event_id.in_(event_ids))
         .group_by(models.FavoriteEvent.event_id)
         .all()
-    )
+    }
     return [
         {
             **_serialize_event_for_export(ev),
@@ -3890,7 +3945,7 @@ def _participant_sort_column(sort_by: str):
 
 
 def _participant_response_items(
-    rows: list[tuple[models.User, datetime | None, bool | None]],
+    rows: Sequence[Row[tuple[models.User, datetime, bool]]],
 ) -> list[schemas.ParticipantResponse]:
     """Serialize participant query rows into response models."""
     return [
@@ -4620,9 +4675,9 @@ def _admin_user_filters(
     search: str | None,
     role: models.UserRole | None,
     is_active: bool | None,
-) -> list[object]:
+) -> list[ColumnElement[bool]]:
     """Build SQLAlchemy filters for the admin user list."""
-    filters: list[object] = []
+    filters: list[ColumnElement[bool]] = []
     user_is_active_attr = "is_active"
     if search:
         needle = f"%{search.strip().lower()}%"
@@ -4666,7 +4721,7 @@ def _admin_user_count_subqueries(db: Session):
 
 
 def _admin_user_response_from_row(
-    row: tuple[models.User, int, int, int],
+    row: Row[tuple[models.User, int, int, int]],
 ) -> schemas.AdminUserResponse:
     """Serialize an admin user query row into a response model."""
     user, registrations_count, attended_count, events_created_count = row
@@ -5094,52 +5149,41 @@ def _recommendation_reason(
 
 
 def _tag_based_recommendations(
-    **kwargs,
+    *,
+    db: Session,
+    match_tag_names: list[str],
+    registered_event_ids: list[int],
+    hidden_tag_ids: set[int],
+    blocked_organizer_ids: set[int],
+    now: datetime,
+    lang: str,
+    history_tag_names: list[str],
+    profile_tag_names: list[str],
 ) -> list[tuple[models.Event, int, Optional[str]]]:
     """Load tag-matched recommendations with personalization exclusions applied."""
-    context = _tag_recommendation_context(kwargs)
-    if context is None:
+    if not match_tag_names:
         return []
     base_query = _tag_recommendation_base_query(
-        db=context["db"],
-        match_tag_names=context["match_tag_names"],
-        now=context["now"],
+        db=db,
+        match_tag_names=match_tag_names,
+        now=now,
     )
-    registered_event_ids = context["registered_event_ids"]
     if registered_event_ids:
         base_query = base_query.filter(~models.Event.id.in_(registered_event_ids))
     base_query = _apply_personalization_exclusions(
         base_query,
-        hidden_tag_ids=context["hidden_tag_ids"],
-        blocked_organizer_ids=context["blocked_organizer_ids"],
+        hidden_tag_ids=hidden_tag_ids,
+        blocked_organizer_ids=blocked_organizer_ids,
     )
     query, _ = _events_with_counts_query(
-        context["db"], base_query.order_by(models.Event.start_time, models.Event.id)
+        db, base_query.order_by(models.Event.start_time, models.Event.id)
     )
     reason = _recommendation_reason(
-        history_tag_names=context["history_tag_names"],
-        profile_tag_names=context["profile_tag_names"],
-        lang=context["lang"],
+        history_tag_names=history_tag_names,
+        profile_tag_names=profile_tag_names,
+        lang=lang,
     )
     return [(event, seats, reason) for event, seats in query.limit(10).all()]
-
-
-def _tag_recommendation_context(kwargs: dict[str, object]) -> dict[str, object] | None:
-    """Normalize dynamic tag recommendation inputs into a typed context."""
-    match_tag_names = list(kwargs.get("match_tag_names") or [])
-    if not match_tag_names:
-        return None
-    return {
-        "db": kwargs["db"],
-        "match_tag_names": match_tag_names,
-        "registered_event_ids": list(kwargs.get("registered_event_ids") or []),
-        "hidden_tag_ids": set(kwargs.get("hidden_tag_ids") or set()),
-        "blocked_organizer_ids": set(kwargs.get("blocked_organizer_ids") or set()),
-        "now": kwargs["now"],
-        "lang": str(kwargs["lang"]),
-        "history_tag_names": list(kwargs.get("history_tag_names") or []),
-        "profile_tag_names": list(kwargs.get("profile_tag_names") or []),
-    }
 
 
 def _tag_recommendation_base_query(
@@ -5317,9 +5361,7 @@ def health_check(db: DbSession):
         db.execute(text("SELECT 1"))
         return {"status": "ok", "database": "ok"}
     except Exception as exc:
-        raise HTTPException(
-            status_code=503, detail="Database unavailable"
-        ) from exc
+        raise HTTPException(status_code=503, detail="Database unavailable") from exc
 
 
 @app.get("/api/events/{event_id}/ics", responses=_responses(404))

@@ -32,23 +32,17 @@ export function MyEventsPage() {
       const events = await eventService.getMyEvents();
       const now = new Date();
 
-      const upcoming = events.filter(
-        (event: Event) => new Date(event.start_time) >= now
-      );
-      const past = events.filter(
-        (event: Event) => new Date(event.start_time) < now
-      );
+      const upcoming = events.filter((event: Event) => new Date(event.start_time) >= now);
+      const past = events.filter((event: Event) => new Date(event.start_time) < now);
 
       // Sort upcoming by date ascending
       upcoming.sort(
-        (a: Event, b: Event) =>
-          new Date(a.start_time).getTime() - new Date(b.start_time).getTime()
+        (a: Event, b: Event) => new Date(a.start_time).getTime() - new Date(b.start_time).getTime(),
       );
 
       // Sort past by date descending
       past.sort(
-        (a: Event, b: Event) =>
-          new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+        (a: Event, b: Event) => new Date(b.start_time).getTime() - new Date(a.start_time).getTime(),
       );
 
       setUpcomingEvents(upcoming);
@@ -60,7 +54,7 @@ export function MyEventsPage() {
         // Sort by date descending (newest first)
         orgEvents.sort(
           (a: Event, b: Event) =>
-            new Date(b.start_time).getTime() - new Date(a.start_time).getTime()
+            new Date(b.start_time).getTime() - new Date(a.start_time).getTime(),
         );
         setOrganizerEvents(orgEvents);
       }
@@ -179,9 +173,7 @@ export function MyEventsPage() {
         <div className="flex flex-col items-center justify-center py-16 text-center">
           <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />
           <h3 className="text-lg font-semibold">{t.myEvents.emptyTitle}</h3>
-          <p className="mt-2 text-muted-foreground">
-            {t.myEvents.emptyDescription}
-          </p>
+          <p className="mt-2 text-muted-foreground">{t.myEvents.emptyDescription}</p>
           <Button asChild className="mt-4">
             <Link to="/">
               <Search className="mr-2 h-4 w-4" />
@@ -190,7 +182,7 @@ export function MyEventsPage() {
           </Button>
         </div>
       ) : (
-        <Tabs defaultValue={isOrganizer ? "organized" : "upcoming"} className="w-full">
+        <Tabs defaultValue={isOrganizer ? 'organized' : 'upcoming'} className="w-full">
           <TabsList className="mb-6 h-auto w-full flex flex-wrap justify-start">
             {isOrganizer && (
               <TabsTrigger value="organized" className="gap-2">
@@ -245,9 +237,7 @@ export function MyEventsPage() {
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <Clock className="mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">{t.myEvents.upcomingEmptyTitle}</h3>
-                <p className="mt-2 text-muted-foreground">
-                  {t.myEvents.upcomingEmptyDescription}
-                </p>
+                <p className="mt-2 text-muted-foreground">{t.myEvents.upcomingEmptyDescription}</p>
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -268,9 +258,7 @@ export function MyEventsPage() {
               <div className="flex flex-col items-center justify-center py-16 text-center">
                 <History className="mb-4 h-12 w-12 text-muted-foreground" />
                 <h3 className="text-lg font-semibold">{t.myEvents.pastEmptyTitle}</h3>
-                <p className="mt-2 text-muted-foreground">
-                  {t.myEvents.pastEmptyDescription}
-                </p>
+                <p className="mt-2 text-muted-foreground">{t.myEvents.pastEmptyDescription}</p>
               </div>
             ) : (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">

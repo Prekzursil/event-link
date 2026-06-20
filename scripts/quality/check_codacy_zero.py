@@ -476,10 +476,9 @@ def _wait_for_branch_analysis(
 
 def _pr_analysis_state(payload: dict[str, Any]) -> PrAnalysisState:
     """Extract pull-request analysis state from a Codacy response."""
-    pull_request = (
-        payload.get("pullRequest")
-        if isinstance(payload.get("pullRequest"), dict)
-        else {}
+    raw_pull_request = payload.get("pullRequest")
+    pull_request: dict[str, Any] = (
+        raw_pull_request if isinstance(raw_pull_request, dict) else {}
     )
     return PrAnalysisState(
         str(pull_request.get("headCommitSha") or ""),

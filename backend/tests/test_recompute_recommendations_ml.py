@@ -308,8 +308,13 @@ def test_main_training_paths_cover_no_examples_dry_run_and_write(
 
     assert (
         _run_main(
-            module, monkeypatch, "--dry-run", "--user-id", str(student.id),
-            "--top-n", "2",
+            module,
+            monkeypatch,
+            "--dry-run",
+            "--user-id",
+            str(student.id),
+            "--top-n",
+            "2",
         )
         == 0
     )
@@ -399,7 +404,9 @@ def test_reason_for_city_and_generic_fallback_edges() -> None:
         == "Near you"
     )
     assert (
-        module._reason_for(user=weighted_city_user, event=weighted_city_event, lang="en")
+        module._reason_for(
+            user=weighted_city_user, event=weighted_city_event, lang="en"
+        )
         == "Near you"
     )
     assert (

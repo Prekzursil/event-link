@@ -17,7 +17,9 @@ export function normalizeLanguagePreference(value: unknown): LanguagePreference 
 /** Read the persisted language preference from local storage when available. */
 export function getStoredLanguagePreference(): LanguagePreference {
   if (!globalThis.window) return 'system';
-  return normalizeLanguagePreference(globalThis.localStorage.getItem(LANGUAGE_PREFERENCE_STORAGE_KEY));
+  return normalizeLanguagePreference(
+    globalThis.localStorage.getItem(LANGUAGE_PREFERENCE_STORAGE_KEY),
+  );
 }
 
 /** Persist the selected language preference for subsequent visits. */

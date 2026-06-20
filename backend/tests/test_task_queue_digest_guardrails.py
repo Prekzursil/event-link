@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 
@@ -374,7 +375,7 @@ def test_send_filling_fast_alerts_skips_rows_without_max_seats(monkeypatch):
         lambda *_args, **_kwargs: render_calls.append("rendered"),
     )
     result = task_queue._send_filling_fast_alerts(
-        db=fake_db,
+        db=cast(Any, fake_db),
         payload={"threshold_abs": 5, "threshold_ratio": 0.2, "max_per_user": 1},
     )
     assert result == {"pairs": 1, "emails": 0}

@@ -40,6 +40,8 @@ describe('analytics service', () => {
     });
 
     apiMock.post.mockRejectedValueOnce(new Error('network'));
-    await expect(recordInteractions([{ interaction_type: 'view', event_id: 2 }])).resolves.toBeUndefined();
+    await expect(
+      recordInteractions([{ interaction_type: 'view', event_id: 2 }]),
+    ).resolves.toBeUndefined();
   });
 });

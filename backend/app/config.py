@@ -145,4 +145,7 @@ class Settings(BaseSettings):
             ) from exc
 
 
-settings = Settings()
+# pydantic-settings populates the required database_url/secret_key fields from
+# the environment / .topsecret file at runtime, so the zero-argument constructor
+# is valid here even though the synthesized __init__ lists them as required.
+settings = Settings()  # pyright: ignore[reportCallIssue]

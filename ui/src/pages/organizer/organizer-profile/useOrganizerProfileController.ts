@@ -75,10 +75,7 @@ export function useOrganizerProfileController() {
     () => displayName(profile, t.organizerProfile.organizerFallback),
     [profile, t],
   );
-  const initials = useMemo(
-    () => initialsFromName(organizerDisplayName),
-    [organizerDisplayName],
-  );
+  const initials = useMemo(() => initialsFromName(organizerDisplayName), [organizerDisplayName]);
 
   return {
     hasError,

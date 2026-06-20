@@ -2,10 +2,7 @@ import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderLanguageRoute } from './page-test-helpers';
-import {
-  StudentProfilePage,
-  getMegaPageFixtures,
-} from './mega-pages-branches.fixtures';
+import { StudentProfilePage, getMegaPageFixtures } from './mega-pages-branches.fixtures';
 
 const { authState, eventServiceMock, navigateSpy, toastSpy } = getMegaPageFixtures();
 

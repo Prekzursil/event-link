@@ -13,7 +13,7 @@ import pathlib
 import re
 import sys
 
-import libcst as cst
+import libcst as cst  # pyright: ignore[reportMissingImports]  # dev-only codemod dep
 
 
 SKIP_TOKENS = (
@@ -70,7 +70,11 @@ _FUNCTION_PREFIX_RULES: tuple[tuple[str, int, str], ...] = (
     ("ensure_", 7, "Ensures {tail} is satisfied."),
     ("apply_", 6, "Applies {tail} to the target."),
     ("assert_", 7, "Asserts that {tail} holds."),
-    ("with_", 5, "Returns an instance wrapped with {tail}.",),
+    (
+        "with_",
+        5,
+        "Returns an instance wrapped with {tail}.",
+    ),
 )
 
 
@@ -120,7 +124,7 @@ def _match_class_family(lower: str, human: str) -> str | None:
     """Returns the templated docstring when ``name`` begins with a family prefix."""
     for family, template in _CLASS_FAMILY_RULES:
         if lower.startswith(family) or lower.startswith("_" + family):
-            tail = human[len(family):].strip() or _CLASS_FAMILY_DEFAULTS[family]
+            tail = human[len(family) :].strip() or _CLASS_FAMILY_DEFAULTS[family]
             return template.format(tail=tail)
     return None
 

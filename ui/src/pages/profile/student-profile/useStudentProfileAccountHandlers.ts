@@ -1,7 +1,12 @@
 import { useCallback, useState } from 'react';
 import type { NavigateFunction } from 'react-router-dom';
 import eventService from '@/services/event.service';
-import { triggerDataExport, type Logout, type ToastFn, type TranslationStrings } from './studentProfileController.shared';
+import {
+  triggerDataExport,
+  type Logout,
+  type ToastFn,
+  type TranslationStrings,
+} from './studentProfileController.shared';
 
 type AccountHandlerArgs = Readonly<{
   closeDeleteDialog: () => void;
@@ -19,7 +24,10 @@ type AccountHandlerArgs = Readonly<{
 async function exportStudentProfileData(t: TranslationStrings, toast: ToastFn) {
   const blob = await eventService.exportMyData();
   triggerDataExport(blob);
-  toast({ title: t.profile.exportGeneratedTitle, description: t.profile.exportGeneratedDescription });
+  toast({
+    title: t.profile.exportGeneratedTitle,
+    description: t.profile.exportGeneratedDescription,
+  });
 }
 
 /** Delete the current account after validating the supplied access code. */
@@ -66,7 +74,11 @@ export function useStudentProfileAccountHandlers({
       await exportStudentProfileData(t, toast);
     } catch (error) {
       console.error('Failed to export data:', error);
-      toast({ title: t.profile.exportErrorTitle, description: t.profile.exportErrorDescription, variant: 'destructive' });
+      toast({
+        title: t.profile.exportErrorTitle,
+        description: t.profile.exportErrorDescription,
+        variant: 'destructive',
+      });
     } finally {
       setIsExporting(false);
     }
@@ -75,11 +87,22 @@ export function useStudentProfileAccountHandlers({
   const handleDeleteAccount = useCallback(async () => {
     setIsDeleting(true);
     try {
-      await deleteStudentProfileAccount({ closeDeleteDialog, deletePassword, logout, navigate, t, toast });
+      await deleteStudentProfileAccount({
+        closeDeleteDialog,
+        deletePassword,
+        logout,
+        navigate,
+        t,
+        toast,
+      });
     } catch (error: unknown) {
       console.error('Failed to delete account:', error);
       const axiosError = error as { response?: { data?: { detail?: string } } };
-      toast({ title: t.profile.deleteErrorTitle, description: axiosError.response?.data?.detail || t.profile.deleteErrorFallback, variant: 'destructive' });
+      toast({
+        title: t.profile.deleteErrorTitle,
+        description: axiosError.response?.data?.detail || t.profile.deleteErrorFallback,
+        variant: 'destructive',
+      });
     } finally {
       setIsDeleting(false);
     }

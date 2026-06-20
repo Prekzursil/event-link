@@ -1,10 +1,7 @@
 import { fireEvent, screen, waitFor, within } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
-import {
-  OrganizerDashboardPage,
-  getMegaPageFixtures,
-} from './mega-pages-branches.fixtures';
+import { OrganizerDashboardPage, getMegaPageFixtures } from './mega-pages-branches.fixtures';
 import { renderLanguageRoute } from './page-test-helpers';
 import { makeOrganizerEvent } from './page-test-data';
 

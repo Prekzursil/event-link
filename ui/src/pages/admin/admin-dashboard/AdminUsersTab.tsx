@@ -5,8 +5,21 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Checkbox } from '@/components/ui/checkbox';
 import { Input } from '@/components/ui/input';
 import { LoadingPage } from '@/components/ui/loading';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from '@/components/ui/table';
 import { formatDateTime } from '@/lib/utils';
 import type { UserRole } from '@/types';
 import { roleBadgeVariant } from './shared';
@@ -313,22 +326,9 @@ function UsersFilters({ controller, usersCopy }: UsersFiltersProps) {
 
   return (
     <div className="mb-4 flex flex-col gap-3 md:flex-row md:items-end">
-      <UsersSearchField
-        onChange={setUsersSearch}
-        value={usersSearch}
-        usersCopy={usersCopy}
-      />
-      <UsersRoleFilter
-        onChange={setUsersRole}
-        t={t}
-        usersCopy={usersCopy}
-        value={usersRole}
-      />
-      <UsersStatusFilter
-        onChange={setUsersActive}
-        usersCopy={usersCopy}
-        value={usersActive}
-      />
+      <UsersSearchField onChange={setUsersSearch} value={usersSearch} usersCopy={usersCopy} />
+      <UsersRoleFilter onChange={setUsersRole} t={t} usersCopy={usersCopy} value={usersRole} />
+      <UsersStatusFilter onChange={setUsersActive} usersCopy={usersCopy} value={usersActive} />
       <Button onClick={() => loadUsers(1)} disabled={isLoadingUsers}>
         <RefreshCw className="mr-2 h-4 w-4" />
         {usersCopy.apply}

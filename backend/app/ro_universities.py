@@ -6,16 +6,16 @@ import json
 import re
 import unicodedata
 from pathlib import Path
-from typing import TypedDict
+from typing import NotRequired, TypedDict
 
 
-class UniversityCatalogItem(TypedDict, total=False):
+class UniversityCatalogItem(TypedDict):
     """Serialized university catalog entry."""
 
     name: str
-    city: str | None
-    faculties: list[str]
-    aliases: list[str]
+    city: NotRequired[str | None]
+    faculties: NotRequired[list[str]]
+    aliases: NotRequired[list[str]]
 
 
 def _normalize_university_key(value: str) -> str:

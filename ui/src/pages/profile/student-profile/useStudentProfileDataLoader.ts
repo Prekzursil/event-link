@@ -15,16 +15,17 @@ import {
   type TranslationStrings,
 } from './studentProfileController.shared';
 
-type DataLoaderArgs = ProfileSnapshotSetters & Readonly<{
-  isStudent: boolean;
-  setAllTags: Dispatch<SetStateAction<Tag[]>>;
-  setIsLoading: Dispatch<SetStateAction<boolean>>;
-  setNotificationPrefs: Dispatch<SetStateAction<NotificationPreferences | null>>;
-  setPersonalization: Dispatch<SetStateAction<PersonalizationSettings | null>>;
-  setUniversityCatalog: Dispatch<SetStateAction<UniversityCatalogItem[]>>;
-  t: TranslationStrings;
-  toast: ToastFn;
-}>;
+type DataLoaderArgs = ProfileSnapshotSetters &
+  Readonly<{
+    isStudent: boolean;
+    setAllTags: Dispatch<SetStateAction<Tag[]>>;
+    setIsLoading: Dispatch<SetStateAction<boolean>>;
+    setNotificationPrefs: Dispatch<SetStateAction<NotificationPreferences | null>>;
+    setPersonalization: Dispatch<SetStateAction<PersonalizationSettings | null>>;
+    setUniversityCatalog: Dispatch<SetStateAction<UniversityCatalogItem[]>>;
+    t: TranslationStrings;
+    toast: ToastFn;
+  }>;
 
 /** Load the editable profile form state, tags, and optional student preferences. */
 /**
@@ -67,7 +68,8 @@ export function useStudentProfileDataLoader({
       });
       setAllTags(tagsData);
 
-      const { notificationPreferences, personalization } = await loadOptionalStudentState(isStudent);
+      const { notificationPreferences, personalization } =
+        await loadOptionalStudentState(isStudent);
       setNotificationPrefs(notificationPreferences);
       setPersonalization(personalization);
       setUniversityCatalog(await loadUniversityCatalog());

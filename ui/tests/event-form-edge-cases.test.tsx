@@ -26,7 +26,11 @@ describe('event form edge cases', () => {
       tags: [],
     });
 
-    renderLanguageRoute('/organizer/events/44/edit', '/organizer/events/:id/edit', <EventFormPage />);
+    renderLanguageRoute(
+      '/organizer/events/44/edit',
+      '/organizer/events/:id/edit',
+      <EventFormPage />,
+    );
     await waitFor(() => expect(eventServiceMock.getEvent).toHaveBeenCalledWith(44));
     expect(screen.getByLabelText(/Description/i)).toHaveValue('');
     expect(screen.getByLabelText(/City/iu)).toHaveValue('');

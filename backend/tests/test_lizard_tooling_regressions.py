@@ -4,8 +4,9 @@ from __future__ import annotations
 
 from pathlib import Path
 
-import lizard
 import pytest
+
+lizard = pytest.importorskip("lizard")
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 TARGET_LIMITS = {
@@ -77,9 +78,7 @@ def test_selected_python_tooling_functions_stay_under_lizard_limits() -> None:
             if ccn_max is not None and function.cyclomatic_complexity > ccn_max:
                 rel_path = path.relative_to(REPO_ROOT)
                 ccn = function.cyclomatic_complexity
-                offenders.append(
-                    f"{rel_path}:{function_name}:ccn={ccn}>{ccn_max}"
-                )
+                offenders.append(f"{rel_path}:{function_name}:ccn={ccn}>{ccn_max}")
 
     assert offenders == [], offenders
 

@@ -51,7 +51,7 @@ def _build_message(
 def _deliver_message(message: EmailMessage) -> None:
     """Send a prepared message through the configured SMTP transport."""
     with smtplib.SMTP(
-        settings.smtp_host, settings.smtp_port or 25, timeout=10
+        settings.smtp_host or "", settings.smtp_port or 25, timeout=10
     ) as server:
         if settings.smtp_use_tls:
             server.starttls()

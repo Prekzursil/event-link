@@ -1,10 +1,7 @@
 import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
-import {
-  AdminDashboardPage,
-  getMegaPageFixtures,
-} from './mega-pages-branches.fixtures';
+import { AdminDashboardPage, getMegaPageFixtures } from './mega-pages-branches.fixtures';
 import { renderLanguageRoute } from './page-test-helpers';
 
 const { adminServiceMock, eventServiceMock } = getMegaPageFixtures();

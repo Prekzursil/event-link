@@ -45,9 +45,7 @@ function NavbarUserAvatarButton({ initials }: Readonly<{ initials: string }>) {
   return (
     <Button variant="ghost" className="relative h-9 w-9 rounded-full">
       <Avatar className="h-9 w-9">
-        <AvatarFallback className="bg-primary text-primary-foreground">
-          {initials}
-        </AvatarFallback>
+        <AvatarFallback className="bg-primary text-primary-foreground">{initials}</AvatarFallback>
       </Avatar>
     </Button>
   );
@@ -66,12 +64,8 @@ function NavbarUserMenuIdentity({
   return (
     <DropdownMenuLabel className="font-normal">
       <div className="flex flex-col space-y-1">
-        <p className="text-sm font-medium leading-none">
-          {fullName || fallbackLabel}
-        </p>
-        <p className="text-xs leading-none text-muted-foreground">
-          {email}
-        </p>
+        <p className="text-sm font-medium leading-none">{fullName || fallbackLabel}</p>
+        <p className="text-xs leading-none text-muted-foreground">{email}</p>
       </div>
     </DropdownMenuLabel>
   );
@@ -101,11 +95,7 @@ function NavbarUserMenu({
         <NavbarUserAvatarButton initials={initials} />
       </DropdownMenuTrigger>
       <DropdownMenuContent className="w-56" align="end" forceMount>
-        <NavbarUserMenuIdentity
-          email={email}
-          fallbackLabel={fallbackLabel}
-          fullName={fullName}
-        />
+        <NavbarUserMenuIdentity email={email} fallbackLabel={fallbackLabel} fullName={fullName} />
         <DropdownMenuSeparator />
         <DropdownMenuItem asChild>
           <Link to="/my-events">
@@ -190,9 +180,7 @@ export function Navbar() {
           { href: '/favorites', label: t.nav.favorites, icon: Heart },
         ]
       : []),
-    ...(isOrganizer
-      ? [{ href: '/organizer', label: t.nav.dashboard, icon: Settings }]
-      : []),
+    ...(isOrganizer ? [{ href: '/organizer', label: t.nav.dashboard, icon: Settings }] : []),
     ...(isAdmin ? [{ href: '/admin', label: t.nav.admin, icon: Shield }] : []),
   ];
 
@@ -259,9 +247,8 @@ export function Navbar() {
   };
 
   /** Render the icon associated with one language preference option. */
-  const renderLanguageModeIcon = (mode: LanguagePreference) => (
-    mode === 'system' ? <Monitor className="mr-2 h-4 w-4" /> : null
-  );
+  const renderLanguageModeIcon = (mode: LanguagePreference) =>
+    mode === 'system' ? <Monitor className="mr-2 h-4 w-4" /> : null;
 
   /** Render the translated label for one language preference option. */
   const renderLanguageModeLabel = (mode: LanguagePreference) => {
@@ -284,17 +271,8 @@ export function Navbar() {
   const desktopThemeMenu = (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
-        <Button
-          variant="ghost"
-          size="icon"
-          aria-label={t.theme.label}
-          disabled={isSavingTheme}
-        >
-          {resolvedTheme === 'dark' ? (
-            <Moon className="h-5 w-5" />
-          ) : (
-            <Sun className="h-5 w-5" />
-          )}
+        <Button variant="ghost" size="icon" aria-label={t.theme.label} disabled={isSavingTheme}>
+          {resolvedTheme === 'dark' ? <Moon className="h-5 w-5" /> : <Sun className="h-5 w-5" />}
         </Button>
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end">
@@ -396,12 +374,7 @@ export function Navbar() {
     <div className="flex items-center justify-between gap-2">
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            disabled={isSavingTheme}
-          >
+          <Button variant="outline" size="sm" className="flex-1" disabled={isSavingTheme}>
             {t.theme.label}
           </Button>
         </DropdownMenuTrigger>
@@ -421,12 +394,7 @@ export function Navbar() {
       </DropdownMenu>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button
-            variant="outline"
-            size="sm"
-            className="flex-1"
-            disabled={isSavingLanguage}
-          >
+          <Button variant="outline" size="sm" className="flex-1" disabled={isSavingLanguage}>
             {t.language.label}: {language.toUpperCase()}
           </Button>
         </DropdownMenuTrigger>
@@ -503,7 +471,7 @@ export function Navbar() {
     <div
       className={cn(
         'absolute left-0 right-0 top-16 border-b bg-background md:hidden',
-        mobileMenuOpen ? 'block' : 'hidden'
+        mobileMenuOpen ? 'block' : 'hidden',
       )}
     >
       <div className="container mx-auto space-y-2 px-4 py-4">

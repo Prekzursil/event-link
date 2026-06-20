@@ -1,0 +1,30 @@
+{
+  "typeCheckingMode": "standard",
+  "pythonVersion": "3.11",
+  "include": ["backend", "scripts"],
+  "exclude": [
+    "**/node_modules",
+    "**/__pycache__",
+    "**/.venv",
+    "**/.mypy_cache",
+    "**/.pytest_cache",
+    "backend/alembic/versions",
+    "**/tests",
+    "**/integration_tests",
+    "ui"
+  ],
+  "reportMissingImports": "warning",
+  "reportMissingModuleSource": "none",
+  "executionEnvironments": [
+    {
+      "root": "backend/app",
+      "reportInvalidTypeForm": "warning",
+      "reportAttributeAccessIssue": "warning"
+    },
+    {
+      "root": "backend/alembic",
+      "reportInvalidTypeForm": "warning",
+      "reportAttributeAccessIssue": "warning"
+    }
+  ]
+}

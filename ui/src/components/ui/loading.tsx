@@ -17,9 +17,7 @@ const sizeClasses = {
  * Test helper: loading spinner.
  */
 export function LoadingSpinner({ className, size = 'md' }: LoadingSpinnerProps) {
-  return (
-    <Loader2 className={cn('animate-spin text-primary', sizeClasses[size], className)} />
-  );
+  return <Loader2 className={cn('animate-spin text-primary', sizeClasses[size], className)} />;
 }
 
 type LoadingPageProps = Readonly<{

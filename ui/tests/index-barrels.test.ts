@@ -4,7 +4,12 @@ import { Navbar, Footer, Layout } from '@/components/layout';
 import { AdminDashboardPage } from '@/pages/admin';
 import { LoginPage, RegisterPage, ForgotPasswordPage, ResetPasswordPage } from '@/pages/auth';
 import { EventsPage, EventDetailPage } from '@/pages/events';
-import { OrganizerDashboardPage, EventFormPage, ParticipantsPage, OrganizerProfilePage } from '@/pages/organizer';
+import {
+  OrganizerDashboardPage,
+  EventFormPage,
+  ParticipantsPage,
+  OrganizerProfilePage,
+} from '@/pages/organizer';
 import { StudentProfilePage } from '@/pages/profile';
 
 describe('barrel exports', () => {

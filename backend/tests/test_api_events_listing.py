@@ -25,20 +25,30 @@ def _seed_three_filter_order_events(client, helpers, token: str):
     auth = helpers["auth_header"](token)
     e1 = client.post(
         "/api/events",
-        json={**_FILTER_ORDER_BASE_PAYLOAD, "title": "Python Workshop",
-              "start_time": future_time(days=2)},
+        json={
+            **_FILTER_ORDER_BASE_PAYLOAD,
+            "title": "Python Workshop",
+            "start_time": future_time(days=2),
+        },
         headers=auth,
     ).json()
     e2 = client.post(
         "/api/events",
-        json={**_FILTER_ORDER_BASE_PAYLOAD, "title": "Party Night",
-              "category": "Social", "start_time": future_time(days=3)},
+        json={
+            **_FILTER_ORDER_BASE_PAYLOAD,
+            "title": "Party Night",
+            "category": "Social",
+            "start_time": future_time(days=3),
+        },
         headers=auth,
     ).json()
     client.post(
         "/api/events",
-        json={**_FILTER_ORDER_BASE_PAYLOAD, "title": "Old Event",
-              "start_time": future_time(days=-1)},
+        json={
+            **_FILTER_ORDER_BASE_PAYLOAD,
+            "title": "Old Event",
+            "start_time": future_time(days=-1),
+        },
         headers=auth,
     )
     return e1, e2

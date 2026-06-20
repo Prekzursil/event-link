@@ -2,11 +2,7 @@ import { cleanup, fireEvent, screen, waitFor } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
 
 import { renderLanguageRoute } from './page-test-helpers';
-import {
-  EventDetailPage,
-  EventsPage,
-  getMegaPagesSmokeFixtures,
-} from './mega-pages-smoke.shared';
+import { EventDetailPage, EventsPage, getMegaPagesSmokeFixtures } from './mega-pages-smoke.shared';
 
 const { eventServiceMock, navigateSpy, toastSpy } = getMegaPagesSmokeFixtures();
 

@@ -42,9 +42,7 @@ function resolveSort(
   if (sortParam === 'recommended' || sortParam === 'time') {
     return sortParam;
   }
-  return isAuthenticated && role === 'student' && RECOMMENDATIONS_ENABLED
-    ? 'recommended'
-    : 'time';
+  return isAuthenticated && role === 'student' && RECOMMENDATIONS_ENABLED ? 'recommended' : 'time';
 }
 
 /** Derives filter inputs from the search parameters using simple fallbacks. */

@@ -31,7 +31,7 @@ def test_evaluate_sentry_skips_missing_projects() -> None:
         """Implements the fake project result helper."""
         raise RuntimeError("Sentry API request failed: HTTP 404")
 
-    module._project_result = fake_project_result
+    setattr(module, "_project_result", fake_project_result)
 
     status, project_results, findings = module._evaluate_sentry(
         token="token",

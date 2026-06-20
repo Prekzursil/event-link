@@ -1,4 +1,10 @@
-import { cleanup, fireEvent, screen, waitFor, waitForElementToBeRemoved } from '@testing-library/react';
+import {
+  cleanup,
+  fireEvent,
+  screen,
+  waitFor,
+  waitForElementToBeRemoved,
+} from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import {
@@ -57,7 +63,9 @@ it('covers the users previous-page handler and organizer deselection branch', as
   const organizerCheckboxes = screen.getAllByRole('checkbox');
   const rowCheckbox = organizerCheckboxes[organizerCheckboxes.length - 1];
   fireEvent.click(rowCheckbox);
-  await waitFor(() => expect(screen.getByRole('button', { name: /Publish|Public/i })).toBeInTheDocument());
+  await waitFor(() =>
+    expect(screen.getByRole('button', { name: /Publish|Public/i })).toBeInTheDocument(),
+  );
   fireEvent.click(rowCheckbox);
   await waitFor(() =>
     expect(screen.queryByRole('button', { name: /Publish|Public/i })).not.toBeInTheDocument(),
