@@ -170,9 +170,7 @@ def _select_needing(
     return needing
 
 
-def _render_with_blocks(
-    text: str, needing: list[tuple[int, str, str, str]]
-) -> str:
+def _render_with_blocks(text: str, needing: list[tuple[int, str, str, str]]) -> str:
     """Rebuilds ``text`` with JSDoc blocks injected at each needing site."""
     pieces: list[str] = []
     cursor = 0

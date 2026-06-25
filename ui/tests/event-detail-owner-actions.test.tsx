@@ -2,10 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import { getEventDetailFixtures } from './event-detail-branches.shared';
-import {
-  makeEvent,
-  renderEventDetail,
-} from './event-detail-owner-preferences.shared';
+import { makeEvent, renderEventDetail } from './event-detail-owner-preferences.shared';
 
 const { eventServiceMock, navigateSpy, toastSpy } = getEventDetailFixtures();
 

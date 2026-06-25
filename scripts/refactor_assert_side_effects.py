@@ -15,7 +15,7 @@ import pathlib
 import sys
 from typing import cast
 
-import libcst as cst
+import libcst as cst  # pyright: ignore[reportMissingImports]  # dev-only codemod dep
 
 
 SKIP_TOKENS = ("/.venv", "/node_modules", "/alembic/versions/")

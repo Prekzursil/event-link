@@ -10,6 +10,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 from types import SimpleNamespace
+from typing import Any, cast
 
 import pytest
 from app import schemas
@@ -79,22 +80,25 @@ def _assert_create_event_accepts_missing_start_time(monkeypatch) -> None:
             obj.id = 77
 
     created = api.create_event(
-        SimpleNamespace(
-            title="Unit Create",
-            description="desc",
-            category="Edu",
-            start_time=None,
-            end_time=None,
-            city="Cluj",
-            location="Hall",
-            max_seats=10,
-            cover_url=None,
-            tags=[],
-            status="published",
-            publish_at=None,
+        cast(
+            Any,
+            SimpleNamespace(
+                title="Unit Create",
+                description="desc",
+                category="Edu",
+                start_time=None,
+                end_time=None,
+                city="Cluj",
+                location="Hall",
+                max_seats=10,
+                cover_url=None,
+                tags=[],
+                status="published",
+                publish_at=None,
+            ),
         ),
-        db=_CreateDb(),
-        current_user=SimpleNamespace(id=7),
+        db=cast(Any, _CreateDb()),
+        current_user=cast(Any, SimpleNamespace(id=7)),
     )
     assert created.id == 77
     assert created.start_time is None
@@ -106,10 +110,17 @@ def test_serializers_cache_fresh_and_create_event_optional_start_time(monkeypatc
     _assert_serializer_defaults(event)
 
     now = datetime.now(timezone.utc)
-    assert api._recommendations_cache_is_fresh(db=ScalarDb(now), user_id=1, now=now) is True
     assert (
         api._recommendations_cache_is_fresh(
-            db=ScalarDb(now.replace(tzinfo=None)), user_id=1, now=now,
+            db=cast(Any, ScalarDb(now)), user_id=1, now=now
+        )
+        is True
+    )
+    assert (
+        api._recommendations_cache_is_fresh(
+            db=cast(Any, ScalarDb(now.replace(tzinfo=None))),
+            user_id=1,
+            now=now,
         )
         is True
     )
@@ -583,7 +594,10 @@ def test_recommendation_reason_map_empty_and_invalid_dwell_seconds_do_not_query_
             raise AssertionError("query should not run")
 
     assert (
-        api._recommendation_reason_map(db=_NoQueryDb(), user_id=1, event_ids=[]) == {}
+        api._recommendation_reason_map(
+            db=cast(Any, _NoQueryDb()), user_id=1, event_ids=[]
+        )
+        == {}
     )
     assert api._event_learning_delta(
         interaction_type="dwell", meta={"seconds": "slow"}

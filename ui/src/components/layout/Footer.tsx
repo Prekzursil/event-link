@@ -119,7 +119,9 @@ function ContactLinksSection({ items, title }: ContactLinksSectionProps) {
 function FooterCopyright({ appName, copyrightLabel }: FooterCopyrightProps) {
   return (
     <div className="mt-8 border-t pt-8 text-center text-sm text-muted-foreground">
-      <p>© {new Date().getFullYear()} {appName}. {copyrightLabel}</p>
+      <p>
+        © {new Date().getFullYear()} {appName}. {copyrightLabel}
+      </p>
     </div>
   );
 }

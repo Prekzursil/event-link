@@ -44,5 +44,3 @@ test('student profile: interests + academic fields', async ({ page }) => {
   const tagCheckboxAfter = page.getByLabel('AI & ML');
   await expect(tagCheckboxAfter).toHaveAttribute('aria-checked', 'true');
 });
-
-

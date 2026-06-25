@@ -1,16 +1,23 @@
-import js from '@eslint/js'
-import globals from 'globals'
-import reactHooks from 'eslint-plugin-react-hooks'
-import reactRefresh from 'eslint-plugin-react-refresh'
-import tseslint from 'typescript-eslint'
+import js from '@eslint/js';
+import globals from 'globals';
+import reactHooks from 'eslint-plugin-react-hooks';
+import reactRefresh from 'eslint-plugin-react-refresh';
+import tseslint from 'typescript-eslint';
 
 const browserGlobals = {
   ...globals.browser,
-}
+};
 
 export default tseslint.config(
   {
-    ignores: ['dist', 'coverage', 'playwright-report', 'test-results', '.eslintrc.cjs', '.stylelintrc.cjs'],
+    ignores: [
+      'dist',
+      'coverage',
+      'playwright-report',
+      'test-results',
+      '.eslintrc.cjs',
+      '.stylelintrc.cjs',
+    ],
   },
   js.configs.recommended,
   ...tseslint.configs.recommended,
@@ -57,4 +64,4 @@ export default tseslint.config(
       'react-refresh/only-export-components': 'off',
     },
   },
-)
+);

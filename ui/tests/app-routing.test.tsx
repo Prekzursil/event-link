@@ -115,25 +115,36 @@ afterEach(() => {
 });
 
 describe('App routing guards', () => {
-  it.each(['/my-events', '/organizer', '/admin'])(
-    'redirects unauthenticated users from %s to LoginPage',
-    async (path) => {
-      renderRoute(path);
-      expect(await screen.findByText('LoginPage')).toBeInTheDocument();
-    },
-  );
+  it.each([
+    '/my-events',
+    '/organizer',
+    '/admin',
+  ])('redirects unauthenticated users from %s to LoginPage', async (path) => {
+    renderRoute(path);
+    expect(await screen.findByText('LoginPage')).toBeInTheDocument();
+  });
 
-  it.each(['/my-events', '/organizer', '/admin', '/login'])(
-    'shows loading UI for %s while auth is loading',
-    async (path) => {
-      renderRoute(path, { isLoading: true });
-      expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument();
-    },
-  );
+  it.each([
+    '/my-events',
+    '/organizer',
+    '/admin',
+    '/login',
+  ])('shows loading UI for %s while auth is loading', async (path) => {
+    renderRoute(path, { isLoading: true });
+    expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument();
+  });
 
   it.each<RouteCase>([
-    { path: '/organizer/events/new', expected: 'EventFormPage', state: { isAuthenticated: true, isOrganizer: true } },
-    { path: '/admin', expected: 'AdminDashboardPage', state: { isAuthenticated: true, isOrganizer: true, isAdmin: true } },
+    {
+      path: '/organizer/events/new',
+      expected: 'EventFormPage',
+      state: { isAuthenticated: true, isOrganizer: true },
+    },
+    {
+      path: '/admin',
+      expected: 'AdminDashboardPage',
+      state: { isAuthenticated: true, isOrganizer: true, isAdmin: true },
+    },
     { path: '/my-events', expected: 'MyEventsPage', state: { isAuthenticated: true } },
     { path: '/login', expected: 'EventsPage', state: { isAuthenticated: true } },
     { path: '/register', expected: 'RegisterPage' },
@@ -149,8 +160,16 @@ describe('App routing guards', () => {
 
   it.each<RouteCase>([
     { path: '/organizer', expected: 'ForbiddenPage', state: { isAuthenticated: true } },
-    { path: '/admin', expected: 'ForbiddenPage', state: { isAuthenticated: true, isOrganizer: true } },
-  ])('renders ForbiddenPage for blocked authenticated route $path', async ({ path, expected, state }) => {
+    {
+      path: '/admin',
+      expected: 'ForbiddenPage',
+      state: { isAuthenticated: true, isOrganizer: true },
+    },
+  ])('renders ForbiddenPage for blocked authenticated route $path', async ({
+    path,
+    expected,
+    state,
+  }) => {
     renderRoute(path, state);
     expect(await screen.findByText(expected)).toBeInTheDocument();
   });

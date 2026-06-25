@@ -273,7 +273,10 @@ function statValue(stats: StatsGridProps['stats'], key: StatsMetricKey): number 
 }
 
 /** Render the top-level admin overview statistic cards. */
-function buildStatsGridCards(labels: StatsGridProps['labels'], stats: StatsGridProps['stats']): StatsGridCard[] {
+function buildStatsGridCards(
+  labels: StatsGridProps['labels'],
+  stats: StatsGridProps['stats'],
+): StatsGridCard[] {
   return [
     { title: labels.totalUsers, value: statValue(stats, 'total_users') },
     { title: labels.totalEvents, value: statValue(stats, 'total_events') },

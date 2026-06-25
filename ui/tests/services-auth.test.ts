@@ -61,7 +61,10 @@ it('stores session tokens after register and login', async () => {
   expect(localStorage.getItem(SECONDARY_SESSION_KEY)).toBe('ref');
 
   apiMock.post.mockResolvedValueOnce({ data: sessionPayload });
-  const loginResult = await authService.login({ email: 'a@test.ro', [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE });
+  const loginResult = await authService.login({
+    email: 'a@test.ro',
+    [ACCESS_CODE_FIELD]: DEMO_ENTRY_CODE,
+  });
   expect(loginResult.user_id).toBe(7);
 });
 

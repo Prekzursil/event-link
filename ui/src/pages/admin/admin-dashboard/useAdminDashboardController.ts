@@ -3,7 +3,13 @@ import adminService from '@/services/admin.service';
 import eventService from '@/services/event.service';
 import { useToast } from '@/hooks/use-toast';
 import { useI18n } from '@/contexts/LanguageContext';
-import type { AdminEvent, AdminStats, AdminUser, PersonalizationMetricsResponse, UserRole } from '@/types';
+import type {
+  AdminEvent,
+  AdminStats,
+  AdminUser,
+  PersonalizationMetricsResponse,
+  UserRole,
+} from '@/types';
 import type { AdminTab } from './shared';
 
 const USERS_PAGE_SIZE = 20;
@@ -97,59 +103,57 @@ export function useAdminDashboardController() {
     }
   }, [t, toast]);
 
-  const loadUsers = useCallback(async (page = usersPage) => {
-    setIsLoadingUsers(true);
-    try {
-      const data = await adminService.getUsers(
-        buildUsersFilters(page, usersSearch, usersRole, usersActive),
-      );
-      setUsers(data.items);
-      setUsersTotal(data.total);
-      setUsersPage(data.page);
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.adminDashboard.loadUsersErrorDescription,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoadingUsers(false);
-    }
-  }, [t, toast, usersActive, usersPage, usersRole, usersSearch]);
+  const loadUsers = useCallback(
+    async (page = usersPage) => {
+      setIsLoadingUsers(true);
+      try {
+        const data = await adminService.getUsers(
+          buildUsersFilters(page, usersSearch, usersRole, usersActive),
+        );
+        setUsers(data.items);
+        setUsersTotal(data.total);
+        setUsersPage(data.page);
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.loadUsersErrorDescription,
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingUsers(false);
+      }
+    },
+    [t, toast, usersActive, usersPage, usersRole, usersSearch],
+  );
 
-  const loadEvents = useCallback(async (page = eventsPage) => {
-    setIsLoadingEvents(true);
-    try {
-      const data = await adminService.getEvents(
-        buildEventsFilters(
-          page,
-          eventsSearch,
-          eventsStatus,
-          eventsIncludeDeleted,
-          eventsFlaggedOnly,
-        ),
-      );
-      setEvents(data.items);
-      setEventsTotal(data.total);
-      setEventsPage(data.page);
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.adminDashboard.loadEventsErrorDescription,
-        variant: 'destructive',
-      });
-    } finally {
-      setIsLoadingEvents(false);
-    }
-  }, [
-    eventsFlaggedOnly,
-    eventsIncludeDeleted,
-    eventsPage,
-    eventsSearch,
-    eventsStatus,
-    t,
-    toast,
-  ]);
+  const loadEvents = useCallback(
+    async (page = eventsPage) => {
+      setIsLoadingEvents(true);
+      try {
+        const data = await adminService.getEvents(
+          buildEventsFilters(
+            page,
+            eventsSearch,
+            eventsStatus,
+            eventsIncludeDeleted,
+            eventsFlaggedOnly,
+          ),
+        );
+        setEvents(data.items);
+        setEventsTotal(data.total);
+        setEventsPage(data.page);
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.loadEventsErrorDescription,
+          variant: 'destructive',
+        });
+      } finally {
+        setIsLoadingEvents(false);
+      }
+    },
+    [eventsFlaggedOnly, eventsIncludeDeleted, eventsPage, eventsSearch, eventsStatus, t, toast],
+  );
 
   const loadPersonalizationMetrics = useCallback(async () => {
     setIsLoadingPersonalizationMetrics(true);
@@ -190,105 +194,119 @@ export function useAdminDashboardController() {
     [eventsTotal],
   );
 
-  const roleLabels = useMemo<Record<UserRole, string>>(() => ({
-    student: t.adminDashboard.roles.student,
-    organizator: t.adminDashboard.roles.organizer,
-    admin: t.adminDashboard.roles.admin,
-  }), [t]);
+  const roleLabels = useMemo<Record<UserRole, string>>(
+    () => ({
+      student: t.adminDashboard.roles.student,
+      organizator: t.adminDashboard.roles.organizer,
+      admin: t.adminDashboard.roles.admin,
+    }),
+    [t],
+  );
 
   const registrationsByDay = stats?.registrations_by_day?.slice(-14) ?? [];
   const topTags = stats?.top_tags ?? [];
   const personalizationRows = personalizationMetrics?.items?.slice(-14) ?? [];
 
-  const handleUpdateUser = useCallback(async (
-    userId: number,
-    patch: Partial<Pick<AdminUser, 'role' | 'is_active'>>,
-  ) => {
-    const previousUsers = users;
-    setUsers((current) => current.map((user) => (user.id === userId ? { ...user, ...patch } : user)));
-    try {
-      const updated = await adminService.updateUser(userId, patch);
-      setUsers((current) => current.map((user) => (user.id === userId ? updated : user)));
-      toast({
-        title: t.adminDashboard.userUpdatedTitle,
-        description: t.adminDashboard.userUpdatedDescription,
-      });
-    } catch {
-      setUsers(previousUsers);
-      toast({
-        title: t.common.error,
-        description: t.adminDashboard.userUpdateErrorDescription,
-        variant: 'destructive',
-      });
-    }
-  }, [t, toast, users]);
-
-  const handleDeleteEvent = useCallback(async (eventId: number) => {
-    if (pendingDeleteEventId !== eventId) {
-      setPendingDeleteEventId(eventId);
-      toast({
-        title: t.adminDashboard.deleteConfirm,
-      });
-      return;
-    }
-
-    setPendingDeleteEventId(null);
-    try {
-      await eventService.deleteEvent(eventId);
-      toast({
-        title: t.common.success,
-        description: t.adminDashboard.eventDeletedDescription,
-      });
-      await loadEvents(eventsPage);
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.adminDashboard.eventDeleteErrorDescription,
-        variant: 'destructive',
-      });
-    }
-  }, [eventsPage, loadEvents, pendingDeleteEventId, t, toast]);
-
-  const handleRestoreEvent = useCallback(async (eventId: number) => {
-    try {
-      await eventService.restoreEvent(eventId);
-      toast({
-        title: t.common.success,
-        description: t.adminDashboard.eventRestoredDescription,
-      });
-      await loadEvents(eventsPage);
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.adminDashboard.eventRestoreErrorDescription,
-        variant: 'destructive',
-      });
-    }
-  }, [eventsPage, loadEvents, t, toast]);
-
-  const handleReviewEvent = useCallback(async (eventId: number) => {
-    setReviewingEventId(eventId);
-    try {
-      await adminService.reviewEventModeration(eventId);
-      setEvents((current) =>
-        current.map((event) => (
-          event.id === eventId ? { ...event, moderation_status: 'reviewed' } : event
-        )),
+  const handleUpdateUser = useCallback(
+    async (userId: number, patch: Partial<Pick<AdminUser, 'role' | 'is_active'>>) => {
+      const previousUsers = users;
+      setUsers((current) =>
+        current.map((user) => (user.id === userId ? { ...user, ...patch } : user)),
       );
-      toast({
-        title: t.adminDashboard.events.moderation.reviewedTitle,
-        description: t.adminDashboard.events.moderation.reviewedDescription,
-      });
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.adminDashboard.events.moderation.reviewErrorDescription,
-        variant: 'destructive',
-      });
-    } finally {
-      setReviewingEventId(null);
-    }
-  }, [t, toast]);
+      try {
+        const updated = await adminService.updateUser(userId, patch);
+        setUsers((current) => current.map((user) => (user.id === userId ? updated : user)));
+        toast({
+          title: t.adminDashboard.userUpdatedTitle,
+          description: t.adminDashboard.userUpdatedDescription,
+        });
+      } catch {
+        setUsers(previousUsers);
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.userUpdateErrorDescription,
+          variant: 'destructive',
+        });
+      }
+    },
+    [t, toast, users],
+  );
+
+  const handleDeleteEvent = useCallback(
+    async (eventId: number) => {
+      if (pendingDeleteEventId !== eventId) {
+        setPendingDeleteEventId(eventId);
+        toast({
+          title: t.adminDashboard.deleteConfirm,
+        });
+        return;
+      }
+
+      setPendingDeleteEventId(null);
+      try {
+        await eventService.deleteEvent(eventId);
+        toast({
+          title: t.common.success,
+          description: t.adminDashboard.eventDeletedDescription,
+        });
+        await loadEvents(eventsPage);
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.eventDeleteErrorDescription,
+          variant: 'destructive',
+        });
+      }
+    },
+    [eventsPage, loadEvents, pendingDeleteEventId, t, toast],
+  );
+
+  const handleRestoreEvent = useCallback(
+    async (eventId: number) => {
+      try {
+        await eventService.restoreEvent(eventId);
+        toast({
+          title: t.common.success,
+          description: t.adminDashboard.eventRestoredDescription,
+        });
+        await loadEvents(eventsPage);
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.eventRestoreErrorDescription,
+          variant: 'destructive',
+        });
+      }
+    },
+    [eventsPage, loadEvents, t, toast],
+  );
+
+  const handleReviewEvent = useCallback(
+    async (eventId: number) => {
+      setReviewingEventId(eventId);
+      try {
+        await adminService.reviewEventModeration(eventId);
+        setEvents((current) =>
+          current.map((event) =>
+            event.id === eventId ? { ...event, moderation_status: 'reviewed' } : event,
+          ),
+        );
+        toast({
+          title: t.adminDashboard.events.moderation.reviewedTitle,
+          description: t.adminDashboard.events.moderation.reviewedDescription,
+        });
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.adminDashboard.events.moderation.reviewErrorDescription,
+          variant: 'destructive',
+        });
+      } finally {
+        setReviewingEventId(null);
+      }
+    },
+    [t, toast],
+  );
 
   const handleEnqueueRetrain = useCallback(async () => {
     setIsEnqueueingRetrain(true);
@@ -296,7 +314,10 @@ export function useAdminDashboardController() {
       const job = await adminService.enqueueRecommendationsRetrain();
       toast({
         title: t.adminDashboard.personalizationMetrics.retrainQueuedTitle,
-        description: t.adminDashboard.personalizationMetrics.retrainQueuedDescription.replace('{jobId}', String(job.job_id)),
+        description: t.adminDashboard.personalizationMetrics.retrainQueuedDescription.replace(
+          '{jobId}',
+          String(job.job_id),
+        ),
       });
       await loadPersonalizationMetrics();
     } catch {
@@ -316,7 +337,10 @@ export function useAdminDashboardController() {
       const job = await adminService.enqueueWeeklyDigest();
       toast({
         title: t.adminDashboard.notifications.digestQueuedTitle,
-        description: t.adminDashboard.notifications.digestQueuedDescription.replace('{jobId}', String(job.job_id)),
+        description: t.adminDashboard.notifications.digestQueuedDescription.replace(
+          '{jobId}',
+          String(job.job_id),
+        ),
       });
     } catch {
       toast({
@@ -335,7 +359,10 @@ export function useAdminDashboardController() {
       const job = await adminService.enqueueFillingFast();
       toast({
         title: t.adminDashboard.notifications.fillingFastQueuedTitle,
-        description: t.adminDashboard.notifications.fillingFastQueuedDescription.replace('{jobId}', String(job.job_id)),
+        description: t.adminDashboard.notifications.fillingFastQueuedDescription.replace(
+          '{jobId}',
+          String(job.job_id),
+        ),
       });
     } catch {
       toast({

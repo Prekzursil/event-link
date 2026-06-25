@@ -40,4 +40,4 @@ def test_university_catalog_includes_aliases():
         None,
     )
     assert transilvania is not None, "Transilvania university should be in the catalog"
-    assert 'University "Transilvany" of Brasov' in transilvania["aliases"]
+    assert 'University "Transilvany" of Brasov' in transilvania.get("aliases", [])

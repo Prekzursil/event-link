@@ -177,12 +177,12 @@ function ForgotPasswordSubmittedCard({
       <ForgotPasswordCardHeader
         icon={<ForgotPasswordSuccessIcon />}
         title={texts.submittedTitle}
-        description={(
+        description={
           <>
             {texts.submittedDescriptionPrefix} <strong>{email}</strong>,{' '}
             {texts.submittedDescriptionSuffix}
           </>
-        )}
+        }
       />
       <CardFooter className="flex flex-col gap-4">
         <ForgotPasswordBackToLoginButton label={texts.backToLogin} />

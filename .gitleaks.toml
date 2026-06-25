@@ -1,0 +1,32 @@
+# gitleaks configuration for the lean secrets gate (pinned tool: gitleaks 8.30.1).
+# The gate runs via pre-commit over the working tree and must report 0.
+# Extends the upstream default ruleset; we only add path/match allowlists for
+# vendored dependencies and genuine, greppable test fixtures (no real secrets).
+title = "event-link lean secrets gate"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Vendored deps, build output, and reasoned test fixtures (not real secrets)."
+
+# Never scan third-party / generated / local-tooling trees. These are not our
+# source and produce only upstream-example false positives.
+paths = [
+  '''(^|/)\.venv/''',
+  '''(^|/)node_modules/''',
+  '''(^|/)vendor/''',
+  '''(^|/)dist/''',
+  '''(^|/)build/''',
+  '''(^|/)out/''',
+  '''(^|/)\.git/''',
+  '''.*\.egg-info/''',
+  # Test fixtures only. These directories contain hardcoded test-only signing
+  # keys and fixture passwords used by the FastAPI test/integration suites
+  # (e.g. SECRET_KEY="test-signing-key-material-123456" in conftest.py and
+  # fixture passwords like "owner-fixture-A1"). They are NOT real credentials:
+  # no production system uses them, they sign only throwaway test tokens, and
+  # they are required inline so tests are deterministic and hermetic.
+  '''(^|/)backend/tests/''',
+  '''(^|/)backend/integration_tests/''',
+]

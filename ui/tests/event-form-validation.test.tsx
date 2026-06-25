@@ -70,10 +70,7 @@ it('covers validation branches, suggest-error detail, and tag/image helpers', as
 
   fireEvent.change(screen.getByLabelText(/Max seats/i), { target: { value: '20' } });
 
-  const coverInput = requireElement(
-    document.getElementById('cover_url'),
-    'event cover input',
-  );
+  const coverInput = requireElement(document.getElementById('cover_url'), 'event cover input');
   fireEvent.change(coverInput, { target: { value: 'https://example.com/img.jpg' } });
   const preview = screen.getByAltText(/Preview/i);
   fireEvent.error(preview);

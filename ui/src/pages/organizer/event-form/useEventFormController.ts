@@ -32,22 +32,25 @@ export function useEventFormController() {
   const [tagInput, setTagInput] = useState('');
   const [formData, setFormData] = useState<EventFormState>(EMPTY_EVENT_FORM_STATE);
 
-  const loadEvent = useCallback(async (eventId: number) => {
-    setIsLoading(true);
-    try {
-      const event = await eventService.getEvent(eventId);
-      setFormData(eventToFormState(event));
-    } catch {
-      toast({
-        title: t.common.error,
-        description: t.eventForm.loadErrorDescription,
-        variant: 'destructive',
-      });
-      navigate('/organizer');
-    } finally {
-      setIsLoading(false);
-    }
-  }, [navigate, t, toast]);
+  const loadEvent = useCallback(
+    async (eventId: number) => {
+      setIsLoading(true);
+      try {
+        const event = await eventService.getEvent(eventId);
+        setFormData(eventToFormState(event));
+      } catch {
+        toast({
+          title: t.common.error,
+          description: t.eventForm.loadErrorDescription,
+          variant: 'destructive',
+        });
+        navigate('/organizer');
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [navigate, t, toast],
+  );
 
   useEffect(() => {
     if (isEditing && id) {
@@ -55,9 +58,12 @@ export function useEventFormController() {
     }
   }, [id, isEditing, loadEvent]);
 
-  const updateField = useCallback(<K extends keyof EventFormState>(field: K, value: EventFormState[K]) => {
-    setFormData((current) => ({ ...current, [field]: value }));
-  }, []);
+  const updateField = useCallback(
+    <K extends keyof EventFormState>(field: K, value: EventFormState[K]) => {
+      setFormData((current) => ({ ...current, [field]: value }));
+    },
+    [],
+  );
 
   const handleSuggest = useCallback(async () => {
     setIsSuggesting(true);
@@ -91,48 +97,51 @@ export function useEventFormController() {
     });
   }, [suggestion, t, toast]);
 
-  const handleSubmit = useCallback(async (event: React.FormEvent) => {
-    event.preventDefault();
+  const handleSubmit = useCallback(
+    async (event: React.FormEvent) => {
+      event.preventDefault();
 
-    const validationError = validateEventForm(formData, t);
-    if (validationError) {
-      toast({
-        title: t.common.error,
-        description: validationError,
-        variant: 'destructive',
-      });
-      return;
-    }
-
-    setIsSaving(true);
-    try {
-      const payload = buildEventPayload(formData);
-      if (isEditing && id) {
-        await eventService.updateEvent(Number.parseInt(id, 10), payload);
+      const validationError = validateEventForm(formData, t);
+      if (validationError) {
         toast({
-          title: t.common.success,
-          description: t.eventForm.updatedDescription,
+          title: t.common.error,
+          description: validationError,
+          variant: 'destructive',
         });
-        navigate('/organizer');
         return;
       }
 
-      const newEvent = await eventService.createEvent(payload);
-      toast({
-        title: t.common.success,
-        description: t.eventForm.createdDescription,
-      });
-      navigate(`/events/${newEvent.id}`);
-    } catch (error: unknown) {
-      toast({
-        title: t.common.error,
-        description: errorDetail(error, t.eventForm.genericError),
-        variant: 'destructive',
-      });
-    } finally {
-      setIsSaving(false);
-    }
-  }, [formData, id, isEditing, navigate, t, toast]);
+      setIsSaving(true);
+      try {
+        const payload = buildEventPayload(formData);
+        if (isEditing && id) {
+          await eventService.updateEvent(Number.parseInt(id, 10), payload);
+          toast({
+            title: t.common.success,
+            description: t.eventForm.updatedDescription,
+          });
+          navigate('/organizer');
+          return;
+        }
+
+        const newEvent = await eventService.createEvent(payload);
+        toast({
+          title: t.common.success,
+          description: t.eventForm.createdDescription,
+        });
+        navigate(`/events/${newEvent.id}`);
+      } catch (error: unknown) {
+        toast({
+          title: t.common.error,
+          description: errorDetail(error, t.eventForm.genericError),
+          variant: 'destructive',
+        });
+      } finally {
+        setIsSaving(false);
+      }
+    },
+    [formData, id, isEditing, navigate, t, toast],
+  );
 
   const addTag = useCallback(() => {
     const tag = tagInput.trim();

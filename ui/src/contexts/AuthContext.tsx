@@ -1,4 +1,12 @@
-import { createContext, useContext, useState, useEffect, useCallback, useMemo, type ReactNode } from 'react';
+import {
+  createContext,
+  useContext,
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  type ReactNode,
+} from 'react';
 import type { User } from '@/types';
 import authService from '@/services/auth.service';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -11,7 +19,12 @@ interface AuthContextType {
   isAdmin: boolean;
   isLoading: boolean;
   login: (email: string, password: string) => Promise<void>;
-  register: (email: string, password: string, confirmPassword: string, fullName?: string) => Promise<void>;
+  register: (
+    email: string,
+    password: string,
+    confirmPassword: string,
+    fullName?: string,
+  ) => Promise<void>;
   logout: () => void;
   refreshUser: () => Promise<void>;
 }
@@ -55,20 +68,26 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     initAuth();
   }, [refreshUser]);
 
-  const login = useCallback(async (email: string, password: string) => {
-    await authService.login({ email, password });
-    await refreshUser();
-  }, [refreshUser]);
+  const login = useCallback(
+    async (email: string, password: string) => {
+      await authService.login({ email, password });
+      await refreshUser();
+    },
+    [refreshUser],
+  );
 
-  const register = useCallback(async (email: string, password: string, confirmPassword: string, fullName?: string) => {
-    await authService.register({
-      email,
-      password,
-      confirm_password: confirmPassword,
-      full_name: fullName,
-    });
-    await refreshUser();
-  }, [refreshUser]);
+  const register = useCallback(
+    async (email: string, password: string, confirmPassword: string, fullName?: string) => {
+      await authService.register({
+        email,
+        password,
+        confirm_password: confirmPassword,
+        full_name: fullName,
+      });
+      await refreshUser();
+    },
+    [refreshUser],
+  );
 
   const logout = useCallback(() => {
     authService.logout();
@@ -90,11 +109,7 @@ export function AuthProvider({ children }: Readonly<{ children: ReactNode }>) {
     [isLoading, login, logout, refreshUser, register, user],
   );
 
-  return (
-    <AuthContext.Provider value={value}>
-      {children}
-    </AuthContext.Provider>
-  );
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 /** Read the current authentication context. */

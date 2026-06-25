@@ -117,13 +117,17 @@ describe('auth pages', () => {
     renderWithProviders(<LoginPage />, '/login');
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
-    fireEvent.change(screen.getByLabelText(/Access code/i), { target: { value: 'AccessCode123A' } });
+    fireEvent.change(screen.getByLabelText(/Access code/i), {
+      target: { value: 'AccessCode123A' },
+    });
     const loginToggle = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
     expect(loginToggle).not.toBeNull();
     fireEvent.click(loginToggle);
     fireEvent.submit(requireForm(/Sign in/i));
 
-    await waitFor(() => expect(authState.login).toHaveBeenCalledWith('x@test.ro', 'AccessCode123A'));
+    await waitFor(() =>
+      expect(authState.login).toHaveBeenCalledWith('x@test.ro', 'AccessCode123A'),
+    );
     expect(toastSpy).toHaveBeenCalled();
     expect(navigateSpy).toHaveBeenCalled();
 
@@ -131,7 +135,9 @@ describe('auth pages', () => {
     fireEvent.submit(requireForm(/Sign in/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    authState.login.mockRejectedValueOnce({ response: { data: { error: { message: 'nested login error' } } } });
+    authState.login.mockRejectedValueOnce({
+      response: { data: { error: { message: 'nested login error' } } },
+    });
     fireEvent.submit(requireForm(/Sign in/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
@@ -142,7 +148,9 @@ describe('auth pages', () => {
 
   it('covers RegisterPage mismatch, invalid password, success, and failure', async () => {
     renderRegisterPage();
-    const registerToggle = document.querySelector<HTMLButtonElement>('button.absolute.right-0.top-0');
+    const registerToggle = document.querySelector<HTMLButtonElement>(
+      'button.absolute.right-0.top-0',
+    );
     expect(registerToggle).not.toBeNull();
     fireEvent.click(registerToggle);
     populateRegisterForm('AccessCode123A', 'OtherCode123A');
@@ -168,7 +176,9 @@ describe('auth pages', () => {
     fireEvent.submit(requireForm(/Create account/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
 
-    authState.register.mockRejectedValueOnce({ response: { data: { error: { message: 'nested register error' } } } });
+    authState.register.mockRejectedValueOnce({
+      response: { data: { error: { message: 'nested register error' } } },
+    });
     renderRegisterPage();
     populateRegisterForm('AccessCode123A', 'AccessCode123A', {
       email: 'nested@test.ro',
@@ -190,7 +200,9 @@ describe('auth pages', () => {
 
     fireEvent.change(screen.getByLabelText(/Email/i), { target: { value: 'x@test.ro' } });
     fireEvent.submit(requireForm(/Send reset link/i));
-    await waitFor(() => expect(authServiceMock.requestPasswordReset).toHaveBeenCalledWith('x@test.ro'));
+    await waitFor(() =>
+      expect(authServiceMock.requestPasswordReset).toHaveBeenCalledWith('x@test.ro'),
+    );
     expect(screen.getByText(/Check your email/i)).toBeInTheDocument();
 
     authServiceMock.requestPasswordReset.mockRejectedValueOnce(new Error('ignored'));
@@ -207,8 +219,12 @@ describe('auth pages', () => {
 
     cleanup();
     renderWithProviders(<ResetPasswordPage />, '/reset-password?token=abc');
-    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'AccessCode123A' } });
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'MismatchCode123A' } });
+    fireEvent.change(screen.getByLabelText(/New access code/i), {
+      target: { value: 'AccessCode123A' },
+    });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), {
+      target: { value: 'MismatchCode123A' },
+    });
     fireEvent.submit(requireForm(/Reset access code/i));
     expect(toastSpy).toHaveBeenCalled();
 
@@ -218,12 +234,18 @@ describe('auth pages', () => {
     expect(toastSpy).toHaveBeenCalled();
 
     fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: '12345678' } });
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: '12345678' } });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), {
+      target: { value: '12345678' },
+    });
     fireEvent.submit(requireForm(/Reset access code/i));
     expect(toastSpy).toHaveBeenCalled();
 
-    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'OnlyLetters' } });
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'OnlyLetters' } });
+    fireEvent.change(screen.getByLabelText(/New access code/i), {
+      target: { value: 'OnlyLetters' },
+    });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), {
+      target: { value: 'OnlyLetters' },
+    });
     fireEvent.submit(requireForm(/Reset access code/i));
     expect(toastSpy).toHaveBeenCalled();
 
@@ -231,16 +253,28 @@ describe('auth pages', () => {
     expect(toggleButton).not.toBeNull();
     fireEvent.click(toggleButton);
 
-    fireEvent.change(screen.getByLabelText(/New access code/i), { target: { value: 'AccessCode123A' } });
-    fireEvent.change(screen.getByLabelText(/Confirm access code/i), { target: { value: 'AccessCode123A' } });
+    fireEvent.change(screen.getByLabelText(/New access code/i), {
+      target: { value: 'AccessCode123A' },
+    });
+    fireEvent.change(screen.getByLabelText(/Confirm access code/i), {
+      target: { value: 'AccessCode123A' },
+    });
     fireEvent.submit(requireForm(/Reset access code/i));
-    await waitFor(() => expect(authServiceMock.resetPassword).toHaveBeenCalledWith('abc', 'AccessCode123A', 'AccessCode123A'));
+    await waitFor(() =>
+      expect(authServiceMock.resetPassword).toHaveBeenCalledWith(
+        'abc',
+        'AccessCode123A',
+        'AccessCode123A',
+      ),
+    );
     expect(navigateSpy).toHaveBeenCalledWith('/login');
     await waitFor(() =>
       expect(screen.getByRole('button', { name: /Reset access code/i })).not.toBeDisabled(),
     );
 
-    authServiceMock.resetPassword.mockRejectedValueOnce({ response: { data: { detail: 'bad token' } } });
+    authServiceMock.resetPassword.mockRejectedValueOnce({
+      response: { data: { detail: 'bad token' } },
+    });
     fireEvent.submit(requireForm(/Reset access code/i));
     await waitFor(() => expect(toastSpy).toHaveBeenCalled());
     await waitFor(() =>

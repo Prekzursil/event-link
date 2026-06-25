@@ -124,7 +124,7 @@ def run_migrations_offline():
 def run_migrations_online():
     """Run migrations in online mode with a live SQLAlchemy connection."""
     connectable = engine_from_config(
-        config.get_section(config.config_ini_section),
+        config.get_section(config.config_ini_section) or {},
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
     )

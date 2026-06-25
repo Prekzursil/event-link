@@ -195,7 +195,7 @@ describe('shared component coverage matrix', () => {
         mode="single"
         selected={new Date()}
         onSelect={onSelect}
-      />, 
+      />,
     );
 
     expect(document.querySelector('.calendar-custom')).toBeInTheDocument();
@@ -323,7 +323,3 @@ describe('shared component coverage matrix', () => {
     expect(screen.getByText(/Overlay message/i)).toBeInTheDocument();
   });
 });
-
-
-
-

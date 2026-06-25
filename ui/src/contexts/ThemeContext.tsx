@@ -22,7 +22,9 @@ const ThemeContext = createContext<ThemeContextType | null>(null);
  */
 export function ThemeProvider({ children }: Readonly<{ children: ReactNode }>) {
   const [preference, setPreference] = useState<ThemePreference>(() => getStoredThemePreference());
-  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() => resolveTheme(getStoredThemePreference()));
+  const [resolvedTheme, setResolvedTheme] = useState<'light' | 'dark'>(() =>
+    resolveTheme(getStoredThemePreference()),
+  );
 
   useEffect(() => {
     storeThemePreference(preference);

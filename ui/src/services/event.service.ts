@@ -1,9 +1,9 @@
 import api from './api';
-import type { 
-  Event, 
-  EventDetail, 
-  PaginatedEvents, 
-  EventFilters, 
+import type {
+  Event,
+  EventDetail,
+  PaginatedEvents,
+  EventFilters,
   EventFormData,
   EventSuggestRequest,
   EventSuggestResponse,
@@ -21,13 +21,16 @@ import type {
 /**
  * Test helper: append param.
  */
-function appendParam(params: URLSearchParams, key: string, value: string | number | undefined | null) {
+function appendParam(
+  params: URLSearchParams,
+  key: string,
+  value: string | number | undefined | null,
+) {
   if (value === undefined || value === null || value === '') {
     return;
   }
   params.append(key, String(value));
 }
-
 
 /**
  * Test helper: build event filters params.
@@ -51,7 +54,6 @@ function buildEventFiltersParams(filters: EventFilters): URLSearchParams {
   }
   return params;
 }
-
 
 export const eventService = {
   // Public event endpoints
@@ -156,11 +158,11 @@ export const eventService = {
   },
 
   async getEventParticipants(
-    eventId: number, 
-    page = 1, 
+    eventId: number,
+    page = 1,
     pageSize = 20,
     sortBy = 'registration_time',
-    sortDir = 'asc'
+    sortDir = 'asc',
   ): Promise<ParticipantList> {
     const params = new URLSearchParams({
       page: page.toString(),
@@ -169,24 +171,22 @@ export const eventService = {
       sort_dir: sortDir,
     });
     const response = await api.get<ParticipantList>(
-      `/api/organizer/events/${eventId}/participants?${params.toString()}`
+      `/api/organizer/events/${eventId}/participants?${params.toString()}`,
     );
     return response.data;
   },
 
   async updateParticipantAttendance(
-    eventId: number, 
-    userId: number, 
-    attended: boolean
+    eventId: number,
+    userId: number,
+    attended: boolean,
   ): Promise<void> {
-    await api.put(
-      `/api/organizer/events/${eventId}/participants/${userId}?attended=${attended}`
-    );
+    await api.put(`/api/organizer/events/${eventId}/participants/${userId}?attended=${attended}`);
   },
 
   async bulkUpdateEventStatus(
     eventIds: number[],
-    status: 'draft' | 'published'
+    status: 'draft' | 'published',
   ): Promise<{ updated: number }> {
     const response = await api.post<{ updated: number }>('/api/organizer/events/bulk/status', {
       event_ids: eventIds,
@@ -206,11 +206,11 @@ export const eventService = {
   async emailEventParticipants(
     eventId: number,
     subject: string,
-    message: string
+    message: string,
   ): Promise<{ recipients: number }> {
     const response = await api.post<{ recipients: number }>(
       `/api/organizer/events/${eventId}/participants/email`,
-      { subject, message }
+      { subject, message },
     );
     return response.data;
   },
@@ -234,7 +234,9 @@ export const eventService = {
 
   // Metadata
   async getUniversityCatalog(): Promise<UniversityCatalogItem[]> {
-    const response = await api.get<{ items: UniversityCatalogItem[] }>('/api/metadata/universities');
+    const response = await api.get<{ items: UniversityCatalogItem[] }>(
+      '/api/metadata/universities',
+    );
     return response.data.items;
   },
 

@@ -3,15 +3,8 @@ import { cleanup, fireEvent, screen, waitFor, within } from '@testing-library/re
 import { describe, expect, it } from 'vitest';
 
 import { renderLanguageRoute, requireElement } from './page-test-helpers';
-import {
-  AdminDashboardPage,
-  getMegaPageFixtures,
-} from './mega-pages-branches.fixtures';
-import {
-  makeAdminEvent,
-  makeAdminUser,
-  makePersonalizationMetrics,
-} from './page-test-data';
+import { AdminDashboardPage, getMegaPageFixtures } from './mega-pages-branches.fixtures';
+import { makeAdminEvent, makeAdminUser, makePersonalizationMetrics } from './page-test-data';
 
 const { adminServiceMock, eventServiceMock, toastSpy } = getMegaPageFixtures();
 
@@ -21,9 +14,7 @@ describe('mega pages admin fallbacks', () => {
     adminServiceMock.getPersonalizationMetrics.mockRejectedValueOnce(new Error('metrics-fail'));
     adminServiceMock.getUsers.mockRejectedValueOnce(new Error('users-fail'));
     adminServiceMock.getEvents.mockRejectedValueOnce(new Error('events-fail'));
-    adminServiceMock.enqueueRecommendationsRetrain.mockRejectedValueOnce(
-      new Error('retrain-fail'),
-    );
+    adminServiceMock.enqueueRecommendationsRetrain.mockRejectedValueOnce(new Error('retrain-fail'));
     adminServiceMock.enqueueWeeklyDigest.mockRejectedValueOnce(new Error('digest-fail'));
     adminServiceMock.enqueueFillingFast.mockRejectedValueOnce(new Error('filling-fail'));
 
@@ -166,7 +157,9 @@ describe('mega pages admin fallbacks', () => {
   }, 20000);
 
   it('covers admin dashboard loading and display fallback branches', async () => {
-    let resolveMetrics: ((value: ReturnType<typeof makePersonalizationMetrics>) => void) | undefined;
+    let resolveMetrics:
+      | ((value: ReturnType<typeof makePersonalizationMetrics>) => void)
+      | undefined;
     adminServiceMock.getPersonalizationMetrics.mockReturnValueOnce(
       new Promise((resolve) => {
         resolveMetrics = resolve as (value: ReturnType<typeof makePersonalizationMetrics>) => void;

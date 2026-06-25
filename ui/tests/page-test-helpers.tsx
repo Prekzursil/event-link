@@ -44,7 +44,11 @@ export function requireInput(value: Element | null, label: string): HTMLInputEle
 /**
  * Installs a mutable value hook for tests.
  */
-export function defineMutableValue<T extends object, V = undefined>(target: T, key: PropertyKey, value?: V): V | undefined {
+export function defineMutableValue<T extends object, V = undefined>(
+  target: T,
+  key: PropertyKey,
+  value?: V,
+): V | undefined {
   Object.defineProperty(target, key, {
     writable: true,
     configurable: true,

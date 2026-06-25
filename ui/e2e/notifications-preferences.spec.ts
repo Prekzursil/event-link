@@ -32,10 +32,9 @@ test('notifications preferences + admin enqueue (digest + filling-fast)', async 
   await expect(page.getByText('Preferences saved').first()).toBeVisible();
 
   await page.reload();
-  await expect(page.getByText('Weekly digest').locator('..').locator('..').getByRole('checkbox')).toHaveAttribute(
-    'aria-checked',
-    'true',
-  );
+  await expect(
+    page.getByText('Weekly digest').locator('..').locator('..').getByRole('checkbox'),
+  ).toHaveAttribute('aria-checked', 'true');
   await expect(
     page.getByText('"Filling fast" alerts').locator('..').locator('..').getByRole('checkbox'),
   ).toHaveAttribute('aria-checked', 'true');
@@ -54,6 +53,3 @@ test('notifications preferences + admin enqueue (digest + filling-fast)', async 
   await page.getByRole('button', { name: 'Filling-fast' }).click();
   await expect(page.getByText('Alerts queued').first()).toBeVisible();
 });
-
-
-

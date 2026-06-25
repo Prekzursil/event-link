@@ -1,0 +1,32 @@
+# Lean 6-gate quality (ADDITIVE caller of the shared QZP reusable template).
+#
+# Pinned to the template branch so this PR's CI exercises the real lean gate
+# now; the migration runbook re-pins this to a release tag once
+# reusable-quality.yml merges to the platform default branch.
+#
+# This is ADDITIVE: it does not replace the existing ci.yml / quality-zero-*
+# workflows. The lean gate auto-detects languages in the checked-out tree and
+# runs only the lanes whose language/config is present (Python + TypeScript +
+# pre-commit + opengrep SAST + gitleaks secrets + osv-scanner deps here).
+name: quality
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: quality-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  quality:
+    uses: Prekzursil/quality-zero-platform/.github/workflows/reusable-quality.yml@v1
+    with:
+      python-version: "3.11"
+      node-version: "20"
+      opengrep-paths: "backend ui"

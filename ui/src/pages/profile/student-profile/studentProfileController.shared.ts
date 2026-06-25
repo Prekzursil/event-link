@@ -10,11 +10,19 @@ import type {
 } from '@/types';
 
 export type ToastFn = ReturnType<typeof import('@/hooks/use-toast').useToast>['toast'];
-export type TranslationStrings = ReturnType<typeof import('@/contexts/LanguageContext').useI18n>['t'];
-export type RefreshUser = ReturnType<typeof import('@/contexts/AuthContext').useAuth>['refreshUser'];
+export type TranslationStrings = ReturnType<
+  typeof import('@/contexts/LanguageContext').useI18n
+>['t'];
+export type RefreshUser = ReturnType<
+  typeof import('@/contexts/AuthContext').useAuth
+>['refreshUser'];
 export type Logout = ReturnType<typeof import('@/contexts/AuthContext').useAuth>['logout'];
-export type SetThemePreference = ReturnType<typeof import('@/contexts/ThemeContext').useTheme>['setPreference'];
-export type SetLanguagePreference = ReturnType<typeof import('@/contexts/LanguageContext').useI18n>['setPreference'];
+export type SetThemePreference = ReturnType<
+  typeof import('@/contexts/ThemeContext').useTheme
+>['setPreference'];
+export type SetLanguagePreference = ReturnType<
+  typeof import('@/contexts/LanguageContext').useI18n
+>['setPreference'];
 
 export type ProfileSnapshotSetters = Readonly<{
   setCity: Dispatch<SetStateAction<string>>;
@@ -53,7 +61,10 @@ export const EMPTY_NOTIFICATION_PREFERENCES: NotificationPreferences = {
 /**
  * Test helper: apply text snapshot.
  */
-function applyTextSnapshot(setter: Dispatch<SetStateAction<string>>, value: string | null | undefined) {
+function applyTextSnapshot(
+  setter: Dispatch<SetStateAction<string>>,
+  value: string | null | undefined,
+) {
   setter(value ?? '');
 }
 
@@ -91,7 +102,10 @@ export function applyProfileSnapshot(profileData: StudentProfile, setters: Profi
 }
 
 /** Match the free-text university selection against the loaded catalog. */
-export function findSelectedUniversity(university: string, universityCatalog: UniversityCatalogItem[]) {
+export function findSelectedUniversity(
+  university: string,
+  universityCatalog: UniversityCatalogItem[],
+) {
   const normalized = university.trim().toLowerCase();
   if (!normalized) {
     return null;
@@ -111,7 +125,10 @@ export function buildCityOptions(universityCatalog: UniversityCatalogItem[], lan
 }
 
 /** Expand the active study level into the available academic-year options. */
-export function buildStudyYearOptions(studyLevel: StudyLevel | '', maxYearsByLevel: Record<StudyLevel, number>) {
+export function buildStudyYearOptions(
+  studyLevel: StudyLevel | '',
+  maxYearsByLevel: Record<StudyLevel, number>,
+) {
   if (!studyLevel) {
     return [];
   }

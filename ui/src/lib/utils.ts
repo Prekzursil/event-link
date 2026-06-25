@@ -1,6 +1,11 @@
 import { clsx, type ClassValue } from 'clsx';
 import { twMerge } from 'tailwind-merge';
-import { getIntlLocale, getStoredLanguagePreference, resolveLanguage, type ResolvedLanguage } from '@/lib/language';
+import {
+  getIntlLocale,
+  getStoredLanguagePreference,
+  resolveLanguage,
+  type ResolvedLanguage,
+} from '@/lib/language';
 
 /**
  * Test helper: cn.
@@ -19,7 +24,10 @@ function getDefaultLanguage(): ResolvedLanguage {
 /**
  * Test helper: format date.
  */
-export function formatDate(date: string | Date, language: ResolvedLanguage = getDefaultLanguage()): string {
+export function formatDate(
+  date: string | Date,
+  language: ResolvedLanguage = getDefaultLanguage(),
+): string {
   return new Date(date).toLocaleDateString(getIntlLocale(language), {
     year: 'numeric',
     month: 'long',
@@ -30,7 +38,10 @@ export function formatDate(date: string | Date, language: ResolvedLanguage = get
 /**
  * Test helper: format date time.
  */
-export function formatDateTime(date: string | Date, language: ResolvedLanguage = getDefaultLanguage()): string {
+export function formatDateTime(
+  date: string | Date,
+  language: ResolvedLanguage = getDefaultLanguage(),
+): string {
   return new Date(date).toLocaleString(getIntlLocale(language), {
     year: 'numeric',
     month: 'long',
@@ -43,7 +54,10 @@ export function formatDateTime(date: string | Date, language: ResolvedLanguage =
 /**
  * Test helper: format time.
  */
-export function formatTime(date: string | Date, language: ResolvedLanguage = getDefaultLanguage()): string {
+export function formatTime(
+  date: string | Date,
+  language: ResolvedLanguage = getDefaultLanguage(),
+): string {
   return new Date(date).toLocaleTimeString(getIntlLocale(language), {
     hour: '2-digit',
     minute: '2-digit',

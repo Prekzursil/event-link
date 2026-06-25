@@ -2,10 +2,7 @@ import { fireEvent, screen, waitFor } from '@testing-library/react';
 import { expect, it } from 'vitest';
 
 import { getLayoutUiFixtures } from './layout-and-ui-smoke.shared';
-import {
-  openMobileNavbarMenu,
-  renderNavbar,
-} from './navbar-smoke.helpers';
+import { openMobileNavbarMenu, renderNavbar } from './navbar-smoke.helpers';
 
 const { authServiceMock, authState } = getLayoutUiFixtures();
 
@@ -31,14 +28,20 @@ it('covers navbar system selectors and mobile link close handlers', async () => 
   renderNavbar();
   openMobileNavbarMenu('authenticated mobile menu button');
 
-  screen.getAllByRole('button', { name: /System|Sistem/i }).forEach((button) => fireEvent.click(button));
+  screen
+    .getAllByRole('button', { name: /System|Sistem/i })
+    .forEach((button) => fireEvent.click(button));
   const lightButtons = screen.getAllByRole('button', { name: /Light|Luminos/i });
   const darkButtons = screen.getAllByRole('button', { name: /Dark|Întunecat/i });
   fireEvent.click(lightButtons[lightButtons.length - 1]);
   fireEvent.click(darkButtons[darkButtons.length - 1]);
 
-  screen.getAllByRole('button', { name: /Romanian|Română/i }).forEach((button) => fireEvent.click(button));
-  screen.getAllByRole('button', { name: /^English$/i }).forEach((button) => fireEvent.click(button));
+  screen
+    .getAllByRole('button', { name: /Romanian|Română/i })
+    .forEach((button) => fireEvent.click(button));
+  screen
+    .getAllByRole('button', { name: /^English$/i })
+    .forEach((button) => fireEvent.click(button));
   await waitFor(() => expect(authServiceMock.updateLanguagePreference).toHaveBeenCalled());
 
   const dashboardLink = screen

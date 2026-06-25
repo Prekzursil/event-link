@@ -20,10 +20,7 @@ import { useStudentProfileController } from './student-profile/useStudentProfile
 /**
  * Test helper: student profile header.
  */
-function StudentProfileHeader({
-  subtitle,
-  title,
-}: Readonly<{ subtitle: string; title: string }>) {
+function StudentProfileHeader({ subtitle, title }: Readonly<{ subtitle: string; title: string }>) {
   return (
     <div className="mb-8">
       <h1 className="text-3xl font-bold">{title}</h1>
@@ -179,7 +176,10 @@ export function StudentProfilePage() {
         onSave={controller.handleSave}
       />
 
-      <PrivacyCard t={controller.t} onOpenDeleteDialog={() => controller.setDeleteDialogOpen(true)} />
+      <PrivacyCard
+        t={controller.t}
+        onOpenDeleteDialog={() => controller.setDeleteDialogOpen(true)}
+      />
 
       <DeleteAccountDialog
         open={controller.deleteDialogOpen}

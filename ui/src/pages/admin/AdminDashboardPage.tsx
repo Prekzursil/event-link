@@ -25,7 +25,11 @@ export function AdminDashboardPage() {
           <h1 className="text-3xl font-bold">{controller.t.adminDashboard.title}</h1>
           <p className="mt-2 text-muted-foreground">{controller.t.adminDashboard.subtitle}</p>
         </div>
-        <Button variant="outline" onClick={() => controller.loadStats()} disabled={controller.isLoadingStats}>
+        <Button
+          variant="outline"
+          onClick={() => controller.loadStats()}
+          disabled={controller.isLoadingStats}
+        >
           <RefreshCw className="mr-2 h-4 w-4" />
           {controller.t.adminDashboard.reload}
         </Button>

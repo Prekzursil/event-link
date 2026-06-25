@@ -83,11 +83,7 @@ function buildPasswordRequirementState(password: string): PasswordRequirementSta
 /** Extract the most useful message from an API-shaped auth error. */
 function describeApiError(error: unknown, fallback: string) {
   const axiosError = error as AxiosError<ApiError>;
-  return (
-    axiosError.response?.data?.detail ||
-    axiosError.response?.data?.error?.message ||
-    fallback
-  );
+  return axiosError.response?.data?.detail || axiosError.response?.data?.error?.message || fallback;
 }
 
 /** Render the access-code fields and password requirements on the register page. */
@@ -167,7 +163,10 @@ function RegisterAccessCodeFields({
 }
 
 /** Render the icon and copy at the top of the registration card. */
-function RegisterCardHeader({ description, title }: Readonly<{ description: string; title: string }>) {
+function RegisterCardHeader({
+  description,
+  title,
+}: Readonly<{ description: string; title: string }>) {
   return (
     <CardHeader className="space-y-1 text-center">
       <div className="mx-auto mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-primary/10">
@@ -279,10 +278,7 @@ function RegisterFormFooter({
         submitLabel={texts.submit}
         submittingLabel={texts.submitting}
       />
-      <RegisterFooterHint
-        label={texts.haveAccount}
-        linkLabel={texts.loginLink}
-      />
+      <RegisterFooterHint label={texts.haveAccount} linkLabel={texts.loginLink} />
     </CardFooter>
   );
 }
@@ -381,7 +377,7 @@ export function RegisterPage() {
         formData.email,
         formData.password,
         formData.confirmPassword,
-        formData.fullName || undefined
+        formData.fullName || undefined,
       );
       toast({
         title: t.auth.register.successTitle,

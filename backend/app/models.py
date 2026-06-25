@@ -4,6 +4,8 @@
 # pylint: disable=too-few-public-methods
 
 import enum
+from datetime import datetime
+from typing import Any, Optional
 from sqlalchemy import (
     Column,
     Integer,
@@ -19,7 +21,7 @@ from sqlalchemy import (
     JSON,
     Float,
 )
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, Mapped, mapped_column
 from .database import Base
 
 USER_ID_FK = "users.id"
@@ -44,35 +46,39 @@ class User(Base):
 
     __tablename__ = "users"
 
-    id = Column(Integer, primary_key=True, index=True)
-    email = Column(String(255), unique=True, nullable=False)
-    password_hash = Column(String(255), nullable=False)
-    role = Column(Enum(UserRole), nullable=False)
-    created_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    email: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    password_hash: Mapped[str] = mapped_column(String(255), nullable=False)
+    role: Mapped[UserRole] = mapped_column(Enum(UserRole), nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    last_seen_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    is_active = Column(Boolean, nullable=False, server_default="true")
-    full_name = Column(String(255))
-    org_name = Column(String(255))
-    org_description = Column(Text)
-    org_logo_url = Column(String(500))
-    org_website = Column(String(255))
-    theme_preference = Column(
+    last_seen_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="true"
+    )
+    full_name: Mapped[Optional[str]] = mapped_column(String(255))
+    org_name: Mapped[Optional[str]] = mapped_column(String(255))
+    org_description: Mapped[Optional[str]] = mapped_column(Text)
+    org_logo_url: Mapped[Optional[str]] = mapped_column(String(500))
+    org_website: Mapped[Optional[str]] = mapped_column(String(255))
+    theme_preference: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default="system", default="system"
     )
-    language_preference = Column(
+    language_preference: Mapped[str] = mapped_column(
         String(10), nullable=False, server_default="system", default="system"
     )
-    city = Column(String(100))
-    university = Column(String(255))
-    faculty = Column(String(255))
-    study_level = Column(String(20))
-    study_year = Column(Integer)
-    email_digest_enabled = Column(
+    city: Mapped[Optional[str]] = mapped_column(String(100))
+    university: Mapped[Optional[str]] = mapped_column(String(255))
+    faculty: Mapped[Optional[str]] = mapped_column(String(255))
+    study_level: Mapped[Optional[str]] = mapped_column(String(20))
+    study_year: Mapped[Optional[int]] = mapped_column(Integer)
+    email_digest_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false", default=False
     )
-    email_filling_fast_enabled = Column(
+    email_filling_fast_enabled: Mapped[bool] = mapped_column(
         Boolean, nullable=False, server_default="false", default=False
     )
 
@@ -96,8 +102,8 @@ class Tag(Base):
 
     __tablename__ = "tags"
 
-    id = Column(Integer, primary_key=True, index=True)
-    name = Column(String(100), unique=True, nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
 
     events = relationship("Event", secondary="event_tags", back_populates="tags")
 
@@ -107,31 +113,51 @@ class Event(Base):
 
     __tablename__ = "events"
 
-    id = Column(Integer, primary_key=True, index=True)
-    title = Column(String(255), nullable=False)
-    description = Column(Text)
-    category = Column(String(100))
-    start_time = Column(TIMESTAMP(timezone=True), nullable=False)
-    end_time = Column(TIMESTAMP(timezone=True), nullable=True)
-    location = Column(String(255))
-    city = Column(String(100), index=True)
-    max_seats = Column(Integer)
-    cover_url = Column(String(500))
-    owner_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
-    created_at = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    status = Column(String(20), nullable=False, server_default="published")
-    publish_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    moderation_score = Column(Float, nullable=False, server_default="0", default=0.0)
-    moderation_flags = Column(JSON, nullable=True)
-    moderation_status = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    title: Mapped[str] = mapped_column(String(255), nullable=False)
+    description: Mapped[Optional[str]] = mapped_column(Text)
+    category: Mapped[Optional[str]] = mapped_column(String(100))
+    start_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    end_time: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    location: Mapped[Optional[str]] = mapped_column(String(255))
+    city: Mapped[Optional[str]] = mapped_column(String(100), index=True)
+    max_seats: Mapped[Optional[int]] = mapped_column(Integer)
+    cover_url: Mapped[Optional[str]] = mapped_column(String(500))
+    owner_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=True
+    )
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, server_default="published"
+    )
+    publish_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    moderation_score: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="0", default=0.0
+    )
+    moderation_flags: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    moderation_status: Mapped[str] = mapped_column(
         String(20), nullable=False, server_default="clean", default="clean"
     )
-    moderation_reviewed_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    moderation_reviewed_by_user_id = Column(
+    moderation_reviewed_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    moderation_reviewed_by_user_id: Mapped[Optional[int]] = mapped_column(
         Integer, ForeignKey(USER_ID_FK), nullable=True
     )
-    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
-    deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True, index=True
+    )
+    deleted_by_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=True
+    )
 
     owner = relationship("User", back_populates="events", foreign_keys=[owner_id])
     registrations = relationship(
@@ -153,13 +179,25 @@ class Registration(Base):
     __tablename__ = "registrations"
     __table_args__ = (UniqueConstraint("user_id", "event_id", name="uq_registration"),)
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
-    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False)
-    registration_time = Column(TIMESTAMP(timezone=True), server_default=func.now())
-    attended = Column(Boolean, server_default="false", nullable=False)
-    deleted_at = Column(TIMESTAMP(timezone=True), nullable=True, index=True)
-    deleted_by_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False
+    )
+    event_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(EVENT_ID_FK), nullable=False
+    )
+    registration_time: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), server_default=func.now(), nullable=True
+    )
+    attended: Mapped[bool] = mapped_column(
+        Boolean, server_default="false", nullable=False
+    )
+    deleted_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True, index=True
+    )
+    deleted_by_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=True
+    )
 
     user = relationship("User", back_populates="registrations", foreign_keys=[user_id])
     event = relationship("Event", back_populates="registrations")
@@ -174,10 +212,14 @@ class FavoriteEvent(Base):
         UniqueConstraint("user_id", "event_id", name="uq_favorite_event"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
-    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False)
-    created_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False
+    )
+    event_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(EVENT_ID_FK), nullable=False
+    )
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -190,12 +232,16 @@ class PasswordResetToken(Base):
 
     __tablename__ = "password_reset_tokens"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False)
-    token = Column(String(255), unique=True, nullable=False)
-    expires_at = Column(TIMESTAMP(timezone=True), nullable=False)
-    used = Column(Boolean, server_default="false", nullable=False)
-    created_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False
+    )
+    token: Mapped[str] = mapped_column(String(255), unique=True, nullable=False)
+    expires_at: Mapped[datetime] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=False
+    )
+    used: Mapped[bool] = mapped_column(Boolean, server_default="false", nullable=False)
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -210,26 +256,36 @@ class BackgroundJob(Base):
         UniqueConstraint("job_type", "dedupe_key", name="uq_background_job_dedupe_key"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    job_type = Column(String(50), nullable=False, index=True)
-    dedupe_key = Column(String(200), nullable=True, index=True)
-    payload = Column(JSON, nullable=False)
-    status = Column(String(20), nullable=False, index=True, server_default="queued")
-    attempts = Column(Integer, nullable=False, server_default="0")
-    max_attempts = Column(Integer, nullable=False, server_default="3")
-    run_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    job_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    dedupe_key: Mapped[Optional[str]] = mapped_column(
+        String(200), nullable=True, index=True
+    )
+    payload: Mapped[Any] = mapped_column(JSON, nullable=False)
+    status: Mapped[str] = mapped_column(
+        String(20), nullable=False, index=True, server_default="queued"
+    )
+    attempts: Mapped[int] = mapped_column(Integer, nullable=False, server_default="0")
+    max_attempts: Mapped[int] = mapped_column(
+        Integer, nullable=False, server_default="3"
+    )
+    run_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         nullable=False,
         index=True,
     )
-    locked_at = Column(TIMESTAMP(timezone=True), nullable=True)
-    locked_by = Column(String(100), nullable=True)
-    last_error = Column(Text, nullable=True)
-    created_at = Column(
+    locked_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
+    locked_by: Mapped[Optional[str]] = mapped_column(String(100), nullable=True)
+    last_error: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    finished_at = Column(TIMESTAMP(timezone=True), nullable=True)
+    finished_at: Mapped[Optional[datetime]] = mapped_column(
+        TIMESTAMP(timezone=True), nullable=True
+    )
 
 
 class NotificationDelivery(Base):
@@ -240,15 +296,21 @@ class NotificationDelivery(Base):
         UniqueConstraint("dedupe_key", name="uq_notification_delivery_dedupe_key"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    dedupe_key = Column(String(200), nullable=False)
-    notification_type = Column(String(50), nullable=False, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
-    sent_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    dedupe_key: Mapped[str] = mapped_column(String(200), nullable=False)
+    notification_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True
+    )
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
+    )
+    event_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True
+    )
+    sent_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    meta = Column(JSON, nullable=True)
+    meta: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
     event = relationship("Event", foreign_keys=[event_id])
@@ -259,15 +321,17 @@ class AuditLog(Base):
 
     __tablename__ = "audit_logs"
 
-    id = Column(Integer, primary_key=True, index=True)
-    entity_type = Column(String(50), nullable=False, index=True)
-    entity_id = Column(Integer, nullable=False, index=True)
-    action = Column(String(50), nullable=False, index=True)
-    actor_user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
-    created_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    entity_type: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(50), nullable=False, index=True)
+    actor_user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=True, index=True
+    )
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    meta = Column(JSON, nullable=True)
+    meta: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     actor = relationship("User", foreign_keys=[actor_user_id])
 
@@ -280,16 +344,20 @@ class UserRecommendation(Base):
         UniqueConstraint("user_id", "event_id", name="uq_user_recommendation"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
-    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=False, index=True)
-    score = Column(Float, nullable=False)
-    rank = Column(Integer, nullable=False)
-    model_version = Column(String(50), nullable=True)
-    generated_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
+    )
+    event_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(EVENT_ID_FK), nullable=False, index=True
+    )
+    score: Mapped[float] = mapped_column(Float, nullable=False)
+    rank: Mapped[int] = mapped_column(Integer, nullable=False)
+    model_version: Mapped[Optional[str]] = mapped_column(String(50), nullable=True)
+    generated_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
-    reason = Column(Text, nullable=True)
+    reason: Mapped[Optional[str]] = mapped_column(Text, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
     event = relationship("Event", foreign_keys=[event_id])
@@ -303,13 +371,15 @@ class RecommenderModel(Base):
         UniqueConstraint("model_version", name="uq_recommender_models_model_version"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    model_version = Column(String(100), nullable=False, index=True)
-    feature_names = Column(JSON, nullable=False)
-    weights = Column(JSON, nullable=False)
-    meta = Column(JSON, nullable=True)
-    is_active = Column(Boolean, nullable=False, server_default="false")
-    created_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    model_version: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    feature_names: Mapped[Any] = mapped_column(JSON, nullable=False)
+    weights: Mapped[Any] = mapped_column(JSON, nullable=False)
+    meta: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
+    is_active: Mapped[bool] = mapped_column(
+        Boolean, nullable=False, server_default="false"
+    )
+    created_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True), server_default=func.now(), nullable=False
     )
 
@@ -319,17 +389,23 @@ class EventInteraction(Base):
 
     __tablename__ = "event_interactions"
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=True, index=True)
-    event_id = Column(Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True)
-    interaction_type = Column(String(50), nullable=False, index=True)
-    occurred_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=True, index=True
+    )
+    event_id: Mapped[Optional[int]] = mapped_column(
+        Integer, ForeignKey(EVENT_ID_FK), nullable=True, index=True
+    )
+    interaction_type: Mapped[str] = mapped_column(
+        String(50), nullable=False, index=True
+    )
+    occurred_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         nullable=False,
         index=True,
     )
-    meta = Column(JSON, nullable=True)
+    meta: Mapped[Optional[Any]] = mapped_column(JSON, nullable=True)
 
     user = relationship("User", foreign_keys=[user_id])
     event = relationship("Event", foreign_keys=[event_id])
@@ -343,11 +419,17 @@ class UserImplicitInterestTag(Base):
         UniqueConstraint("user_id", "tag_id", name="uq_user_implicit_interest_tag"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
-    tag_id = Column(Integer, ForeignKey(TAG_ID_FK), nullable=False, index=True)
-    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
-    last_seen_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
+    )
+    tag_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(TAG_ID_FK), nullable=False, index=True
+    )
+    score: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="1.0", default=1.0
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         nullable=False,
@@ -368,11 +450,15 @@ class UserImplicitInterestCategory(Base):
         ),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
-    category = Column(String(100), nullable=False, index=True)
-    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
-    last_seen_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
+    )
+    category: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    score: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="1.0", default=1.0
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         nullable=False,
@@ -390,11 +476,15 @@ class UserImplicitInterestCity(Base):
         UniqueConstraint("user_id", "city", name="uq_user_implicit_interest_city"),
     )
 
-    id = Column(Integer, primary_key=True, index=True)
-    user_id = Column(Integer, ForeignKey(USER_ID_FK), nullable=False, index=True)
-    city = Column(String(100), nullable=False, index=True)
-    score = Column(Float, nullable=False, server_default="1.0", default=1.0)
-    last_seen_at = Column(
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, index=True)
+    user_id: Mapped[int] = mapped_column(
+        Integer, ForeignKey(USER_ID_FK), nullable=False, index=True
+    )
+    city: Mapped[str] = mapped_column(String(100), nullable=False, index=True)
+    score: Mapped[float] = mapped_column(
+        Float, nullable=False, server_default="1.0", default=1.0
+    )
+    last_seen_at: Mapped[datetime] = mapped_column(
         TIMESTAMP(timezone=True),
         server_default=func.now(),
         nullable=False,

@@ -9,17 +9,18 @@ import {
   type TranslationStrings,
 } from './studentProfileController.shared';
 
-type SaveHandlerArgs = ProfileSnapshotSetters & Readonly<{
-  city: string;
-  faculty: string;
-  fullName: string;
-  selectedTagIds: number[];
-  studyLevel: StudyLevel | '';
-  studyYear: number | undefined;
-  t: TranslationStrings;
-  toast: ToastFn;
-  university: string;
-}>;
+type SaveHandlerArgs = ProfileSnapshotSetters &
+  Readonly<{
+    city: string;
+    faculty: string;
+    fullName: string;
+    selectedTagIds: number[];
+    studyLevel: StudyLevel | '';
+    studyYear: number | undefined;
+    t: TranslationStrings;
+    toast: ToastFn;
+    university: string;
+  }>;
 
 /** Persist the edited student profile and project the saved snapshot back into form state. */
 /**
@@ -46,15 +47,17 @@ async function saveStudentProfileUpdates(args: SaveHandlerArgs) {
     university,
   } = args;
 
-  const updatedProfile = await eventService.updateStudentProfile(buildProfileUpdatePayload({
-    city,
-    faculty,
-    fullName,
-    selectedTagIds,
-    studyLevel,
-    studyYear,
-    university,
-  }));
+  const updatedProfile = await eventService.updateStudentProfile(
+    buildProfileUpdatePayload({
+      city,
+      faculty,
+      fullName,
+      selectedTagIds,
+      studyLevel,
+      studyYear,
+      university,
+    }),
+  );
   applyProfileSnapshot(updatedProfile, {
     setCity,
     setFaculty,
@@ -113,11 +116,33 @@ export function useStudentProfileSaveHandler({
         university,
       });
     } catch {
-      toast({ title: t.profile.saveErrorTitle, description: t.profile.saveErrorDescription, variant: 'destructive' });
+      toast({
+        title: t.profile.saveErrorTitle,
+        description: t.profile.saveErrorDescription,
+        variant: 'destructive',
+      });
     } finally {
       setIsSaving(false);
     }
-  }, [city, faculty, fullName, selectedTagIds, setCity, setFaculty, setFullName, setProfile, setSelectedTagIds, setStudyLevel, setStudyYear, setUniversity, studyLevel, studyYear, t, toast, university]);
+  }, [
+    city,
+    faculty,
+    fullName,
+    selectedTagIds,
+    setCity,
+    setFaculty,
+    setFullName,
+    setProfile,
+    setSelectedTagIds,
+    setStudyLevel,
+    setStudyYear,
+    setUniversity,
+    studyLevel,
+    studyYear,
+    t,
+    toast,
+    university,
+  ]);
 
   return { handleSave, isSaving };
 }

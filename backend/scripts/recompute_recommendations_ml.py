@@ -420,9 +420,7 @@ def _build_recommendation_rows(**kwargs):
     )
 
 
-def _gather_training_examples(
-    *, args, state: _PreparedState, now: datetime
-):
+def _gather_training_examples(*, args, state: _PreparedState, now: datetime):
     """Collects training examples from ``state``; handles the empty-data path."""
     return _build_training_examples(
         args=args,

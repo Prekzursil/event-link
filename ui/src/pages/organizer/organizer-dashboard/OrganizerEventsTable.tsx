@@ -61,7 +61,11 @@ type OrganizerEventsSelectionTableProps = Readonly<{
 /**
  * Test helper: status badge.
  */
-function statusBadge(texts: UiStrings['organizerDashboard'], status: Event['status'], isPast: boolean) {
+function statusBadge(
+  texts: UiStrings['organizerDashboard'],
+  status: Event['status'],
+  isPast: boolean,
+) {
   if (status === 'draft') {
     return <Badge variant="secondary">{texts.statusDraft}</Badge>;
   }
@@ -109,20 +113,10 @@ function OrganizerBulkActionsBar({
         >
           {texts.bulk.unpublish}
         </Button>
-        <Button
-          variant="outline"
-          size="sm"
-          disabled={isBulkUpdating}
-          onClick={onOpenBulkTags}
-        >
+        <Button variant="outline" size="sm" disabled={isBulkUpdating} onClick={onOpenBulkTags}>
           {texts.bulk.tags}
         </Button>
-        <Button
-          variant="ghost"
-          size="sm"
-          disabled={isBulkUpdating}
-          onClick={onClearSelection}
-        >
+        <Button variant="ghost" size="sm" disabled={isBulkUpdating} onClick={onClearSelection}>
           {texts.bulk.clear}
         </Button>
       </div>
@@ -131,7 +125,9 @@ function OrganizerBulkActionsBar({
 }
 
 /** Render the empty organizer state shown before the first event is created. */
-function OrganizerEventsEmptyState({ texts }: Readonly<{ texts: UiStrings['organizerDashboard'] }>) {
+function OrganizerEventsEmptyState({
+  texts,
+}: Readonly<{ texts: UiStrings['organizerDashboard'] }>) {
   return (
     <div className="flex flex-col items-center justify-center py-16 text-center">
       <Calendar className="mb-4 h-12 w-12 text-muted-foreground" />

@@ -94,26 +94,19 @@ type AcademicProfileCardProps = Readonly<{
 }>;
 
 /** Render one datalist-backed input field for academic profile text values. */
-function AcademicTextField(props: Readonly<{
-  datalistId?: string;
-  label: string;
-  listValues?: string[];
-  note?: string;
-  onChange: (value: string) => void;
-  placeholder: string;
-  testId: string;
-  value: string;
-}>) {
-  const {
-    datalistId,
-    label,
-    listValues,
-    note,
-    onChange,
-    placeholder,
-    testId,
-    value,
-  } = props;
+function AcademicTextField(
+  props: Readonly<{
+    datalistId?: string;
+    label: string;
+    listValues?: string[];
+    note?: string;
+    onChange: (value: string) => void;
+    placeholder: string;
+    testId: string;
+    value: string;
+  }>,
+) {
+  const { datalistId, label, listValues, note, onChange, placeholder, testId, value } = props;
 
   return (
     <div className="space-y-2">
@@ -207,12 +200,7 @@ function StudyYearField({
 }
 
 /** Render the academic profile card with city, university, faculty, and study data. */
-export function AcademicProfileCard({
-  values,
-  options,
-  handlers,
-  t,
-}: AcademicProfileCardProps) {
+export function AcademicProfileCard({ values, options, handlers, t }: AcademicProfileCardProps) {
   const facultyPlaceholder =
     options.facultyOptions.length > 0
       ? t.profile.facultyPlaceholderWithOptions
@@ -243,15 +231,11 @@ export function AcademicProfileCard({
             value={values.city}
           />
           <AcademicTextField
-            datalistId={
-              options.universityCatalog.length > 0 ? 'university-options' : undefined
-            }
+            datalistId={options.universityCatalog.length > 0 ? 'university-options' : undefined}
             label={t.profile.universityLabel}
             listValues={options.universityCatalog.map((item) => item.name)}
             note={
-              options.universityCatalog.length === 0
-                ? t.profile.universityFallbackNote
-                : undefined
+              options.universityCatalog.length === 0 ? t.profile.universityFallbackNote : undefined
             }
             onChange={handlers.onUniversityChange}
             placeholder={t.profile.universityPlaceholder}
@@ -549,7 +533,13 @@ type ProfileActionsProps = Readonly<{
 /**
  * Test helper: profile actions.
  */
-export function ProfileActions({ isExporting, isSaving, t, onExport, onSave }: ProfileActionsProps) {
+export function ProfileActions({
+  isExporting,
+  isSaving,
+  t,
+  onExport,
+  onSave,
+}: ProfileActionsProps) {
   // skipcq: JS-0415 - the action row intentionally keeps all save and export button states in one block.
   return (
     <div className="flex flex-wrap justify-end gap-3">

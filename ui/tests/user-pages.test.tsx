@@ -33,7 +33,17 @@ vi.mock('@/hooks/use-toast', () => ({
 }));
 
 vi.mock('@/components/events/EventCard', () => ({
-  EventCard: ({ event, onFavoriteToggle, isFavorite, showEditButton }: { event: { id: number; title: string }; onFavoriteToggle?: (eventId: number, shouldFavorite: boolean) => void; isFavorite?: boolean; showEditButton?: boolean }) => (
+  EventCard: ({
+    event,
+    onFavoriteToggle,
+    isFavorite,
+    showEditButton,
+  }: {
+    event: { id: number; title: string };
+    onFavoriteToggle?: (eventId: number, shouldFavorite: boolean) => void;
+    isFavorite?: boolean;
+    showEditButton?: boolean;
+  }) => (
     <div data-testid={`event-${event.id}`}>
       <span>{event.title}</span>
       <button onClick={() => onFavoriteToggle?.(event.id, !isFavorite)}>toggle-{event.id}</button>
@@ -138,7 +148,9 @@ describe('favorites and my-events pages', () => {
     eventServiceMock.getFavorites.mockResolvedValueOnce({ items: [upcoming] });
 
     const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob://x');
-    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => { /* no-op */ });
+    const revokeObjectURLSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {
+      /* no-op */
+    });
     const appendSpy = vi.spyOn(document.body, 'appendChild');
 
     renderWithProviders(<MyEventsPage />, '/my-events');
