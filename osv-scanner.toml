@@ -12,6 +12,14 @@
 #   - backend/requirements-dev.txt  (Python backend dev/test deps)
 #   - ui/package-lock.json          (React/Vite TypeScript UI npm tree)
 #
+# SCHEMA WARNING: [[IgnoredVulns]] accepts ONLY the keys `id`, `ignoreUntil`
+# (a bare, UNQUOTED date) and `reason`. Any unknown key makes osv-scanner
+# silently reject the ENTIRE file and fall back to an empty config — which
+# disables the ignore list while still appearing to work. After editing, prove
+# the file still parses (exit 130 means it is broken) and confirm the ignores
+# are actually applied by looking for the "Filtered N vulnerabilities from
+# output" line in the scan output.
+#
 # ---------------------------------------------------------------------------
 # GAP CLOSED (2026-06-20): the actionable CVEs noted earlier (axios,
 # react-router, vite, vitest, esbuild, form-data, ws, @babel/core, js-yaml
@@ -25,3 +33,24 @@
 # for a future vuln that is genuinely unfixable or provably unreachable — do
 # NOT use ignores to paper over an available upgrade.
 # ---------------------------------------------------------------------------
+#
+# ---------------------------------------------------------------------------
+# UPDATE (2026-07-25): a new wave of npm advisories took the tree to 21
+# findings across 6 packages. 19 of the 21 were cleared by UPGRADING, per the
+# policy above, and only the 2 below — which have no non-breaking fix — are
+# ignored. Upgrades applied: axios 1.16.0 -> 1.18.1 (clears 10 advisories and
+# all 20 open Dependabot alerts), react-router-dom 7.15.1 -> 7.18.1 (clears 4),
+# overrides.brace-expansion -> ^2.1.2 (clears GHSA-3jxr-9vmj-r5cp on both the
+# 1.x and 2.x lines), postcss -> 8.5.23 and js-yaml -> 4.3.0 (both already
+# permitted by their existing overrides ranges, lock refresh only).
+# ---------------------------------------------------------------------------
+
+[[IgnoredVulns]]
+id = "GHSA-mh99-v99m-4gvg"
+ignoreUntil = 2026-10-23
+reason = "brace-expansion: DoS via unbounded expansion length. GENUINELY UNFIXABLE right now — the advisory range is <= 5.0.7 and the only patched release is 5.0.8, a MAJOR bump its own consumers cannot take. MEASURED in this repo 2026-07-25: setting overrides.brace-expansion to ^5.0.8 installs cleanly but eslint then dies with 'TypeError: expand is not a function' at minimatch/minimatch.js:271, because minimatch 3.x and 9.x cannot consume the 5.x export shape. SCOPE MEASURED — dev-only: 'npm ls brace-expansion --all --omit=dev' returns empty and both lockfile entries carry dev=true; the only consumers are eslint-plugin-import -> minimatch@3.1.5 and typescript-eslint -> @typescript-eslint/typescript-estree -> minimatch@9.0.9, so it executes at lint time and never ships in the browser bundle. What WAS fixable is fixed, not suppressed: overrides pins brace-expansion ^2.1.2, clearing GHSA-3jxr-9vmj-r5cp on both lines. RE-CHECK: drop this entry once minimatch (or another consumer) ships a release that accepts brace-expansion 5.x, then remove the ^2.1.2 override and take 5.0.8+."
+
+[[IgnoredVulns]]
+id = "GHSA-qwww-vcr4-c8h2"
+ignoreUntil = 2026-10-23
+reason = "React Router: RSC-mode CSRF bypass allows action execution. NOT REACHABLE IN THIS PRODUCT — the advisory affects React Router's unstable RSC APIs, and its range >= 7.12.0, < 8.3.0 has NO 7.x fix at all (first patched 8.3.0, a major framework migration that dependabot.yml also excludes via version-update:semver-major). SCOPE MEASURED over ui/src 2026-07-25: this is a plain Vite SPA on the DECLARATIVE router only — BrowserRouter, Routes, Route, Navigate, Link, Outlet, useNavigate, useLocation, useSearchParams. Zero data-router/action surface (no createBrowserRouter, RouterProvider, createRoutesFromElements, loader, action, useFetcher, useSubmit, useLoaderData, useActionData, no unstable_ API) and zero SSR/RSC surface (no renderToString, renderToPipeableStream, hydrateRoot, react-server, entry.server, @react-router/node|serve|dev). What WAS fixable is fixed, not suppressed: react-router-dom pinned to 7.18.1, clearing GHSA-337j-9hxr-rhxg, GHSA-chx6-hx7r-mcp5, GHSA-h8fp-f39c-q6mh and GHSA-wrjc-x8rr-h8h6. RE-CHECK: drop this entry if a 7.x backport ships, or immediately if this app adopts RSC, SSR or a data router (createBrowserRouter / RouterProvider / loaders / actions) — at which point react-router must go to 8.3.0+."
