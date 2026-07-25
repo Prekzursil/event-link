@@ -32,7 +32,7 @@
     "@radix-ui/react-tabs": "1.1.13",
     "@radix-ui/react-toast": "1.2.15",
     "@tailwindcss/vite": "4.1.18",
-    "axios": "1.16.0",
+    "axios": "1.18.1",
     "class-variance-authority": "0.7.1",
     "clsx": "2.1.1",
     "date-fns": "4.1.0",
@@ -40,7 +40,7 @@
     "react": "19.2.0",
     "react-day-picker": "9.12.0",
     "react-dom": "19.2.0",
-    "react-router-dom": "7.15.1",
+    "react-router-dom": "7.18.1",
     "tailwind-merge": "3.4.0",
     "tailwindcss": "4.1.18"
   },
@@ -75,6 +75,7 @@
     "form-data": "^4.0.6",
     "ws": "^8.21.0",
     "@babel/core": "^7.29.6",
+    "brace-expansion": "^2.1.2",
     "js-yaml": "^4.2.0"
   }
 }
