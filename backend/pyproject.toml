@@ -4,6 +4,14 @@ version = "0.1.0"
 description = "Add your description here"
 readme = "README.md"
 requires-python = ">=3.11"
+
+# WARNING before you run `uv pip compile pyproject.toml -o requirements.txt`:
+# requirements.txt carries a MANUALLY APPENDED trailing block below the generated output
+# (pytest, pytest-cov, and a pygments==2.20.0 pin that exists solely to keep the osv-scanner
+# deps gate clear of PYSEC-2023-117 / GHSA-5239-wwwm-4pmq). A plain recompile DELETES that
+# block -- which breaks CI for want of pytest and silently re-opens the pygments advisory.
+# Re-append it after every recompile, or move those three into a dependency group and teach
+# the compile command about it. Measured: the recompile for CVE-2026-69247 dropped all three.
 dependencies = [
     "fastapi>=0.119.1",
     "sqlalchemy>=2.0.44",
@@ -13,6 +21,16 @@ dependencies = [
     "passlib[bcrypt]",
     "bcrypt==4.0.1",
     "PyJWT[crypto]>=2.10.1",
+    # Security floor, not a feature dependency. cryptography arrives transitively through
+    # PyJWT[crypto], whose own constraint is only >=3.4.0, so nothing here held it above the
+    # vulnerable range and the lockfile resolved to 46.0.7.
+    # GHSA-g6cj-pr64-35w5 / CVE-2026-69247 (High): PKCS#7 EnvelopedData decryption exposes a
+    # Bleichenbacher oracle through distinguishable errors and timing. Affects >=44.0.0,<50.0.0;
+    # first patched 50.0.0. This app calls no PKCS#7 EnvelopedData API itself (the only PKCS#7
+    # references are inside the library's own fernet/padding modules), so the practical exposure
+    # is low -- but it is a runtime dependency of an auth path, so it is pinned above the range
+    # rather than waived. Remove this line only once PyJWT's own floor exceeds 50.0.0.
+    "cryptography>=50.0.0",
     "python-multipart",
     "pydantic[email]>=2.12.3",
     "alembic>=1.14.0",
