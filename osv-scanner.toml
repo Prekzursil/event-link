@@ -44,13 +44,20 @@
 # 1.x and 2.x lines), postcss -> 8.5.23 and js-yaml -> 4.3.0 (both already
 # permitted by their existing overrides ranges, lock refresh only).
 # ---------------------------------------------------------------------------
-
-[[IgnoredVulns]]
-id = "GHSA-mh99-v99m-4gvg"
-ignoreUntil = 2026-10-23
-reason = "brace-expansion: DoS via unbounded expansion length. GENUINELY UNFIXABLE right now — the advisory range is <= 5.0.7 and the only patched release is 5.0.8, a MAJOR bump its own consumers cannot take. MEASURED in this repo 2026-07-25: setting overrides.brace-expansion to ^5.0.8 installs cleanly but eslint then dies with 'TypeError: expand is not a function' at minimatch/minimatch.js:271, because minimatch 3.x and 9.x cannot consume the 5.x export shape. SCOPE MEASURED — dev-only: 'npm ls brace-expansion --all --omit=dev' returns empty and both lockfile entries carry dev=true; the only consumers are eslint-plugin-import -> minimatch@3.1.5 and typescript-eslint -> @typescript-eslint/typescript-estree -> minimatch@9.0.9, so it executes at lint time and never ships in the browser bundle. What WAS fixable is fixed, not suppressed: overrides pins brace-expansion ^2.1.2, clearing GHSA-3jxr-9vmj-r5cp on both lines. RE-CHECK: drop this entry once minimatch (or another consumer) ships a release that accepts brace-expansion 5.x, then remove the ^2.1.2 override and take 5.0.8+."
-
-[[IgnoredVulns]]
-id = "GHSA-qwww-vcr4-c8h2"
-ignoreUntil = 2026-10-23
-reason = "React Router: RSC-mode CSRF bypass allows action execution. NOT REACHABLE IN THIS PRODUCT — the advisory affects React Router's unstable RSC APIs, and its range >= 7.12.0, < 8.3.0 has NO 7.x fix at all (first patched 8.3.0, a major framework migration that dependabot.yml also excludes via version-update:semver-major). SCOPE MEASURED over ui/src 2026-07-25: this is a plain Vite SPA on the DECLARATIVE router only — BrowserRouter, Routes, Route, Navigate, Link, Outlet, useNavigate, useLocation, useSearchParams. Zero data-router/action surface (no createBrowserRouter, RouterProvider, createRoutesFromElements, loader, action, useFetcher, useSubmit, useLoaderData, useActionData, no unstable_ API) and zero SSR/RSC surface (no renderToString, renderToPipeableStream, hydrateRoot, react-server, entry.server, @react-router/node|serve|dev). What WAS fixable is fixed, not suppressed: react-router-dom pinned to 7.18.1, clearing GHSA-337j-9hxr-rhxg, GHSA-chx6-hx7r-mcp5, GHSA-h8fp-f39c-q6mh and GHSA-wrjc-x8rr-h8h6. RE-CHECK: drop this entry if a 7.x backport ships, or immediately if this app adopts RSC, SSR or a data router (createBrowserRouter / RouterProvider / loaders / actions) — at which point react-router must go to 8.3.0+."
+#
+# ---------------------------------------------------------------------------
+# UPDATE (2026-10-24): the two IgnoredVulns entries that used to follow this
+# block expired on 2026-10-23, and neither advisory applies any more, so they
+# are removed rather than renewed:
+#   - GHSA-mh99-v99m-4gvg (brace-expansion): the 2.x line is now patched;
+#     overrides.brace-expansion ^2.1.7 resolves 2.1.7, which OSV lists as clean.
+#   - GHSA-qwww-vcr4-c8h2 (react-router RSC CSRF): a 7.x fix shipped in 7.18.2,
+#     which react-router-dom 7.18.2 already pins.
+# The same pass upgraded every other advisory away (no ignores): axios 1.20.0,
+# vite 7.3.7, vitest + @vitest/coverage-v8 4.1.12, overrides for
+# follow-redirects ^1.16.1, js-yaml ^4.3.2, zod ^4.6.6, browserslist ^4.28.7,
+# baseline-browser-mapping ^2.11.0, source-map-js ^1.2.2, @humanfs/node ^0.16.8;
+# backend pyjwt 2.15.1, anyio 4.14.2, certifi 2026.10.23, mako 1.4.3 and
+# (dev) black 26.10.1. OSV querybatch after the bump: ui lock 605 packages and
+# 39 backend pins, 0 vulnerable. No IgnoredVulns entries remain.
+# ---------------------------------------------------------------------------

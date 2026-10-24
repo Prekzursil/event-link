@@ -115,24 +115,21 @@ afterEach(() => {
 });
 
 describe('App routing guards', () => {
-  it.each([
-    '/my-events',
-    '/organizer',
-    '/admin',
-  ])('redirects unauthenticated users from %s to LoginPage', async (path) => {
-    renderRoute(path);
-    expect(await screen.findByText('LoginPage')).toBeInTheDocument();
-  });
+  it.each(['/my-events', '/organizer', '/admin'])(
+    'redirects unauthenticated users from %s to LoginPage',
+    async (path) => {
+      renderRoute(path);
+      expect(await screen.findByText('LoginPage')).toBeInTheDocument();
+    },
+  );
 
-  it.each([
-    '/my-events',
-    '/organizer',
-    '/admin',
-    '/login',
-  ])('shows loading UI for %s while auth is loading', async (path) => {
-    renderRoute(path, { isLoading: true });
-    expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument();
-  });
+  it.each(['/my-events', '/organizer', '/admin', '/login'])(
+    'shows loading UI for %s while auth is loading',
+    async (path) => {
+      renderRoute(path, { isLoading: true });
+      expect(await screen.findByText(LOADING_TEXT)).toBeInTheDocument();
+    },
+  );
 
   it.each<RouteCase>([
     {
@@ -165,12 +162,11 @@ describe('App routing guards', () => {
       expected: 'ForbiddenPage',
       state: { isAuthenticated: true, isOrganizer: true },
     },
-  ])('renders ForbiddenPage for blocked authenticated route $path', async ({
-    path,
-    expected,
-    state,
-  }) => {
-    renderRoute(path, state);
-    expect(await screen.findByText(expected)).toBeInTheDocument();
-  });
+  ])(
+    'renders ForbiddenPage for blocked authenticated route $path',
+    async ({ path, expected, state }) => {
+      renderRoute(path, state);
+      expect(await screen.findByText(expected)).toBeInTheDocument();
+    },
+  );
 });
