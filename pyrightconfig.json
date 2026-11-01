@@ -1,7 +1,10 @@
 {
   "typeCheckingMode": "standard",
   "pythonVersion": "3.11",
-  "include": ["backend", "scripts"],
+  "include": [
+    "backend",
+    "scripts"
+  ],
   "exclude": [
     "**/node_modules",
     "**/__pycache__",
@@ -24,7 +27,10 @@
     {
       "root": "backend/alembic",
       "reportInvalidTypeForm": "warning",
-      "reportAttributeAccessIssue": "warning"
+      "reportAttributeAccessIssue": "warning",
+      "extraPaths": [
+        "backend"
+      ]
     }
   ]
 }
