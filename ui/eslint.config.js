@@ -24,6 +24,17 @@ export default tseslint.config(
   reactHooks.configs.flat.recommended,
   reactRefresh.configs.vite,
   {
+    // react-hooks/set-state-in-effect ships with eslint-plugin-react-hooks 7.1.1
+    // (required for the eslint 10 toolchain that allows minimatch >= 11 for
+    // GHSA-g3hv-75wg-m249). The 11 findings are pre-existing effect patterns
+    // that predate this rule; adopting it is a separate code-change task.
+    // Configured off 2026-11-01 to keep the enforced lint policy unchanged
+    // through the security toolchain bump.
+    rules: {
+      'react-hooks/set-state-in-effect': 'off',
+    },
+  },
+  {
     files: ['**/*.{ts,tsx}'],
     languageOptions: {
       ecmaVersion: 'latest',
