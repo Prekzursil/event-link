@@ -206,7 +206,12 @@ jobs:
           docker compose down -v
 
   e2e:
-    runs-on: ubuntu-latest
+    # ubuntu-24.04 PIN, not ubuntu-latest: the image rolled to 26.04 on
+    # 2026-11-13 and Playwright 1.58 cannot install browsers on it
+    # ("Cannot install dependencies for ubuntu26.04-x64"), which broke this
+    # job on every fresh run. 24.04 is supported until the UI's Playwright
+    # gains 26.04 support.
+    runs-on: ubuntu-24.04
     permissions:
       contents: read
     steps:
