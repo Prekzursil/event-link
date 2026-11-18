@@ -61,3 +61,21 @@
 # (dev) black 26.10.1. OSV querybatch after the bump: ui lock 605 packages and
 # 39 backend pins, 0 vulnerable. No IgnoredVulns entries remain.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# 2026-11-18 RESIDUAL RISK (reasoned ignore) — GHSA-fc5q-39xc-vjpf, picomatch
+# ReDoS (CVSS v3 7.5 / v4 8.7, availability-only). Vulnerable range <= 4.0.7
+# and 4.0.7 IS the newest published release (measured 2026-11-18 via
+# `npm view picomatch versions`), so no fixed release exists to upgrade to.
+# Scope: picomatch 4.0.4 under ui/ (vite/vitest build-toolchain family);
+# availability-only impact, no shipped bundle.
+# RE-CHECK: retire the day a patched picomatch (> 4.0.7) publishes.
+[[IgnoredVulns]]
+id = "GHSA-fc5q-39xc-vjpf"
+ignoreUntil = 2027-02-18
+reason = """
+picomatch ReDoS; every published release is vulnerable (<= 4.0.7 = latest
+published, measured 2026-11-18), so no upgrade exists. Toolchain-only
+resolution under ui/; availability-only impact. Retire as soon as a
+patched picomatch publishes.
+"""
